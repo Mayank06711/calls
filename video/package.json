@@ -1,0 +1,29 @@
+{
+  "name": "video",
+  "version": "1.0.0",
+  "description": "This will be used in our server and client side",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mayank06711/calls.git"
+  },
+  "keywords": [
+    "WebRtc",
+    "Nodejs",
+    "Socket"
+  ],
+  "author": "Mayank Soni , Satyam Soni",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mayank06711/calls/issues"
+  },
+  "homepage": "https://github.com/Mayank06711/calls#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0"
+  }
+}
