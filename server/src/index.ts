@@ -8,6 +8,7 @@ import { createServer, Server as HTTPSServer } from "https"; // Import Server ty
 import fs from "fs";
 import path from "path";
 import SocketManager from "./socket"
+import redisManager from "./utils/redisClient"
 class ServerManager {
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
@@ -127,6 +128,7 @@ class ServerManager {
       const Port = process.env.PORT || 5005;
       this.server.listen(Port, () => {
         SocketManager(this.io);
+        redisManager.initRedisConnection();
         console.log(`Server is running on https://localhost:${Port}`);
       });
   }
