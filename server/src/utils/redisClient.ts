@@ -1,36 +1,31 @@
 import Redis from "ioredis";
 
 class RedisManager {
-  private redis: Redis | null = null;
+  private static redis: Redis | null = null; // if not made static then we can not use this.redis inside other static methods because this inside a static method refers to the class itself, not to an instance of the class which is case when redis is not declared static.
 
   // Method to initialize Redis connection
-  public initRedisConnection() {
+   public static initRedisConnection() {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || "localhost",
       port: +process.env.REDIS_PORT!,
     });
 
-    // Listen for successful connection
     this.redis.on("connect", () => {
       console.log("Connected to Redis server successfully.");
     });
 
-    // Listen for error events
     this.redis.on("error", (error) => {
       console.error("Error connecting to Redis server:", error);
     });
 
-    // Optional: Listen for ready event (indicates that the connection is fully established)
     this.redis.on("ready", () => {
       console.log("Redis server is ready to accept commands.");
     });
 
-    // Optional: Listen for end event (indicates that the connection has been closed)
     this.redis.on("end", () => {
       console.log("Connection to Redis server has been closed.");
     });
 
-    // Optional: Listen for reconnecting event (indicates that the client is trying to reconnect)
     this.redis.on("reconnecting", () => {
       console.log("Attempting to reconnect to Redis server...");
     });
@@ -38,67 +33,91 @@ class RedisManager {
     console.log("Redis connection initiated.");
   }
 
-  // Method to cache data
-  public async cacheData<T>(key: string, data: T, expirationInSeconds: number): Promise<void> {
+  // Method to cache data in a hash
+  public static async cacheDataInGroup<T>(
+    group: string,
+    key: string,
+    data: T
+  ): Promise<void> {
     if (!this.redis) {
       console.error("Redis is not initialized. Call `initRedisConnection()` first.");
       return;
     }
 
     try {
-      // Convert data to JSON string if it's not a string
+      // Add the data to a Redis hash
       const value = typeof data === "string" ? data : JSON.stringify(data);
-      await this.redis.set(key, value, "EX", expirationInSeconds);
-      console.log(`Cached data for key: ${key}`);
+      await this.redis.hset(group, key, value);// Adds new value To the key if it does not exist already otherwise it's just update that key value within that hash whose name is the group name
+
+      // Adding  key (socketId) to the set for fast lookup/searching without scanning through all users in the hash(authenticatedUser)
+      await this.redis.sadd(`${group}Set`, key);
+      console.log(`Cached data in group ${group} for key: ${key}`);
     } catch (error) {
-      console.error(`Error caching data for key: ${key}`, error);
+      console.error(`Error caching data for group ${group} and key: ${key}`, error);
     }
   }
 
-  // Method to get cached data
-  public async getData<T>(key: string): Promise<T | null> {
+  // Method to get cached data from a hash
+  public static async getDataFromGroup<T>(group: string, key: string): Promise<T | null> {
     if (!this.redis) {
       console.error("Redis is not initialized. Call `initRedisConnection()` first.");
       return null;
     }
 
     try {
-      const value = await this.redis.get(key);
+      const value = await this.redis.hget(group, key);
       if (value) {
-        // Try to parse JSON if it's not a string
         try {
           return JSON.parse(value) as T;
         } catch {
-          return value as unknown as T; // Return as string if JSON parsing fails
+          return value as unknown as T;
         }
       }
-      return null; // Return null if no value found
+      return null;
     } catch (error) {
-      console.error(`Error getting data for key: ${key}`, error);
+      console.error(`Error getting data for group ${group} and key: ${key}`, error);
       return null;
     }
   }
 
-  // Method to check Redis connection status
-  public async checkRedisConnection():Promise<Boolean> {
+  // Method to remove data from a hash and set
+  public static async removeDataFromGroup(group: string, key: string): Promise<void> {
+    if (!this.redis) {
+      console.error("Redis is not initialized. Call `initRedisConnection()` first.");
+      return;
+    }
+
+    try {
+      // Remove from hash
+      await this.redis.hdel(group, key);
+      
+      // Remove from set
+      await this.redis.srem(`${group}Set`, key);
+      console.log(`Removed data from group ${group} for key: ${key}`);
+    } catch (error) {
+      console.error(`Error removing data from group ${group} and key: ${key}`, error);
+    }
+  }
+
+  // Method to check if key exists in the set (fast lookup)
+  public static async isKeyInGroup(group: string, key: string): Promise<boolean> {
     if (!this.redis) {
       console.error("Redis is not initialized. Call `initRedisConnection()` first.");
       return false;
     }
 
     try {
-      await this.redis.ping(); // Sends a ping command to check if Redis is responding
-      console.log("Redis is up and running.");
-      return true;
+      const exists = await this.redis.sismember(`${group}Set`, key); // key is socket id
+      return exists === 1;
     } catch (error) {
-      console.error("Error checking Redis connection:", error);
+      console.error(`Error checking key in group ${group}Set`, error);
       return false;
     }
   }
+  
 }
 
-// Example usage
-const redisManager = new RedisManager();
-export default redisManager;
-redisManager.initRedisConnection();
-redisManager.checkRedisConnection(); // Check connection
+
+
+
+export default RedisManager;;

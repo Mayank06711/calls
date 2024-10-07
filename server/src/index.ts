@@ -7,8 +7,8 @@ import { Server as SocketIOServer } from "socket.io";
 import { createServer, Server as HTTPSServer } from "https"; // Import Server type
 import fs from "fs";
 import path from "path";
-import SocketManager from "./socket"
-import redisManager from "./utils/redisClient"
+import SocketManager from "./socket";
+import RedisManager from "./utils/redisClient";
 class ServerManager {
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
@@ -100,37 +100,37 @@ class ServerManager {
     fs.appendFileSync(logFilePath, logMessage);
     console.log("Logs flushed.");
   }
-  public start(){
-      // Load SSL key and certificate
-      const key = fs.readFileSync(
-        path.join(__dirname, "../certs/cert.key"),
-        "utf8"
-      );
-      const cert = fs.readFileSync(
-        path.join(__dirname, "../certs/cert.crt"),
-        "utf8"
-      );
-      //  HTTPS server with key and cert
-      this.server = createServer(
-        {
-          key: key,
-          cert: cert,
-        },
-        this.app
-      );
-      // Socket.io for real-time communication
-      this.io = new SocketIOServer(this.server, {
-        cors: {
-          origin: "*", // You can restrict this to your frontend URL for security
-          methods: ["GET", "POST", "PUT"],
-        },
-      });
-      const Port = process.env.PORT || 5005;
-      this.server.listen(Port, () => {
-        SocketManager(this.io);
-        redisManager.initRedisConnection();
-        console.log(`Server is running on https://localhost:${Port}`);
-      });
+  public start() {
+    // Load SSL key and certificate
+    const key = fs.readFileSync(
+      path.join(__dirname, "../certs/cert.key"),
+      "utf8"
+    );
+    const cert = fs.readFileSync(
+      path.join(__dirname, "../certs/cert.crt"),
+      "utf8"
+    );
+    //  HTTPS server with key and cert
+    this.server = createServer(
+      {
+        key: key,
+        cert: cert,
+      },
+      this.app
+    );
+    // Socket.io for real-time communication
+    this.io = new SocketIOServer(this.server, {
+      cors: {
+        origin: "*", // You can restrict this to your frontend URL for security
+        methods: ["GET", "POST", "PUT"],
+      },
+    });
+    const Port = process.env.PORT || 5005;
+    this.server.listen(Port, () => {
+      SocketManager(this.io);
+      RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
+      console.log(`Server is running on https://localhost:${Port}`);
+    });
   }
 
   private stopServer() {
@@ -151,5 +151,3 @@ class ServerManager {
 
 const serverManager = new ServerManager();
 serverManager.start();
-
-
