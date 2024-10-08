@@ -1,0 +1,3 @@
+const USER_LOGIN = "USER_LOGIN";
+const USER_SINGUP = "USER_SINGUP";
+export { USER_LOGIN, USER_SINGUP };
