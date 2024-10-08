@@ -107,7 +107,7 @@ class RedisManager {
     }
 
     try {
-      const exists = await this.redis.sismember(`${group}Set`, key); // key is socket id
+      const exists = await this.redis.sismember(`${group}Set`, key); // key is socket id this search in the set we have made with name authenticatedUserSet
       return exists === 1;
     } catch (error) {
       console.error(`Error checking key in group ${group}Set`, error);
