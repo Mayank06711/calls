@@ -32,11 +32,12 @@ class ServerManager {
   private initializeMiddlewares() {
     this.app.use(
       cors({
-        origin: ["https://localhost:5173", "*"], //origin: [`${process.env.CLIENT_URL!}`,"*"],
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        origin: ["https://localhost:5173", "*"], // Allows requests from the frontend and any origin
+        credentials: true, // Allows cookies and credentials to be sent with requests
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
       })
     );
+    
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
     this.app.use(cookieParser());
@@ -124,7 +125,7 @@ class ServerManager {
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: [`${process.env.CLIENT_URL!}`,"*"], // You can restrict this to your frontend URL for security
+        origin: [`https://localhost:5173`,"*"], // You can restrict this to your frontend URL for security
         methods: ["GET", "POST", "PUT"],
         credentials: true, 
       },
