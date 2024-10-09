@@ -1,20 +1,7 @@
-import { USER_LOGIN } from "../actions";
-import { USER_SINGUP } from "../actions";
 
-const userLogin = (payload) => {
-  console.log(payload);
-  return {
-    type: USER_LOGIN,
-    payload,
-  };
-};
+export const SET_TOKEN = 'SET_TOKEN';
+export const CLEAR_TOKEN = 'CLEAR_TOKEN';
+export const USER_LOGIN = 'USER_LOGIN';
+export const USER_SIGNUP = 'USER_SIGNUP';
 
-const userSignup = (payload) => {
-  console.log(payload);
-  return {
-    type: USER_SINGUP,
-    payload,
-  };
-};
 
-export { userLogin, userSignup };

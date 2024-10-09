@@ -1,20 +1,29 @@
 import axios from "axios";
-import { userLogin } from "../action_creators";
-import { userSignup } from "../action_creators"; // Assuming you have a signup action creator
+import { setToken, userLogin, userSignup } from "../actions";
+import socketConnection from "../../webRTCUtils/socketConnection";
 
-const userLoginThunk = (payload) => async (dispatch) => {
+export const userLoginThunk = (payload) => async (dispatch) => {
   try {
     const response = await axios.post(
       "https://localhost:5005/api/v1/users/login",
       {
         email: payload.email,
         password: payload.password,
-      },{
+      },
+      {
         withCredentials: true,
       }
     );
-    console.log(response.data)
-    dispatch(userLogin(response.data)); // Dispatch the userLogin action with the response data
+    console.log(response.data);
+    
+    // Store token in Redux store and localStorage
+    const token = response.data.localToken;
+    if (token) {
+      localStorage.setItem("token", token);
+      dispatch(setToken(token));
+    }
+    dispatch(userLogin(response.data)); // Dispatch userLogin action
+    socketConnection(response.data.token)
   } catch (error) {
     console.log(
       "Error in the user login thunk:",
@@ -23,18 +32,25 @@ const userLoginThunk = (payload) => async (dispatch) => {
   }
 };
 
-const userSignupThunk = (payload) => async (dispatch) => {
+export const userSignupThunk = (payload) => async (dispatch) => {
   try {
     const response = await axios.post(
-      "https://localhost:5005/api/v1/users/signup", // Signup API endpoint
+      "https://localhost:5005/api/v1/users/signup",
       {
-        username: payload.username, // Include username for signup
+        username: payload.username,
         email: payload.email,
         password: payload.password,
       }
     );
-    console.log(response.data)
-    dispatch(userSignup(response.data)); // Dispatch the userSignup action with the response data
+    console.log(response.data);
+
+    const token = response.data.localToken;
+    if (token) {
+      localStorage.setItem("token", token);
+      dispatch(setToken(token));
+    }
+    dispatch(userSignup(response.data));
+    socketConnection(response.data.token)
   } catch (error) {
     console.log(
       "Error in the user signup thunk:",
@@ -42,5 +58,3 @@ const userSignupThunk = (payload) => async (dispatch) => {
     );
   }
 };
-
-export { userLoginThunk, userSignupThunk };

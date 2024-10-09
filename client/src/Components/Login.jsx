@@ -81,7 +81,11 @@ const Login = () => {
         <span className='forgot-password'>
           <a href='#'>Forgot Password ?</a>
         </span>
-        <input className='login-button' type='submit' value={isSignup ? "Sign Up" : "Sign In"} />
+        <input
+          className='login-button'
+          type='submit'
+          value={isSignup ? "Sign Up" : "Sign In"}
+        />
       </form>
       <div className='social-account-container'>
         <span className='title'>Or Sign in with</span>
