@@ -1,4 +1,5 @@
 import express, { CookieOptions } from "express";
+import { UserModel } from "../models/userModel";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie

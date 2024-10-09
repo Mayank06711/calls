@@ -23,7 +23,8 @@ interface IUser extends Document {
   subscriptionDetail: "Premium" | "Casual" | "Medium"; // Enum for subscription details
   referral?: mongoose.Types.ObjectId; // Reference to another User document
   isMFAEnabled: boolean;
-  MFAKey?: string; // Optional MFA key
+  MFASecretKey?: string; // Optional MFA key
+  isActive: boolean;
 }
 
 // User schema
@@ -56,8 +57,17 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: ["Premium", "Casual", "Medium"],
     },
     referral: { type: Schema.Types.ObjectId, ref: "User" },
-    isMFAEnabled: { type: Boolean, default: false }, // only for experts
-    MFAKey: { type: String },
+    isMFAEnabled: {
+      type: Boolean,
+      default: false  // Default to false
+    },
+    MFASecretKey: {
+      type: String,
+      required: function() {
+        return this.isMFAEnabled;  // MFASecretKey is required if MFA is enabled
+      }
+    },
+    isActive: { type: Boolean, default: false}, // user's active status. Default is true.
   },
   { timestamps: true }
 );

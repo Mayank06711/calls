@@ -9,7 +9,7 @@ import fs from "fs";
 import path from "path";
 import SocketManager from "./socket";
 import RedisManager from "./utils/redisClient";
-
+import { middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
 class ServerManager {
@@ -60,7 +60,7 @@ class ServerManager {
   }
 
   private initializeErrorHandling() {
-    // this.app.use(middleware.ErrorMiddleware);
+    this.app.use(middleware.ErrorMiddleware);
     this.app.use("*", (req, res) => {
       res.status(404).json({ message: "Page not found" });
     });
@@ -133,7 +133,7 @@ class ServerManager {
     const Port = process.env.PORT || 5005;
     this.server.listen(Port, () => {
       SocketManager(this.io);
-      //RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
+      RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
       console.log(`Server is running on https://localhost:${Port}`);
     });
   }

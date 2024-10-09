@@ -5,9 +5,11 @@ class RedisManager {
 
   // Method to initialize Redis connection
    public static initRedisConnection() {
+    console.log(process.env.REDIS_HOST)
     this.redis = new Redis({
-      host: process.env.REDIS_HOST || "localhost",
+      host: process.env.REDIS_HOST!,
       port: +process.env.REDIS_PORT!,
+      connectTimeout:10000,// 10 seconds timeout
     });
 
     this.redis.on("connect", () => {
