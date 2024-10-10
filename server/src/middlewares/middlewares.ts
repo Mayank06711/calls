@@ -71,40 +71,8 @@ class middleware {
       throw new Error("Error uploading files to cloudinary");
     }
   }
+  
 
-//   private static async verifyJWT(req: newRequest, res: Response, next: NextFunction) {
-//       try {
-//           let accessToken = req.cookies.accessToken || req.headers.authorization?.replace("Bearer ", "");
-
-//           if (!accessToken) {
-//               throw new ApiError (401 , "no access token provided");
-//               // or: throw new Error('No access token provided');
-//           }
-
-//           const decodedToken = JWT.verify(accessToken, process.env.ACCESS_TOKEN_SECRET!)
-//           const user = await UserModel.findOne({
-//               where: { id: decodedToken.id },
-//               select: {
-//                   isMFAEnabled: true,
-//                   active: true,
-//                   username: true,
-//                   role: true,
-//               },
-//           });
-
-//           if (!user) {
-//               throw new ApiError (404 , "user not found");
-//               // or: throw new Error('User not found');
-//           }
-
-//           req.user = user;
-//           next();
-//       } catch (error) {
-//           console.error('Error in verifyJWT:', error);
-//           throw new ApiError (401 , "invalid token");
-//           // or: next(error);
-//       }
-//   }
 
   private static async verifyMFA(MFASecretKey: string, id: string) {
     try {
