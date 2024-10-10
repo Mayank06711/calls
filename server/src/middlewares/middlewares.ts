@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import JWT from "jsonwebtoken";
+import JWT, {JwtPayload} from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -7,7 +7,9 @@ import { v2 as cloudinary } from "cloudinary";
 import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
+import Admin from "../models/adminModel";
 import AsyncHandler from "../utils/AsyncHandler";
+import { ApiError } from "../utils/apiError";
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -72,39 +74,56 @@ class middleware {
     }
   }
 
-//   private static async verifyJWT(req: newRequest, res: Response, next: NextFunction) {
-//       try {
-//           let accessToken = req.cookies.accessToken || req.headers.authorization?.replace("Bearer ", "");
+  private static async verify_JWT(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    const accessToken =
+      req.cookies?.accessToken ||
+      req.header("Authorization")?.replace("Bearer ", "")[0]; // Extract the access token from cookies or headers
 
-//           if (!accessToken) {
-//               throw new ApiError (401 , "no access token provided");
-//               // or: throw new Error('No access token provided');
-//           }
+    if (!accessToken || accessToken.length === 0) {
+      throw new ApiError(401, "Invalid Access Token");
+    }
+    let decodedToken: string | JwtPayload = JWT.verify(
+      accessToken,
+      process.env.ACCESS_TOKEN_SECRET!
+    ); // Verify and decode the access token
 
-//           const decodedToken = JWT.verify(accessToken, process.env.ACCESS_TOKEN_SECRET!)
-//           const user = await UserModel.findOne({
-//               where: { id: decodedToken.id },
-//               select: {
-//                   isMFAEnabled: true,
-//                   active: true,
-//                   username: true,
-//                   role: true,
-//               },
-//           });
+    if (typeof decodedToken === "string") {
+      throw new ApiError(401, "Invalid Access Token");
+    }
+    const user = await UserModel.findOne({
+      where: {
+        $in: [{ username: decodedToken.username }, { id: decodedToken.id }],
+      },
+      select: {
+        id: true,
+        email: true,
+        isMFAEnabled: true, // Include the user's MFA status in the response
+        active: true, // Include whether the user is active
+        username: true, // Include the username
+        role: true, // Include the user's role
+      },
+    });
+    let admin = await Admin.findOne({
+        $where :{ username: decodedToken.username},
+    })
+    if (!user) {
+      throw new ApiError(401, "Invalid access Token");
+      // check if he is admin then add admin in req.admin
+    }
 
-//           if (!user) {
-//               throw new ApiError (404 , "user not found");
-//               // or: throw new Error('User not found');
-//           }
-
-//           req.user = user;
-//           next();
-//       } catch (error) {
-//           console.error('Error in verifyJWT:', error);
-//           throw new ApiError (401 , "invalid token");
-//           // or: next(error);
-//       }
-//   }
+    req.user = {
+      id: user.id,
+      username: user.username,
+      isMFAEnabled: user.isMFAEnabled,
+      email: user.email,
+      isActive: user.isActive,
+    };
+    next(); // Call the next middleware function or route handler
+  }
 
   private static async verifyMFA(MFASecretKey: string, id: string) {
     try {
