@@ -7,10 +7,11 @@ import { AuthServices } from "../helper/auth";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: process.env.NODE_ENV! === "production" ? true : false, // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "production" , // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
   };
 
+  
   static async signUp(req: express.Request, res: express.Response) {
     try {
       const { username, fullName, password, email } = req.body;
@@ -53,7 +54,7 @@ class User {
           .json({
             message: "User signed up successfully, Please fill other fields",
             userId: user._id, // Optional: You can remove this if using only cookies
-            localToken: tokens.accessToken, // Send access token to frontend
+            localToken: user._id, // Send access token to frontend
             username: user.username,
           });
       } else {
@@ -85,6 +86,7 @@ class User {
       console.log(error);
     }
   }
+
   static logout(req: express.Request, res: express.Response) {
     try {
       // check validation here only
