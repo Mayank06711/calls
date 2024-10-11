@@ -9,9 +9,10 @@ import fs from "fs";
 import path from "path";
 import SocketManager from "./socket";
 import RedisManager from "./utils/redisClient";
-import { middleware } from "./middlewares/middlewares";
+import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
+import feedBackRouter from "./routes/feedbackRoutes"; 
 import { connectDB } from "./db";
 import cronSchuduler from "./auto/cronJob";
 class ServerManager {
@@ -56,13 +57,14 @@ class ServerManager {
   private initializeRoutes() {
     this.app.use("/api/v1/users", userRouter);
     // this.app.use("/api/v1/admins", adminRouter);
+    this.app.use("/api/v1/feedback",feedBackRouter)
     this.app.get("/", (req: Request, res: Response) => {
       res.status(201).send("Hello Now my application is working!");
     });
   }
 
   private initializeErrorHandling() {
-    this.app.use(middleware.ErrorMiddleware);
+    this.app.use(Middleware.ErrorMiddleware);
     this.app.use("*", (req, res) => {
       res.status(404).json({ message: "Page not found" });
     });
