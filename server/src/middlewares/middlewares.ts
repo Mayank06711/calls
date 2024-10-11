@@ -18,16 +18,16 @@ cloudinary.config({
 });
 
 console.log(process.env.CLOUDINARY_API_KEY, "cloudinary API key: ");
-class middleware {
-  // Multer middleware method for single and multiple files
+class Middleware {
+  // Multer Middleware method for single and multiple files
   private static multerUpload = multer({
     limits: {
       fileSize: 1024 * 1024 * 5, // 5mb
     },
   }); //  by default it will use our ram memory  to store files in buffer format  as we have not provided any location to store files
 
-  private static singleFile = middleware.multerUpload.array("avatar", 1);
-  private static attachmentsMulter = middleware.multerUpload.array(
+  private static singleFile = Middleware.multerUpload.array("avatar", 1);
+  private static attachmentsMulter = Middleware.multerUpload.array(
     "arrayFiles",
     5
   );
@@ -46,7 +46,7 @@ class middleware {
       }
       return new Promise((resolve, reject) => {
         cloudinary.uploader.upload(
-          middleware.getBase64(file),
+          Middleware.getBase64(file),
           {
             resource_type: "auto",
             public_id: uuid(),
@@ -136,7 +136,7 @@ class middleware {
         isActive: user.isActive,
       };
 
-      next(); // Call the next middleware function or route handler
+      next(); // Call the next Middleware function or route handler
     } catch (error) {
       console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
@@ -182,7 +182,7 @@ class middleware {
           .json({ message: "Two-factor authentication (MFA) is required" });
         return;
       }
-      const isValid = await middleware.verifyMFA(MFASecretKey, req.user.id);
+      const isValid = await Middleware.verifyMFA(MFASecretKey, req.user.id);
       if (isValid) {
         next();
       } else {
@@ -197,7 +197,7 @@ class middleware {
   private static isAdmin(req: Request, res: Response, next: NextFunction) {
     const id = req.admin?._id;
     const originalUrl = req.originalUrl;
-    console.log("isAdmin middleware originalURL", originalUrl);
+    console.log("isAdmin Middleware originalURL", originalUrl);
     if (id && req.originalUrl.startsWith("/admin")) {
       // i do have another logic apache kafka later
       next();
@@ -228,13 +228,13 @@ class middleware {
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
-  static SingleFile = middleware.singleFile;
-  static AttachmentsMulter = middleware.attachmentsMulter;
-  static UploadFilesToCloudinary = middleware.uploadFilesToCloudinary;
-  static VerifyJWT = AsyncHandler.wrap(middleware.verify_JWT);
-  static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
-  static IsAdmin = AsyncHandler.wrap(middleware.isAdmin);
-  static ErrorMiddleware = middleware.errorMiddleware;
+  static SingleFile = Middleware.singleFile;
+  static AttachmentsMulter = Middleware.attachmentsMulter;
+  static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
+  static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
+  static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
+  static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
+  static ErrorMiddleware = Middleware.errorMiddleware;
 }
 
-export { middleware };
+export { Middleware };
