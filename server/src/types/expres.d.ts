@@ -1,21 +1,22 @@
 import express from "express";
 import { Request } from "express";
+import { ObjectId } from "mongoose";
 declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: string;
+        _id: ObjectId;
         username: string;
         email: string;
         isMFAEnabled: boolean;
         isActive: boolean;
       };
       admin?: {
-        id: string;
-        username: string;
+        _id: ObjectId;
+        adminUsername: string;
         isActive: boolean;
       };
     }
   }
 }
-export {newRequest}
+export { newRequest };
