@@ -10,6 +10,7 @@ import { ExpertModel } from "../models/expertModel";
 import AsyncHandler from "../utils/AsyncHandler";
 import Admin from "../models/adminModel";
 import { ApiError } from "../utils/apiError";
+import { ObjectId } from "mongoose";
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -24,7 +25,7 @@ class middleware {
       fileSize: 1024 * 1024 * 5, // 5mb
     },
   }); //  by default it will use our ram memory  to store files in buffer format  as we have not provided any location to store files
-  
+
   private static singleFile = middleware.multerUpload.array("avatar", 1);
   private static attachmentsMulter = middleware.multerUpload.array(
     "arrayFiles",
@@ -102,15 +103,15 @@ class middleware {
 
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
-        $or: [{ username: decodedToken.username }, { _id: decodedToken.id }],
-      }).select("id email isMFAEnabled active username role");
+        _id: decodedToken.id,
+      }).select("email isMFAEnabled isActive username");
 
       // Check if user does not exist
       if (!user) {
         // Check if the token belongs to an admin instead
         const admin = await Admin.findOne({
           username: decodedToken.username,
-        }).select("id username active");
+        }).select("adminUsername isActive");
 
         if (!admin) {
           throw new ApiError(401, "Invalid access token");
@@ -118,8 +119,8 @@ class middleware {
 
         // Attach admin info to the request
         req.admin = {
-          id: admin.id,
-          username: admin.adminUsername,
+          _id: admin._id as ObjectId,
+          adminUsername: admin.adminUsername,
           isActive: admin.isActive,
         };
 
@@ -128,7 +129,7 @@ class middleware {
 
       // Attach user info to the request
       req.user = {
-        id: user.id,
+        _id: user._id as ObjectId,
         username: user.username,
         email: user.email,
         isMFAEnabled: user.isMFAEnabled,
@@ -194,7 +195,7 @@ class middleware {
 
   //   chech if admin or not
   private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.admin?.id;
+    const id = req.admin?._id;
     const originalUrl = req.originalUrl;
     console.log("isAdmin middleware originalURL", originalUrl);
     if (id && req.originalUrl.startsWith("/admin")) {
@@ -231,9 +232,8 @@ class middleware {
   static AttachmentsMulter = middleware.attachmentsMulter;
   static UploadFilesToCloudinary = middleware.uploadFilesToCloudinary;
   static VerifyJWT = AsyncHandler.wrap(middleware.verify_JWT);
-  // static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
+  static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(middleware.isAdmin);
-  // static IsPayment = AsyncHandler.wrap(middleware.isPayment);
   static ErrorMiddleware = middleware.errorMiddleware;
 }
 
