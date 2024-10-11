@@ -1,28 +1,70 @@
 import express, { CookieOptions } from "express";
 import { UserModel } from "../models/userModel";
+import { ApiError } from "../utils/apiError";
+import AsyncHandler from "../utils/AsyncHandler";
+import { ObjectId } from "mongoose";
+import { AuthServices } from "../helper/auth";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: true, // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "production" ? true : false, // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
   };
 
-  static signUp(req: express.Request, res: express.Response) {
+  static async signUp(req: express.Request, res: express.Response) {
     try {
-      console.log(req.body);
-      res
-        .status(200)
-        .cookie("accessToken", 123)
-        .cookie("refreshToken", 1243)
-        .json({
-          message: "User signed up successfully",
-          userId: "user",
-          token: "token",
-          localToken: "localToken",
-          username: "username",
-        });
-    } catch (error) {
-      console.log(error);
+      const { username, fullName, password, email } = req.body;
+      if ([username, password, email].some((f) => f == null || f === "")) {
+        throw new ApiError(400, "All fields must be present");
+      }
+      const usernameExists = await UserModel.findOne({ username });
+      const emailExists = await UserModel.findOne({ email });
+
+      if (usernameExists && emailExists) {
+        throw new ApiError(409, "Both username and email already exist");
+      } else if (usernameExists) {
+        throw new ApiError(409, "Username already exists");
+      } else if (emailExists) {
+        throw new ApiError(409, "Email already exists");
+      }
+
+      const user = await UserModel.create({
+        username,
+        fullName,
+        password,
+        email,
+      });
+      // Check if the user is created
+      if (user) {
+        console.log("User created successfully:", user);
+        console.log(req.body);
+        const tokens = await AuthServices.getAccAndRefToken(
+          user._id as ObjectId
+        );
+        if (tokens === null) {
+          await UserModel.findByIdAndDelete(user._id);
+          throw new ApiError(500, "Something went wrong");
+        }
+        // Set HTTP-only cookie for refresh token (secure it for production)
+        res
+          .status(200)
+          .cookie("refreshToken", tokens.refreshToken, this.options) // Store refresh token in an HttpOnly cookie
+          .cookie("accessToken", tokens.accessToken, this.options) // Store refresh token in an HttpOnly cookie
+          .json({
+            message: "User signed up successfully, Please fill other fields",
+            userId: user._id, // Optional: You can remove this if using only cookies
+            localToken: tokens.accessToken, // Send access token to frontend
+            username: user.username,
+          });
+      } else {
+        throw new ApiError(500, "User creation failed without error");
+      }
+    } catch (error: any) {
+      if (error.name === "ValidationError") {
+        throw new ApiError(400, "Validation Error: " + error.message);
+      } else {
+        throw new ApiError(500, "Internal Server Error: Unable to create user");
+      }
     }
   }
 
@@ -46,7 +88,11 @@ class User {
   static logout(req: express.Request, res: express.Response) {
     try {
       // check validation here only
-      res.status(200).clearCookie("accessToken", User.options).clearCookie("refreshToken", User.options).json({ message: "User logged out successfully" });
+      res
+        .status(200)
+        .clearCookie("accessToken", User.options)
+        .clearCookie("refreshToken", User.options)
+        .json({ message: "User logged out successfully" });
     } catch (error) {
       console.log(error);
     }
@@ -56,10 +102,15 @@ class User {
     try {
       // check validation here only
       res
-       .status(200)
-       .cookie("accessToken", 12345, User.options)
-       .cookie("refreshToken", 23215, User.options)
-       .json({ message: "Refreshed successfully", userId: "user", localToken: "localToken", username: "username" });
+        .status(200)
+        .cookie("accessToken", 12345, User.options)
+        .cookie("refreshToken", 23215, User.options)
+        .json({
+          message: "Refreshed successfully",
+          userId: "user",
+          localToken: "localToken",
+          username: "username",
+        });
     } catch (error) {
       console.log(error);
     }
@@ -89,7 +140,7 @@ class User {
       console.log(error);
     }
   }
-  static changeAvatar(req: express.Request, res: express.Response){
+  static changeAvatar(req: express.Request, res: express.Response) {
     try {
       // check validation here only
       res.json({ message: "Avatar Changed Successfully" });
@@ -113,8 +164,8 @@ class User {
       console.log(error);
     }
   }
-  
-  static verifyPhone(req: express.Request, res: express.Response){
+
+  static verifyPhone(req: express.Request, res: express.Response) {
     try {
       // check validation here only
       res.json({ message: "Phone Number Verified Successfully" });
@@ -122,7 +173,6 @@ class User {
       console.log(error);
     }
   }
-
 }
 
 export default User;

@@ -12,6 +12,8 @@ import RedisManager from "./utils/redisClient";
 import { middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
+import { connectDB } from "./db";
+import cronSchuduler from "./auto/cronJob";
 class ServerManager {
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
@@ -37,7 +39,7 @@ class ServerManager {
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
       })
     );
-    
+
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
     this.app.use(cookieParser());
@@ -52,7 +54,7 @@ class ServerManager {
   }
   // initialize routes
   private initializeRoutes() {
-     this.app.use("/api/v1/users", userRouter);
+    this.app.use("/api/v1/users", userRouter);
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.get("/", (req: Request, res: Response) => {
       res.status(201).send("Hello Now my application is working!");
@@ -104,7 +106,7 @@ class ServerManager {
     fs.appendFileSync(logFilePath, logMessage);
     console.log("Logs flushed.");
   }
-  public start() {
+  public async start() {
     // Load SSL key and certificate
     const key = fs.readFileSync(
       path.join(__dirname, "../certs/cert.key"),
@@ -125,17 +127,25 @@ class ServerManager {
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: [`https://localhost:5173`,"*"], // You can restrict this to your frontend URL for security
+        origin: [`https://localhost:5173`, "*"], // You can restrict this to your frontend URL for security
         methods: ["GET", "POST", "PUT"],
-        credentials: true, 
+        credentials: true,
       },
     });
     const Port = process.env.PORT || 5005;
-    this.server.listen(Port, () => {
-      SocketManager(this.io);
-      RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
-      console.log(`Server is running on https://localhost:${Port}`);
-    });
+    await connectDB()
+      .then(() => {
+        this.server.listen(Port, () => {
+          SocketManager(this.io);
+          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
+          //  cronSchuduler("* */2 * * *");
+          console.log(`Server is running on https://localhost:${Port}`);
+        });
+      })
+      .catch((err) => {
+        console.error("Error connecting to MongoDB:", err);
+        process.exit(1); // Exit with failure code
+      });
   }
 
   private stopServer() {
