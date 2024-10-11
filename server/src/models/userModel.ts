@@ -26,6 +26,8 @@ interface IUser extends Document {
   isMFAEnabled: boolean;
   MFASecretKey?: string; // Optional MFA key
   isActive: boolean;
+  isAdmin:boolean; // Whether or not
+  isExpert: boolean; // Whether or not the user is an expert
 
   // defining methods here so that typescript can 
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
@@ -74,6 +76,8 @@ const UserSchema: Schema<IUser> = new Schema(
       },
     },
     isActive: { type: Boolean, default: false }, // user's active status. Default is true.
+    isAdmin: { type: Boolean, default: false }, // Whether or not the user is an admin
+    isExpert: { type: Boolean, default: false }, // Whether or not the user is an expert
   },
   { timestamps: true }
 );
