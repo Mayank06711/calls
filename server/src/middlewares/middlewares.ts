@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import JWT from "jsonwebtoken";
+import JWT, { JwtPayload } from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -8,6 +8,8 @@ import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
 import AsyncHandler from "../utils/AsyncHandler";
+import Admin from "../models/adminModel";
+import { ApiError } from "../utils/apiError";
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -22,6 +24,7 @@ class middleware {
       fileSize: 1024 * 1024 * 5, // 5mb
     },
   }); //  by default it will use our ram memory  to store files in buffer format  as we have not provided any location to store files
+  
   private static singleFile = middleware.multerUpload.array("avatar", 1);
   private static attachmentsMulter = middleware.multerUpload.array(
     "arrayFiles",
@@ -71,8 +74,73 @@ class middleware {
       throw new Error("Error uploading files to cloudinary");
     }
   }
-  
 
+  private static async verify_JWT(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      // Extract the access token from cookies or headers
+      const accessToken =
+        req.cookies?.accessToken ||
+        req.header("Authorization")?.replace("Bearer ", "");
+
+      if (!accessToken || accessToken.length === 0) {
+        throw new ApiError(401, "Invalid Access Token");
+      }
+
+      // Verify and decode the access token
+      let decodedToken: string | JwtPayload = JWT.verify(
+        accessToken,
+        process.env.ACCESS_TOKEN_SECRET!
+      );
+
+      if (typeof decodedToken === "string") {
+        throw new ApiError(401, "Invalid Access Token");
+      }
+
+      // Find user based on decodedToken fields (either username or id)
+      const user = await UserModel.findOne({
+        $or: [{ username: decodedToken.username }, { _id: decodedToken.id }],
+      }).select("id email isMFAEnabled active username role");
+
+      // Check if user does not exist
+      if (!user) {
+        // Check if the token belongs to an admin instead
+        const admin = await Admin.findOne({
+          username: decodedToken.username,
+        }).select("id username active");
+
+        if (!admin) {
+          throw new ApiError(401, "Invalid access token");
+        }
+
+        // Attach admin info to the request
+        req.admin = {
+          id: admin.id,
+          username: admin.adminUsername,
+          isActive: admin.isActive,
+        };
+
+        return next(); // Admin is authenticated
+      }
+
+      // Attach user info to the request
+      req.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        isMFAEnabled: user.isMFAEnabled,
+        isActive: user.isActive,
+      };
+
+      next(); // Call the next middleware function or route handler
+    } catch (error) {
+      console.error("Error in verifyJWT:", error);
+      next(new ApiError(401, "Invalid or expired token"));
+    }
+  }
 
   private static async verifyMFA(MFASecretKey: string, id: string) {
     try {
@@ -162,7 +230,7 @@ class middleware {
   static SingleFile = middleware.singleFile;
   static AttachmentsMulter = middleware.attachmentsMulter;
   static UploadFilesToCloudinary = middleware.uploadFilesToCloudinary;
-  // static VerifyJWT = AsyncHandler.wrap(middleware.verifyJWT);
+  static VerifyJWT = AsyncHandler.wrap(middleware.verify_JWT);
   // static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(middleware.isAdmin);
   // static IsPayment = AsyncHandler.wrap(middleware.isPayment);
