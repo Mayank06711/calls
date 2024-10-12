@@ -1,3 +1,32 @@
+<<<<<<< HEAD
 .env
 node_modules
 cert
+=======
+# Logs
+logs
+.env
+cert
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+>>>>>>> f880dcdc9877bac3fc696d03e1205212ce92c67a

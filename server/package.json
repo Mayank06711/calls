@@ -4,6 +4,9 @@
   "description": "This is for our idea",
   "main": "index.js",
   "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "nodemon --exec ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,12 +25,31 @@
   },
   "homepage": "https://github.com/Mayank06711/calls#readme",
   "dependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/multer": "^1.4.12",
+    "@types/uuid": "^10.0.0",
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^2.5.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "multer": "^1.4.5-lts.1"
+    "express-rate-limit": "^7.4.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.0",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.8.0",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.7",
     "@types/express": "^4.17.21",
+    "@types/ioredis": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/mongoose": "^5.11.97",
     "@types/node": "^22.5.5",
+    "@types/socket.io": "^3.0.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.2"
   }
