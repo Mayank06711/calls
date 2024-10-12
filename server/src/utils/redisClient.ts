@@ -116,10 +116,17 @@ class RedisManager {
       return false;
     }
   }
+
+  public static getRedisInstance(): Redis | null {
+    if (!this.redis) {
+      console.error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    return this.redis;
+  }
   
 }
 
 
 
 
-export default RedisManager;;
+export {RedisManager};

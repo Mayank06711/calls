@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import JWT, {JwtPayload} from "jsonwebtoken";
+import JWT, { JwtPayload } from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -108,8 +108,8 @@ class middleware {
       },
     });
     let admin = await Admin.findOne({
-        $where :{ username: decodedToken.username},
-    })
+      username: decodedToken.username,
+    });
     if (!user) {
       throw new ApiError(401, "Invalid access Token");
       // check if he is admin then add admin in req.admin
@@ -213,7 +213,7 @@ class middleware {
   static SingleFile = middleware.singleFile;
   static AttachmentsMulter = middleware.attachmentsMulter;
   static UploadFilesToCloudinary = middleware.uploadFilesToCloudinary;
-  // static VerifyJWT = AsyncHandler.wrap(middleware.verifyJWT);
+  static VerifyJWT = AsyncHandler.wrap(middleware.verify_JWT);
   // static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(middleware.isAdmin);
   // static IsPayment = AsyncHandler.wrap(middleware.isPayment);

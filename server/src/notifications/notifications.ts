@@ -18,4 +18,4 @@ class Notification {
     }
   };
 }
-export default Notification
+export { Notification};
