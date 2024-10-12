@@ -8,7 +8,7 @@ import { createServer, Server as HTTPSServer } from "https"; // Import Server ty
 import fs from "fs";
 import path from "path";
 import SocketManager from "./socket";
-import RedisManager from "./utils/redisClient";
+import {RedisManager} from "./utils/redisClient";
 import { middleware } from "./middlewares/middlewares";
 import cronSchuduler from "./auto/cronJob";
 // importing Routes
