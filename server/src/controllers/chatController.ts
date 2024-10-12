@@ -53,43 +53,50 @@ const createChatMessage = async (
   }
 };
 
-const getChatMessages = async (
-  user1Id: string,
-  user2Id: string
-): Promise<IChatMessage[]> => {
+export const getChatMessages = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    // Validate user IDs
-    const user1ObjectId = new mongoose.Types.ObjectId(user1Id);
-    const user2ObjectId = new mongoose.Types.ObjectId(user2Id);
+    const { senderId, receiverId } = req.params;
 
-    // Find the chat between the two users and populate the messages
-    const chat = await ChatModel.findOne({
-      $or: [
-        { sender: user1ObjectId, receiver: user2ObjectId },
-        { sender: user2ObjectId, receiver: user1ObjectId },
-      ],
-    }).populate("messages"); // Ensure that messages are populated
-
-    if (!chat) {
-      return []; // Return an empty array if no chat is found
+    // Validate the sender and receiver IDs
+    if (
+      !mongoose.Types.ObjectId.isValid(senderId) ||
+      !mongoose.Types.ObjectId.isValid(receiverId)
+    ) {
+      throw new ApiError(400, "Invalid sender or receiver ID");
     }
 
-    // Ensure messages are of type IChatMessage[]
-    const messages = chat.messages as unknown as IChatMessage[]; // Use unknown for safe casting
+    const senderObjectId = new mongoose.Types.ObjectId(senderId);
+    const receiverObjectId = new mongoose.Types.ObjectId(receiverId);
 
-    // Map the results to return the required structure
-    return messages.map((message) => ({
+    // Find the chat between the sender and receiver
+    const chat = await ChatModel.findOne({
+      $or: [
+        { sender: senderObjectId, receiver: receiverObjectId },
+        { sender: receiverObjectId, receiver: senderObjectId },
+      ],
+    }).populate("messages"); // Populate the chat messages
+
+    // If no chat exists, return an empty array
+    if (!chat || !chat.messages) {
+      console.error("")
+    }
+
+    // Cast the messages to the correct type (IChatMessage[])
+    const messages = chat.messages as unknown as IChatMessage[];
+
+    // Format and return the messages
+    const formattedMessages = messages.map((message) => ({
       message: message.message,
-      attachments: (message.attachments || []).map((attachment) => ({
-        key: attachment.key,
-        url: attachment.url,
-      })),
-      sender: message.sender.toString(), // Convert sender ObjectId to string if needed
-      createdAt: message.createdAt, // Assuming you want to include createdAt
+      attachments: message.attachments || [],
+      createdAt: message.createdAt,
     }));
+
+    // Send the formatted messages as a response
   } catch (error) {
     console.error("Error retrieving chat messages:", error);
-    throw new ApiError(500, "Failed to retrieve chat messages");
   }
 };
 
