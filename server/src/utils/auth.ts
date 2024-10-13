@@ -139,16 +139,59 @@ class AuthServices {
     return  hashed;
   }
 
-static redis =  RedisManager.getRedisInstance()
-  static async generateAndSendOtp(userId:number):Promise<void>{
-
-    const  otp=  Math.floor(1000 + Math.random() * 9000).toString()
+  
+  static async generateAndSendOtp(userId:string):Promise<boolean>{
     const redis =  RedisManager.getRedisInstance();
-
-    await redis?.setex(`${userId}`, 300, otp);   
-    Notification.sendEmailNotification(`Your OTP for email verificrion is ${otp}`);
-
+    if (!redis) {
+      throw new ApiError(501 , "Redis connection failed");
+    }
+    const  otp =  Math.floor(1000 + Math.random() * 9000).toString();
+    try {
+      await redis?.setex(`${userId}`, 300, otp);
+      Notification.sendEmailNotification(`Your OTP for email verificrion is ${otp}`);
+      console.log("OTP sent successfully");
+      return true;
+    } catch (error :any ) {
+      console.log(error.message);
+      return false;
+    }
   }
+
+  static async verifyOTP(otp: number, userId: string): Promise<boolean> {
+    const redis = RedisManager.getRedisInstance();
+    if (!redis) {
+        throw new ApiError(501, "Redis connection failed");
+    }
+
+    try {
+        // Retrieve the stored OTP from Redis
+        const storedOtp = await redis.get(userId);
+        
+        // Check if the OTP is found
+        if (!storedOtp) {
+            throw new ApiError(400, "OTP has expired or is invalid");
+        }
+
+        // Compare the provided OTP with the stored OTP
+        if (storedOtp !== otp.toString()) {
+            throw new ApiError(401, "Incorrect OTP");
+            return false;
+        }
+
+        // OTP is correct, proceed to delete it from Redis
+        if(otp.toExponential.toString() == storedOtp) {
+          await redis.del(userId);
+          return true;
+        }
+        return false;
+        console.log("OTP verified successfully");
+    } catch (error) {
+        console.error("Error verifying OTP:", error);
+        throw new ApiError(500, "Internal Server Error: Unable to verify OTP");
+        return false;
+    }
+}
+
 
 
 

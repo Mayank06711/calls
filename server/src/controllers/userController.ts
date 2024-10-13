@@ -303,14 +303,56 @@ class User {
       console.log(error);
     }
   }
-  static verifyEmail(req: express.Request, res: express.Response) {
+  static async  verifyEmail(req: express.Request, res: express.Response) {
     try {
       // check validation here only
-      res.json({ message: "Email Verified Successfully" });
+      const userId =  req.user?.id;
+
+      const user = await UserModel.findOne({ _id: userId });
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+      if(user.isEmailVerified){
+        throw new ApiError(400, "Email already verified");
+      }
+     const done = await  AuthServices.generateAndSendOtp(user?.id); // if email successfully added to send  then true or false
+    if(done === false){
+      throw new ApiError(500, "Failed to send opt");
+    }
+
+     res.status(200).json({ message: "Email sent succseesfully" });
     } catch (error) {
       console.log(error);
     }
   }
+
+  static async  verifyOtp(req: express.Request, res: express.Response) {
+      // check validation here only
+      const userId =  req.user?.id;
+      const otp = req.body.otp;
+      const user = await UserModel.findOne({ _id: userId });
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+      if(user.isEmailVerified){
+        throw new ApiError(400, "Email already verified");
+      }
+      const isOtpCorrect = await AuthServices.verifyOTP(otp, user?.id);
+      if(isOtpCorrect){
+        const updatedUser = await UserModel.updateOne(
+          { _id: userId },
+          { $set: { isEmailVerified: true } }
+        );
+        if(!updatedUser){
+          throw new ApiError(500, "Failed to update email verification status");
+        }
+        res.status(200).json({ message: "Email verified successfully" });
+      }
+  }
+
+
+
+
   static changeAvatar(req: express.Request, res: express.Response) {
     try {
       // check validation here only
@@ -319,14 +361,42 @@ class User {
       console.log(error);
     }
   }
-  static getProfile(req: express.Request, res: express.Response) {
+
+
+  static async getProfile(req: express.Request, res: express.Response) {
     try {
-      // check validation here only
-      res.json({ message: "User Profile" });
+      if(!req.user){
+        throw new ApiError(401, "User not found");
+      }
+      const { username} = req.user;
+      const user = await UserModel.findOne({ username });
+      if(!user ){
+        throw new ApiError(404, "User not found");
+      }
+      const formattedUser = {
+          fullName :user.fullName,
+          username :user.username,
+          email:user.email,
+          phoneNumber:user.phoneNumber,
+          gender:user.gender,
+          age:user.age,
+          country:user.country,
+          isEmailVerified:user.isEmailVerified,
+          isPhoneVerified:user.isPhoneVerified,
+          photo: {
+              url: user.photo?.url,
+          },
+          isSubscribed:user.isSubscribed,
+          subscriptionDetail: user.subscriptionDetail,
+          isMFAEnabled:user.isMFAEnabled,
+      };
+      
+      res.status(200).json({ formattedUser , message: "User Profile" });
     } catch (error) {
       console.log(error);
     }
   }
+
   static updateProfile(req: express.Request, res: express.Response) {
     try {
       // check validation here only

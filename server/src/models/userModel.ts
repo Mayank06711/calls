@@ -28,7 +28,8 @@ interface IUser extends Document {
   isActive: boolean;
   isAdmin:boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
-
+  isEmailVerified :boolean; // Whether or not
+  isPhoneVerified: boolean; // Whether phone number is verified or not
   // defining methods here so that typescript can 
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
   generateAccessToken(): string;
@@ -48,6 +49,8 @@ const UserSchema: Schema<IUser> = new Schema(
     city: { type: String, required: true },
     country: { type: String, default: "India" },
     refreshToken: { type: String },
+    isEmailVerified: { type: Boolean, required: true},
+    isPhoneVerified: { type: Boolean, required: true},
     photo: {
       type: {
         key: { type: String },
