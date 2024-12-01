@@ -1,4 +1,4 @@
-import { ChatModel, IChat } from "../models/chatModel"; // Adjust the import path accordingly
+import { ChatModel, IChat } from "../models/newMsgModel"; // Adjust the import path accordingly
 import { ChatMessageModel, IChatMessage } from "../models/messageModel"; // Adjust the import path accordingly
 import mongoose, { ObjectId } from "mongoose";
 import { ApiError } from "../utils/apiError";
@@ -54,23 +54,10 @@ const createChatMessage = async (
 };
 
 export const getChatMessages = async (
-  req: Request,
-  res: Response
+  senderObjectId: ObjectId,
+  receiverObjectId: ObjectId
 ): Promise<void> => {
   try {
-    const { senderId, receiverId } = req.params;
-
-    // Validate the sender and receiver IDs
-    if (
-      !mongoose.Types.ObjectId.isValid(senderId) ||
-      !mongoose.Types.ObjectId.isValid(receiverId)
-    ) {
-      throw new ApiError(400, "Invalid sender or receiver ID");
-    }
-
-    const senderObjectId = new mongoose.Types.ObjectId(senderId);
-    const receiverObjectId = new mongoose.Types.ObjectId(receiverId);
-
     // Find the chat between the sender and receiver
     const chat = await ChatModel.findOne({
       $or: [
@@ -80,9 +67,15 @@ export const getChatMessages = async (
     }).populate("messages"); // Populate the chat messages
 
     // If no chat exists, return an empty array
-    if (!chat || !chat.messages) {
-      console.error("")
+    if (!chat) {
+      console.error("");
     }
+    else if(chat.messages.length === 0) {
+        console.error("");
+    }
+    
+    const sender = chat?.sender;
+    const receiver = chat?.receiver;
 
     // Cast the messages to the correct type (IChatMessage[])
     const messages = chat.messages as unknown as IChatMessage[];
@@ -100,29 +93,4 @@ export const getChatMessages = async (
   }
 };
 
-// Example usage function
-const exampleUsage = async () => {
-  const senderId = "603dcd2c30f1c60d78df2361"; // Replace with actual user IDs
-  const receiverId = "603dcd2c30f1c60d78df2362"; // Replace with actual user IDs
 
-  try {
-    // Sending a chat message
-    const newChat = await createChatMessage(
-      senderId,
-      receiverId,
-      "Hello, how are you?",
-      [{ key: "photo1", url: "http://example.com/photo1.jpg" }],
-      "userToUser"
-    );
-    console.log("Chat message sent:", newChat);
-
-    // Retrieving chat messages
-    const chatMessages = await getChatMessages(senderId, receiverId);
-    console.log("Chat messages:", chatMessages);
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
-
-// Call the example usage function to test
-exampleUsage();
