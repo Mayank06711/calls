@@ -28,8 +28,12 @@ interface IUser extends Document {
   isActive: boolean;
   isAdmin:boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
+<<<<<<< HEAD
   isEmailVerified :boolean; // Whether or not
   isPhoneVerified: boolean; // Whether phone number is verified or not
+=======
+
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
   // defining methods here so that typescript can 
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
   generateAccessToken(): string;

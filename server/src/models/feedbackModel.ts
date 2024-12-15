@@ -5,6 +5,7 @@ interface IFeedback extends Document {
   user: mongoose.Types.ObjectId; // Reference to User model
   expert?: mongoose.Types.ObjectId; // Reference to
   stars?:number; // Number of stars
+  totalReviews?: number; //
   message: string;
   resolved: boolean;
   type: string; // e.g., "bug", "feature", "other"

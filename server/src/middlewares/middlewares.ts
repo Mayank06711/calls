@@ -10,6 +10,7 @@ import { ExpertModel } from "../models/expertModel";
 import Admin from "../models/adminModel";
 import AsyncHandler from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
+import { ObjectId } from "mongoose";
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,15 +18,16 @@ cloudinary.config({
 });
 
 console.log(process.env.CLOUDINARY_API_KEY, "cloudinary API key: ");
-class middleware {
-  // Multer middleware method for single and multiple files
+class Middleware {
+  // Multer Middleware method for single and multiple files
   private static multerUpload = multer({
     limits: {
       fileSize: 1024 * 1024 * 5, // 5mb
     },
   }); //  by default it will use our ram memory  to store files in buffer format  as we have not provided any location to store files
-  private static singleFile = middleware.multerUpload.array("avatar", 1);
-  private static attachmentsMulter = middleware.multerUpload.array(
+
+  private static singleFile = Middleware.multerUpload.array("avatar", 1);
+  private static attachmentsMulter = Middleware.multerUpload.array(
     "arrayFiles",
     5
   );
@@ -44,7 +46,7 @@ class middleware {
       }
       return new Promise((resolve, reject) => {
         cloudinary.uploader.upload(
-          middleware.getBase64(file),
+          Middleware.getBase64(file),
           {
             resource_type: "auto",
             public_id: uuid(),
@@ -79,50 +81,67 @@ class middleware {
     res: Response,
     next: NextFunction
   ) {
-    const accessToken =
-      req.cookies?.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "")[0]; // Extract the access token from cookies or headers
 
-    if (!accessToken || accessToken.length === 0) {
-      throw new ApiError(401, "Invalid Access Token");
-    }
-    let decodedToken: string | JwtPayload = JWT.verify(
-      accessToken,
-      process.env.ACCESS_TOKEN_SECRET!
-    ); // Verify and decode the access token
+    try {
+      // Extract the access token from cookies or headers
+      const accessToken =
+        req.cookies?.accessToken ||
+        req.header("Authorization")?.replace("Bearer ", "");
 
-    if (typeof decodedToken === "string") {
-      throw new ApiError(401, "Invalid Access Token");
-    }
-    const user = await UserModel.findOne({
-      where: {
-        $in: [{ username: decodedToken.username }, { id: decodedToken.id }],
-      },
-      select: {
-        id: true,
-        email: true,
-        isMFAEnabled: true, // Include the user's MFA status in the response
-        active: true, // Include whether the user is active
-        username: true, // Include the username
-        role: true, // Include the user's role
-      },
-    });
-    let admin = await Admin.findOne({
-      username: decodedToken.username,
-    });
-    if (!user) {
-      throw new ApiError(401, "Invalid access Token");
-      // check if he is admin then add admin in req.admin
-    }
+      if (!accessToken || accessToken.length === 0) {
+        throw new ApiError(401, "Invalid Access Token");
+      }
 
-    req.user = {
-      id: user.id,
-      username: user.username,
-      isMFAEnabled: user.isMFAEnabled,
-      email: user.email,
-      isActive: user.isActive,
-    };
-    next(); // Call the next middleware function or route handler
+      // Verify and decode the access token
+      let decodedToken: string | JwtPayload = JWT.verify(
+        accessToken,
+        process.env.ACCESS_TOKEN_SECRET!
+      );
+
+      if (typeof decodedToken === "string") {
+        throw new ApiError(401, "Invalid Access Token");
+      }
+
+      // Find user based on decodedToken fields (either username or id)
+      const user = await UserModel.findOne({
+        _id: decodedToken.id,
+      }).select("email isMFAEnabled isActive username");
+
+      // Check if user does not exist
+      if (!user) {
+        // Check if the token belongs to an admin instead
+        const admin = await Admin.findOne({
+          username: decodedToken.username,
+        }).select("adminUsername isActive");
+
+        if (!admin) {
+          throw new ApiError(401, "Invalid access token");
+        }
+
+        // Attach admin info to the request
+        req.admin = {
+          _id: admin._id as ObjectId,
+          adminUsername: admin.adminUsername,
+          isActive: admin.isActive,
+        };
+
+        return next(); // Admin is authenticated
+      }
+
+      // Attach user info to the request
+      req.user = {
+        _id: user._id as ObjectId,
+        username: user.username,
+        email: user.email,
+        isMFAEnabled: user.isMFAEnabled,
+        isActive: user.isActive,
+      };
+
+      next(); // Call the next Middleware function or route handler
+    } catch (error) {
+      console.error("Error in verifyJWT:", error);
+      next(new ApiError(401, "Invalid or expired token"));
+    }
   }
 
   private static async verifyMFA(MFASecretKey: string, id: string) {
@@ -164,7 +183,7 @@ class middleware {
           .json({ message: "Two-factor authentication (MFA) is required" });
         return;
       }
-      const isValid = await middleware.verifyMFA(MFASecretKey, req.user.id);
+      const isValid = await Middleware.verifyMFA(MFASecretKey, req.user.id);
       if (isValid) {
         next();
       } else {
@@ -177,9 +196,9 @@ class middleware {
 
   //   chech if admin or not
   private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.admin?.id;
+    const id = req.admin?._id;
     const originalUrl = req.originalUrl;
-    console.log("isAdmin middleware originalURL", originalUrl);
+    console.log("isAdmin Middleware originalURL", originalUrl);
     if (id && req.originalUrl.startsWith("/admin")) {
       // i do have another logic apache kafka later
       next();
@@ -210,14 +229,15 @@ class middleware {
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
-  static SingleFile = middleware.singleFile;
-  static AttachmentsMulter = middleware.attachmentsMulter;
-  static UploadFilesToCloudinary = middleware.uploadFilesToCloudinary;
-  static VerifyJWT = AsyncHandler.wrap(middleware.verify_JWT);
-  // static IsMFAEnabled = AsyncHandler.wrap(middleware.isMFAEnabled);
-  static IsAdmin = AsyncHandler.wrap(middleware.isAdmin);
-  // static IsPayment = AsyncHandler.wrap(middleware.isPayment);
-  static ErrorMiddleware = middleware.errorMiddleware;
+
+  static SingleFile = Middleware.singleFile;
+  static AttachmentsMulter = Middleware.attachmentsMulter;
+  static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
+  static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
+  static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
+  static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
+  static ErrorMiddleware = Middleware.errorMiddleware;
+
 }
 
-export { middleware };
+export { Middleware };

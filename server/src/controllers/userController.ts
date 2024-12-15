@@ -1,28 +1,46 @@
 import express, { CookieOptions } from "express";
 import { UserModel } from "../models/userModel";
+<<<<<<< HEAD
 import { UserSchema } from "../validation/zodSchema";
 import { ApiError } from "../utils/apiError";
 import { middleware } from "../middlewares/middlewares";
 import { AuthServices } from "../utils/auth";
 
+=======
+import { ApiError } from "../utils/apiError";
+import AsyncHandler from "../utils/AsyncHandler";
+import { ObjectId } from "mongoose";
+import { AuthServices } from "../helper/auth";
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: true, // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "production" , // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
   };
 
+<<<<<<< HEAD
 
   static async create(req: express.Request, res: express.Response) {
     try {
 
       const { username, fullName, password, email } = req.body ;
+=======
+  
+  static async signUp(req: express.Request, res: express.Response) {
+    try {
+      const { username, fullName, password, email } = req.body;
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
       if ([username, password, email].some((f) => f == null || f === "")) {
         throw new ApiError(400, "All fields must be present");
       }
       const usernameExists = await UserModel.findOne({ username });
       const emailExists = await UserModel.findOne({ email });
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
       if (usernameExists && emailExists) {
         throw new ApiError(409, "Both username and email already exist");
       } else if (usernameExists) {
@@ -30,19 +48,27 @@ class User {
       } else if (emailExists) {
         throw new ApiError(409, "Email already exists");
       }
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
       const user = await UserModel.create({
         username,
         fullName,
         password,
         email,
       });
+<<<<<<< HEAD
 
       const id = user._id;
+=======
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
       // Check if the user is created
       if (user) {
         console.log("User created successfully:", user);
         console.log(req.body);
+<<<<<<< HEAD
         const accessToken = await AuthServices.genJWT_Token(
           { id, username, email },
           process.env.ACCESS_TOKEN_SECRET!,
@@ -57,12 +83,20 @@ class User {
         const tokens = {
           accessToken , refreshToken
         }
+=======
+        const tokens = await AuthServices.getAccAndRefToken(
+          user._id as ObjectId
+        );
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
         if (tokens === null) {
           await UserModel.findByIdAndDelete(user._id);
           throw new ApiError(500, "Something went wrong");
         }
         // Set HTTP-only cookie for refresh token (secure it for production)
+<<<<<<< HEAD
         
+=======
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
         res
           .status(200)
           .cookie("refreshToken", tokens.refreshToken, this.options) // Store refresh token in an HttpOnly cookie
@@ -70,7 +104,11 @@ class User {
           .json({
             message: "User signed up successfully, Please fill other fields",
             userId: user._id, // Optional: You can remove this if using only cookies
+<<<<<<< HEAD
             localToken: tokens.accessToken, // Send access token to frontend
+=======
+            localToken: user._id, // Send access token to frontend
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
             username: user.username,
           });
       } else {
@@ -82,6 +120,7 @@ class User {
       } else {
         throw new ApiError(500, "Internal Server Error: Unable to create user");
       }
+<<<<<<< HEAD
     }
   }
 
@@ -141,6 +180,8 @@ class User {
         .json(formattedResults);
     } catch (error) {
       console.log(error);
+=======
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
     }
   }
 
@@ -239,6 +280,7 @@ class User {
         });
     }
   }
+
   static logout(req: express.Request, res: express.Response) {
     try {
       // check validation here only
@@ -325,6 +367,7 @@ class User {
       console.log(error);
     }
   }
+<<<<<<< HEAD
 
   static async  verifyOtp(req: express.Request, res: express.Response) {
       // check validation here only
@@ -353,6 +396,8 @@ class User {
 
 
 
+=======
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
   static changeAvatar(req: express.Request, res: express.Response) {
     try {
       // check validation here only
@@ -414,10 +459,13 @@ class User {
       console.log(error);
     }
   }
+<<<<<<< HEAD
 
 
   
 
+=======
+>>>>>>> b812e15e9eecbaecb8701914f6e1c5622b2212dc
 }
 
 

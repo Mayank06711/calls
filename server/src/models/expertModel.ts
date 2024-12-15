@@ -5,9 +5,7 @@ interface IExpert extends Document {
   user: mongoose.Schema.Types.ObjectId; // Link to User model
   experienceInYears: number;
   bonus: number;
-  totalReviews: number;
   totalCustomersHandled: number;
-  totalStars: number;
   degree: {
     key: string; // Degree Key (name of the degree)
     isVerified: boolean; // Degree verification status
@@ -31,19 +29,9 @@ const ExpertSchema: Schema<IExpert> = new Schema(
       type: Number,
       default: 0,
     },
-    totalReviews: {
-      type: Number,
-      default: 0,
-    },
     totalCustomersHandled: {
       type: Number,
       default: 0,
-    },
-    totalStars: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5, // Assume total stars are from 0 to 5
     },
     degree: {
       key: {

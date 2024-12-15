@@ -15,7 +15,7 @@ export const userLoginThunk = (payload) => async (dispatch) => {
       }
     );
     console.log(response.data);
-    
+
     // Store token in Redux store and localStorage
     const token = response.data.localToken;
     if (token) {
@@ -23,7 +23,7 @@ export const userLoginThunk = (payload) => async (dispatch) => {
       dispatch(setToken(token));
     }
     dispatch(userLogin(response.data)); // Dispatch userLogin action
-    socketConnection(response.data.token)
+    socketConnection(response.data.token);
   } catch (error) {
     console.log(
       "Error in the user login thunk:",
@@ -50,7 +50,7 @@ export const userSignupThunk = (payload) => async (dispatch) => {
       dispatch(setToken(token));
     }
     dispatch(userSignup(response.data));
-    socketConnection(response.data.token)
+    socketConnection(response.data.token);
   } catch (error) {
     console.log(
       "Error in the user signup thunk:",

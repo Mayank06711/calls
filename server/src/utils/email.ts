@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
-import {EventData} from "../types/interface"
+
+import { EventData } from "../types/interface";
 const sendEmails = async (options: EventData) => {
   // create a transporter
   try {
@@ -68,7 +69,8 @@ const sendEmails = async (options: EventData) => {
     //   PRIORITY.REJECT
     // );
 
-   // throw new ApiError(500, "Nodemailer error", error.message);
+
+    // throw new ApiError(500, "Nodemailer error", error.message);
   }
 };
 
