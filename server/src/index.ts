@@ -98,7 +98,7 @@ class ServerManager {
       process.exit(0); // Exit with success code
     } catch (error) {
       console.error("Error during cleanup:", error);
-      process.exit(1); // Exit with failure code
+      process.exit(1);  // Exit with failure code
     }
   }
 
