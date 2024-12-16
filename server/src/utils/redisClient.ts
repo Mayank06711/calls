@@ -5,7 +5,7 @@ class RedisManager {
 
   // Method to initialize Redis connection
    public static initRedisConnection() {
-    console.log(process.env.REDIS_HOST)
+    console.log("Redis host", process.env.REDIS_HOST)
     this.redis = new Redis({
       host: process.env.REDIS_HOST!,
       port: +process.env.REDIS_PORT!,
@@ -44,7 +44,7 @@ class RedisManager {
     if (!this.redis) {
       console.error("Redis is not initialized. Call `initRedisConnection()` first.");
       return;
-    }
+    } 
 
     try {
       // Add the data to a Redis hash
@@ -122,4 +122,11 @@ class RedisManager {
 
 
 
-export default RedisManager;;
+export default RedisManager;
+
+/*
+Why would you use REDIS_HOST?
+Local Development: If you're running Redis locally, you would use localhost or 127.0.0.1 as REDIS_HOST to connect to Redis running on your machine.
+Docker: In a Docker container, REDIS_HOST would usually be set to the name of the Redis container or a network alias when using Docker networks.
+Remote Servers: In production or on cloud services like AWS, REDIS_HOST would point to the public IP of an EC2 instance or the internal IP of a server running Redis. In your case, it seems to be an external IP (43.205.129.144) or possibly a load balancer or proxy.
+*/

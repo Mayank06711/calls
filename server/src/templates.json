@@ -1,0 +1,18 @@
+{
+    "templates": {
+        "email_verification": {
+            "template_id": "email_verification",
+            "subject": "Verify Your Email Address",
+            "body": "Dear {{name}},\n\nThank you for registering with us. Please verify your email address by clicking the link below:\n\n{{verification_link}}\n\nBest regards,\n NYF"
+        },
+        "otp": {
+            "template_id": "otp",
+            "body": "Your OTP code is {{otp_code}}. Please use this code to complete your verification. The code is valid for {{expiryAt}} minutes."
+        },
+        "promotional_notification": {
+            "template_id": "promotional_notification",
+            "subject": "Special Offer Just for You!",
+            "body": "Hi {{name}},\n\nWe have an exciting offer just for you! Get {{discount_percentage}}% off on your next purchase. Use the code {{promo_code}} at checkout.\n\nHurry, this offer is valid until {{expiry_date}}.\n\nBest regards,\nYour Company"
+        }
+    }
+}
