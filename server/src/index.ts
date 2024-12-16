@@ -15,7 +15,7 @@ import userRouter from "./routes/userRoutes";
 import feedBackRouter from "./routes/feedbackRoutes"; 
 import { connectDB } from "./db";
 import cronSchuduler from "./auto/cronJob";
-class ServerManager {
+class ServerManager { 
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
   private io!: SocketIOServer; // Socket.io instance
