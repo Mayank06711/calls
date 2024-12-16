@@ -5,7 +5,7 @@ class RedisManager {
 
   // Method to initialize Redis connection
    public static initRedisConnection() {
-    console.log("Redis host",process.env.REDIS_HOST)
+    console.log("Redis host", process.env.REDIS_HOST)
     this.redis = new Redis({
       host: process.env.REDIS_HOST!,
       port: +process.env.REDIS_PORT!,
@@ -44,7 +44,7 @@ class RedisManager {
     if (!this.redis) {
       console.error("Redis is not initialized. Call `initRedisConnection()` first.");
       return;
-    }
+    } 
 
     try {
       // Add the data to a Redis hash
