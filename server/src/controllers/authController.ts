@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
-import { sendEmails } from "../utils/email";
 import { generateTimestamps } from "../utils/generateTimeStamps";
 import { dbQuery } from "../db/index";
 import { sqlGenerateInsertQuery } from "../utils/sql_query";
