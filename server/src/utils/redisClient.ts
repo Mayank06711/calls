@@ -121,10 +121,10 @@ class RedisManager {
     }
 
     try {
-      // Remove from hash
+      // Remove from hash for given key
       await this.redis.hdel(group, key);
 
-      // Remove from set
+      // Remove from set for the the given key
       await this.redis.srem(`${group}Set`, key);
       console.log(`Removed data from group ${group} for key: ${key}`);
     } catch (error) {
