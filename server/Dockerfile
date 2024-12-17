@@ -36,9 +36,11 @@ COPY --from=build /nyf/service/backend/.env .env
 COPY --from=build /nyf/service/backend/certs /nyf/service/backend/certs 
 
 
-COPY --from=build /nyf/service/backend/src/templates.json /nyf/service/backend/dist/templates.json
+# Correct the path for templates.json based on your structure
+COPY --from=build /nyf/service/backend/src/templates.json /nyf/service/backend/dist/templates.json 
+
 # Expose port
-EXPOSE 3003
+EXPOSE 5005
 
 # Start the application using PM2
 CMD ["pm2-runtime", "ecosystem.config.js", "--env", "dev"]
