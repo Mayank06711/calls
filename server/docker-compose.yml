@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: nyf-backend-container
     ports:
-      - "3003:5005"  # Expose port 5005 inside the container to 3003 on the host
+      - "3003:5005"  # Expose port 5005 inside the container(bcz we have exposed 5005 on dockerfile) to 3003 on the host(windows)
     depends_on:
       - redis
     environment:
