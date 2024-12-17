@@ -35,6 +35,8 @@ COPY --from=build /nyf/service/backend/.env .env
 # Copy the certs directory from the build context into the container
 COPY --from=build /nyf/service/backend/certs /nyf/service/backend/certs 
 
+
+COPY --from=build /nyf/service/backend/src/templates.json /nyf/service/backend/dist/templates.json
 # Expose port
 EXPOSE 3003
 
