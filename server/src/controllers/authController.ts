@@ -5,6 +5,7 @@ import { generateTimestamps } from "../utils/generateTimeStamps";
 import { dbQuery } from "../db/index";
 import { sqlGenerateInsertQuery } from "../utils/sql_query";
 import SmsService from "../thirdparty/twilio_sms";
+import RedisManager from "../utils/redisClient";
 import { toE164Format } from "../utils/formatNum";
 import { successResponse, errorResponse } from "../utils/apiResponse";
 
@@ -26,7 +27,6 @@ const otpLogPossibleKeys = [
 ];
 interface OtpLog {
   mob_num: string;
-  otp: string;
   reference_id: string;
   unique_id: string;
   src?: string;
@@ -93,122 +93,9 @@ class Authentication {
     return { otp, referenceId };
   }
 
-  private static async checkOtpRequestCount(mobNum: string) {
-    const query = {
-      text: `
-            SELECT COUNT(*) AS otp_request_count 
-            FROM otp_storage_${process.env.NODE_ENV} 
-            WHERE mob_num = $1 
-            AND created_at >= NOW() - INTERVAL '10 MINUTE'
-            AND message_status_code = '202'
-        `,
-      values: [mobNum],
-    };
-
-    try {
-      const result = await dbQuery(query);
-      return result.rows[0].otp_request_count;
-    } catch (error) {
-      console.error("Error checking OTP request count:", error);
-      throw error;
-    }
-  }
-
-  public static async generateOtp(req: Request, res: Response) {
-    const { mobNum } = req.body;
-    const formattedRecipientNumber = toE164Format(mobNum);
-    if (!formattedRecipientNumber) {
-      return res.status(404).json(errorResponse(404, "Invalid Phone Number"));
-    }
-    try {
-      // Check OTP request count
-      console.log(this);
-      const requestCount = await Authentication.checkOtpRequestCount(mobNum);
-      if (requestCount >= 5) {
-        return res
-          .status(429)
-          .json(
-            errorResponse(
-              429,
-              "Too many OTP requests. Please try after 10 min."
-            )
-          );
-      }
-
-      // Generate OTP and reference ID
-      const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
-
-      // Send OTP message via Twilio
-      const smsRes = await SmsService.sendSMS(mobNum, "otp", {
-        otp_code: otp,
-        expiryAt: "10",
-      });
-
-      if (smsRes.uuid) {
-        const timestamps = generateTimestamps(true, true, true);
-        // Successfully sent OTP, log OTP generation
-        await Authentication.logOtpGeneration({
-          otp,
-          reference_id: referenceId,
-          unique_id: uuidv4(),
-          mob_num: mobNum,
-          message_uuid: smsRes.uuid, // Plivo's response contains message UUID
-          message_status_code: "202", // Assuming status exists in the SMS response
-          status: smsRes.status,
-          actual_message: smsRes.message || "OTP sent successfully",
-          expiry_at: timestamps.expiry_at, // Calculate expiry date, 10 minutes from now
-          ip_address: req.ip, // Assuming you want to store IP address
-          app_version: Authentication.getHeaderAsString(
-            req.headers["x-app-version"]
-          ),
-          device_id: Authentication.getHeaderAsString(
-            req.headers["x-device-id"]
-          ),
-        });
-
-        // Use the utility function to send success response
-        return res.status(200).json(
-          successResponse(
-            {
-              sms_id: smsRes.uuid, // Return SMS UUID if message was sent
-              reference_id: referenceId,
-            },
-            `OTP has been sent to ${mobNum} phone number`
-          )
-        );
-      } else {
-        // Error: smsResponse is of type SendOtpMessageError
-        // Log OTP generation with error details
-        await Authentication.logOtpGeneration({
-          otp,
-          reference_id: referenceId,
-          unique_id: uuidv4(),
-          mob_num: mobNum,
-          message_status_code: "500", // Assuming status exists in the SMS response
-          status: smsRes.status,
-          actual_message: smsRes.message || "Failed To Send OTP",
-          expiry_at: null, // Calculate expiry date, 10 minutes from now
-          ip_address: req.ip, // Assuming you want to store IP address
-          app_version: Authentication.getHeaderAsString(
-            req.headers["x-app-version"]
-          ),
-          device_id: Authentication.getHeaderAsString(
-            req.headers["x-device-id"]
-          ),
-        });
-        return res
-          .status(500)
-          .json(errorResponse(500, "Internal Server Error"));
-      }
-    } catch (error) {
-      console.log("error in generate otp", error);
-      throw error;
-    }
-  }
-
   private static async logOtpGeneration(otpLog: OtpLog) {
     // Ensure required fields are present
-    if (!otpLog.mob_num || !otpLog.otp || !otpLog.unique_id) {
+    if (!otpLog.mob_num || !otpLog.unique_id) {
       throw new Error("Missing required fields: mob_num, otp, or unique_id.");
     }
 
@@ -217,7 +104,6 @@ class Authentication {
       reference_id: otpLog.reference_id || null,
       unique_id: otpLog.unique_id,
       src: otpLog.src || "dev",
-      otp: otpLog.otp,
       message_template_id: otpLog.message_template_id || null,
       message_uuid: otpLog.message_uuid || null,
       message_status_code: otpLog.message_status_code || null,
@@ -250,8 +136,185 @@ class Authentication {
     }
   }
 
+  private static async checkOtpRequestCount(mobNum: string) {
+    const query = {
+      text: `
+            SELECT COUNT(*) AS otp_request_count 
+            FROM otp_storage_${process.env.NODE_ENV} 
+            WHERE mob_num = $1 
+            AND created_at >= NOW() - INTERVAL '10 MINUTE'
+            AND message_status_code = '202'
+        `,
+      values: [mobNum],
+    };
+
+    try {
+      const result = await dbQuery(query);
+      return result.rows[0].otp_request_count;
+    } catch (error) {
+      console.error("Error checking OTP request count:", error);
+      throw error;
+    }
+  }
+
+  public static async generateOtp(req: Request, res: Response) {
+    const { mobNum, is_testing } = req.body;
+    const formattedRecipientNumber = toE164Format(mobNum);
+    if (!formattedRecipientNumber) {
+      return res.status(404).json(errorResponse(404, "Invalid Phone Number"));
+    }
+    try {
+      // Check OTP request count
+      console.log("i am loggging the context this :=", this);
+      const otpRequestCountKey = `otp_requests:${mobNum}`;
+      const requestData = await RedisManager.getDataFromGroup<{
+        count: number;
+        expiry_at: number;
+      }>("otp_requests", otpRequestCountKey);
+
+      // Check if the request count has expired
+      if (requestData) {
+        const { count, expiry_at } = requestData;
+
+        // If the current time is past the expiry time, reset the request count
+        if (Date.now() > expiry_at) {
+          // Reset the count since the TTL has expired
+          await RedisManager.cacheDataInGroup(
+            "otp_requests",
+            otpRequestCountKey,
+            {
+              count: 1, // Start from 1 after TTL expires
+              expiry_at: Date.now() + 10 * 60 * 1000, // Set the TTL for the next 10 minutes
+            }
+          );
+        } else if (count >= 5) {
+          // Too many OTP requests, reject the request
+          return res
+            .status(429)
+            .json(
+              errorResponse(
+                429,
+                "Too many OTP requests. Please try after 10 minutes."
+              )
+            );
+        }
+      } else {
+        // No data exists for the request, initialize the request count
+        await RedisManager.cacheDataInGroup(
+          "otp_requests",
+          otpRequestCountKey,
+          {
+            count: 1,
+            expiry_at: Date.now() + 10 * 60 * 1000, // Set TTL of 10 minutes
+          }
+        );
+      }
+      // const requestCount = await Authentication.checkOtpRequestCount(mobNum);
+      // if (requestCount >= 5) {
+      //   return res
+      //     .status(429)
+      //     .json(
+      //       errorResponse(
+      //         429,
+      //         "Too many OTP requests. Please try after 10 min."
+      //       )
+      //     );
+      // }
+
+      // Generate OTP and reference ID
+      const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
+
+      // Send OTP message via Twilio
+      const smsRes = await SmsService.sendSMS(mobNum, "otp", {
+        otp_code: otp,
+        expiryAt: "10",
+      });
+
+      if (smsRes.uuid) {
+        const otpKey = `otp:${mobNum}`;
+        await RedisManager.cacheDataInGroup("otp_data", otpKey, {
+          otp,
+          reference_id: referenceId,
+          expiry_at: Date.now() + 10 * 60 * 1000, // 10 minutes in milliseconds,
+        });
+
+        // Increment OTP request count in Redis
+        const updatedRequestCount = (requestData?.count || 0) + 1;
+        await RedisManager.cacheDataInGroup(
+          "otp_requests",
+          otpRequestCountKey,
+          {
+            count: updatedRequestCount,
+            expiry_at: Date.now() + 10 * 60 * 1000, // Store TTL for the next 10 minutes
+          }
+        );
+
+        // Successfully sent OTP, log OTP generation
+        if (!is_testing) {
+          const timestamps = generateTimestamps(false, false, true);
+          await Authentication.logOtpGeneration({
+            reference_id: referenceId,
+            unique_id: uuidv4(),
+            mob_num: mobNum,
+            message_uuid: smsRes.uuid, // Plivo's response contains message UUID
+            message_status_code: "202", // Assuming status exists in the SMS response
+            status: smsRes.status,
+            actual_message: smsRes.message || "OTP sent successfully",
+            expiry_at: timestamps.expiry_at, // Calculate expiry date, 10 minutes from now
+            ip_address: req.ip, // Assuming you want to store IP address
+            app_version: Authentication.getHeaderAsString(
+              req.headers["x-app-version"]
+            ),
+            device_id: Authentication.getHeaderAsString(
+              req.headers["x-device-id"]
+            ),
+          });
+        }
+
+        // Use the utility function to send success response
+        return res.status(200).json(
+          successResponse(
+            {
+              sms_id: smsRes.uuid, // Return SMS UUID if message was sent
+              reference_id: referenceId,
+              mobNum: mobNum,
+            },
+            `OTP has been sent to ${mobNum} phone number`
+          )
+        );
+      } else {
+        // Error: smsResponse is of type SendOtpMessageError
+        // Log OTP generation with error details
+        if (!is_testing) {
+          await Authentication.logOtpGeneration({
+            reference_id: referenceId,
+            unique_id: uuidv4(),
+            mob_num: mobNum,
+            message_status_code: "500", // Assuming status exists in the SMS response
+            status: smsRes.status,
+            actual_message: smsRes.message || "Failed To Send OTP",
+            expiry_at: null, // Calculate expiry date, 10 minutes from now
+            ip_address: req.ip, // Assuming you want to store IP address
+            app_version: Authentication.getHeaderAsString(
+              req.headers["x-app-version"]
+            ),
+            device_id: Authentication.getHeaderAsString(
+              req.headers["x-device-id"]
+            ),
+          });
+        }
+        return res
+          .status(500)
+          .json(errorResponse(500, "Internal Server Error"));
+      }
+    } catch (error) {
+      console.log("error in generate otp", error);
+      throw error;
+    }
+  }
+
   public static async verifyOtp(req: Request, res: Response) {
-    const { referenceId, mobNum, otp, src } = req.body;
+    const { referenceId, mobNum, otp, src, is_testing } = req.body;
 
     // Validate required parameters
     if (!referenceId || !mobNum || !otp || !src) {
@@ -288,66 +351,63 @@ class Authentication {
       expiry_at: string;
       is_verified: boolean;
     } | null = null;
+
+    const otpKey = `otp:${mobNum}`;
     try {
-      const result = await dbQuery(query);
-      if (result.rowCount) {
-        otpRecord = result.rows[0]; // Assign the first row to otpRecord
-      } else {
+      // Retrieve OTP from Redis
+      const isOtpPresent = await RedisManager.isKeyInGroup("otp_data", otpKey);
+      if (!isOtpPresent) {
         return res
           .status(401)
           .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
       }
-    } catch (error) {
-      if (error instanceof TypeError) {
-        console.error("Type error:", error);
+      const otpData = await RedisManager.getDataFromGroup<{
+        otp: string;
+        reference_id: string;
+        expiry_at: number;
+      }>("otp_data", otpKey);
+
+      if (!otpData) {
         return res
-          .status(400)
-          .json(errorResponse(400, "Bad Request: Invalid data types"));
-      } else {
-        console.error("Database error:", error);
-        return res
-          .status(500)
-          .json(errorResponse(500, "Internal Server Error"));
+          .status(401)
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
       }
-    }
-    console.log("otp record", otpRecord);
-    // If OTP record doesn't exist or isn't valid
-    if (!otpRecord) {
-      return res
-        .status(200)
-        .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
-    }
+      // Check OTP expiry
+      if (Date.now() > otpData.expiry_at) {
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        return res
+          .status(401)
+          .json(
+            errorResponse(401, "OTP verification failed. OTP has expired.")
+          );
+      }
 
-    // Check if OTP has expired
-    const currentTimestamp = generateTimestamps();
-    if (currentTimestamp.created_at! > otpRecord.expiry_at) {
-      return res
-        .status(200)
-        .json(errorResponse(401, "OTP verification failed. OTP has expired."));
-    }
+      // Validate OTP and reference ID
+      if (otpData.otp !== otp || otpData.reference_id !== referenceId) {
+        return res
+          .status(401)
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
+      }
 
-    // Check if OTP has already been verified
-    if (otpRecord.is_verified) {
-      return res
-        .status(200)
-        .json(errorResponse(401, "OTP has already been verified."));
-    }
+      // Remove OTP from Redis after successful verification
+      await RedisManager.removeDataFromGroup("otp_data", otpKey);
 
-    // If everything is valid, update the OTP as verified
-    try {
-      const updateQuery = {
-        text: `
+      // Update OTP status in the database
+      if (!is_testing) {
+        const updateQuery = {
+          text: `
           UPDATE otp_storage_${process.env.NODE_ENV}
           SET is_verified = TRUE, updated_at = NOW()
           WHERE mob_num = $1 AND otp = $2 AND reference_id = $3
         `,
-        values: [mobNum, otp, referenceId],
-      };
-      await dbQuery(updateQuery);
-      const response = {
-        otp: otp,
-        referenceId: referenceId,
-      };
+          values: [mobNum, otp, referenceId],
+        };
+        await dbQuery(updateQuery);
+        const response = {
+          referenceId: referenceId,
+          mobNum: mobNum,
+        };
+      }
       // Handle successful verification
       return res.status(200).json(successResponse(response));
     } catch (error) {
