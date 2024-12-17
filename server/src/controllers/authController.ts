@@ -354,13 +354,6 @@ class Authentication {
 
     const otpKey = `otp:${mobNum}`;
     try {
-      // Retrieve OTP from Redis
-      const isOtpPresent = await RedisManager.isKeyInGroup("otp_data", otpKey);
-      if (!isOtpPresent) {
-        return res
-          .status(401)
-          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
-      }
       const otpData = await RedisManager.getDataFromGroup<{
         otp: string;
         reference_id: string;
@@ -403,11 +396,11 @@ class Authentication {
           values: [mobNum, otp, referenceId],
         };
         await dbQuery(updateQuery);
-        const response = {
-          referenceId: referenceId,
-          mobNum: mobNum,
-        };
       }
+      const response = {
+        referenceId: referenceId,
+        mobNum: mobNum,
+      };
       // Handle successful verification
       return res.status(200).json(successResponse(response));
     } catch (error) {
