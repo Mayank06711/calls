@@ -165,7 +165,6 @@ class Authentication {
     }
     try {
       // Check OTP request count
-      console.log("i am loggging the context this :=", this);
       const otpRequestCountKey = `otp_requests:${mobNum}`;
       const requestData = await RedisManager.getDataFromGroup<{
         count: number;
@@ -175,7 +174,6 @@ class Authentication {
       // Check if the request count has expired
       if (requestData) {
         const { count, expiry_at } = requestData;
-
         // If the current time is past the expiry time, reset the request count
         if (Date.now() > expiry_at) {
           // Reset the count since the TTL has expired
@@ -209,6 +207,7 @@ class Authentication {
           }
         );
       }
+
       // const requestCount = await Authentication.checkOtpRequestCount(mobNum);
       // if (requestCount >= 5) {
       //   return res
@@ -223,7 +222,6 @@ class Authentication {
 
       // Generate OTP and reference ID
       const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
-
       // Send OTP message via Twilio
       const smsRes = await SmsService.sendSMS(mobNum, "otp", {
         otp_code: otp,
@@ -384,7 +382,10 @@ class Authentication {
 
       // Remove OTP from Redis after successful verification
       await RedisManager.removeDataFromGroup("otp_data", otpKey);
-
+      await RedisManager.removeDataFromGroup(
+        "otp_requests",
+        `otp_requests:${mobNum}`
+      );
       // Update OTP status in the database
       if (!is_testing) {
         const updateQuery = {
