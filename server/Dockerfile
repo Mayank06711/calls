@@ -9,8 +9,8 @@ COPY package*.json ./
 RUN npm install
 RUN npm install -g typescript
 
-# Copy source code and build
-COPY . .
+# Copy source code and build    ----# Copies everything, including the certs folder
+COPY . .    
 RUN npm run build
 
 # Stage 2: Runtime Stage
@@ -31,6 +31,10 @@ COPY --from=build /nyf/service/backend/ecosystem.config.js ./ecosystem.config.js
 
 # Copy the .env file from the build stage
 COPY --from=build /nyf/service/backend/.env .env
+
+# Copy the certs directory from the build context into the container
+COPY --from=build /nyf/service/backend/certs /nyf/service/backend/certs 
+
 # Expose port
 EXPOSE 3003
 
