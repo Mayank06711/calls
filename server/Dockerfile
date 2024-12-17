@@ -29,6 +29,8 @@ COPY --from=build /nyf/service/backend/node_modules ./node_modules
 COPY --from=build /nyf/service/backend/dist ./dist
 COPY --from=build /nyf/service/backend/ecosystem.config.js ./ecosystem.config.js
 
+# Copy the .env file from the build stage
+COPY --from=build /nyf/service/backend/.env .env
 # Expose port
 EXPOSE 3003
 
