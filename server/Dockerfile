@@ -21,6 +21,7 @@ WORKDIR /nyf/service/backend
 
 # Install PM2 globally
 RUN npm install -g pm2
+RUN npm rebuild bcrypt --build-from-source
 
 # Copy only necessary files from the build stage
 COPY --from=build /nyf/service/backend/package*.json ./

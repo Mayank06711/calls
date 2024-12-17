@@ -1,6 +1,4 @@
-// For recent messages embedded in Chat document)
-
-import mongoose, { Document, Schema, model } from "mongoose";
+import mongoose, { Document, Schema, model, Types } from "mongoose";
 
 // Define the Attachment interface
 interface IAttachment {
@@ -8,43 +6,51 @@ interface IAttachment {
   url: string;
 }
 
-// Define the NewMessage interface
+// Define the NewMessage interface (represents a single message)
 interface INewMessage {
   text: string;
-  sender: mongoose.Schema.Types.ObjectId;
+  sender: Types.ObjectId; // Use Types.ObjectId for sender (correct type)
   attachments?: IAttachment[];
+  createdAt: Date;
 }
 
-// Define the NewMsg interface extending Document
+// Define the NewMsg interface (represents a chat document)
 interface INewMsg extends Document {
-  sender: mongoose.Schema.Types.ObjectId;
-  receiver: mongoose.Schema.Types.ObjectId;
-  messages: {
-    [timestamp: string]: INewMessage;
-  };
+  sender: Types.ObjectId; // Use Types.ObjectId for sender (correct type)
+  receiver: Types.ObjectId; // Use Types.ObjectId for receiver (correct type)
+  messages: INewMessage[]; // Array of messages
   chatType: "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert";
   messageIdCounter: number;
 }
 
 // Define the NewMsg Schema
-const NewMsgSchema = new Schema(
+const NewMsgSchema = new Schema<INewMsg>(
   {
     sender: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,  // Define it as an ObjectId
       ref: "User",
       required: true,
       index: true,
     },
     receiver: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId, // Define it as an ObjectId
       ref: "User",
       required: true,
       index: true,
     },
-    messages: {
-      type: Object,
-      default: {},
-    },
+    messages: [
+      {
+        text: { type: String, required: true },
+        sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        attachments: [
+          {
+            key: { type: String },
+            url: { type: String },
+          },
+        ],
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     chatType: {
       type: String,
       enum: ["userToUser", "adminToUser", "adminToExpert", "userToExpert"],
@@ -67,4 +73,4 @@ NewMsgSchema.index({ sender: 1, receiver: 1 }, { unique: true });
 // Create the NewMsg model
 const NewMsgModel = model<INewMsg>("NewMsg", NewMsgSchema);
 
-export { NewMsgModel, INewMsg };
+export { NewMsgModel, INewMsg, INewMessage, IAttachment };
