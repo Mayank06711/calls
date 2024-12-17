@@ -1,4 +1,4 @@
-import { ChatModel, IChat } from "../models/newMsgModel"; // Adjust the import path accordingly
+import { NewMsgModel, INewMsg } from "../models/newMsgModel"; // Adjust the import path accordingly
 import { ChatMessageModel, IChatMessage } from "../models/messageModel"; // Adjust the import path accordingly
 import mongoose, { ObjectId } from "mongoose";
 import { ApiError } from "../utils/apiError";

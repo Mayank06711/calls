@@ -391,7 +391,7 @@ class Authentication {
 
       // Remove OTP from Redis after successful verification
       await RedisManager.removeDataFromGroup("otp_data", otpKey);
-
+      var response = null;
       // Update OTP status in the database
       if (!is_testing) {
         const updateQuery = {
@@ -403,13 +403,13 @@ class Authentication {
           values: [mobNum, otp, referenceId],
         };
         await dbQuery(updateQuery);
-        const response = {
+        response = {
           referenceId: referenceId,
           mobNum: mobNum,
         };
       }
       // Handle successful verification
-      return res.status(200).json(successResponse(response));
+      return res.status(200).json(successResponse({response}));
     } catch (error) {
       console.error("Error updating OTP status:", error);
       return res.status(200).json(errorResponse(500, "Internal Server Error"));
