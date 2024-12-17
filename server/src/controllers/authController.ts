@@ -165,7 +165,6 @@ class Authentication {
     }
     try {
       // Check OTP request count
-      console.log("i am loggging the context this :=", this);
       const otpRequestCountKey = `otp_requests:${mobNum}`;
       const requestData = await RedisManager.getDataFromGroup<{
         count: number;
@@ -175,7 +174,6 @@ class Authentication {
       // Check if the request count has expired
       if (requestData) {
         const { count, expiry_at } = requestData;
-
         // If the current time is past the expiry time, reset the request count
         if (Date.now() > expiry_at) {
           // Reset the count since the TTL has expired
@@ -209,6 +207,7 @@ class Authentication {
           }
         );
       }
+
       // const requestCount = await Authentication.checkOtpRequestCount(mobNum);
       // if (requestCount >= 5) {
       //   return res
@@ -223,7 +222,6 @@ class Authentication {
 
       // Generate OTP and reference ID
       const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
-
       // Send OTP message via Twilio
       const smsRes = await SmsService.sendSMS(mobNum, "otp", {
         otp_code: otp,
@@ -354,13 +352,6 @@ class Authentication {
 
     const otpKey = `otp:${mobNum}`;
     try {
-      // Retrieve OTP from Redis
-      const isOtpPresent = await RedisManager.isKeyInGroup("otp_data", otpKey);
-      if (!isOtpPresent) {
-        return res
-          .status(401)
-          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
-      }
       const otpData = await RedisManager.getDataFromGroup<{
         otp: string;
         reference_id: string;
@@ -391,7 +382,10 @@ class Authentication {
 
       // Remove OTP from Redis after successful verification
       await RedisManager.removeDataFromGroup("otp_data", otpKey);
-      var response = null;
+      await RedisManager.removeDataFromGroup(
+        "otp_requests",
+        `otp_requests:${mobNum}`
+      );
       // Update OTP status in the database
       if (!is_testing) {
         const updateQuery = {
@@ -403,11 +397,11 @@ class Authentication {
           values: [mobNum, otp, referenceId],
         };
         await dbQuery(updateQuery);
-        response = {
-          referenceId: referenceId,
-          mobNum: mobNum,
-        };
       }
+      const response = {
+        referenceId: referenceId,
+        mobNum: mobNum,
+      };
       // Handle successful verification
       return res.status(200).json(successResponse({response}));
     } catch (error) {
