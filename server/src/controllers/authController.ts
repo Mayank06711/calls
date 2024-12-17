@@ -165,7 +165,7 @@ class Authentication {
     }
     try {
       // Check OTP request count
-      const otpRequestCountKey = `otp_requests:${mobNum}`;
+      const otpRequestCountKey = `otp_requests:${formattedRecipientNumber}`;
       const requestData = await RedisManager.getDataFromGroup<{
         count: number;
         expiry_at: number;
@@ -223,13 +223,13 @@ class Authentication {
       // Generate OTP and reference ID
       const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
       // Send OTP message via Twilio
-      const smsRes = await SmsService.sendSMS(mobNum, "otp", {
+      const smsRes = await SmsService.sendSMS(formattedRecipientNumber, "otp", {
         otp_code: otp,
         expiryAt: "10",
       });
 
       if (smsRes.uuid) {
-        const otpKey = `otp:${mobNum}`;
+        const otpKey = `otp:${formattedRecipientNumber}`;
         await RedisManager.cacheDataInGroup("otp_data", otpKey, {
           otp,
           reference_id: referenceId,
@@ -253,7 +253,7 @@ class Authentication {
           await Authentication.logOtpGeneration({
             reference_id: referenceId,
             unique_id: uuidv4(),
-            mob_num: mobNum,
+            mob_num: formattedRecipientNumber,
             message_uuid: smsRes.uuid, // Plivo's response contains message UUID
             message_status_code: "202", // Assuming status exists in the SMS response
             status: smsRes.status,
@@ -275,9 +275,9 @@ class Authentication {
             {
               sms_id: smsRes.uuid, // Return SMS UUID if message was sent
               reference_id: referenceId,
-              mobNum: mobNum,
+              mobNum: formattedRecipientNumber,
             },
-            `OTP has been sent to ${mobNum} phone number`
+            `OTP has been sent to ${formattedRecipientNumber} phone number`
           )
         );
       } else {
@@ -287,7 +287,7 @@ class Authentication {
           await Authentication.logOtpGeneration({
             reference_id: referenceId,
             unique_id: uuidv4(),
-            mob_num: mobNum,
+            mob_num: formattedRecipientNumber,
             message_status_code: "500", // Assuming status exists in the SMS response
             status: smsRes.status,
             actual_message: smsRes.message || "Failed To Send OTP",
@@ -340,7 +340,7 @@ class Authentication {
         AND message_status_code = '202'
         AND created_at >= NOW() - INTERVAL '10 MINUTE'
       `,
-      values: [mobNum, otp, referenceId],
+      values: [formattedRecipientNumber, otp, referenceId],
     };
 
     // Check if OTP exists and is valid
@@ -350,7 +350,7 @@ class Authentication {
       is_verified: boolean;
     } | null = null;
 
-    const otpKey = `otp:${mobNum}`;
+    const otpKey = `otp:${formattedRecipientNumber}`;
     try {
       const otpData = await RedisManager.getDataFromGroup<{
         otp: string;
@@ -384,7 +384,7 @@ class Authentication {
       await RedisManager.removeDataFromGroup("otp_data", otpKey);
       await RedisManager.removeDataFromGroup(
         "otp_requests",
-        `otp_requests:${mobNum}`
+        `otp_requests:${formattedRecipientNumber}`
       );
       // Update OTP status in the database
       if (!is_testing) {
@@ -394,13 +394,13 @@ class Authentication {
           SET is_verified = TRUE, updated_at = NOW()
           WHERE mob_num = $1 AND otp = $2 AND reference_id = $3
         `,
-          values: [mobNum, otp, referenceId],
+          values: [formattedRecipientNumber, otp, referenceId],
         };
         await dbQuery(updateQuery);
       }
       const response = {
         referenceId: referenceId,
-        mobNum: mobNum,
+        mobNum: formattedRecipientNumber,
       };
       // Handle successful verification
       return res.status(200).json(successResponse({response}));
