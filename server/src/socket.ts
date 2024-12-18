@@ -1,5 +1,5 @@
 import { Server as SocketServer, Socket } from "socket.io";
-import RedisManager from "./utils/redisClient";
+import {RedisManager} from "./utils/redisClient";
 // logic 
 /*
 1-> as soon as a user logins, 

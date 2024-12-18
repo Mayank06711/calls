@@ -6,7 +6,7 @@ class ApiError extends Error {
 
   constructor(
     statusCode: number, // HTTP status code for the error
-    message: string = "Something went wrong ApiError", // Error message (default value provided)
+    message: string = "Something went wrong", // Error message (default value provided)
     errors: any[] = [], // Array of error details or validation errors (default value provided)
     stack: string = "" // Stack trace for the error (default value provided)
   ) {
@@ -18,10 +18,6 @@ class ApiError extends Error {
     if (stack) {
       this.stack = stack; // If a stack trace is provided, assign it to the stack property
     } else {
-      console.log(
-        "Error from ApiError Below  is stack of error ---------->\n------------>",
-        stack
-      );
       Error.captureStackTrace(this, this.constructor); // Otherwise, capture the stack trace
     }
   }

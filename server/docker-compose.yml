@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyf-backend-container
+    ports:
+      - "3003:5005"  # Expose port 5005 inside the container(bcz we have exposed 5005 on dockerfile) to 3003 on the host(windows)
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    # volumes:
+    #   - C:/Users/satya/OneDrive/Desktop/vol_for_nyf_backend:/nyf/service/backend  # Mounting the host directory to the container
+    command: pm2-runtime dist/index.js
+
+  redis:
+    image: redis/redis-stack:latest  # Use the Redis Stack image
+    container_name: my-redis
+    ports:
+      - "6379:6379"  # Expose Redis core on localhost:6379
+      - "8001:8001"  # Expose RedisInsight on localhost:8001
+    volumes:
+      - redis-data:/data  # Redis persistent data
+
+volumes:
+  redis-data:
+
+
+
+# What Does context: . Mean?
+# context: .: The context defines the directory from which Docker will send files to the Docker daemon when building the Docker image. In this case, . refers to the current directory (where the docker-compose.yml file is located).
+# 
+# The context directory is where Docker looks for files to copy into the image during the build process. For example, any file referenced in the COPY or ADD instructions in the Dockerfile will be relative to this context. In this case, the current directory is being used as the build context, so Docker will include all files in the directory (and subdirectories) in the image build process unless they are excluded by a .dockerignore file.
+# 
+# What is the dockerfile Attribute for?
+# dockerfile: Dockerfile: This specifies the exact Dockerfile to use for building the image. If your Dockerfile is named something other than the default Dockerfile, you'd need to specify its name here. In this case, you're using the default name Dockerfile.
+# Summary:
+# context: . tells Docker to use the current directory as the build context when creating the Docker image.
+# Docker will send all files from the current directory (except those excluded by .dockerignore) to the Docker daemon, and it will use these files to build the image as specified in the Dockerfile.
+# In Summary:
+# Volumes:
+# 
+# redis-data:/data: This mounts a named volume redis-data to the /data directory inside the Redis container, ensuring data persistence.
+# Build Context:
+# 
+# context: .: This tells Docker to use the current directory as the context for the build, meaning it will send all the files in the current directory (and subdirectories) to Docker during the image build process.

@@ -1,3 +1,4 @@
 node_modules
 .env
 logs
+src/db_tables_and_sql.txt

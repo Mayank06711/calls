@@ -14,10 +14,11 @@ import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
 import feedBackRouter from "./routes/feedbackRoutes"; 
+import authRouter from "./routes/authRoutes"
 import { connectDB } from "./db";
 import cronSchuduler from "./auto/cronJob";
 
-class ServerManager {
+class ServerManager { 
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
   private io!: SocketIOServer; // Socket.io instance
@@ -48,7 +49,7 @@ class ServerManager {
     this.app.use(cookieParser());
     this.app.use(
       rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
+        windowMs: 10 * 60 * 1000, // 15 minutes
         max: 100, // limit each IP to 100 requests per windowMs
         message:
           "Too many requests from this IP, please try again later after 15 mins.",
@@ -57,6 +58,7 @@ class ServerManager {
   }
   // initialize routes
   private initializeRoutes() {
+    this.app.use("/api/v1/auth", authRouter)
     this.app.use("/api/v1/users", userRouter);
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback",feedBackRouter)
@@ -98,7 +100,7 @@ class ServerManager {
       process.exit(0); // Exit with success code
     } catch (error) {
       console.error("Error during cleanup:", error);
-      process.exit(1); // Exit with failure code
+      process.exit(1);  // Exit with failure code
     }
   }
 
