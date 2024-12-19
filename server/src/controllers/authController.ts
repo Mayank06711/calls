@@ -426,7 +426,7 @@ class Authentication {
         user._id
       );
 
-      if (tokens === null) {
+      if (!tokens) {
         throw new ApiError(500, "Something went wrong");
       }
       // Handle successful verification
@@ -435,14 +435,13 @@ class Authentication {
           .status(200)
           .setHeader("accesstoken" , tokens.accessToken)
           .setHeader("refreshtoken" , tokens.refreshToken)
-          .json(successResponse({response}));
-          
+          .json(successResponse(response, "OTP Verified Successfully"));
       }
       return res
                 .status(200)
                 .cookie("accessToken", tokens.accessToken, this.options)
                 .cookie("refreshToken", tokens.refreshToken, this.options)
-                .json(successResponse({response}));
+                .json(successResponse(response, "OTP Verified Successfully"));
     } catch (error) {
       console.error("Error updating OTP status:", error);
       return res.status(200).json(errorResponse(500, "Internal Server Error"));
