@@ -92,7 +92,7 @@ class AuthServices {
   }
 
 
-  private static createAccessAndRefreshToken = async (userId: ObjectId) => {
+  private static createAccessAndRefreshToken = async (userId: any) => {
     try {
       // Find the user by ID
       const user = await UserModel.findById(userId);

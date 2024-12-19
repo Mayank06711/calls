@@ -8,7 +8,10 @@ import SmsService from "../thirdparty/twilio_sms";
 import {RedisManager} from "../utils/redisClient";
 import { toE164Format } from "../utils/formatNum";
 import { successResponse, errorResponse } from "../utils/apiResponse";
-
+import { CookieOptions } from "express";
+import { AuthServices } from "../helper/auth";
+import { ApiError } from "../utils/apiError";
+import { UserModel } from "../models/userModel";
 const otpLogPossibleKeys = [
   "mob_num",
   "reference_id",
@@ -50,6 +53,12 @@ class Authentication {
     }
     return header || undefined;
   }
+
+  private static options: CookieOptions = {
+      httpOnly: true, // Prevents JavaScript access to the cookie
+      secure: process.env.NODE_ENV! === "production" , // Ensures the cookie is sent only over HTTPS
+      sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    };
 
   // async encryptKeys(accessToken: string, refreshToken: string) {
   //   const params = {
@@ -314,6 +323,7 @@ class Authentication {
   public static async verifyOtp(req: Request, res: Response) {
     const { referenceId, mobNum, otp, src, is_testing } = req.body;
 
+    
     // Validate required parameters
     if (!referenceId || !mobNum || !otp || !src) {
       return res
@@ -402,8 +412,37 @@ class Authentication {
         referenceId: referenceId,
         mobNum: formattedRecipientNumber,
       };
+      const user  =  await UserModel.create(
+        {
+          phoneNumbers : formattedRecipientNumber,
+          username: formattedRecipientNumber,
+          isPhoneVerified:true
+        }
+      )
+      if(!user){
+        throw new ApiError(500, "Something went wrong");
+      }
+      const tokens = await AuthServices.getAccAndRefToken(
+        user._id
+      );
+
+      if (tokens === null) {
+        throw new ApiError(500, "Something went wrong");
+      }
       // Handle successful verification
-      return res.status(200).json(successResponse({response}));
+      if(req.body.src == "div"){
+        res
+          .status(200)
+          .setHeader("accesstoken" , tokens.accessToken)
+          .setHeader("refreshtoken" , tokens.refreshToken)
+          .json(successResponse({response}));
+          
+      }
+      return res
+                .status(200)
+                .cookie("accessToken", tokens.accessToken, this.options)
+                .cookie("refreshToken", tokens.refreshToken, this.options)
+                .json(successResponse({response}));
     } catch (error) {
       console.error("Error updating OTP status:", error);
       return res.status(200).json(errorResponse(500, "Internal Server Error"));

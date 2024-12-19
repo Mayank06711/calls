@@ -16,7 +16,7 @@ interface IUser extends Document {
   isEmailVerified : boolean;
   isPhoneVerified : boolean;
   password: string;
-  gender: "Male" | "Female" | "Other"; // Enum for gender
+  gender: "Male" | "Female" | "Not to say"; // Enum for gender
   age: number;
   city: string;
   country?: string; // Default is 'India', but not required
@@ -40,18 +40,18 @@ interface IUser extends Document {
 // User schema
 const UserSchema: Schema<IUser> = new Schema(
   {
-    fullName: { type: String, required: true },
+    fullName: { type: String, required: true  , default :"user"},
     username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String,  unique:true },
     phoneNumber: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    gender: { type: String, required: true, enum: ["Male", "Female", "Other"] },
-    age: { type: Number, required: true },
-    city: { type: String, required: true },
+    password: { type: String, required: true  , default :"password"},
+    gender: { type: String, required: true, enum: ["Male", "Female", "Not to say"]  , default : "Not to say"},
+    age: { type: Number, required: true  , defalut:"18"},
+    city: { type: String, required: true  , default:"India"},
     country: { type: String, default: "India" },
     refreshToken: { type: String },
-    isEmailVerified: { type: Boolean, required: true},
-    isPhoneVerified: { type: Boolean, required: true},
+    isEmailVerified: { type: Boolean, required: true , defalut :false},
+    isPhoneVerified: { type: Boolean, required: true , default : false},
     photo: {
       type: {
         key: { type: String },
@@ -65,7 +65,6 @@ const UserSchema: Schema<IUser> = new Schema(
     },
     subscriptionDetail: {
       type: String,
-      required: true,
       enum: ["Premium", "Casual", "Medium"],
     },
     referral: { type: Schema.Types.ObjectId, ref: "User" },
