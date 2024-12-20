@@ -105,39 +105,24 @@ class Middleware {
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
         _id: decodedToken.id,
-      }).select("email isMFAEnabled isActive username");
+      }).select("email isMFAEnabled isActive username phoneNumber");
 
       // Check if user does not exist
       if (!user) {
-        // Check if the token belongs to an admin instead
-        const admin = await Admin.findOne({
-          username: decodedToken.username,
-        }).select("adminUsername isActive");
-
-        if (!admin) {
-          throw new ApiError(401, "Invalid access token");
-        }
-
-        // Attach admin info to the request
-        req.admin = {
-          _id: admin._id as ObjectId,
-          adminUsername: admin.adminUsername,
-          isActive: admin.isActive,
-        };
-
-        return next(); // Admin is authenticated
+        throw new ApiError(401, "Invalid access token");
       }
 
-      // Attach user info to the request
+      // Attach admin info to the request
       req.user = {
         _id: user._id as ObjectId,
-        username: user.username,
-        email: user.email,
-        isMFAEnabled: user.isMFAEnabled,
+        isAdmin: user.isAdmin,
+        isExpert: user.isExpert,
         isActive: user.isActive,
+        isMFAEnabled:user.isMFAEnabled
       };
 
-      next(); // Call the next Middleware function or route handler
+      return next(); 
+
     } catch (error) {
       console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
@@ -196,7 +181,7 @@ class Middleware {
 
   //   chech if admin or not
   private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.admin?._id;
+    const id = req.user?._id;
     const originalUrl = req.originalUrl;
     console.log("isAdmin Middleware originalURL", originalUrl);
     if (id && req.originalUrl.startsWith("/admin")) {
