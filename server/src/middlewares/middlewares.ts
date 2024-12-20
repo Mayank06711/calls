@@ -11,6 +11,7 @@ import Admin from "../models/adminModel";
 import AsyncHandler from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -81,7 +82,6 @@ class Middleware {
     res: Response,
     next: NextFunction
   ) {
-
     try {
       // Extract the access token from cookies or headers
       const accessToken =
@@ -211,21 +211,39 @@ class Middleware {
   }
 
   // for all error
-  private static errorMiddleware(
-    err: any,
+  private static ErrorHandler(
+    err: Error | ApiError, // The error caught by the middleware
     req: Request,
     res: Response,
     next: NextFunction
   ) {
-    err.message ||= "Internal Server Error, please try again later";
-    const statusCode = err.statusCode || 500;
+    // Log the error for internal tracking (you can use a logger library like Winston)
+    console.error(err);
 
-    console.error(`Error: ${err}`); // apierror
-    res.status(statusCode).json({
-      sucess: false,
-      message: err.message,
-      // message: process.env.NODE_ENV.trim() === "DEVELOPMENT" ? err: err.message // here i will use apiError class
-    });
+    // Default error response
+    let response: {
+      success: boolean;
+      message: string;
+      data: null;
+      errors: any[]; // Explicitly define the errors type
+    } = {
+      success: false,
+      message: "Internal Server Error",
+      data: null,
+      errors: [], // This is now a valid assignment
+    };
+
+    // If the error is an instance of ApiError, handle it differently
+    if (err instanceof ApiError) {
+      response.message = err.message;
+      response.errors = err.errors;
+      response.data = err.data;
+      res.status(err.statusCode).json(response); // Send the ApiError response
+    } else {
+      // For non-ApiError instances (uncaught errors)
+      response.message = err.message || "Something went wrong";
+      res.status(500).json(response); // Send a generic 500 Internal Server Error response
+    }
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
@@ -236,8 +254,7 @@ class Middleware {
   static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
   static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
-  static ErrorMiddleware = Middleware.errorMiddleware;
-
+  static globalErrorHandler = Middleware.ErrorHandler;
 }
 
 export { Middleware };
