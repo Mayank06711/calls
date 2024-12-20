@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { generateTimestamps } from "../utils/generateTimeStamps";
 import { dbQuery } from "../db/index";
@@ -56,14 +55,14 @@ class Authentication {
 
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: process.env.NODE_ENV! === "production", // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
     maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
   };
 
   private static refreshOptions: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: process.env.NODE_ENV! === "production", // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
   };
