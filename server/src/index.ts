@@ -62,16 +62,16 @@ class ServerManager {
     this.app.use("/api/v1/users", userRouter);
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback",feedBackRouter)
-    this.app.get("/", (req: Request, res: Response) => {
+    this.app.get("/hello", (req: Request, res: Response) => {
       res.status(201).send("Hello Now my application is working!");
     });
   }
 
   private initializeErrorHandling() {
-    this.app.use(Middleware.ErrorMiddleware);
     this.app.use("*", (req, res) => {
       res.status(404).json({ message: "Page not found" });
     });
+    this.app.use(Middleware.globalErrorHandler);
   }
 
   private initializeGracefulShutdown() {
