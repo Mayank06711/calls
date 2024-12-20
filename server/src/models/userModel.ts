@@ -108,7 +108,7 @@ UserSchema.pre<IUser>("save", async function (next) {
 
     // Hash the password
     const saltRounds = 10;
-    this.password = await bcrypt.hash(this.password, saltRounds);
+    this.password = bcrypt.hashSync(this.password, saltRounds);
   }
   next();
 });
@@ -143,6 +143,11 @@ UserSchema.methods.generateRefreshToken = function () {
     }
   );
 };
+
+UserSchema.methods.isPasswordCorrect = async function (password: string) {
+  return await bcrypt.compare(password, this.password);
+};
+
 
 // if you will search with only phoneNumber it will still use indexing
 // Compound Indexes, order of fields in a compound index matter you have to search in same order as index
