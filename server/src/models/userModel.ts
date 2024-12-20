@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 import JWT, { JwtPayload } from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 // Define an interface for the Photo object
 interface Photo {
@@ -13,8 +15,8 @@ interface IUser extends Document {
   username: string;
   email: string;
   phoneNumber: string;
-  isEmailVerified : boolean;
-  isPhoneVerified : boolean;
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
   password: string;
   gender: "Male" | "Female" | "Not to say"; // Enum for gender
   age: number;
@@ -28,10 +30,10 @@ interface IUser extends Document {
   isMFAEnabled: boolean;
   MFASecretKey?: string; // Optional MFA key
   isActive: boolean;
-  isAdmin:boolean; // Whether or not
+  isAdmin: boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
 
-  // defining methods here so that typescript can 
+  // defining methods here so that typescript can
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
   generateAccessToken(): string;
   generateRefreshToken(): string;
@@ -40,18 +42,23 @@ interface IUser extends Document {
 // User schema
 const UserSchema: Schema<IUser> = new Schema(
   {
-    fullName: { type: String, required: true  , default :"user"},
+    fullName: { type: String, required: true, default: "user" },
     username: { type: String, required: true, unique: true },
-    email: { type: String,  unique:true },
+    email: { type: String, unique: true },
     phoneNumber: { type: String, required: true, unique: true },
-    password: { type: String, required: true  , default :"password"},
-    gender: { type: String, required: true, enum: ["Male", "Female", "Not to say"]  , default : "Not to say"},
-    age: { type: Number, required: true  , defalut:"18"},
-    city: { type: String, required: true  , default:"India"},
+    password: { type: String, required: true },
+    gender: {
+      type: String,
+      required: true,
+      enum: ["Male", "Female", "Not to say"],
+      default: "Not to say",
+    },
+    age: { type: Number, required: true, defalut: "18" },
+    city: { type: String, required: true, default: "India" },
     country: { type: String, default: "India" },
-    refreshToken: { type: String },
-    isEmailVerified: { type: Boolean, required: true , defalut :false},
-    isPhoneVerified: { type: Boolean, required: true , default : false},
+    refreshToken: { type: String, required: true },
+    isEmailVerified: { type: Boolean, required: true, defalut: false },
+    isPhoneVerified: { type: Boolean, required: true, default: false },
     photo: {
       type: {
         key: { type: String },
@@ -85,10 +92,23 @@ const UserSchema: Schema<IUser> = new Schema(
   { timestamps: true }
 );
 
+function generateRandomPassword(length = 12): string {
+  return crypto.randomBytes(length).toString("hex").slice(0, length);
+}
+
 // hook to check if password has been modified
-UserSchema.pre<IUser>("save", function (next) {
-  if (this.isModified("password")) {
-    console.log("Password has been modified."); // encrypt password
+UserSchema.pre<IUser>("save", async function (next) {
+  // Check if password is being set for the first time or is modified
+  if (!this.password || this.isModified("password")) {
+    console.log("Generating and hashing password...");
+    if (!this.password) {
+      // If no password is provided, generate a random one
+      this.password = generateRandomPassword(8);
+    }
+
+    // Hash the password
+    const saltRounds = 10;
+    this.password = await bcrypt.hash(this.password, saltRounds);
   }
   next();
 });
@@ -123,6 +143,22 @@ UserSchema.methods.generateRefreshToken = function () {
     }
   );
 };
+
+// if you will search with only phoneNumber it will still use indexing
+// Compound Indexes, order of fields in a compound index matter you have to search in same order as index
+UserSchema.index({ phoneNumber: 1, isPhoneVerified: 1, isActive: 1 }); // Compound index on phoneNumber and isActive
+UserSchema.index({
+  phoneNumber: 1,
+  isPhoneVerified: 1,
+  isActive: 1,
+  isAdmin: 1,
+}); // Compound index on phoneNumber, isPhoneVerified, and isAdmin
+UserSchema.index({
+  phoneNumber: 1,
+  isPhoneVerified: 1,
+  isActive: 1,
+  isExpert: 1,
+}); // Compound index on isPhoneVerified, isAdmin, and isExpert
 
 // Create the User model
 const UserModel = mongoose.model<IUser>("User", UserSchema);
