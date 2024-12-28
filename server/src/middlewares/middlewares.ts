@@ -7,10 +7,11 @@ import { v2 as cloudinary } from "cloudinary";
 import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
-import AsyncHandler from "../utils/AsyncHandler";
 import Admin from "../models/adminModel";
+import AsyncHandler from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -104,39 +105,24 @@ class Middleware {
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
         _id: decodedToken.id,
-      }).select("email isMFAEnabled isActive username");
+      }).select("email isMFAEnabled isActive username phoneNumber");
 
       // Check if user does not exist
       if (!user) {
-        // Check if the token belongs to an admin instead
-        const admin = await Admin.findOne({
-          username: decodedToken.username,
-        }).select("adminUsername isActive");
-
-        if (!admin) {
-          throw new ApiError(401, "Invalid access token");
-        }
-
-        // Attach admin info to the request
-        req.admin = {
-          _id: admin._id as ObjectId,
-          adminUsername: admin.adminUsername,
-          isActive: admin.isActive,
-        };
-
-        return next(); // Admin is authenticated
+        throw new ApiError(401, "Invalid access token");
       }
 
-      // Attach user info to the request
+      // Attach admin info to the request
       req.user = {
         _id: user._id as ObjectId,
-        username: user.username,
-        email: user.email,
-        isMFAEnabled: user.isMFAEnabled,
+        isAdmin: user.isAdmin,
+        isExpert: user.isExpert,
         isActive: user.isActive,
+        isMFAEnabled:user.isMFAEnabled
       };
 
-      next(); // Call the next Middleware function or route handler
+      return next(); 
+
     } catch (error) {
       console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
@@ -195,7 +181,7 @@ class Middleware {
 
   //   chech if admin or not
   private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.admin?._id;
+    const id = req.user?._id;
     const originalUrl = req.originalUrl;
     console.log("isAdmin Middleware originalURL", originalUrl);
     if (id && req.originalUrl.startsWith("/admin")) {
@@ -210,31 +196,50 @@ class Middleware {
   }
 
   // for all error
-  private static errorMiddleware(
-    err: any,
+  private static ErrorHandler(
+    err: Error | ApiError, // The error caught by the middleware
     req: Request,
     res: Response,
     next: NextFunction
   ) {
-    err.message ||= "Internal Server Error, please try again later";
-    const statusCode = err.statusCode || 500;
+    // Log the error for internal tracking (you can use a logger library like Winston)
+    console.error(err);
 
-    console.error(`Error: ${err}`); // apierror
-    res.status(statusCode).json({
-      sucess: false,
-      message: err.message,
-      // message: process.env.NODE_ENV.trim() === "DEVELOPMENT" ? err: err.message // here i will use apiError class
-    });
+    // Default error response
+    let response: {
+      success: boolean;
+      message: string;
+      data: null;
+      errors: any[]; // Explicitly define the errors type
+    } = {
+      success: false,
+      message: "Internal Server Error",
+      data: null,
+      errors: [], // This is now a valid assignment
+    };
+
+    // If the error is an instance of ApiError, handle it differently
+    if (err instanceof ApiError) {
+      response.message = err.message;
+      response.errors = err.errors;
+      response.data = err.data;
+      res.status(err.statusCode).json(response); // Send the ApiError response
+    } else {
+      // For non-ApiError instances (uncaught errors)
+      response.message = err.message || "Something went wrong";
+      res.status(500).json(response); // Send a generic 500 Internal Server Error response
+    }
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
+
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
   static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
   static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
-  static ErrorMiddleware = Middleware.errorMiddleware;
+  static globalErrorHandler = Middleware.ErrorHandler;
 }
 
 export { Middleware };
