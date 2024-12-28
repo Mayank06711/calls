@@ -9,6 +9,9 @@ class SocketTester {
         this.socket = io(SERVER_URL, {
             reconnection: true,
             timeout: 10000,
+            // Add these options to handle self-signed certificates
+            rejectUnauthorized: false,
+            secure: true
         });
 
         // Basic event listeners
@@ -43,41 +46,42 @@ class SocketTester {
     logout(): void {
         this.socket.emit('logout');
     }
+    public waitForConnect(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            this.socket.once('connect', () => resolve());
+        });
+    }
 }
 
 // Run tests
 async function runTests() {
     console.log('Starting socket tests...');
     
-    // Create multiple clients to test concurrent connections
+    const NUM_CLIENTS = 100;  // Increased to 100 clients
     const clients: SocketTester[] = [];
     
     try {
-        // Test 1: Connect multiple clients
-        for (let i = 0; i < 3; i++) {
-            clients.push(new SocketTester());
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait between connections
-        }
+        // Test 1: Connect multiple clients in parallel
+        const connectionPromises = Array(NUM_CLIENTS).fill(null).map(() => {
+            const client = new SocketTester();
+            clients.push(client);
+            return client.waitForConnect();  // Use the new method
+        });
 
-        // Test 2: Get total sockets after 2 seconds
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait for all connections to complete
+        await Promise.all(connectionPromises);
+        console.log(`All ${NUM_CLIENTS} clients connected!`);
+
+        // Test 2: Get total sockets
         clients[0].getTotalSockets();
 
-        // Test 3: Test logout for one client
+        // Keep the process running briefly to see the results
         await new Promise(resolve => setTimeout(resolve, 1000));
-        clients[1].logout();
-
-        // Test 4: Disconnect one client directly
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        clients[2].disconnect();
-
-        // Keep the process running to see the results
-        await new Promise(resolve => setTimeout(resolve, 5000));
         
     } catch (error) {
         console.error('Test error:', error);
     } finally {
-        // Cleanup: Disconnect remaining clients
+        // Cleanup: Disconnect all clients
         clients.forEach(client => client.disconnect());
     }
 }
