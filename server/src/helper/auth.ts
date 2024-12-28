@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { CookieOptions } from "express";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
 import { UserModel } from "../models/userModel";
 import { ObjectId } from "mongoose";
@@ -79,6 +80,12 @@ class AuthServices {
       user.refreshToken = tokens.refreshToken;
       await user.save();
       
+      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+        userId: user._id,
+        status: "refreshed",
+        mobNum: user.phoneNumber,
+      });
+
       if (req.body.src === "div") {
         return res
           .status(200)
