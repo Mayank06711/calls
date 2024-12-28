@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
     "start:dev": "ts-node-dev src/index.ts",
+     "test:socket": "ts-node src/socketTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -65,6 +66,7 @@
     "@types/nodemailer": "^6.4.17",
     "@types/socket.io": "^3.0.2",
     "pm2": "^5.4.3",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.2"
   }
