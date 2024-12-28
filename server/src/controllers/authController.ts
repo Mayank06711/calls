@@ -27,6 +27,7 @@ const otpLogPossibleKeys = [
   "app_version",
   "device_id",
 ];
+
 interface OtpLog {
   mob_num: string;
   reference_id: string;
@@ -369,13 +370,12 @@ class Authentication {
       is_verified: boolean;
     } | null = null;
 
-    const otpKey = `otp:${formattedRecipientNumber}`;
     try {
       const otpData = await RedisManager.getDataFromGroup<{
         otp: string;
         reference_id: string;
         expiry_at: number;
-      }>("otp_data", otpKey);
+      }>("otp_data", formattedRecipientNumber); // Using phone number as key
 
       if (!otpData) {
         return res
@@ -384,7 +384,10 @@ class Authentication {
       }
       // Check OTP expiry
       if (Date.now() > otpData.expiry_at) {
-        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup(
+          "otp_data",
+          formattedRecipientNumber
+        );
         return res
           .status(401)
           .json(
@@ -400,10 +403,14 @@ class Authentication {
       }
 
       // Remove OTP from Redis after successful verification
-      await RedisManager.removeDataFromGroup("otp_data", otpKey);
+      await RedisManager.removeDataFromGroup(
+        "otp_data",
+        formattedRecipientNumber
+      );
+      // Remove OTP request data
       await RedisManager.removeDataFromGroup(
         "otp_requests",
-        `otp_requests:${formattedRecipientNumber}`
+        formattedRecipientNumber
       );
       // Update OTP status in the database
       if (!is_testing) {
@@ -434,6 +441,13 @@ class Authentication {
           referenceId: referenceId,
           mobNum: formattedRecipientNumber,
         };
+
+        // Publish socket authentication message
+        await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+          userId: user._id,
+          status: "verified",
+          mobNum: formattedRecipientNumber,
+        });
 
         // Handle successful verification (skip OTP validation as user is already verified)
         if (req.body.src == "div") {
@@ -484,9 +498,16 @@ class Authentication {
         mobNum: formattedRecipientNumber,
       };
 
+      // Publish socket authentication message
+      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+        userId: user._id,
+        status: "verified",
+        mobNum: formattedRecipientNumber,
+      });
+
       // Handle successful verification
       if (req.body.src == "div") {
-        res
+        return res
           .status(200)
           .setHeader("x-access-token", tokens.accessToken)
           .setHeader("x-refresh-token", tokens.refreshToken)
