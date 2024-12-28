@@ -66,6 +66,18 @@ class SocketManager {
   private initializeSocket(): void {
     this.io.on("connection", async (socket: Socket) => {
       console.log("New connection attempt", socket.id);
+      // Add this condition for testing
+      if (process.env.NODE_ENV === "dev") {
+        console.log("Test connection - skipping authentication");
+        await this.handleSocketConnection(socket, {
+          userId: "test-user",
+          mobNum: "test-number",
+          status: "verified",
+        });
+        this.setupEventListeners(socket, { userId: "test-user" });
+        return;
+      }
+
       let lockId: string | null = null;
       let userData: any = null;
 
@@ -89,7 +101,7 @@ class SocketManager {
           throw new Error("Connection blocked - concurrent connection attempt");
         }
 
-        await this.handleSocketConnection(socket , userData);
+        await this.handleSocketConnection(socket, userData);
         this.setupEventListeners(socket, userData);
       } catch (error) {
         console.error("Error in socket connection:", error);
