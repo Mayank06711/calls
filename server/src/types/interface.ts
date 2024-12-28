@@ -6,7 +6,6 @@ export interface EventData {
   message: string; // Message related to the event
 }
 
-
 export interface SendOtpMessageResponse {
   message: string;
   messageUuid: string[];
@@ -17,8 +16,29 @@ export interface SendOtpMessageError {
   error: string | Record<string, unknown>;
 }
 
-
 export type Query = {
   text: string;
   values: string[];
 };
+
+export type EmitOptions = {
+  event: string;
+  data: any;
+  room?: string;
+  auth?: boolean;
+  headers?: Record<string, any>;
+  targetSocketIds?: string[];
+};
+
+export interface SocketUserData {
+  userId: string;
+  mobNum: string;
+  status: 'verified' | 'refreshed';
+}
+export interface SocketData {
+  userId: string;
+  mobNum: string;
+  socketId: string;
+  connectedAt: number;
+  lastRefreshedAt: number;
+}
