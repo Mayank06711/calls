@@ -2,7 +2,7 @@ import Redis from "ioredis";
 class RedisManager {
   private static redis: Redis | null = null; // if not made static then we can not use this.redis inside other static methods because this inside a static method refers to the class itself, not to an instance of the class which is case when redis is not declared static.
   private static subscriber: Redis | null = null; // Separate instance for subscribing
-
+  private static readonly LOCK_PREFIX = "lock:";
   // Method to initialize Redis connection
   public static initRedisConnection() {
     console.log("Redis host", process.env.REDIS_HOST);
@@ -274,6 +274,61 @@ class RedisManager {
       return false;
     } catch (error) {
       console.error(`Error checking key in group ${group}Set`, error);
+      return false;
+    }
+  }
+
+  static async acquireLock(
+    lockKey: string,
+    timeoutMs: number = 5000
+  ): Promise<string | null> {
+    if (!this.redis) {
+      console.error(
+        "Redis is not initialized. Call `initRedisConnection()` first."
+      );
+      return null;
+    }
+    try {
+      // Generate unique identifier for this lock
+      const lockId = `${Date.now()}-${Math.random()}`;
+      const key = `${this.LOCK_PREFIX}${lockKey}`;
+
+      // Method 1: Using multi command
+      const result = await this.redis
+        .multi()
+        .set(key, lockId, "NX")
+        .pexpire(key, timeoutMs)
+        .exec();
+
+      // If the SET was successful (first command in multi)
+      return result?.[0]?.[1] === "OK" ? lockId : null;
+
+      return result ? lockId : null;
+    } catch (error) {
+      console.error("Error acquiring lock:", error);
+      return null;
+    }
+  }
+
+  static async releaseLock(lockKey: string, lockId: string): Promise<boolean> {
+    if (!this.redis) {
+      console.error(
+        "Redis is not initialized. Call `initRedisConnection()` first."
+      );
+      return false;
+    }
+    try {
+      const key = `${this.LOCK_PREFIX}${lockKey}`;
+
+      // Only release if we still own the lock
+      const currentLockId = await this.redis!.get(key);
+      if (currentLockId === lockId) {
+        await this.redis!.del(key);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error releasing lock:", error);
       return false;
     }
   }
