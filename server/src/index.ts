@@ -64,7 +64,7 @@ class ServerManager {
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.get("/hello", (req: Request, res: Response) => {
-      res.status(201).send("Hello Now my application is working!");
+      res.status(200).send("Hello Now my application is working!");
     });
   }
 
