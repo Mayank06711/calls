@@ -6,14 +6,9 @@ declare global {
     interface Request {
       user?: {
         _id: ObjectId;
-        username: string;
-        email: string;
+        isAdmin: boolean;
+        isExpert:boolean;
         isMFAEnabled: boolean;
-        isActive: boolean;
-      };
-      admin?: {
-        _id: ObjectId;
-        adminUsername: string;
         isActive: boolean;
       };
     }

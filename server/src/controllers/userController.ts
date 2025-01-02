@@ -7,8 +7,16 @@ import { AuthServices } from "../helper/auth";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access to the cookie
-    secure: process.env.NODE_ENV! === "production" , // Ensures the cookie is sent only over HTTPS
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
     sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+  };
+
+  private static refreshOptions: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
   };
 
   static async signUp(req: express.Request, res: express.Response) {
@@ -49,7 +57,7 @@ class User {
         res
           .status(200)
           .cookie("refreshToken", tokens.refreshToken, this.options) // Store refresh token in an HttpOnly cookie
-          .cookie("accessToken", tokens.accessToken, this.options) // Store refresh token in an HttpOnly cookie
+          .cookie("accessToken", tokens.accessToken, this.refreshOptions) // Store refresh token in an HttpOnly cookie
           .json({
             message: "User signed up successfully, Please fill other fields",
             userId: user._id, // Optional: You can remove this if using only cookies
@@ -74,7 +82,7 @@ class User {
       res
         .status(200)
         .cookie("accessToken", 1234, User.options)
-        .cookie("refreshToken", 2321, User.options)
+        .cookie("refreshToken", 2321, User.refreshOptions)
         .json({
           message: "User logged in successfully",
           userId: "user",
@@ -92,26 +100,8 @@ class User {
       res
         .status(200)
         .clearCookie("accessToken", User.options)
-        .clearCookie("refreshToken", User.options)
+        .clearCookie("refreshToken", User.refreshOptions)
         .json({ message: "User logged out successfully" });
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  static refreshToken(req: express.Request, res: express.Response) {
-    try {
-      // check validation here only
-      res
-        .status(200)
-        .cookie("accessToken", 12345, User.options)
-        .cookie("refreshToken", 23215, User.options)
-        .json({
-          message: "Refreshed successfully",
-          userId: "user",
-          localToken: "localToken",
-          username: "username",
-        });
     } catch (error) {
       console.log(error);
     }
@@ -161,15 +151,6 @@ class User {
     try {
       // check validation here only
       res.json({ message: "Profile Updated Successfully" });
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  static verifyPhone(req: express.Request, res: express.Response) {
-    try {
-      // check validation here only
-      res.json({ message: "Phone Number Verified Successfully" });
     } catch (error) {
       console.log(error);
     }

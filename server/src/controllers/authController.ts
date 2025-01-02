@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { generateTimestamps } from "../utils/generateTimeStamps";
 import { dbQuery } from "../db/index";
 import { sqlGenerateInsertQuery } from "../utils/sql_query";
 import SmsService from "../thirdparty/twilio_sms";
-import {RedisManager} from "../utils/redisClient";
+import { RedisManager } from "../utils/redisClient";
 import { toE164Format } from "../utils/formatNum";
 import { successResponse, errorResponse } from "../utils/apiResponse";
 import { CookieOptions } from "express";
@@ -28,6 +27,7 @@ const otpLogPossibleKeys = [
   "app_version",
   "device_id",
 ];
+
 interface OtpLog {
   mob_num: string;
   reference_id: string;
@@ -55,10 +55,18 @@ class Authentication {
   }
 
   private static options: CookieOptions = {
-      httpOnly: true, // Prevents JavaScript access to the cookie
-      secure: process.env.NODE_ENV! === "production" , // Ensures the cookie is sent only over HTTPS
-      sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
-    };
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+  };
+
+  private static refreshOptions: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+  };
 
   // async encryptKeys(accessToken: string, refreshToken: string) {
   //   const params = {
@@ -105,7 +113,10 @@ class Authentication {
   private static async logOtpGeneration(otpLog: OtpLog) {
     // Ensure required fields are present
     if (!otpLog.mob_num || !otpLog.unique_id) {
-      throw new Error("Missing required fields: mob_num, otp, or unique_id.");
+      throw new ApiError(
+        500,
+        "Missing required fields: mob_num, otp, or unique_id."
+      );
     }
 
     const data = {
@@ -141,7 +152,7 @@ class Authentication {
       console.log("OTP generation logged successfully");
     } catch (error) {
       console.error("Error logging OTP generation:", error);
-      throw error;
+      throw new ApiError(500, "Something went wrong");
     }
   }
 
@@ -162,7 +173,7 @@ class Authentication {
       return result.rows[0].otp_request_count;
     } catch (error) {
       console.error("Error checking OTP request count:", error);
-      throw error;
+      throw new ApiError(500, "Something went wrong");
     }
   }
 
@@ -316,14 +327,13 @@ class Authentication {
       }
     } catch (error) {
       console.log("error in generate otp", error);
-      throw error;
+      throw new ApiError(500, "Something went wrong");
     }
   }
 
   public static async verifyOtp(req: Request, res: Response) {
     const { referenceId, mobNum, otp, src, is_testing } = req.body;
 
-    
     // Validate required parameters
     if (!referenceId || !mobNum || !otp || !src) {
       return res
@@ -360,13 +370,12 @@ class Authentication {
       is_verified: boolean;
     } | null = null;
 
-    const otpKey = `otp:${formattedRecipientNumber}`;
     try {
       const otpData = await RedisManager.getDataFromGroup<{
         otp: string;
         reference_id: string;
         expiry_at: number;
-      }>("otp_data", otpKey);
+      }>("otp_data", formattedRecipientNumber); // Using phone number as key
 
       if (!otpData) {
         return res
@@ -375,7 +384,10 @@ class Authentication {
       }
       // Check OTP expiry
       if (Date.now() > otpData.expiry_at) {
-        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup(
+          "otp_data",
+          formattedRecipientNumber
+        );
         return res
           .status(401)
           .json(
@@ -391,10 +403,14 @@ class Authentication {
       }
 
       // Remove OTP from Redis after successful verification
-      await RedisManager.removeDataFromGroup("otp_data", otpKey);
+      await RedisManager.removeDataFromGroup(
+        "otp_data",
+        formattedRecipientNumber
+      );
+      // Remove OTP request data
       await RedisManager.removeDataFromGroup(
         "otp_requests",
-        `otp_requests:${formattedRecipientNumber}`
+        formattedRecipientNumber
       );
       // Update OTP status in the database
       if (!is_testing) {
@@ -408,44 +424,103 @@ class Authentication {
         };
         await dbQuery(updateQuery);
       }
+      let user = await UserModel.findOne({
+        phoneNumber: formattedRecipientNumber,
+      });
+
+      if (user && user.isPhoneVerified && user.isActive) {
+        const tokens = await AuthServices.getAccAndRefToken(user._id);
+        if (!tokens) {
+          throw new ApiError(500, "Something went wrong");
+        }
+
+        user.refreshToken = tokens.refreshToken;
+        await user.save();
+
+        const response = {
+          referenceId: referenceId,
+          mobNum: formattedRecipientNumber,
+        };
+
+        // Publish socket authentication message
+        await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+          userId: user._id,
+          status: "verified",
+          mobNum: formattedRecipientNumber,
+        });
+
+        // Handle successful verification (skip OTP validation as user is already verified)
+        if (req.body.src == "div") {
+          return res
+            .status(200)
+            .setHeader("x-access-token", tokens.accessToken)
+            .setHeader("x-refresh-token", tokens.refreshToken)
+            .json(successResponse(response, "User already verified"));
+        }
+
+        return res
+          .status(200)
+          .cookie("accessToken", tokens.accessToken, this.options)
+          .cookie("refreshToken", tokens.refreshToken, this.refreshOptions)
+          .json(successResponse(response, "User already verified"));
+      }
+
+      // If the user doesn't exist or is not verified, proceed with OTP verification process
+      if (!user) {
+        user = await UserModel.create({
+          phoneNumber: formattedRecipientNumber,
+          username: formattedRecipientNumber,
+          isPhoneVerified: true,
+          refreshToken: "",
+          isActive: true,
+        });
+
+        if (!user) {
+          throw new ApiError(500, "Something went wrong during user creation.");
+        }
+      } else {
+        // Update user phone verification if user already exists
+        user.isPhoneVerified = true;
+        user.isActive = true;
+      }
+
+      const tokens = await AuthServices.getAccAndRefToken(user._id);
+
+      if (!tokens) {
+        throw new ApiError(500, "Something went wrong");
+      }
+
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
       const response = {
         referenceId: referenceId,
         mobNum: formattedRecipientNumber,
       };
-      const user  =  await UserModel.create(
-        {
-          phoneNumbers : formattedRecipientNumber,
-          username: formattedRecipientNumber,
-          isPhoneVerified:true
-        }
-      )
-      if(!user){
-        throw new ApiError(500, "Something went wrong");
-      }
-      const tokens = await AuthServices.getAccAndRefToken(
-        user._id
-      );
 
-      if (tokens === null) {
-        throw new ApiError(500, "Something went wrong");
-      }
+      // Publish socket authentication message
+      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+        userId: user._id,
+        status: "verified",
+        mobNum: formattedRecipientNumber,
+      });
+
       // Handle successful verification
-      if(req.body.src == "div"){
-        res
+      if (req.body.src == "div") {
+        return res
           .status(200)
-          .setHeader("accesstoken" , tokens.accessToken)
-          .setHeader("refreshtoken" , tokens.refreshToken)
-          .json(successResponse({response}));
-          
+          .setHeader("x-access-token", tokens.accessToken)
+          .setHeader("x-refresh-token", tokens.refreshToken)
+          .json(successResponse(response, "OTP Verified Successfully"));
       }
       return res
-                .status(200)
-                .cookie("accessToken", tokens.accessToken, this.options)
-                .cookie("refreshToken", tokens.refreshToken, this.options)
-                .json(successResponse({response}));
+        .status(200)
+        .cookie("accessToken", tokens.accessToken, this.options)
+        .cookie("refreshToken", tokens.refreshToken, this.refreshOptions)
+        .json(successResponse(response, "OTP Verified Successfully"));
     } catch (error) {
       console.error("Error updating OTP status:", error);
-      return res.status(200).json(errorResponse(500, "Internal Server Error"));
+      throw new ApiError(500, "Something went wrong");
     }
   }
 }

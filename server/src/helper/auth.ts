@@ -1,22 +1,43 @@
 import express, { Request, Response } from "express";
-
+import { CookieOptions } from "express";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
-import AsyncHandler from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
 import { ObjectId } from "mongoose";
+import { successResponse, errorResponse } from "../utils/apiResponse";
 
 class AuthServices {
-  static options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // Secure cookies in production
+  private static options: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+  };
+
+  private static refreshOptions: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
   };
 
   // Method to refresh access token
   static refreshAccessToken = async (req: Request, res: Response) => {
-    const incomingRefreshToken =
-      req.cookies.refreshToken || req.body.refreshToken;
+    let incomingRefreshToken = req.cookies?.refreshToken;
+
+    // If src is "div", try to get refreshToken from Authorization header
+    if (req.body.src === "div") {
+      const authHeader = req.header("Authorization");
+
+      // Check if the Authorization header is in the expected format
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        incomingRefreshToken = authHeader.split(" ")[1];
+      }
+    } else {
+      incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    }
 
     console.log(
       incomingRefreshToken,
@@ -45,7 +66,7 @@ class AuthServices {
 
       // Ensure the incoming refresh token matches the one stored in the user's document
       if (incomingRefreshToken !== user.refreshToken) {
-        throw new ApiError(401, "Refresh token is expired or used login again");
+        throw new ApiError(401, "Refresh token is expired login again");
       }
 
       // Generate new access and refresh tokens
@@ -56,18 +77,33 @@ class AuthServices {
         throw new ApiError(500, "Failed to generate tokens");
       }
 
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+      
+      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
+        userId: user._id,
+        status: "refreshed",
+        mobNum: user.phoneNumber,
+      });
+
+      if (req.body.src === "div") {
+        return res
+          .status(200)
+          .setHeader("x-access-token", tokens.accessToken)
+          .setHeader("x-refresh-token", tokens.refreshToken)
+          .json(successResponse({}, "Successfully Refreshed Access Token"));
+      }
+
       return res
         .status(200)
         .cookie("accessToken", tokens.accessToken, this.options)
-        .cookie("refreshToken", tokens.refreshToken, this.options)
-        .json({
-          localToken: user.username,
-          userID: user._id,
-        });
+        .cookie("refreshToken", tokens.refreshToken, this.refreshOptions)
+        .json(successResponse({}, "OTP Verified Successfully"));
     } catch (error: any) {
       throw new ApiError(401, error?.message || "Invalid refresh token");
     }
   };
+
   private static async generate_JWT_Token<T extends string | object>(
     payload: T,
     secretToken: string,
@@ -82,7 +118,6 @@ class AuthServices {
       } else if (e instanceof Error) {
         throw new ApiError(500, `Token could not be generated: ${e.message}`);
       } else {
-
         throw new ApiError(
           500,
           `Token could not be generated due to an unknown error.`
@@ -90,7 +125,6 @@ class AuthServices {
       }
     }
   }
-
 
   private static createAccessAndRefreshToken = async (userId: any) => {
     try {
@@ -126,4 +160,3 @@ class AuthServices {
 }
 
 export { AuthServices };
- 
