@@ -120,6 +120,7 @@ class SocketManager {
         userId &&
         mobNum
       ) {
+        console.log(`Socket auth data in case of ${status}`, userId, mobNum)
         return { userId, mobNum, status };
       }
       return null;
