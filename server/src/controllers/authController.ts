@@ -496,6 +496,7 @@ class Authentication {
       const response = {
         referenceId: referenceId,
         mobNum: formattedRecipientNumber,
+        userId: user._id
       };
 
       // Publish socket authentication message
