@@ -147,9 +147,9 @@ class ServerManager {
     await connectDB()
       .then(() => {
         this.server.listen(Port, () => {
+          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
           // Below  line is crucial otherwise socket wont work
           this.socketManager = SocketManager.getInstance(this.io);
-          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
           //  cronSchuduler("* */2 * * *");
           console.log(`Server is running on https://localhost:${Port}`);
         });
