@@ -79,12 +79,6 @@ class AuthServices {
 
       user.refreshToken = tokens.refreshToken;
       await user.save();
-      
-      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
-        userId: user._id,
-        status: "refreshed",
-        mobNum: user.phoneNumber,
-      });
 
       if (req.body.src === "div") {
         return res
@@ -130,33 +124,63 @@ class AuthServices {
     try {
       // Find the user by ID
       const user = await UserModel.findById(userId);
-
-      // If user is found, generate access and refresh tokens
-      if (user) {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-
-        // Assign refresh token to user and save
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
-
-        // Return the generated tokens
-        return { accessToken, refreshToken };
-      } else {
-        // If no user found, return null (or handle the case accordingly)
-        return null;
+      if (!user) {
+        throw new ApiError(404, "User not found");
       }
+      // If user is found, generate access and refresh tokens
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
+
+      // Assign refresh token to user and save
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+
+      // Return the generated tokens
+      return { accessToken, refreshToken };
     } catch (error) {
+      console.error("Token generation error:", error);
       // Throw an error if there's an issue generating tokens
       throw new ApiError(
         500,
-        "Something went wrong, Error creating access and refresh token"
+        error instanceof Error
+          ? `Error creating tokens: ${error.message}`
+          : "Something went wrong while creating tokens"
       );
     }
   };
 
+  private static async verifyToken(
+    token: string,
+    type: "access" | "refresh"
+  ) {
+    try {
+      const secret =
+        type === "access"
+          ? process.env.ACCESS_TOKEN_SECRET!
+          : process.env.REFRESH_TOKEN_SECRET!;
+
+      const decoded = JWT.verify(token, secret) as JwtPayload;
+      const query =
+        type === "refresh"
+          ? { _id: decoded._id, refreshToken: token, isActive: true }
+          : { _id: decoded._id, isActive: true };
+
+      const user = await UserModel.findOne(query);
+      if (!user) return null;
+      return {
+        userId: user._id,
+        phoneNumber: user.phoneNumber,
+        username: user.username,
+        status:type === 'access' ? "authenticated" : "refreshed"
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
   static genJWT_Token = AuthServices.generate_JWT_Token;
   static getAccAndRefToken = AuthServices.createAccessAndRefreshToken;
+  static verifyJWT_Token = AuthServices.verifyToken;
 }
 
 export { AuthServices };

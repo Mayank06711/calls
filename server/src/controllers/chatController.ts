@@ -91,7 +91,7 @@ class ChatController {
   //   }
   // }
 
-  // // Get chat history
+  // Get chat history
   // static async getChatHistory(
   //   chatId: Types.ObjectId,
   //   userId: Types.ObjectId,
