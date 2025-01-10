@@ -118,11 +118,10 @@ class Middleware {
         isAdmin: user.isAdmin,
         isExpert: user.isExpert,
         isActive: user.isActive,
-        isMFAEnabled:user.isMFAEnabled
+        isMFAEnabled: user.isMFAEnabled,
       };
 
-      return next(); 
-
+      return next();
     } catch (error) {
       console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
@@ -203,8 +202,36 @@ class Middleware {
     next: NextFunction
   ) {
     // Log the error for internal tracking (you can use a logger library like Winston)
-    console.error(err);
+    console.error("Global Error Handler:", {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+    });
+    // Handle Validation Errors
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: err.message,
+      });
+    }
 
+    // Handle MongoDB Errors
+    if (err.name === "MongoError" || err.name === "MongoServerError") {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error",
+        errors: [err.message],
+      });
+    }
+    // If headers are already sent, don't try to send another response
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    let statusCode = 500;
     // Default error response
     let response: {
       success: boolean;
@@ -215,20 +242,25 @@ class Middleware {
       success: false,
       message: "Internal Server Error",
       data: null,
-      errors: [], // This is now a valid assignment
+      errors: [] as any[], // This is now a valid assignment
     };
 
-    // If the error is an instance of ApiError, handle it differently
-    if (err instanceof ApiError) {
-      response.message = err.message;
-      response.errors = err.errors;
-      response.data = err.data;
-      res.status(err.statusCode).json(response); // Send the ApiError response
-    } else {
-      // For non-ApiError instances (uncaught errors)
-      response.message = err.message || "Something went wrong";
-      res.status(500).json(response); // Send a generic 500 Internal Server Error response
-    }
+     // Handle ApiError instances
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      data: err.data,
+      errors: err.errors
+    });
+  }
+
+    // Default error response
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      errors: [err.message],
+    });
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched

@@ -53,11 +53,11 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: ["Male", "Female", "Not to say"],
       default: "Not to say",
     },
-    age: { type: Number, required: true, defalut: "18" },
+    age: { type: Number, required: true, default: 18 },
     city: { type: String, required: true, default: "India" },
     country: { type: String, default: "India" },
-    refreshToken: { type: String, required: true },
-    isEmailVerified: { type: Boolean, required: true, defalut: false },
+    refreshToken: { type: String},
+    isEmailVerified: { type: Boolean, required: true, default: false },
     isPhoneVerified: { type: Boolean, required: true, default: false },
     photo: {
       type: {
@@ -100,15 +100,16 @@ function generateRandomPassword(length = 12): string {
 UserSchema.pre<IUser>("save", async function (next) {
   // Check if password is being set for the first time or is modified
   if (!this.password || this.isModified("password")) {
-    console.log("Generating and hashing password...");
+    console.log("Generating or hashing password...");
     if (!this.password) {
       // If no password is provided, generate a random one
       this.password = generateRandomPassword(8);
+      console.log("Generating password")
     }
-
     // Hash the password
     const saltRounds = 10;
     this.password = bcrypt.hashSync(this.password, saltRounds);
+    console.log("hashed password")
   }
   next();
 });
@@ -127,7 +128,7 @@ UserSchema.methods.generateAccessToken = function () {
     },
     process.env.ACCESS_TOKEN_SECRET!,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY!,
+      expiresIn: process.env.ACCESS_TOKEN_SECRET_EXPIRY!,
     }
   );
 };
@@ -139,7 +140,7 @@ UserSchema.methods.generateRefreshToken = function () {
     },
     process.env.REFRESH_TOKEN_SECRET!,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY!,
+      expiresIn: process.env.REFRESH_TOKEN_SECRET_EXPIRY!,
     }
   );
 };
