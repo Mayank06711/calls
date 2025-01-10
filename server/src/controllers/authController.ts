@@ -332,7 +332,7 @@ class Authentication {
   }
 
   public static async verifyOtp(req: Request, res: Response) {
-    const { referenceId, mobNum, otp, src, is_testing } = req.body;
+    const { referenceId, mobNum, otp, src } = req.body;
 
     // Validate required parameters
     if (!referenceId || !mobNum || !otp || !src) {
@@ -413,7 +413,7 @@ class Authentication {
         formattedRecipientNumber
       );
       // Update OTP status in the database
-      if (!is_testing) {
+      if (process.env.NODE_ENV === 'prod') {
         const updateQuery = {
           text: `
           UPDATE otp_storage_${process.env.NODE_ENV}
