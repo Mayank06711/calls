@@ -171,6 +171,7 @@ class AuthServices {
         userId: user._id,
         phoneNumber: user.phoneNumber,
         username: user.username,
+        status:type === 'access' ? "authenticated" : "refreshed"
       };
     } catch (error) {
       return null;
