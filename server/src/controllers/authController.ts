@@ -449,13 +449,6 @@ class Authentication {
           userId: user._id
         };
 
-        // Publish socket authentication message
-        await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
-          userId: user._id,
-          status: "verified",
-          mobNum: formattedRecipientNumber,
-        });
-
         // Handle successful verification (skip OTP validation as user is already verified)
         if (req.body.src == "div") {
           return res
@@ -506,13 +499,6 @@ class Authentication {
         mobNum: formattedRecipientNumber,
         userId: user._id
       };
-
-      // Publish socket authentication message
-      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
-        userId: user._id,
-        status: "verified",
-        mobNum: formattedRecipientNumber,
-      });
 
       // Handle successful verification
       if (req.body.src == "div") {
