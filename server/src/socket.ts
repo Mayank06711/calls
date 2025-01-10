@@ -67,7 +67,7 @@ class SocketManager {
     this.io.on("connection", async (socket: Socket) => {
       console.log("New connection attempt", socket.id);
       // Add this condition for testing
-      if (process.env.NODE_ENV === "dev") {
+      if (process.env.NODE_ENV === "test") {
         console.log("Test connection - skipping authentication");
         await this.handleSocketConnection(socket, {
           userId: "test-user",
