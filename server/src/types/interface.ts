@@ -41,4 +41,5 @@ export interface SocketData {
   socketId: string;
   connectedAt: number;
   lastRefreshedAt: number;
+  status:string
 }
