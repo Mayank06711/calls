@@ -178,7 +178,7 @@ class Authentication {
   }
 
   public static async generateOtp(req: Request, res: Response) {
-    const { mobNum, is_testing } = req.body;
+    const { mobNum } = req.body;
     const formattedRecipientNumber = toE164Format(mobNum);
     if (!formattedRecipientNumber) {
       return res.status(404).json(errorResponse(404, "Invalid Phone Number"));
@@ -268,7 +268,7 @@ class Authentication {
         );
 
         // Successfully sent OTP, log OTP generation
-        if (!is_testing) {
+        if (process.env.NODE_ENV === 'prod') {
           const timestamps = generateTimestamps(false, false, true);
           await Authentication.logOtpGeneration({
             reference_id: referenceId,
@@ -303,7 +303,7 @@ class Authentication {
       } else {
         // Error: smsResponse is of type SendOtpMessageError
         // Log OTP generation with error details
-        if (!is_testing) {
+        if (process.env.NODE_ENV === 'prod') {
           await Authentication.logOtpGeneration({
             reference_id: referenceId,
             unique_id: uuidv4(),
