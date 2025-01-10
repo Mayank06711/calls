@@ -80,12 +80,6 @@ class AuthServices {
       user.refreshToken = tokens.refreshToken;
       await user.save();
 
-      await RedisManager.publishMessage(process.env.REDIS_CHANNEL!, {
-        userId: user._id,
-        status: "refreshed",
-        mobNum: user.phoneNumber,
-      });
-
       if (req.body.src === "div") {
         return res
           .status(200)
@@ -155,8 +149,37 @@ class AuthServices {
     }
   };
 
+  private static async verifyToken(
+    token: string,
+    type: "access" | "refresh"
+  ) {
+    try {
+      const secret =
+        type === "access"
+          ? process.env.ACCESS_TOKEN_SECRET!
+          : process.env.REFRESH_TOKEN_SECRET!;
+
+      const decoded = JWT.verify(token, secret) as JwtPayload;
+      const query =
+        type === "refresh"
+          ? { _id: decoded._id, refreshToken: token, isActive: true }
+          : { _id: decoded._id, isActive: true };
+
+      const user = await UserModel.findOne(query);
+      if (!user) return null;
+      return {
+        userId: user._id,
+        phoneNumber: user.phoneNumber,
+        username: user.username,
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
   static genJWT_Token = AuthServices.generate_JWT_Token;
   static getAccAndRefToken = AuthServices.createAccessAndRefreshToken;
+  static verifyJWT_Token = AuthServices.verifyToken;
 }
 
 export { AuthServices };
