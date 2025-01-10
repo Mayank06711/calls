@@ -92,25 +92,25 @@ class ChatController {
   }
 
   // Get chat history
-  static async getChatHistory(
-    chatId: Types.ObjectId,
-    userId: Types.ObjectId,
-    page: number = 1,
-    limit: number = 50
-  ): Promise<IOldMessage[]> {
-    try {
-      const messages = await OldMsgModel.find({ chatId })
-        .visibleTo(userId)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean();
+  // static async getChatHistory(
+  //   chatId: Types.ObjectId,
+  //   userId: Types.ObjectId,
+  //   page: number = 1,
+  //   limit: number = 50
+  // ): Promise<IOldMessage[]> {
+  //   try {
+  //     const messages = await OldMsgModel.find({ chatId })
+  //       .visibleTo(userId)
+  //       .sort({ createdAt: -1 })
+  //       .skip((page - 1) * limit)
+  //       .limit(limit)
+  //       .lean();
 
-      return messages;
-    } catch (error) {
-      throw new ApiError(500, "Error fetching chat history");
-    }
-  }
+  //     return messages;
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error fetching chat history");
+  //   }
+  // }
 
   // Mark messages as read
   static async markMessagesAsRead(
