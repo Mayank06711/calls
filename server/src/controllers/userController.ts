@@ -1,7 +1,7 @@
 import express, { CookieOptions } from "express";
 import { UserModel } from "../models/userModel";
 import { ApiError } from "../utils/apiError";
-import AsyncHandler from "../utils/AsyncHandler";
+import {AsyncHandler} from "../utils/AsyncHandler";
 import { ObjectId } from "mongoose";
 import { AuthServices } from "../helper/auth";
 class User {
