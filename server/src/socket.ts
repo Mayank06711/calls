@@ -2,6 +2,7 @@ import { Server as SocketServer, Socket } from "socket.io";
 import { AuthServices } from "./helper/auth";
 import { RedisManager } from "./utils/redisClient";
 import { EmitOptions } from "./types/interface";
+import { FileHandler } from "./helper/fileHandler";
 import { SocketUserData } from "./types/interface";
 import { SocketData } from "./types/interface";
 
@@ -379,6 +380,11 @@ class SocketManager {
         console.error("Error handling logout:", error);
       }
     });
+    this.listenToEvent({
+      event: "file:upload",
+      handler: FileHandler.handleFileUpload,
+      socketIds: [socket.id], // Only listen on this specific socket
+    });
   }
 
   // 4. Monitoring & Maintenance (runs periodically)
@@ -681,6 +687,67 @@ class SocketManager {
       return true;
     } catch (error) {
       console.error(`Error emitting event ${event}:`, error);
+      return false;
+    }
+  }
+
+  public async listenToEvent<T>({
+    event,
+    handler,
+    room,
+    socketIds,
+  }: {
+    event: string;
+    handler: (data: T, socket: Socket) => Promise<void> | void;
+    room?: string;
+    socketIds?: string[];
+  }): Promise<boolean> {
+    try {
+      // Get authenticated sockets from Redis
+      const authenticatedSockets = await RedisManager.getAllFromGroup(
+        "socketAuthenticatedUsers"
+      );
+      const connectedSockets = Array.from(this.io.sockets.sockets.values());
+
+      // Filter sockets that are both authenticated and connected
+      let targetSockets = connectedSockets.filter((socket) =>
+        authenticatedSockets.some(
+          (authSocket) => authSocket.socketId === socket.id
+        )
+      );
+
+      // Apply additional filters if provided
+      if (socketIds?.length) {
+        targetSockets = targetSockets.filter((socket) =>
+          socketIds.includes(socket.id)
+        );
+      } else if (room) {
+        targetSockets = targetSockets.filter((socket) =>
+          socket.rooms.has(room)
+        );
+      }
+
+      // Attach event listener to each target socket
+      targetSockets.forEach((socket) => {
+        socket.on(event, async (data: T) => {
+          try {
+            await handler(data, socket);
+          } catch (error) {
+            console.error(`Error handling event ${event}:`, error);
+            socket.emit("error", {
+              event,
+              message: "Error processing event",
+            });
+          }
+        });
+      });
+
+      console.log(
+        `Event listener '${event}' attached to ${targetSockets.length} sockets`
+      );
+      return true;
+    } catch (error) {
+      console.error(`Error setting up event listener for ${event}:`, error);
       return false;
     }
   }
