@@ -36,12 +36,13 @@ export interface SocketUserData {
   status: "verified" | "refreshed";
 }
 export interface SocketData {
+  key: string;
   userId: string;
   mobNum: string;
   socketId: string;
   connectedAt: number;
-  lastRefreshedAt: number;
-  status: string;
+  lastRefreshedAt?: number;
+  status: 'authenticated' | 'refreshed';
 }
 
 export interface CloudinaryUploadOptions {
