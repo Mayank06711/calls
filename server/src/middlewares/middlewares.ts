@@ -8,7 +8,7 @@ import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
 import Admin from "../models/adminModel";
-import AsyncHandler from "../utils/AsyncHandler";
+import {AsyncHandler} from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
 
@@ -33,7 +33,7 @@ class Middleware {
     5
   );
 
-  private static getBase64 = (file: any) =>
+  public static getBase64 = (file: any) =>
     `data:${file[0].mimetype};base64,${file[0].buffer.toString("base64")}`;
   private static async uploadFilesToCloudinary(files: any[] = []) {
     if (!files || files.length === 0) {
@@ -218,6 +218,13 @@ class Middleware {
       });
     }
 
+    if (err.name === "MongoServerError" && (err as any).code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate entry error",
+        error: "A record with this information already exists",
+      });
+    }
     // Handle MongoDB Errors
     if (err.name === "MongoError" || err.name === "MongoServerError") {
       return res.status(500).json({
@@ -245,15 +252,15 @@ class Middleware {
       errors: [] as any[], // This is now a valid assignment
     };
 
-     // Handle ApiError instances
-  if (err instanceof ApiError) {
-    return res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-      data: err.data,
-      errors: err.errors
-    });
-  }
+    // Handle ApiError instances
+    if (err instanceof ApiError) {
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message ||  "Internal Server Error",
+        data: err.data,
+        errors: err.errors,
+      });
+    }
 
     // Default error response
     return res.status(500).json({

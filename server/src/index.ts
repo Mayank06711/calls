@@ -8,14 +8,13 @@ import { createServer, Server as HTTPSServer } from "https"; // Import Server ty
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
-
 import { RedisManager } from "./utils/redisClient";
 import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
 import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
-import { connectDB } from "./db";
+import { connectDB, configureCloudinary } from "./db";
 import cronSchuduler from "./auto/cronJob";
 
 class ServerManager {
@@ -25,6 +24,7 @@ class ServerManager {
   private socketManager!: SocketManager;
   constructor() {
     this.loadEnvironmentVariables();
+    configureCloudinary()
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -78,6 +78,14 @@ class ServerManager {
   private initializeGracefulShutdown() {
     process.on("unhandledRejection", (reason, promise) => {
       console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      // Send the error to our error handling middleware
+      if (reason instanceof Error) {
+        const mockReq = {} as Request;
+        const mockRes = {} as Response;
+        const mockNext = () => {};
+        Middleware.globalErrorHandler(reason, mockReq, mockRes, mockNext);
+      }
     });
 
     process.on("uncaughtException", (error) => {

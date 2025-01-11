@@ -118,7 +118,9 @@ class RedisManager {
     group: string,
     key: string,
     data: T,
-    ttlInSeconds?: number // Optional TTL parameter
+    ttlInSeconds?: number, // Optional TTL parameter
+    addToSet: boolean = false,
+    setttlInSeconds?: number
   ): Promise<void> {
     if (!this.redis) {
       console.error(
@@ -132,20 +134,29 @@ class RedisManager {
 
       // Create individual key for this entry
       const individualKey = `${group}:${key}`;
+      const setKey = `${group}Set`;
+
+      // Use multi to ensure atomic operation
+      const multi = this.redis.multi();
 
       // Store data in individual key
-      await this.redis.set(individualKey, value);
+      multi.set(individualKey, value);
 
       // Add to set for lookup
-      await this.redis.sadd(`${group}Set`, key);
+      if (addToSet) {
+        multi.sadd(setKey, key);
+      }
 
       if (ttlInSeconds) {
-        // Set TTL only for this specific entry
-        await this.redis.expire(individualKey, ttlInSeconds);
-        console.log(
-          `TTL of ${ttlInSeconds} seconds set for key: ${key} in group: ${group}`
-        );
+        // Set TTL for both individual key and set
+        multi.expire(individualKey, ttlInSeconds);
+        console.log(`TTL of ${ttlInSeconds} seconds set for key: ${key}`);
       }
+      if (setttlInSeconds) {
+        multi.expire(setKey, setttlInSeconds);
+        console.log(`TTL SET FOR SET ${setKey}`);
+      }
+      await multi.exec();
       console.log(`Cached data in group ${group} for key: ${key}`);
     } catch (error) {
       console.error(
@@ -183,29 +194,56 @@ class RedisManager {
     }
   }
 
-  public static async getAllFromGroup(group: string): Promise<any[]> {
+  public static async getAllFromGroup(
+    group: string,
+    useSet: boolean = false
+  ): Promise<any[]> {
     if (!this.redis) {
       console.error("Redis is not initialized");
       return [];
     }
 
     try {
-      // Get all keys from the set
-      const keys = await this.redis.smembers(`${group}Set`);
+      let keys: string[];
+      if (useSet) {
+        // Get all keys from the set
+        keys = await this.redis.smembers(`${group}Set`);
+      } else {
+        // Scan for keys matching the pattern if not using set
+        const pattern = `${group}:*`;
+        const stream = this.redis.scanStream({
+          match: pattern,
+          count: 100,
+        });
+        keys = [];
+        for await (const resultKeys of stream) {
+          keys.push(
+            ...(resultKeys as string[]).map((key) =>
+              key.replace(`${group}:`, "")
+            )
+          );
+        }
+      }
 
-      // Get all values and their TTLs
+      // Get all values
       const values = await Promise.all(
         keys.map(async (key) => {
           const individualKey = `${group}:${key}`;
           const data = await this.redis!.get(individualKey);
 
-          // If key doesn't exist (expired), remove from set
           if (!data) {
-            await this.redis!.srem(`${group}Set`, key);
+            // Clean up set if key doesn't exist
+            if (useSet) {
+              await this.redis!.srem(`${group}Set`, key);
+            }
             return null;
           }
 
-          return data ? { ...JSON.parse(data), socketId: key } : null;
+          try {
+            return { ...JSON.parse(data),  key };
+          } catch {
+            return { data,  key };
+          }
         })
       );
 
@@ -219,7 +257,8 @@ class RedisManager {
   // Method to remove data from a hash and set
   public static async removeDataFromGroup(
     group: string,
-    key: string
+    key: string,
+    removeFromSet: boolean = false
   ): Promise<void> {
     if (!this.redis) {
       console.error("Redis is not initialized");
@@ -228,11 +267,15 @@ class RedisManager {
 
     try {
       // Remove individual key
-      await this.redis.del(`${group}:${key}`);
+      const multi = this.redis.multi();
 
-      // Remove from set
-      await this.redis.srem(`${group}Set`, key);
-
+      // Remove individual key
+      multi.del(`${group}:${key}`);
+      // Only remove from set if requested
+      if (removeFromSet) {
+        multi.srem(`${group}Set`, key);
+      }
+      await multi.exec();
       console.log(`Removed data from group ${group} for key: ${key}`);
     } catch (error) {
       console.error(

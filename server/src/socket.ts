@@ -1,7 +1,12 @@
 import { Server as SocketServer, Socket } from "socket.io";
 import { AuthServices } from "./helper/auth";
 import { RedisManager } from "./utils/redisClient";
-import { EmitOptions } from "./types/interface";
+import {
+  EmitOptions,
+  FileUploadData,
+  FileUploadResponse,
+} from "./types/interface";
+import { FileHandler } from "./helper/fileHandler";
 import { SocketUserData } from "./types/interface";
 import { SocketData } from "./types/interface";
 
@@ -39,6 +44,35 @@ class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
+  private isMonitoring: boolean = false;
+  private readonly SOCKET_CONSTANTS = {
+    REDIS: {
+      GROUP: "socketAuthenticatedUsers",
+      SET_OPERATIONS: {
+        ADD_TO_SET: true,
+        REMOVE_FROM_SET: true,
+        USE_SET: true,
+      },
+      TTL: {
+        SOCKET_DATA: 25 * 60 * 60, // 25 hours in seconds
+        SET_DATA: 25 * 60 * 60, // 25 hours in seconds
+      },
+    },
+    MAX_CONNECTIONS: {
+      PER_USER: 5,
+    },
+    AUTH: {
+      TIMEOUT: 30000, // 30 seconds
+      MAX_TOKEN_AGE: {
+        REFRESHED: 360, // 15 days in hours
+        AUTHENTICATED: 24, // 1 day in hours
+      },
+      TOKEN_TYPE: {
+        REFRESH: "refresh",
+        ACCESS: "access",
+      },
+    },
+  } as const;
 
   /**
    * Private constructor ensures singleton pattern
@@ -47,7 +81,7 @@ class SocketManager {
   private constructor(io: SocketServer) {
     this.io = io;
     this.initializeSocket();
-    this.monitorConnections();
+    this.startMonitoring();
   }
 
   public static getInstance(io?: SocketServer): SocketManager {
@@ -58,6 +92,13 @@ class SocketManager {
       SocketManager.instance = new SocketManager(io);
     }
     return SocketManager.instance;
+  }
+
+  private async startMonitoring(): Promise<void> {
+    if (!this.isMonitoring) {
+      this.isMonitoring = true;
+      await this.monitorConnections();
+    }
   }
 
   private initializeSocket(): void {
@@ -78,6 +119,8 @@ class SocketManager {
 
         await this.handleSocketConnection(socket, testUserData);
         this.setupEventListeners(socket, testUserData);
+        socket.data.authenticated = true; // Add this line
+        socket.data.userId = testUserData.userId; // Add this line
 
         // Add authentication event listener for test mode
         socket.on("authenticate", async (authData: any, callback) => {
@@ -98,11 +141,10 @@ class SocketManager {
 
       // Set a timeout for authentication
       const authTimeout = setTimeout(() => {
-        if (!socket.data.authenticated) {
-          socket.emit("auth_timeout", "Authentication timeout");
-          socket.disconnect(true);
+        if (!socket.data?.authenticated) {
+          this.handleConnectionError(socket, "Authentication timeout");
         }
-      }, 30000); // 30 seconds to authenticate
+      }, this.SOCKET_CONSTANTS.AUTH.TIMEOUT); // 30 seconds to authenticate
 
       let lockId: string | null = null;
       let userData: any = null;
@@ -200,7 +242,7 @@ class SocketManager {
         // First try with access token
         userData = await AuthServices.verifyJWT_Token(
           authData.accessToken,
-          "access"
+          this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.ACCESS
         );
         if (userData) {
           return userData;
@@ -211,7 +253,7 @@ class SocketManager {
         // If access token fails or isn't present, try refresh token
         userData = await AuthServices.verifyJWT_Token(
           authData.refreshToken,
-          "refresh"
+          this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.REFRESH
         );
         if (userData) {
           return userData;
@@ -226,7 +268,7 @@ class SocketManager {
 
   private async handleSocketConnection(socket: Socket, userData: any) {
     const isExisting = await RedisManager.isKeyInGroup(
-      "socketAuthenticatedUsers",
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
       socket.id
     );
     console.log(isExisting, "IsExisting");
@@ -243,7 +285,7 @@ class SocketManager {
 
   private async handleNewSocket(socket: Socket, userData: any) {
     await RedisManager.cacheDataInGroup(
-      "socketAuthenticatedUsers",
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
       socket.id,
       {
         userId: userData.userId,
@@ -253,19 +295,21 @@ class SocketManager {
         lastRefreshedAt: Date.now(),
         status: userData.status,
       },
-      25 * 60 * 60
+      this.SOCKET_CONSTANTS.REDIS.TTL.SOCKET_DATA,
+      this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.ADD_TO_SET,
+      this.SOCKET_CONSTANTS.REDIS.TTL.SET_DATA
     );
     console.log("Stored new socket data", socket.id);
   }
 
   private async handleRefreshedSocket(socket: Socket, userData: any) {
     const socketData = (await RedisManager.getDataFromGroup(
-      "socketAuthenticatedUsers",
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
       socket.id
     )) as SocketData;
 
     await RedisManager.cacheDataInGroup(
-      "socketAuthenticatedUsers",
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
       socket.id,
       {
         ...socketData,
@@ -274,53 +318,45 @@ class SocketManager {
         userId: userData.userId, // Ensure we update with latest data
         mobNum: userData.mobNum,
       },
-      25 * 60 * 60
+      this.SOCKET_CONSTANTS.REDIS.TTL.SOCKET_DATA,
+      this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.ADD_TO_SET,
+      this.SOCKET_CONSTANTS.REDIS.TTL.SET_DATA
     );
     console.log("Updated existing socket data", socket.id);
   }
 
   private async handleReplacementSocket(socket: Socket, userData: any) {
     await RedisManager.removeDataFromGroup(
-      "socketAuthenticatedUsers",
-      socket.id
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
+      socket.id,
+      this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.REMOVE_FROM_SET
     );
     await this.handleNewSocket(socket, userData);
     console.log("Replaced existing socket data", socket.id);
   }
 
-  private async handleExistingConnections(userId: string) {
-    const existingSockets = await RedisManager.getAllFromGroup(
-      "socketAuthenticatedUsers"
-    );
-    const userSockets = existingSockets.filter(
-      (socket) => socket.userId === userId
-    );
+  private async handleExistingConnections(userId: string): Promise<void> {
+    const sockets = await this.getAuthenticatedSockets();
+    const userSockets = sockets.filter((socket) => socket.userId === userId);
 
-    // If user has too many connections, disconnect oldest ones
-    const MAX_CONNECTIONS_PER_USER = 5;
-    if (userSockets.length >= MAX_CONNECTIONS_PER_USER) {
-      // Sort by connection time and keep only the newest ones
+    if (userSockets.length >= this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
       userSockets.sort((a, b) => b.connectedAt - a.connectedAt);
 
       // Disconnect oldest connections
-      for (let i = MAX_CONNECTIONS_PER_USER - 1; i < userSockets.length; i++) {
-        const socket = this.io.sockets.sockets.get(userSockets[i].socketId);
-        if (socket) {
-          socket.emit("forced_disconnect", "Too many connections");
-          socket.disconnect(true);
-        }
-        await RedisManager.removeDataFromGroup(
-          "socketAuthenticatedUsers",
-          userSockets[i].socketId
-        );
-      }
+      const socketsToRemove = userSockets.slice(
+        this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER - 1
+      );
+      await Promise.all(
+        socketsToRemove.map((socketData) =>
+          this.removeSocket(socketData.key, "Too many connections")
+        )
+      );
     }
   }
 
   private handleConnectionError(socket: Socket, error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    socket.emit("connection_error", errorMessage);
-    socket.disconnect(true);
+    this.removeSocket(socket.id, errorMessage, "connection_error", true);
   }
 
   private async cleanupLock(lockId: string | null, userData: any) {
@@ -336,15 +372,8 @@ class SocketManager {
   private setupEventListeners(socket: Socket, userData: any): void {
     socket.on("total:sockets", async (callback) => {
       try {
-        const sockets = await RedisManager.getAllFromGroup(
-          "socketAuthenticatedUsers"
-        );
-        const connectedSockets = await this.io.sockets.sockets.keys();
-        const connectedSocketsSet = new Set(connectedSockets);
-        const activeSocketCount = sockets.filter((socket) =>
-          connectedSocketsSet.has(socket.socketId)
-        ).length;
-        callback({ total: activeSocketCount });
+        const authenticatedSockets = await this.getAuthenticatedSockets();
+        callback({ total: authenticatedSockets.length });
       } catch (error) {
         console.error("Error getting total sockets:", error);
         callback({ total: 0 });
@@ -356,9 +385,11 @@ class SocketManager {
         console.log(
           `User disconnected - Socket: ${socket.id}, User: ${userData.userId}`
         );
-        await RedisManager.removeDataFromGroup(
-          "socketAuthenticatedUsers",
-          socket.id
+        await this.removeSocket(
+          socket.id,
+          "User disconnected",
+          "disconnect",
+          false // Don't emit on disconnect as it's already disconnected
         );
       } catch (error) {
         console.error("Error handling disconnect:", error);
@@ -370,48 +401,158 @@ class SocketManager {
         console.log(
           `User logged out - Socket: ${socket.id}, User: ${userData.userId}`
         );
-        await RedisManager.removeDataFromGroup(
-          "socketAuthenticatedUsers",
-          socket.id
+        await this.removeSocket(
+          socket.id,
+          "User logged out",
+          "logout",
+          true // Emit before disconnecting
         );
-        socket.disconnect(true);
       } catch (error) {
         console.error("Error handling logout:", error);
       }
     });
+    this.listenToEvent({
+      event: "file:upload",
+      handler: async (data: unknown, socket: Socket) => {
+        try {
+          await FileHandler.handleFileUpload(
+            {
+              data: data as FileUploadData,
+              callback: (response: FileUploadResponse) => {
+                socket.emit("file:upload:response", response);
+              },
+            },
+            socket
+          );
+        } catch (error) {
+          console.error("Error handling file upload:", error);
+          socket.emit("file:upload:error", {
+            status: "error",
+            message: "File upload failed",
+            metadata: {
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        }
+      },
+      socketIds: [socket.id],
+    });
   }
 
   // 4. Monitoring & Maintenance (runs periodically)
+  private async getAuthenticatedSockets(): Promise<SocketData[]> {
+    try {
+      const sockets = await RedisManager.getAllFromGroup(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.USE_SET
+      );
+      const connectedSockets = await this.io.sockets.sockets.keys();
+      const connectedSocketsSet = new Set(connectedSockets);
+
+      // Filter and validate socket data
+      return sockets
+        .filter((socket): socket is SocketData => {
+          // Type guard to ensure socket data is valid
+          if (!socket || typeof socket !== "object") {
+            console.warn("Invalid socket data:", socket);
+            return false;
+          }
+
+          if (!socket.key || !socket.userId || !socket.connectedAt) {
+            console.warn("Missing required socket properties:", socket);
+            return false;
+          }
+
+          // Check if socket is still connected
+          if (!connectedSocketsSet.has(socket.key)) {
+            return false;
+          }
+
+          return true;
+        })
+        .map((socket) => ({
+          ...socket,
+          // Ensure all required properties have proper types
+          connectedAt: Number(socket.connectedAt),
+          lastRefreshedAt: socket.lastRefreshedAt
+            ? Number(socket.lastRefreshedAt)
+            : undefined,
+          status: socket.status || "authenticated",
+        }));
+    } catch (error) {
+      console.error("Error getting authenticated sockets:", error);
+      if (process.env.NODE_ENV === "dev") {
+        console.debug("Error details:", {
+          name: error instanceof Error ? error.name : "Unknown",
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+      return [];
+    }
+  }
+
+  private async removeSocket(
+    socketId: string,
+    reason?: string,
+    eventName: string = "forced_disconnect",
+    emit: boolean = false
+  ): Promise<void> {
+    try {
+      const socket = this.io.sockets.sockets.get(socketId);
+      if (socket) {
+        if (reason && emit) {
+          socket.emit(eventName, reason);
+        }
+        socket.disconnect(true);
+      }
+      await RedisManager.removeDataFromGroup(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socketId,
+        this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.REMOVE_FROM_SET
+      );
+    } catch (error) {
+      console.error(`Error removing socket ${socketId}:`, error);
+    }
+  }
+
   private async monitorConnections(): Promise<void> {
+    // Start monitoring immediately instead of waiting for first interval
+    await this.runMonitoringCycle();
+
+    // Then set up the interval
     setInterval(async () => {
-      try {
-        const metrics = await this.calculateMetrics();
+      await this.runMonitoringCycle();
+    }, 10 * 60 * 1000); // 10 minutes
+  }
+
+  private async runMonitoringCycle(): Promise<void> {
+    try {
+      const metrics = await this.calculateMetrics();
+      if (metrics.totalStoredSockets > 0) {
         this.logMetrics(metrics);
         await this.cleanupZombieSockets(metrics);
-        this.checkUserConnections(metrics);
-        const sockets = await RedisManager.getAllFromGroup(
-          "socketAuthenticatedUsers"
-        );
-        for (const socketData of sockets) {
-          const socket = this.io.sockets.sockets.get(socketData.socketId);
-          if (socket) {
-            await this.checkTokenExpiration(socket);
-          }
-        }
-      } catch (error) {
-        console.error("Error monitoring connections:", error);
+        await this.checkUserConnections(metrics);
       }
-    }, 10 * 60 * 1000);
+
+      const sockets = await this.getAuthenticatedSockets();
+      for (const socketData of sockets) {
+        const socket = this.io.sockets.sockets.get(socketData.key);
+        if (socket) {
+          await this.checkTokenExpiration(socket);
+        }
+      }
+    } catch (error) {
+      console.error("Error in monitoring cycle:", error);
+    }
   }
 
   private async calculateMetrics() {
-    const sockets = await RedisManager.getAllFromGroup(
-      "socketAuthenticatedUsers"
-    );
+    const sockets = await this.getAuthenticatedSockets();
     const connectedSockets = await this.io.sockets.sockets.keys();
     const connectedSocketsSet = new Set(connectedSockets);
     const activeSockets = sockets.filter((socket) =>
-      connectedSocketsSet.has(socket.socketId)
+      connectedSocketsSet.has(socket.key)
     );
 
     const metrics = {
@@ -447,7 +588,7 @@ class SocketManager {
       };
 
       userMetrics.totalCount++;
-      if (connectedSocketsSet.has(socket.socketId)) {
+      if (connectedSocketsSet.has(socket.key)) {
         userMetrics.activeCount++;
       }
 
@@ -499,32 +640,24 @@ class SocketManager {
   private async cleanupZombieSockets(metrics: any) {
     if (metrics.zombieSockets > 0) {
       console.log(`Cleaning up ${metrics.zombieSockets} zombie sockets...`);
-      const sockets = await RedisManager.getAllFromGroup(
-        "socketAuthenticatedUsers"
-      );
+      const sockets = await this.getAuthenticatedSockets();
       const connectedSockets = await this.io.sockets.sockets.keys();
       const connectedSocketsSet = new Set(connectedSockets);
 
-      for (const socket of sockets) {
-        if (!connectedSocketsSet.has(socket.socketId)) {
-          await RedisManager.removeDataFromGroup(
-            "socketAuthenticatedUsers",
-            socket.socketId
-          ).catch((error) => {
-            console.error(
-              `Error cleaning up zombie socket ${socket.socketId}:`,
-              error
-            );
-          });
-        }
-      }
+      const zombieSockets = sockets.filter(
+        (socket) => !connectedSocketsSet.has(socket.key)
+      );
+      await Promise.all(
+        zombieSockets.map((socket) =>
+          this.removeSocket(socket.key, "Zombie socket cleanup")
+        )
+      );
     }
   }
 
   private checkUserConnections(metrics: any) {
-    const MAX_CONNECTIONS_PER_USER = 5;
     for (const [userId, data] of metrics.usersMap) {
-      if (data.activeCount > MAX_CONNECTIONS_PER_USER) {
+      if (data.activeCount > this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
         console.warn(
           `User ${userId} has ${data.activeCount} active connections!`
         );
@@ -534,7 +667,7 @@ class SocketManager {
 
   private async checkTokenExpiration(socket: Socket) {
     const socketData = (await RedisManager.getDataFromGroup(
-      "socketAuthenticatedUsers",
+      this.SOCKET_CONSTANTS.REDIS.GROUP,
       socket.id
     )) as SocketData;
 
@@ -546,7 +679,10 @@ class SocketManager {
 
     // If more than 24 hours since last activity for authenticated status
     // or more than 15 days for refreshed status
-    const maxHours = socketData.status === "refreshed" ? 360 : 24; // 15 days or 1 day
+    const maxHours =
+      socketData.status === "refreshed"
+        ? this.SOCKET_CONSTANTS.AUTH.MAX_TOKEN_AGE.REFRESHED
+        : this.SOCKET_CONSTANTS.AUTH.MAX_TOKEN_AGE.AUTHENTICATED; // 15 days or 1 day
 
     if (hoursSinceLastActivity > maxHours) {
       await this.handleConnectionError(socket, "Token expired");
@@ -563,16 +699,11 @@ class SocketManager {
 
   public async getSocketStatus() {
     try {
-      const sockets = await RedisManager.getAllFromGroup(
-        "socketAuthenticatedUsers"
-      );
-      const connectedSockets = await this.io.sockets.sockets.keys();
-      const connectedSocketsSet = new Set(connectedSockets);
+      const sockets = await this.getAuthenticatedSockets();
 
       return sockets
-        .filter((socket) => connectedSocketsSet.has(socket.socketId))
         .map((socket) => ({
-          socketId: socket.socketId,
+          socketId: socket.key,
           userId: socket.userId,
           mobNum: socket.mobNum,
           connectedAt: new Date(socket.connectedAt).toISOString(),
@@ -581,12 +712,16 @@ class SocketManager {
             : undefined,
           hoursRemaining: Number(
             (
-              (25 * 60 * 60 * 1000 -
+              (this.SOCKET_CONSTANTS.AUTH.MAX_TOKEN_AGE.AUTHENTICATED *
+                60 *
+                60 *
+                1000 -
                 (Date.now() - (socket.lastRefreshedAt || socket.connectedAt))) /
               (60 * 60 * 1000)
             ).toFixed(2)
           ),
-          isActive: connectedSocketsSet.has(socket.socketId),
+          status: socket.status,
+          isActive: true, // Since getAuthenticatedSockets only returns active sockets
           lastActivityAt: socket.lastRefreshedAt || socket.connectedAt,
         }))
         .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
@@ -598,18 +733,8 @@ class SocketManager {
 
   public async getActiveUserCount(): Promise<number> {
     try {
-      const sockets = await RedisManager.getAllFromGroup(
-        "socketAuthenticatedUsers"
-      );
-      const connectedSockets = await this.io.sockets.sockets.keys();
-      const connectedSocketsSet = new Set(connectedSockets);
-
-      const activeUsers = new Set(
-        sockets
-          .filter((socket) => connectedSocketsSet.has(socket.socketId))
-          .map((socket) => socket.userId)
-      );
-
+      const activeSockets = await this.getAuthenticatedSockets();
+      const activeUsers = new Set(activeSockets.map((socket) => socket.userId));
       return activeUsers.size;
     } catch (error) {
       console.error("Error getting active user count:", error);
@@ -619,22 +744,14 @@ class SocketManager {
 
   public async disconnectUser(userId: string): Promise<number> {
     try {
-      const sockets = await RedisManager.getAllFromGroup(
-        "socketAuthenticatedUsers"
-      );
+      const sockets = await this.getAuthenticatedSockets();
       const userSockets = sockets.filter((socket) => socket.userId === userId);
 
-      for (const socketData of userSockets) {
-        const socket = this.io.sockets.sockets.get(socketData.socketId);
-        if (socket) {
-          socket.emit("forced_disconnect", "User disconnected by system");
-          socket.disconnect(true);
-        }
-        await RedisManager.removeDataFromGroup(
-          "socketAuthenticatedUsers",
-          socketData.socketId
-        );
-      }
+      await Promise.all(
+        userSockets.map((socketData) =>
+          this.removeSocket(socketData.key, "User disconnected by system")
+        )
+      );
 
       return userSockets.length;
     } catch (error) {
@@ -659,16 +776,24 @@ class SocketManager {
         timestamp: new Date().toISOString(),
       };
 
-      if (targetSocketIds && targetSocketIds.length > 0) {
-        targetSocketIds.forEach((socketId) => {
-          const socket = this.io.sockets.sockets.get(socketId);
-          if (socket) {
-            socket.emit(event, payload);
-          }
-        });
+      if (targetSocketIds?.length) {
+        const authenticatedSockets = await this.getAuthenticatedSockets();
+        const validSocketIds = new Set(authenticatedSockets.map((s) => s.key));
+
+        const filteredSocketIds = targetSocketIds.filter((id) =>
+          validSocketIds.has(id)
+        );
+        await Promise.all(
+          filteredSocketIds.map((socketId) => {
+            const socket = this.io.sockets.sockets.get(socketId);
+            if (socket) {
+              socket.emit(event, payload);
+            }
+          })
+        );
         console.log(
           `Event ${event} emitted to specific sockets:`,
-          targetSocketIds
+          filteredSocketIds
         );
       } else if (room) {
         this.io.to(room).emit(event, payload);
@@ -685,27 +810,65 @@ class SocketManager {
     }
   }
 
+  public async listenToEvent<T>({
+    event,
+    handler,
+    room,
+    socketIds,
+  }: {
+    event: string;
+    handler: (data: T, socket: Socket) => Promise<void> | void;
+    room?: string;
+    socketIds?: string[];
+  }): Promise<boolean> {
+    try {
+      const authenticatedSockets = await this.getAuthenticatedSockets();
+      let targetSockets = Array.from(this.io.sockets.sockets.values()).filter(
+        (socket) =>
+          authenticatedSockets.some(
+            (authSocket) => authSocket.key === socket.id
+          )
+      );
+
+      if (socketIds?.length) {
+        targetSockets = targetSockets.filter((socket) =>
+          socketIds.includes(socket.id)
+        );
+      } else if (room) {
+        targetSockets = targetSockets.filter((socket) =>
+          socket.rooms.has(room)
+        );
+      }
+
+      targetSockets.forEach((socket) => {
+        socket.on(event, async (data: T) => {
+          try {
+            await handler(data, socket);
+          } catch (error) {
+            console.error(`Error handling event ${event}:`, error);
+            socket.emit("error", { event, message: "Error processing event" });
+          }
+        });
+      });
+
+      console.log(
+        `Event listener '${event}' attached to ${targetSockets.length} sockets`
+      );
+      return true;
+    } catch (error) {
+      console.error(`Error setting up event listener for ${event}:`, error);
+      return false;
+    }
+  }
+
   public async cleanup(): Promise<void> {
     try {
-      const sockets = await RedisManager.getAllFromGroup(
-        "socketAuthenticatedUsers"
-      );
-
-      // Parallel processing for faster cleanup
+      const sockets = await this.getAuthenticatedSockets();
       await Promise.all(
-        sockets.map(async (socketData) => {
-          const socket = this.io.sockets.sockets.get(socketData.socketId);
-          if (socket) {
-            socket.emit("server_shutdown", "Server is shutting down");
-            socket.disconnect(true);
-          }
-          return RedisManager.removeDataFromGroup(
-            "socketAuthenticatedUsers",
-            socketData.socketId
-          );
-        })
+        sockets.map((socketData) =>
+          this.removeSocket(socketData.key, "Server is shutting down")
+        )
       );
-
       this.io.disconnectSockets(true);
       console.log("Socket cleanup completed");
     } catch (error) {

@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
-
+import * as fs from "fs";
+import * as path from "path";
 const SERVER_URL = "https://localhost:5005";
 
 interface TestUser {
@@ -134,6 +135,55 @@ class SocketTester {
     });
   }
 
+  async uploadLocalImageToCloudinary(imagePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Read the file from assets folder
+        const fullPath = path.join(__dirname, "assets", imagePath);
+        const fileBuffer = fs.readFileSync(fullPath);
+        const fileStats = fs.statSync(fullPath);
+        // Get file extension and map to MIME type
+        const extension = path.extname(imagePath).toLowerCase().slice(1);
+        const mimeTypes: { [key: string]: string } = {
+          png: "image/png",
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          gif: "image/gif",
+          webp: "image/webp",
+        };
+        const fileType = mimeTypes[extension] || "application/octet-stream";
+
+        // Prepare file data
+        const fileData = {
+          file: fileBuffer,
+          fileName: path.basename(imagePath),
+          fileType,
+          size: fileStats.size,
+          metadata: {
+            uploadType: "cloudinary",
+            folder: "test-uploads", // You can customize the Cloudinary folder
+          },
+        };
+
+        // Listen for success response
+        this.socket.once("file:upload:response", (response) => {
+          console.log("Cloudinary upload response:", response);
+          resolve();
+        });
+        // Listen for error
+        this.socket.once("file:upload:error", (error) => {
+          console.error("Cloudinary upload error:", error);
+          reject(error);
+        });
+
+        // Emit file upload event
+        this.socket.emit("file:upload", fileData);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   public getSocketId(): string {
     return this.socket.id!;
   }
@@ -174,7 +224,7 @@ async function runTests() {
       throw new Error("Single user authentication failed");
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
     // Test 2: Multiple connections for same user (should handle MAX_CONNECTIONS_PER_USER)
     console.log("\n🧪 Test 2: Multiple connections for same user");
     const sameUserClients: SocketTester[] = [];
@@ -216,6 +266,15 @@ async function runTests() {
           return client;
         })
     );
+
+    // Test 5: File Upload
+    console.log("\n🧪 Test 6: Cloudinary Upload");
+    try {
+      await singleUser.uploadLocalImageToCloudinary("image.png");
+      console.log("Cloudinary upload test passed");
+    } catch (error) {
+      console.error("Cloudinary upload test failed:", error);
+    }
 
     // Attempt to authenticate all clients simultaneously
     const lockResults = await Promise.all(
