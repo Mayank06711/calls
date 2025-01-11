@@ -1,21 +1,13 @@
 import { Socket } from "socket.io";
+import { Middleware } from "../middlewares/middlewares";
 import {
   FileUploadData,
   FileUploadResponse,
   CloudinaryUploadOptions,
 } from "../types/interface";
-import { v2 as cloudinary } from "cloudinary";
+import { getCloudinary } from "../db";
 
 class FileHandler {
-  static {
-    // Configure cloudinary
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET_KEY,
-    });
-  }
-
   private static readonly MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
   private static readonly ALLOWED_TYPES = [
     "image/jpeg",
@@ -35,24 +27,39 @@ class FileHandler {
         folder,
         resource_type: "auto",
         eager: [
-          { width: 800, quality: "auto" }, // Full size
-          { width: 400, quality: "auto" }, // Thumbnail
+          { width: 800, crop: "scale", quality: "auto" },
+          { width: 400, crop: "scale", quality: "auto" },
         ],
         eager_async: true,
-        format: "auto",
-        quality: "auto",
+        quality: "auto:good",
       };
 
-      // If it's a buffer, we need to convert it to base64
+      // Convert file to base64
       if (isBuffer && Buffer.isBuffer(file)) {
-        uploadData.file = `data:image/jpeg;base64,${file.toString("base64")}`;
+        // If it's a buffer with mimetype info
+        if (Array.isArray(file) && file[0]?.mimetype) {
+          uploadData.file = Middleware.getBase64(file);
+        } else {
+          // Fallback for plain buffer
+          uploadData.file = `data:image/jpeg;base64,${file.toString("base64")}`;
+        }
+      } else if (typeof file === "string") {
+        // If it's already a base64 string, use it directly
+        if (file.startsWith("data:")) {
+          uploadData.file = file;
+        } else {
+          // If it's a string but not base64, assume it's base64 without prefix
+          uploadData.file = `data:${
+            uploadPreset || "image/png"
+          };base64,${file}`;
+        }
       } else {
-        uploadData.file = file;
+        throw new Error("Invalid file format");
       }
 
       // Add public_id if filename is provided
       if (fileName) {
-        uploadData.public_id = `${folder}/${fileName.split(".")[0]}`;
+        uploadData.public_id = fileName.split(".")[0];
       }
 
       // Add upload preset if provided
@@ -60,7 +67,7 @@ class FileHandler {
         uploadData.upload_preset = uploadPreset;
       }
 
-      const result = await cloudinary.uploader.upload(
+      const result = await getCloudinary().uploader.upload(
         uploadData.file,
         uploadData
       );
@@ -115,6 +122,7 @@ class FileHandler {
       }
 
       // Validate file type
+      console.log(data)
       if (!this.ALLOWED_TYPES.includes(data.fileType)) {
         return callback({
           status: "error",
