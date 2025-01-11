@@ -33,7 +33,7 @@ export type EmitOptions = {
 export interface SocketUserData {
   userId: string;
   mobNum: string;
-  status: 'verified' | 'refreshed';
+  status: "verified" | "refreshed";
 }
 export interface SocketData {
   userId: string;
@@ -41,5 +41,87 @@ export interface SocketData {
   socketId: string;
   connectedAt: number;
   lastRefreshedAt: number;
-  status:string
+  status: string;
+}
+
+export interface CloudinaryUploadOptions {
+  folder: string;
+  file: string | Buffer;
+  isBuffer?: boolean;
+  fileName?: string;
+  uploadPreset?: string;
+}
+
+export interface FileUploadData {
+  file: string; // base64 string
+  fileName: string;
+  fileType: string;
+  size: number;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    chatId?: string;
+    messageId?: string;
+  };
+}
+
+export interface FileUploadResponse {
+  status: "success" | "error";
+  message: string;
+  fileUrl?: string;
+  publicId?: string;
+  thumbnailUrl?: string;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    size?: number;     // Made optional
+    type?: string;     // Made optional
+    error?: string;
+  };
+}
+
+export interface ChatMessage {
+  messageId: string;
+  senderId: string;
+  receiverId: string;
+  messageType: "text" | "image" | "file";
+  content: string;
+  fileMetadata?: {
+    fileUrl?: string;
+    fileName: string;
+    fileType: string;
+    size: number;
+    width?: number;
+    height?: number;
+  };
+  timestamp: number;
+  status: "sent" | "delivered" | "read";
+}
+
+export interface SocketEventMap {
+  "chat:message": {
+    content: string;
+    timestamp: number;
+    userId: string;
+  };
+  "file:upload": {
+    data: FileUploadData;
+    callback: (response: FileUploadResponse) => void;
+  };
+  "chat:file": {
+    data: FileUploadData & {
+      receiverId: string;
+      messageId: string;
+    };
+    callback: (response: FileUploadResponse) => void;
+  };
+  "chat:file:received": {
+    message: ChatMessage;
+  };
+  "user:typing": {
+    userId: string;
+    isTyping: boolean;
+  };
 }
