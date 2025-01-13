@@ -202,10 +202,26 @@ async function runTests() {
   });
 
   try {
+    console.log("\n🧪 Test 1.5: Authentication Timeout Test");
+    const timeoutUser = new SocketTester(createTestUser(50));
+    await timeoutUser.waitForConnect();
+
+    // Don't authenticate immediately - wait for timeout
+    console.log(
+      "Waiting for authentication timeout (should take 30 seconds)..."
+    );
+    await new Promise((resolve) => setTimeout(resolve, 35000)); // Wait 35 seconds to ensure timeout occurs
+
+    // Try to authenticate after timeout
+    const timeoutAuthResult = await timeoutUser.authenticate();
+    console.log("Authentication after timeout result:", timeoutAuthResult);
+
+    if (timeoutAuthResult) {
+      throw new Error("Authentication should have failed after timeout");
+    }
     // Test 1: Single user connection with timeout
     console.log("\n🧪 Test 1: Single user connection");
     const singleUser = new SocketTester(createTestUser(1));
-
     // Wait for connection with timeout
     const connectionTimeout = setTimeout(() => {
       throw new Error("Connection timeout for single user test");
@@ -217,6 +233,10 @@ async function runTests() {
     if (!singleUser.isConnected()) {
       throw new Error("Failed to connect single user");
     }
+
+    // Add a delay of 1 minute before proceeding
+    await new Promise((resolve) => setTimeout(resolve, 60000));
+
     const singleUserAuth = await singleUser.authenticate();
     console.log("Single user authentication result:", singleUserAuth);
 
