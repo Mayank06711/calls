@@ -3,55 +3,104 @@ class RedisManager {
   private static redis: Redis | null = null; // if not made static then we can not use this.redis inside other static methods because this inside a static method refers to the class itself, not to an instance of the class which is case when redis is not declared static.
   private static subscriber: Redis | null = null; // Separate instance for subscribing
   private static readonly LOCK_PREFIX = "lock:";
-  // Method to initialize Redis connection
-  public static initRedisConnection() {
-    console.log("Redis host", process.env.REDIS_HOST);
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST!,
-      port: +process.env.REDIS_PORT!,
-      connectTimeout: 10000, // 10 seconds timeout
-    });
+  private static readonly DEFAULT_CHANNELS = ["__keyevent@0__:expired"];
+  private static subscriberHandlers: Map<
+    string,
+    ((channel: string, message: string) => void)[]
+  > = new Map();
+  private static activeChannels: Set<string> = new Set();
 
-    // Separate Redis instance for subscriber
-    this.subscriber = new Redis({
-      host: process.env.REDIS_HOST!,
-      port: +process.env.REDIS_PORT!,
-      connectTimeout: 10000, // 10 seconds timeout
-    });
+  public static async initRedisConnection(additionalChannels: string[] = []) {
+    // Initialize main Redis client
+    try {
+      if (this.redis) {
+        console.log("Redis connection Already Exist");
+        return;
+      }
+      this.redis = new Redis({
+        host: process.env.REDIS_HOST!,
+        port: +process.env.REDIS_PORT!,
+        connectTimeout: 10000,
+        retryStrategy(times) {
+          const delay = Math.min(times * 200, 2000);
+          // Stop retrying after 10 attempts
+          if (times > 10) {
+            return null; // returning null stops retry attempts
+          }
+          return delay;
+        },
+      });
 
-    this.redis.on("connect", () => {
-      console.log("Connected to Redis server successfully.");
-    });
+      // Wait for main Redis to be ready
+      await new Promise<void>((resolve, reject) => {
+        this.redis!.once("ready", resolve);
+        this.redis!.once("error", reject);
+      });
 
-    this.redis.on("error", (error) => {
-      console.error("Error connecting to Redis server:", error);
-    });
+      // Initialize subscriber client
+      this.subscriber = new Redis({
+        host: process.env.REDIS_HOST!,
+        port: +process.env.REDIS_PORT!,
+        connectTimeout: 10000,
+        retryStrategy(times) {
+          const delay = Math.min(times * 200, 2000);
 
-    this.redis.on("ready", () => {
-      console.log("Redis server is ready to accept commands.");
-    });
+          // Stop retrying after 10 attempts
+          if (times > 10) {
+            return null; // returning null stops retry attempts
+          }
 
-    this.redis.on("end", () => {
-      console.log("Connection to Redis server has been closed.");
-    });
+          return delay;
+        },
+      });
 
-    this.redis.on("reconnecting", () => {
-      console.log("Attempting to reconnect to Redis server...");
-    });
+      // Set up message handler before subscribing
+      this.subscriber!.on("message", (channel, message) => {
+        const handlers = this.subscriberHandlers.get(channel) || [];
+        handlers.forEach((handler) => {
+          try {
+            console.log(message, channel);
+            handler(channel, message);
+          } catch (error) {
+            console.error(`Handler error for channel ${channel}:`, error);
+          }
+        });
+      });
 
-    console.log("Redis connection initiated.");
+      // Handle reconnection
+      this.subscriber!.on("end", () => {
+        console.log("Subscriber connection ended, will auto-reconnect...");
+      });
 
-    this.subscriber.on("connect", () => {
-      console.log("Subscriber Redis connected successfully.");
-    });
+      this.subscriber!.on("ready", async () => {
+        console.log("Subscriber reconnected, resubscribing to channels...");
+        // Resubscribe to all active channels
+        if (this.activeChannels.size > 0) {
+          console.log(this.activeChannels)
+          await this.subscriber!.subscribe(...Array.from(this.activeChannels));
+        }
+      });
 
-    this.subscriber.on("end", () => {
-      console.log("Connection to Redis subscriber server has been closed.");
-    });
+      // Wait for subscriber to be ready
+      await new Promise<void>((resolve, reject) => {
+        this.subscriber!.once("ready", resolve);
+        this.subscriber!.once("error", reject);
+      });
 
-    this.subscriber.on("error", (error) => {
-      console.error("Subscriber Redis connection error:", error);
-    });
+      // Enable keyspace notifications
+      await this.redis!.config("SET", "notify-keyspace-events", "Ex");
+
+      // Subscribe to initial channels
+      const initialChannels = [...this.DEFAULT_CHANNELS, ...additionalChannels];
+      if (initialChannels.length > 0) {
+        await this.subscriber!.subscribe(...initialChannels);
+        initialChannels.forEach((channel) => this.activeChannels.add(channel));
+      }
+      console.log('Redis connection initialized successfully');
+    } catch (error) {
+      console.error("Failed to initialize Redis connection:", error);
+      throw error; // Propagate error up
+    }
   }
 
   // Method to publish messages to a Redis channel
@@ -77,39 +126,18 @@ class RedisManager {
   }
 
   // Method to subscribe to a Redis channel and handle incoming messages
-  public static async subscribeToChannel<T>(
+  public static async addChannelHandler(
     channel: string,
-    messageHandler: (channel: string, message: string) => T | void
-  ): Promise<void | T> {
-    if (!this.subscriber) {
-      console.error(
-        "Subscriber Redis is not initialized. Call `initRedisConnection()` first."
-      );
-      return;
-    }
+    handler: (channel: string, message: string) => void
+  ) {
+    const handlers = this.subscriberHandlers.get(channel) || [];
+    handlers.push(handler);
+    this.subscriberHandlers.set(channel, handlers);
 
-    try {
-      // Subscribe to the given channel
-      await this.subscriber.subscribe(channel);
-      console.log(`Subscribed to channel: ${channel}`);
-
-      // Listen for messages on the subscribed channel
-      return new Promise<void | T>((resolve) => {
-        this.subscriber?.on("message", (receivedChannel, message) => {
-          if (receivedChannel === channel) {
-            console.log(`Message received on channel ${channel}: ${message}`);
-            const result = messageHandler(receivedChannel, message);
-            if (result !== undefined) {
-              console.log(`Handler returned a result:`, result);
-              resolve(result);
-            } else {
-              resolve(); // Return void if no result is provided
-            }
-          }
-        });
-      });
-    } catch (error) {
-      console.error(`Error subscribing to channel ${channel}`, error);
+    // Subscribe to channel if this is the first handler
+    if (handlers.length === 1 && !this.activeChannels.has(channel)) {
+      await this.subscriber!.subscribe(channel);
+      this.activeChannels.add(channel);
     }
   }
 
@@ -118,7 +146,9 @@ class RedisManager {
     group: string,
     key: string,
     data: T,
-    ttlInSeconds?: number // Optional TTL parameter
+    ttlInSeconds?: number, // Optional TTL parameter
+    addToSet: boolean = false,
+    setttlInSeconds?: number
   ): Promise<void> {
     if (!this.redis) {
       console.error(
@@ -132,20 +162,29 @@ class RedisManager {
 
       // Create individual key for this entry
       const individualKey = `${group}:${key}`;
+      const setKey = `${group}Set`;
+
+      // Use multi to ensure atomic operation
+      const multi = this.redis.multi();
 
       // Store data in individual key
-      await this.redis.set(individualKey, value);
+      multi.set(individualKey, value);
 
       // Add to set for lookup
-      await this.redis.sadd(`${group}Set`, key);
+      if (addToSet) {
+        multi.sadd(setKey, key);
+      }
 
       if (ttlInSeconds) {
-        // Set TTL only for this specific entry
-        await this.redis.expire(individualKey, ttlInSeconds);
-        console.log(
-          `TTL of ${ttlInSeconds} seconds set for key: ${key} in group: ${group}`
-        );
+        // Set TTL for both individual key and set
+        multi.expire(individualKey, ttlInSeconds);
+        console.log(`TTL of ${ttlInSeconds} seconds set for key: ${key}`);
       }
+      if (setttlInSeconds) {
+        multi.expire(setKey, setttlInSeconds);
+        console.log(`TTL SET FOR SET ${setKey}`);
+      }
+      await multi.exec();
       console.log(`Cached data in group ${group} for key: ${key}`);
     } catch (error) {
       console.error(
@@ -183,29 +222,56 @@ class RedisManager {
     }
   }
 
-  public static async getAllFromGroup(group: string): Promise<any[]> {
+  public static async getAllFromGroup(
+    group: string,
+    useSet: boolean = false
+  ): Promise<any[]> {
     if (!this.redis) {
       console.error("Redis is not initialized");
       return [];
     }
 
     try {
-      // Get all keys from the set
-      const keys = await this.redis.smembers(`${group}Set`);
+      let keys: string[];
+      if (useSet) {
+        // Get all keys from the set
+        keys = await this.redis.smembers(`${group}Set`);
+      } else {
+        // Scan for keys matching the pattern if not using set
+        const pattern = `${group}:*`;
+        const stream = this.redis.scanStream({
+          match: pattern,
+          count: 100,
+        });
+        keys = [];
+        for await (const resultKeys of stream) {
+          keys.push(
+            ...(resultKeys as string[]).map((key) =>
+              key.replace(`${group}:`, "")
+            )
+          );
+        }
+      }
 
-      // Get all values and their TTLs
+      // Get all values
       const values = await Promise.all(
         keys.map(async (key) => {
           const individualKey = `${group}:${key}`;
           const data = await this.redis!.get(individualKey);
 
-          // If key doesn't exist (expired), remove from set
           if (!data) {
-            await this.redis!.srem(`${group}Set`, key);
+            // Clean up set if key doesn't exist
+            if (useSet) {
+              await this.redis!.srem(`${group}Set`, key);
+            }
             return null;
           }
 
-          return data ? { ...JSON.parse(data), socketId: key } : null;
+          try {
+            return { ...JSON.parse(data), key };
+          } catch {
+            return { data, key };
+          }
         })
       );
 
@@ -219,7 +285,8 @@ class RedisManager {
   // Method to remove data from a hash and set
   public static async removeDataFromGroup(
     group: string,
-    key: string
+    key: string,
+    removeFromSet: boolean = false
   ): Promise<void> {
     if (!this.redis) {
       console.error("Redis is not initialized");
@@ -228,11 +295,15 @@ class RedisManager {
 
     try {
       // Remove individual key
-      await this.redis.del(`${group}:${key}`);
+      const multi = this.redis.multi();
 
-      // Remove from set
-      await this.redis.srem(`${group}Set`, key);
-
+      // Remove individual key
+      multi.del(`${group}:${key}`);
+      // Only remove from set if requested
+      if (removeFromSet) {
+        multi.srem(`${group}Set`, key);
+      }
+      await multi.exec();
       console.log(`Removed data from group ${group} for key: ${key}`);
     } catch (error) {
       console.error(

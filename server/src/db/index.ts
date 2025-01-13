@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
+import { v2 as cloudinary } from "cloudinary";
 import { Pool, PoolClient } from "pg";
 import { Query } from "../types/interface";
 
 let pool: Pool | null = null;
+let isConfigured = false;
 const initializePool = () => {
   if (!pool) {
     const DB_PWS = String(process.env.DB_PASSWORD);
@@ -76,24 +78,23 @@ const dbMultipleQuery = async (queries: Query[]) => {
   const client = await getClient();
   try {
     // Start the transaction
-    await client.query('BEGIN');
-    
+    await client.query("BEGIN");
+
     for (const query of queries) {
       await client.query(query.text, query.values); // Execute each query in the transaction
     }
 
     // Commit the transaction after all queries are successful
-    await client.query('COMMIT');
+    await client.query("COMMIT");
   } catch (error) {
     // If any query fails, rollback the transaction
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error("Database query error:", error);
     throw error;
   } finally {
     client.release(); // Release the client back to the pool
   }
 };
-
 
 const connectDB = async () => {
   try {
@@ -153,4 +154,57 @@ const checkHealth = async () => {
   }
 };
 
-export { checkHealth, connectDB, dbQuery, dbQueryWithTransaction, dbMultipleQuery };
+const configureCloudinary =(): void => {
+  if (isConfigured) {
+    console.log("Cloudinary already configured");
+    return;
+  }
+
+  if (
+    !process.env.CLOUDINARY_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET_KEY
+  ) {
+    console.error(
+      "Missing Cloudinary configuration. Please check your environment variables:"
+    );
+    console.error("CLOUDINARY_NAME:", process.env.CLOUDINARY_NAME ? "✓" : "✗");
+    console.error(
+      "CLOUDINARY_API_KEY:",
+      process.env.CLOUDINARY_API_KEY ? "✓" : "✗"
+    );
+    console.error(
+      "CLOUDINARY_API_SECRET_KEY:",
+      process.env.CLOUDINARY_API_SECRET_KEY ? "✓" : "✗"
+    );
+    throw new Error("Cloudinary configuration missing");
+  }
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET_KEY,
+  });
+
+  isConfigured = true;
+  console.log("Cloudinary configured successfully");
+}
+
+const getCloudinary = () => {
+  if (!isConfigured) {
+    throw new Error(
+      "Cloudinary not configured. Call configureCloudinary() first."
+    );
+  }
+  return cloudinary;
+}
+
+export {
+  checkHealth,
+  connectDB,
+  dbQuery,
+  dbQueryWithTransaction,
+  dbMultipleQuery,
+  getCloudinary,
+  configureCloudinary
+};

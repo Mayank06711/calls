@@ -8,14 +8,13 @@ import { createServer, Server as HTTPSServer } from "https"; // Import Server ty
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
-
 import { RedisManager } from "./utils/redisClient";
 import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
 import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
-import { connectDB } from "./db";
+import { connectDB, configureCloudinary } from "./db";
 import cronSchuduler from "./auto/cronJob";
 
 class ServerManager {
@@ -25,6 +24,7 @@ class ServerManager {
   private socketManager!: SocketManager;
   constructor() {
     this.loadEnvironmentVariables();
+    configureCloudinary();
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -78,6 +78,14 @@ class ServerManager {
   private initializeGracefulShutdown() {
     process.on("unhandledRejection", (reason, promise) => {
       console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      // Send the error to our error handling middleware
+      if (reason instanceof Error) {
+        const mockReq = {} as Request;
+        const mockRes = {} as Response;
+        const mockNext = () => {};
+        Middleware.globalErrorHandler(reason, mockReq, mockRes, mockNext);
+      }
     });
 
     process.on("uncaughtException", (error) => {
@@ -143,21 +151,20 @@ class ServerManager {
       },
     });
     const Port = process.env.PORT || 5005;
-
-    await connectDB()
-      .then(() => {
+    try {
+      await connectDB();
+      await RedisManager.initRedisConnection();
+      await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
-          // Below  line is crucial otherwise socket wont work
           this.socketManager = SocketManager.getInstance(this.io);
-          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
-          //  cronSchuduler("* */2 * * *");
           console.log(`Server is running on https://localhost:${Port}`);
+          resolve();
         });
-      })
-      .catch((err) => {
-        console.error("Error connecting to MongoDB:", err);
-        process.exit(1); // Exit with failure code
       });
+    } catch (error) {
+      console.error("Error during server initialization:", error);
+      process.exit(1);
+    }
   }
 
   private stopServer() {

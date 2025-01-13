@@ -8,7 +8,7 @@
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
     "start:dev": "ts-node-dev src/index.ts",
-     "test:socket": "ts-node src/socketTest.ts",
+    "test:socket": "ts-node src/socketTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

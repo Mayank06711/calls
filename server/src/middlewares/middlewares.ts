@@ -8,7 +8,7 @@ import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
 import Admin from "../models/adminModel";
-import AsyncHandler from "../utils/AsyncHandler";
+import {AsyncHandler} from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
 
@@ -33,7 +33,7 @@ class Middleware {
     5
   );
 
-  private static getBase64 = (file: any) =>
+  public static getBase64 = (file: any) =>
     `data:${file[0].mimetype};base64,${file[0].buffer.toString("base64")}`;
   private static async uploadFilesToCloudinary(files: any[] = []) {
     if (!files || files.length === 0) {
@@ -118,11 +118,10 @@ class Middleware {
         isAdmin: user.isAdmin,
         isExpert: user.isExpert,
         isActive: user.isActive,
-        isMFAEnabled:user.isMFAEnabled
+        isMFAEnabled: user.isMFAEnabled,
       };
 
-      return next(); 
-
+      return next();
     } catch (error) {
       console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
@@ -203,8 +202,43 @@ class Middleware {
     next: NextFunction
   ) {
     // Log the error for internal tracking (you can use a logger library like Winston)
-    console.error(err);
+    console.error("Global Error Handler:", {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+    });
+    // Handle Validation Errors
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: err.message,
+      });
+    }
 
+    if (err.name === "MongoServerError" && (err as any).code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate entry error",
+        error: "A record with this information already exists",
+      });
+    }
+    // Handle MongoDB Errors
+    if (err.name === "MongoError" || err.name === "MongoServerError") {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error",
+        errors: [err.message],
+      });
+    }
+    // If headers are already sent, don't try to send another response
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    let statusCode = 500;
     // Default error response
     let response: {
       success: boolean;
@@ -215,20 +249,25 @@ class Middleware {
       success: false,
       message: "Internal Server Error",
       data: null,
-      errors: [], // This is now a valid assignment
+      errors: [] as any[], // This is now a valid assignment
     };
 
-    // If the error is an instance of ApiError, handle it differently
+    // Handle ApiError instances
     if (err instanceof ApiError) {
-      response.message = err.message;
-      response.errors = err.errors;
-      response.data = err.data;
-      res.status(err.statusCode).json(response); // Send the ApiError response
-    } else {
-      // For non-ApiError instances (uncaught errors)
-      response.message = err.message || "Something went wrong";
-      res.status(500).json(response); // Send a generic 500 Internal Server Error response
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message ||  "Internal Server Error",
+        data: err.data,
+        errors: err.errors,
+      });
     }
+
+    // Default error response
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      errors: [err.message],
+    });
   }
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
