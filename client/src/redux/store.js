@@ -1,9 +1,18 @@
-import {thunk} from 'redux-thunk';
 import { configureStore } from '@reduxjs/toolkit';
-import rootReducer from './reducers/rootReducer';
+import { authReducer, callStatusReducer, streamsReducer } from './reducers';
+import {thunk} from 'redux-thunk';
+
 const store = configureStore({
-    reducer: rootReducer, // Pass the combined reducer here
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(thunk), // Add thunk middleware
+  reducer: {
+    auth: authReducer,
+    callStatus: callStatusReducer,
+    streams: streamsReducer
+  },
+  middleware: (getDefaultMiddleware) => 
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }).concat(thunk),
+  devTools: process.env.NODE_ENV !== 'production',
 });
 
-export { store };
+export default store;

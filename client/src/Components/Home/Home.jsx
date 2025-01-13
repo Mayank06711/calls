@@ -1,12 +1,11 @@
 import React from 'react'
 
-function Missing() {
+function Home() {
   return (
     <div>
-      Missing
-      
+      home
     </div>
   )
 }
 
-export default Missing
+export default Home

@@ -1,22 +1,18 @@
-import Home from "./Components/Home";
-import Login from "./Components/Login";
-import Missing from "./Components/Missing";
-import backgroundImage from "./assets/loginBackground.jpg";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-
-import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { setToken } from "./redux/actions";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
+import backgroundImage from "./assets/loginBackground.jpg";
+import Login from "./Components/login/Login";
+import Home from "./Components/Home/Home";
+import Missing from "./Components/Missing";
+
 
 const App = () => {
   const token = useSelector((state) => state.auth.token);
   const dispatch = useDispatch();
-  console.log("token", token);
+
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
@@ -40,14 +36,12 @@ const App = () => {
         <Routes>
           <Route
             path='/'
-            element={token ? <Home /> : <Navigate to='/login' />}
+            element={token ? <Home/> : <Navigate to='/login' />}
           />
           <Route
             path='/login'
             element={!token ? <Login /> : <Navigate to='/' />}
           />
-
-           {/* Define a "catch-all" route for undefined paths */}
           <Route path="*" element={<Missing />} />
         </Routes>
       </Router>
