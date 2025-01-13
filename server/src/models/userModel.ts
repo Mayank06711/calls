@@ -54,16 +54,15 @@ const UserSchema: Schema<IUser> = new Schema(
     email: {
       type: String,
       trim: true,
-      default: undefined, // Change from null to undefined
-      unique: true,
-      sparse: true,
+      default: undefined, // Treat missing emails as undefined
+      unique: false, // Remove 'unique' here because it's managed by the partial index
       validate: {
-        validator: function (v: string | undefined) {
-          return v === undefined || v.length > 0; // Allow undefined or non-empty string
+        validator: function (v) {
+          return v === undefined || v.length > 0; // Allow undefined or non-empty strings
         },
-        message: "Email cannot be null",
+        message: "Email cannot be null or empty",
       },
-    }, // sparse allows multiple documents with null/undefined email which means the unique index only applies to documents that actually have an email value
+    },
     phoneNumber: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     gender: {
@@ -113,6 +112,34 @@ const UserSchema: Schema<IUser> = new Schema(
   { timestamps: true }
 );
 
+// This is a partial index on the 'email' field in the User collection.
+// It enforces uniqueness on non-null email values.
+UserSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $exists: true, $ne: null } },
+  }
+);
+
+// if you will search with only phoneNumber it will still use indexing
+// Compound Indexes, order of fields in a compound index matter you have to search in same order as index
+UserSchema.index({ phoneNumber: 1, isPhoneVerified: 1, isActive: 1 }); // Compound index on phoneNumber and isActive
+
+UserSchema.index({
+  phoneNumber: 1,
+  isPhoneVerified: 1,
+  isActive: 1,
+  isAdmin: 1,
+}); // Compound index on phoneNumber, isPhoneVerified, and isAdmin
+
+UserSchema.index({
+  phoneNumber: 1,
+  isPhoneVerified: 1,
+  isActive: 1,
+  isExpert: 1,
+}); // Compound index on isPhoneVerified, isAdmin, and isExpert
+
 function generateRandomPassword(length = 12): string {
   return crypto.randomBytes(length).toString("hex").slice(0, length);
 }
@@ -134,6 +161,8 @@ UserSchema.pre<IUser>("save", async function (next) {
   }
   next();
 });
+
+// Instance Methods
 
 UserSchema.methods.generateAccessToken = function () {
   // Generate a JSON Web Token (JWT) containing user information
@@ -169,22 +198,6 @@ UserSchema.methods.generateRefreshToken = function () {
 UserSchema.methods.isPasswordCorrect = async function (password: string) {
   return await bcrypt.compare(password, this.password);
 };
-
-// if you will search with only phoneNumber it will still use indexing
-// Compound Indexes, order of fields in a compound index matter you have to search in same order as index
-UserSchema.index({ phoneNumber: 1, isPhoneVerified: 1, isActive: 1 }); // Compound index on phoneNumber and isActive
-UserSchema.index({
-  phoneNumber: 1,
-  isPhoneVerified: 1,
-  isActive: 1,
-  isAdmin: 1,
-}); // Compound index on phoneNumber, isPhoneVerified, and isAdmin
-UserSchema.index({
-  phoneNumber: 1,
-  isPhoneVerified: 1,
-  isActive: 1,
-  isExpert: 1,
-}); // Compound index on isPhoneVerified, isAdmin, and isExpert
 
 // Create the User model
 const UserModel = mongoose.model<IUser>("User", UserSchema);
