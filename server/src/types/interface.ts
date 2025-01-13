@@ -45,6 +45,12 @@ export interface SocketData {
   status: 'authenticated' | 'refreshed';
 }
 
+export interface PendingAuthData {
+  startTime: number;
+  serverId: string;
+  status: string;
+}
+
 export interface CloudinaryUploadOptions {
   folder: string;
   file: string | Buffer;
