@@ -104,9 +104,8 @@ class Middleware {
 
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
-        _id: decodedToken.id,
-      }).select("email isMFAEnabled isActive username phoneNumber");
-
+        _id: decodedToken._id,
+      }).select("isExpert isAdmin isMFAEnabled isActive");
       // Check if user does not exist
       if (!user) {
         throw new ApiError(401, "Invalid access token");
@@ -123,7 +122,6 @@ class Middleware {
 
       return next();
     } catch (error) {
-      console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
     }
   }
