@@ -5,8 +5,9 @@ import crypto from "crypto";
 
 // Define an interface for the Photo object
 interface Photo {
-  key: string;
-  url: string;
+  public_id: string; // Cloudinary's public_id for deletion
+  url: string; // Original image URL
+  thumbnail_url?: string; // Optional thumbnail URL
 }
 
 // interface for the User document
@@ -20,6 +21,7 @@ interface IUser extends Document {
   password: string;
   gender: "Male" | "Female" | "Not to say"; // Enum for gender
   age: number;
+  dob: string;
   city: string;
   country?: string; // Default is 'India', but not required
   refreshToken: string;
@@ -33,28 +35,34 @@ interface IUser extends Document {
   isAdmin: boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
 
+  // Add timestamp fields
+  createdAt: Date;
+  updatedAt: Date;
+
   // defining methods here so that typescript can
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
   generateAccessToken(): string;
   generateRefreshToken(): string;
+  isPasswordCorrect(password: string): Promise<boolean>;
 }
-
 
 // User schema
 const UserSchema: Schema<IUser> = new Schema(
   {
     fullName: { type: String, required: true, default: "user" },
     username: { type: String, required: true, unique: true },
-    email: { 
+    email: {
       type: String,
-      required: false,
-      default: undefined,  // Change from null to undefined
+      trim: true,
+      default: undefined, // Change from null to undefined
+      unique: true,
+      sparse: true,
       validate: {
-        validator: function(v: string | undefined) {
-          return v === undefined || v.length > 0;  // Allow undefined or non-empty string
+        validator: function (v: string | undefined) {
+          return v === undefined || v.length > 0; // Allow undefined or non-empty string
         },
-        message: 'Email cannot be null'
-      }
+        message: "Email cannot be null",
+      },
     }, // sparse allows multiple documents with null/undefined email which means the unique index only applies to documents that actually have an email value
     phoneNumber: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -65,6 +73,7 @@ const UserSchema: Schema<IUser> = new Schema(
       default: "Not to say",
     },
     age: { type: Number, required: true, default: 18 },
+    dob: { type: String },
     city: { type: String, required: true, default: "India" },
     country: { type: String, default: "India" },
     refreshToken: { type: String },
@@ -72,8 +81,9 @@ const UserSchema: Schema<IUser> = new Schema(
     isPhoneVerified: { type: Boolean, required: true, default: false },
     photo: {
       type: {
-        key: { type: String },
-        url: { type: String },
+        public_id: { type: String }, // Required for deletion from Cloudinary
+        url: { type: String }, // Original image URL
+        thumbnail_url: { type: String }, // Optional thumbnail URL
       },
     },
     isSubscribed: {
@@ -159,9 +169,6 @@ UserSchema.methods.generateRefreshToken = function () {
 UserSchema.methods.isPasswordCorrect = async function (password: string) {
   return await bcrypt.compare(password, this.password);
 };
-
-// First, remove any existing indexes that might be causing conflicts
-UserSchema.index({ email: 1 }, { sparse: true, unique: true, background: true });
 
 // if you will search with only phoneNumber it will still use indexing
 // Compound Indexes, order of fields in a compound index matter you have to search in same order as index
