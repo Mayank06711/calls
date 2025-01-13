@@ -21,4 +21,4 @@ const callStatusReducer = (state = initState, action) => {
   }
 };
 
-export default callStatusReducer;
+export {callStatusReducer};

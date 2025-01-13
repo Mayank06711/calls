@@ -1,22 +1,17 @@
-//this holds all streams as objects
-//{
-// who
-// stream = thing with tracks that plays in <video />
-// peerConnection = actual webRTC connection
-// }
-
-//local, remote, 
+import { ADD_STREAM, LOGOUT_ACTION } from '../action_creators';
 
 const streamsReducer = (state = {}, action) => {
-  if (action.type === "ADD_STREAM") {
-    const copyState = { ...state };
-    copyState[action.payload.who] = action.payload;
-    return copyState;
-  } else if (action.type === "LOGOUT_ACTION") {
-    return {};
-  } else {
-    return state;
+  switch (action.type) {
+    case ADD_STREAM:
+      return {
+        ...state,
+        [action.payload.who]: action.payload
+      };
+    case LOGOUT_ACTION:
+      return {};
+    default:
+      return state;
   }
 };
 
-export default streamsReducer;
+export  {streamsReducer};
