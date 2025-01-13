@@ -368,7 +368,7 @@ class Authentication {
     const { referenceId, mobNum, otp } = req.body;
 
     // Validate required parameters
-    if (!referenceId || !mobNum || !otp ) {
+    if (!referenceId || !mobNum || !otp) {
       return res
         .status(400)
         .json(
