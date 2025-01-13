@@ -56,6 +56,7 @@ class ServerManager {
           "Too many requests from this IP, please try again later after 15 mins.",
       })
     );
+    this.app.use(Middleware.platformDetector);
   }
   // initialize routes
   private initializeRoutes() {

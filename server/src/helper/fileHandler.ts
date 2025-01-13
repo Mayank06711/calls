@@ -1,4 +1,3 @@
-import { Socket } from "socket.io";
 import { Middleware } from "../middlewares/middlewares";
 import {
   FileUploadData,
@@ -54,7 +53,13 @@ class FileHandler {
           };base64,${file}`;
         }
       } else {
-        throw new Error("Invalid file format");
+        return {
+          status: "error",
+          message: "Invalid file format",
+          metadata: {
+            error: undefined,
+          },
+        };
       }
 
       // Add public_id if filename is provided
@@ -97,16 +102,15 @@ class FileHandler {
     }
   }
 
-  public static async handleFileUpload(
-    {
-      data,
-      callback,
-    }: {
-      data: FileUploadData;
-      callback: (response: FileUploadResponse) => void;
-    },
-    socket: Socket
-  ): Promise<void> {
+  public static async handleFileUpload({
+    data,
+    callback,
+    userId,
+  }: {
+    data: FileUploadData;
+    callback: (response: FileUploadResponse) => void;
+    userId: string;
+  }): Promise<void> {
     try {
       // Validate file size
       if (data.size > this.MAX_FILE_SIZE) {
@@ -122,7 +126,7 @@ class FileHandler {
       }
 
       // Validate file type
-      console.log(data)
+      console.log(data);
       if (!this.ALLOWED_TYPES.includes(data.fileType)) {
         return callback({
           status: "error",
@@ -131,15 +135,6 @@ class FileHandler {
             error: "Invalid file type",
             type: data.fileType,
           },
-        });
-      }
-
-      // Get user ID from socket data
-      const userId = socket.data.userId;
-      if (!userId) {
-        return callback({
-          status: "error",
-          message: "User not authenticated",
         });
       }
 
@@ -177,9 +172,12 @@ class FileHandler {
         });
       }
 
+      const folder =
+        data.type === "avatar" ? `avatars/${userId}` : `chat/${userId}`;
+
       // Upload to Cloudinary
-      const uploadResult = await this.upload({
-        folder: `chat/${socket.data.userId}`,
+      const uploadResult = await FileHandler.upload({
+        folder,
         file: fileData,
         isBuffer,
         fileName: data.fileName,
@@ -199,7 +197,6 @@ class FileHandler {
           ...data.metadata,
         },
       };
-
       callback(response);
     } catch (error) {
       console.error("File upload error:", error);
