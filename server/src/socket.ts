@@ -7,7 +7,7 @@ import {
   FileUploadResponse,
 } from "./types/interface";
 import { FileHandler } from "./helper/fileHandler";
-import { SocketUserData } from "./types/interface";
+import { SocketUserData, PendingAuthData } from "./types/interface";
 import { SocketData } from "./types/interface";
 
 /**
@@ -44,7 +44,6 @@ class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
-  private isMonitoring: boolean = false;
   private readonly SOCKET_CONSTANTS = {
     REDIS: {
       GROUP: "socketAuthenticatedUsers",
@@ -61,6 +60,11 @@ class SocketManager {
     MAX_CONNECTIONS: {
       PER_USER: 5,
     },
+    MONITOR: {
+      GROUP: "monitor",
+      KEY: "socket:monitor",
+      INTERVAL: 10 * 60,
+    },
     AUTH: {
       TIMEOUT: 30000, // 30 seconds
       MAX_TOKEN_AGE: {
@@ -71,6 +75,8 @@ class SocketManager {
         REFRESH: "refresh",
         ACCESS: "access",
       },
+      GROUP: "auth:pending",
+      STATUS: "pending",
     },
   } as const;
 
@@ -80,8 +86,45 @@ class SocketManager {
    */
   private constructor(io: SocketServer) {
     this.io = io;
+    this.setupAuthExpirationAndMonitoringHandler();
     this.initializeSocket();
-    this.startMonitoring();
+  }
+
+  private setupAuthExpirationAndMonitoringHandler(): void {
+    RedisManager.addChannelHandler(
+      "__keyevent@0__:expired",
+      async (channel, expiredKey) => {
+        console.log(expiredKey, "Expired Key you got it", "\n🥲");
+        // Check if the expired key belongs to auth group
+        if (expiredKey.startsWith(`${this.SOCKET_CONSTANTS.AUTH.GROUP}:`)) {
+          const socketId = expiredKey.replace(
+            `${this.SOCKET_CONSTANTS.AUTH.GROUP}:`,
+            ""
+          );
+          const socket = this.io.sockets.sockets.get(socketId);
+
+          if (socket && !socket.data?.authenticated) {
+            this.handleConnectionError(socket, "Authentication timeout");
+          }
+        }
+        if (expiredKey === this.SOCKET_CONSTANTS.MONITOR.KEY) {
+          await this.runMonitoringCycle();
+          // Reset the monitor key after cycle completes
+          await this.resetMonitorKey();
+        }
+      }
+    );
+    this.resetMonitorKey();
+    this.runMonitoringCycle();
+  }
+
+  private async resetMonitorKey(): Promise<void> {
+    await RedisManager.cacheDataInGroup(
+      this.SOCKET_CONSTANTS.MONITOR.GROUP,
+      this.SOCKET_CONSTANTS.MONITOR.KEY,
+      { lastReset: Date.now() },
+      this.SOCKET_CONSTANTS.MONITOR.INTERVAL // 10 minutes TTL
+    );
   }
 
   public static getInstance(io?: SocketServer): SocketManager {
@@ -92,13 +135,6 @@ class SocketManager {
       SocketManager.instance = new SocketManager(io);
     }
     return SocketManager.instance;
-  }
-
-  private async startMonitoring(): Promise<void> {
-    if (!this.isMonitoring) {
-      this.isMonitoring = true;
-      await this.monitorConnections();
-    }
   }
 
   private initializeSocket(): void {
@@ -139,12 +175,16 @@ class SocketManager {
         return;
       }
 
-      // Set a timeout for authentication
-      const authTimeout = setTimeout(() => {
-        if (!socket.data?.authenticated) {
-          this.handleConnectionError(socket, "Authentication timeout");
-        }
-      }, this.SOCKET_CONSTANTS.AUTH.TIMEOUT); // 30 seconds to authenticate
+      await RedisManager.cacheDataInGroup<PendingAuthData>(
+        this.SOCKET_CONSTANTS.AUTH.GROUP,
+        socket.id,
+        {
+          startTime: Date.now(),
+          serverId: process.env.SERVER_ID || "default",
+          status: this.SOCKET_CONSTANTS.AUTH.STATUS, // pending
+        },
+        this.SOCKET_CONSTANTS.AUTH.TIMEOUT / 1000
+      );
 
       let lockId: string | null = null;
       let userData: any = null;
@@ -156,7 +196,10 @@ class SocketManager {
           callback
         ) => {
           try {
-            clearTimeout(authTimeout);
+            await RedisManager.removeDataFromGroup(
+              this.SOCKET_CONSTANTS.AUTH.GROUP,
+              socket.id
+            );
             console.log(authData, "got auth data");
             if (!authData.refreshToken && !authData.accessToken) {
               callback({
@@ -217,6 +260,10 @@ class SocketManager {
               message: "Authentication failed, Unexpected error occurred",
               socketId: socket.id,
             });
+            await RedisManager.removeDataFromGroup(
+              this.SOCKET_CONSTANTS.AUTH.GROUP,
+              socket.id
+            );
             console.error("Authentication error:", error);
             this.handleConnectionError(
               socket,
@@ -385,6 +432,10 @@ class SocketManager {
         console.log(
           `User disconnected - Socket: ${socket.id}, User: ${userData.userId}`
         );
+        await RedisManager.removeDataFromGroup(
+          this.SOCKET_CONSTANTS.AUTH.GROUP,
+          socket.id
+        );
         await this.removeSocket(
           socket.id,
           "User disconnected",
@@ -514,16 +565,6 @@ class SocketManager {
     } catch (error) {
       console.error(`Error removing socket ${socketId}:`, error);
     }
-  }
-
-  private async monitorConnections(): Promise<void> {
-    // Start monitoring immediately instead of waiting for first interval
-    await this.runMonitoringCycle();
-
-    // Then set up the interval
-    setInterval(async () => {
-      await this.runMonitoringCycle();
-    }, 10 * 60 * 1000); // 10 minutes
   }
 
   private async runMonitoringCycle(): Promise<void> {
