@@ -39,12 +39,23 @@ interface IUser extends Document {
   generateRefreshToken(): string;
 }
 
+
 // User schema
 const UserSchema: Schema<IUser> = new Schema(
   {
     fullName: { type: String, required: true, default: "user" },
     username: { type: String, required: true, unique: true },
-    email: { type: String, unique: true },
+    email: { 
+      type: String,
+      required: false,
+      default: undefined,  // Change from null to undefined
+      validate: {
+        validator: function(v: string | undefined) {
+          return v === undefined || v.length > 0;  // Allow undefined or non-empty string
+        },
+        message: 'Email cannot be null'
+      }
+    }, // sparse allows multiple documents with null/undefined email which means the unique index only applies to documents that actually have an email value
     phoneNumber: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     gender: {
@@ -53,11 +64,11 @@ const UserSchema: Schema<IUser> = new Schema(
       enum: ["Male", "Female", "Not to say"],
       default: "Not to say",
     },
-    age: { type: Number, required: true, defalut: "18" },
+    age: { type: Number, required: true, default: 18 },
     city: { type: String, required: true, default: "India" },
     country: { type: String, default: "India" },
-    refreshToken: { type: String, required: true },
-    isEmailVerified: { type: Boolean, required: true, defalut: false },
+    refreshToken: { type: String },
+    isEmailVerified: { type: Boolean, required: true, default: false },
     isPhoneVerified: { type: Boolean, required: true, default: false },
     photo: {
       type: {
@@ -100,15 +111,16 @@ function generateRandomPassword(length = 12): string {
 UserSchema.pre<IUser>("save", async function (next) {
   // Check if password is being set for the first time or is modified
   if (!this.password || this.isModified("password")) {
-    console.log("Generating and hashing password...");
+    console.log("Generating or hashing password...");
     if (!this.password) {
       // If no password is provided, generate a random one
       this.password = generateRandomPassword(8);
+      console.log("Generating password");
     }
-
     // Hash the password
     const saltRounds = 10;
     this.password = bcrypt.hashSync(this.password, saltRounds);
+    console.log("hashed password");
   }
   next();
 });
@@ -127,7 +139,7 @@ UserSchema.methods.generateAccessToken = function () {
     },
     process.env.ACCESS_TOKEN_SECRET!,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY!,
+      expiresIn: process.env.ACCESS_TOKEN_SECRET_EXPIRY!,
     }
   );
 };
@@ -139,7 +151,7 @@ UserSchema.methods.generateRefreshToken = function () {
     },
     process.env.REFRESH_TOKEN_SECRET!,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY!,
+      expiresIn: process.env.REFRESH_TOKEN_SECRET_EXPIRY!,
     }
   );
 };
@@ -148,6 +160,8 @@ UserSchema.methods.isPasswordCorrect = async function (password: string) {
   return await bcrypt.compare(password, this.password);
 };
 
+// First, remove any existing indexes that might be causing conflicts
+UserSchema.index({ email: 1 }, { sparse: true, unique: true, background: true });
 
 // if you will search with only phoneNumber it will still use indexing
 // Compound Indexes, order of fields in a compound index matter you have to search in same order as index

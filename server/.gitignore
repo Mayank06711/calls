@@ -1,4 +1,9 @@
 node_modules
 .env
-logs
+logs/shutdown.log
 src/db_tables_and_sql.txt
+nginx/certs/*
+nginx/sites-available/*.conf
+nginx/sites-enabled/*
+*.pid
+*.sock

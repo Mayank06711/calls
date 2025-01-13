@@ -5,7 +5,7 @@ type AsyncRequestHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => void | Promise<void>;
+) => void | Promise<void|Response>;
 
 class AsyncHandler {
   static wrap(requestHandler: AsyncRequestHandler) {
@@ -25,4 +25,4 @@ class AsyncHandler {
 
 }
 
-export default AsyncHandler;
+export  {AsyncHandler};

@@ -7,23 +7,24 @@ import { Server as SocketIOServer } from "socket.io";
 import { createServer, Server as HTTPSServer } from "https"; // Import Server type
 import fs from "fs";
 import path from "path";
-import SocketManager from "./socket";
-
-import {RedisManager} from "./utils/redisClient";
+import { SocketManager } from "./socket";
+import { RedisManager } from "./utils/redisClient";
 import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
-import feedBackRouter from "./routes/feedbackRoutes"; 
-import authRouter from "./routes/authRoutes"
-import { connectDB } from "./db";
+import feedBackRouter from "./routes/feedbackRoutes";
+import authRouter from "./routes/authRoutes";
+import { connectDB, configureCloudinary } from "./db";
 import cronSchuduler from "./auto/cronJob";
 
-class ServerManager { 
+class ServerManager {
   private app = express();
   private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
   private io!: SocketIOServer; // Socket.io instance
+  private socketManager!: SocketManager;
   constructor() {
     this.loadEnvironmentVariables();
+    configureCloudinary();
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -58,12 +59,12 @@ class ServerManager {
   }
   // initialize routes
   private initializeRoutes() {
-    this.app.use("/api/v1/auth", authRouter)
+    this.app.use("/api/v1/auth", authRouter);
     this.app.use("/api/v1/users", userRouter);
     // this.app.use("/api/v1/admins", adminRouter);
-    this.app.use("/api/v1/feedback",feedBackRouter)
+    this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.get("/hello", (req: Request, res: Response) => {
-      res.status(201).send("Hello Now my application is working!");
+      res.status(200).send("Hello Now my application is working!");
     });
   }
 
@@ -77,6 +78,14 @@ class ServerManager {
   private initializeGracefulShutdown() {
     process.on("unhandledRejection", (reason, promise) => {
       console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      console.error("Unhandled Rejection at:", promise, "reason:", reason);
+      // Send the error to our error handling middleware
+      if (reason instanceof Error) {
+        const mockReq = {} as Request;
+        const mockRes = {} as Response;
+        const mockNext = () => {};
+        Middleware.globalErrorHandler(reason, mockReq, mockRes, mockNext);
+      }
     });
 
     process.on("uncaughtException", (error) => {
@@ -91,6 +100,9 @@ class ServerManager {
   private async shutdownGracefully() {
     try {
       console.log("Performing cleanup before shutdown...");
+      if (this.socketManager) {
+        await this.socketManager.cleanup();
+      }
       // Flush logs
       this.flushLogs();
       // Close database connections (if applicable)
@@ -100,7 +112,7 @@ class ServerManager {
       process.exit(0); // Exit with success code
     } catch (error) {
       console.error("Error during cleanup:", error);
-      process.exit(1);  // Exit with failure code
+      process.exit(1); // Exit with failure code
     }
   }
 
@@ -139,20 +151,20 @@ class ServerManager {
       },
     });
     const Port = process.env.PORT || 5005;
-
-    await connectDB()
-      .then(() => {
+    try {
+      await connectDB();
+      await RedisManager.initRedisConnection();
+      await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
-          SocketManager(this.io);
-          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
-          //  cronSchuduler("* */2 * * *");
+          this.socketManager = SocketManager.getInstance(this.io);
           console.log(`Server is running on https://localhost:${Port}`);
+          resolve();
         });
-      })
-      .catch((err) => {
-        console.error("Error connecting to MongoDB:", err);
-        process.exit(1); // Exit with failure code
       });
+    } catch (error) {
+      console.error("Error during server initialization:", error);
+      process.exit(1);
+    }
   }
 
   private stopServer() {
