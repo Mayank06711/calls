@@ -24,7 +24,7 @@ class ServerManager {
   private socketManager!: SocketManager;
   constructor() {
     this.loadEnvironmentVariables();
-    configureCloudinary()
+    configureCloudinary();
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -151,21 +151,20 @@ class ServerManager {
       },
     });
     const Port = process.env.PORT || 5005;
-
-    await connectDB()
-      .then(() => {
+    try {
+      await connectDB();
+      await RedisManager.initRedisConnection();
+      await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
-          RedisManager.initRedisConnection(); // if we do not invoke this funtion here, and do all things in redis file only that file will have to be executed separately as we have only running our main script which handles all things.
-          // Below  line is crucial otherwise socket wont work
           this.socketManager = SocketManager.getInstance(this.io);
-          //  cronSchuduler("* */2 * * *");
           console.log(`Server is running on https://localhost:${Port}`);
+          resolve();
         });
-      })
-      .catch((err) => {
-        console.error("Error connecting to MongoDB:", err);
-        process.exit(1); // Exit with failure code
       });
+    } catch (error) {
+      console.error("Error during server initialization:", error);
+      process.exit(1);
+    }
   }
 
   private stopServer() {
