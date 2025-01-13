@@ -109,7 +109,7 @@ class Authentication {
   // }
 
   private static generateOtpAndReferenceId() {
-    const otp = Array(4)
+    const otp = Array(6)
       .fill(0)
       .map(() => Math.floor(Math.random() * 10))
       .join("");
@@ -365,10 +365,10 @@ class Authentication {
   }
 
   private static async _verifyOtp(req: Request, res: Response) {
-    const { referenceId, mobNum, otp, src } = req.body;
+    const { referenceId, mobNum, otp } = req.body;
 
     // Validate required parameters
-    if (!referenceId || !mobNum || !otp || !src) {
+    if (!referenceId || !mobNum || !otp) {
       return res
         .status(400)
         .json(
@@ -473,7 +473,7 @@ class Authentication {
         };
 
         // Handle successful verification (skip OTP validation as user is already verified)
-        if (req.body.src == "div") {
+        if (req.isMobileApp) {
           return res
             .status(200)
             .setHeader("x-access-token", tokens.accessToken)
@@ -529,7 +529,7 @@ class Authentication {
       };
 
       // Handle successful verification
-      if (req.body.src == "div") {
+      if (req.isMobileApp) {
         return res
           .status(200)
           .setHeader("x-access-token", tokens.accessToken)

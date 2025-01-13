@@ -8,7 +8,7 @@ import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
 import Admin from "../models/adminModel";
-import {AsyncHandler} from "../utils/AsyncHandler";
+import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
 
@@ -104,9 +104,8 @@ class Middleware {
 
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
-        _id: decodedToken.id,
-      }).select("email isMFAEnabled isActive username phoneNumber");
-
+        _id: decodedToken._id,
+      }).select("isExpert isAdmin isMFAEnabled isActive");
       // Check if user does not exist
       if (!user) {
         throw new ApiError(401, "Invalid access token");
@@ -123,7 +122,6 @@ class Middleware {
 
       return next();
     } catch (error) {
-      console.error("Error in verifyJWT:", error);
       next(new ApiError(401, "Invalid or expired token"));
     }
   }
@@ -256,7 +254,7 @@ class Middleware {
     if (err instanceof ApiError) {
       return res.status(err.statusCode).json({
         success: false,
-        message: err.message ||  "Internal Server Error",
+        message: err.message || "Internal Server Error",
         data: err.data,
         errors: err.errors,
       });
@@ -270,8 +268,16 @@ class Middleware {
     });
   }
 
-  // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
+  private static _platformDetector = (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ) => {
+    req.isMobileApp = req.get("x-platform") === "mobile" || Boolean(req.get("x-app-version"));
+    next();
+  };
 
+  // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
@@ -279,6 +285,7 @@ class Middleware {
   static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
   static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
   static globalErrorHandler = Middleware.ErrorHandler;
+  static platformDetector = Middleware._platformDetector
 }
 
 export { Middleware };

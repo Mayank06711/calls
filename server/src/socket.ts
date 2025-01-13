@@ -9,6 +9,7 @@ import {
 import { FileHandler } from "./helper/fileHandler";
 import { SocketUserData, PendingAuthData } from "./types/interface";
 import { SocketData } from "./types/interface";
+import User from "./controllers/userController";
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections
@@ -464,17 +465,37 @@ class SocketManager {
     });
     this.listenToEvent({
       event: "file:upload",
-      handler: async (data: unknown, socket: Socket) => {
+      handler: async (data: FileUploadData, socket: Socket) => {
         try {
-          await FileHandler.handleFileUpload(
-            {
-              data: data as FileUploadData,
-              callback: (response: FileUploadResponse) => {
-                socket.emit("file:upload:response", response);
-              },
-            },
-            socket
-          );
+          const userId = socket.data.userId;
+          if (!userId) {
+            socket.emit("file:upload:error", {
+              status: "error",
+              message: "User not authenticated",
+            });
+            return;
+          }
+          if (data.type === "avatar") {
+            const emitter = {
+              start: (data: any) => socket.emit("file:upload:start", data),
+              success: (data: any) => socket.emit("file:upload:success", data),
+              error: (data: any) => socket.emit("file:upload:error", data),
+              broadcast: (data: any) =>
+                socket.broadcast
+                  .to(`user:${userId}`)
+                  .emit("avatar:updated", data),
+            };
+
+            await User.handleAvatarUploadEvent(data, userId, emitter);
+          } else {
+            // Handle chat file uploads
+            await FileHandler.handleFileUpload({
+              data,
+              userId,
+              callback: (response) =>
+                socket.emit("file:upload:response", response),
+            });
+          }
         } catch (error) {
           console.error("Error handling file upload:", error);
           socket.emit("file:upload:error", {
