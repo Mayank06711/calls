@@ -11,6 +11,7 @@ declare global {
         isMFAEnabled: boolean;
         isActive: boolean;
       };
+      isMobileApp: boolean;
     }
   }
 }
