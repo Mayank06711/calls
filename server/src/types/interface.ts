@@ -60,16 +60,18 @@ export interface CloudinaryUploadOptions {
 }
 
 export interface FileUploadData {
-  file: string; // base64 string
+  file: string | Buffer; // base64 string
   fileName: string;
   fileType: string;
   size: number;
+  type: "chat" | "avatar"; 
   metadata?: {
     width?: number;
     height?: number;
     duration?: number;
     chatId?: string;
     messageId?: string;
+    userId?: string; // For avatar uploads
   };
 }
 
@@ -102,6 +104,7 @@ export interface ChatMessage {
     size: number;
     width?: number;
     height?: number;
+    thumbnailUrl?: string; 
   };
   timestamp: number;
   status: "sent" | "delivered" | "read";

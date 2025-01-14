@@ -9,10 +9,11 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react()],
   server: {
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, './cert/key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, './cert/cert.pem')),
-    },
-    host: 'localhost', // or '0.0.0.0' to listen on all interfaces
+    // https: {
+    //   key: fs.readFileSync(path.resolve(__dirname, './cert/key.pem')),
+    //   cert: fs.readFileSync(path.resolve(__dirname, './cert/cert.pem')),
+    // },
+    host: 'localhost', 
+    port: 3000,
   },
 })
