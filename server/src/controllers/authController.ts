@@ -186,6 +186,9 @@ class Authentication {
 
   private static async _generateOtp(req: Request, res: Response) {
     const { mobNum, isTesting } = req.body;
+    if (typeof isTesting !== 'boolean') {
+      return res.status(400).json(errorResponse(400, "isTesting must be a boolean"));
+    }
     const formattedRecipientNumber = toE164Format(mobNum);
     if (!formattedRecipientNumber) {
       return res.status(404).json(errorResponse(404, "Invalid Phone Number"));
