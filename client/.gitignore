@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 .env
 node_modules
 cert
-=======
 # Logs
 logs
 .env
@@ -29,4 +27,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
->>>>>>> f880dcdc9877bac3fc696d03e1205212ce92c67a
+

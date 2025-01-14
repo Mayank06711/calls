@@ -1,12 +1,11 @@
 import React from 'react'
 
-function Missing() {
+function SignUp() {
   return (
     <div>
-      Missing
       
     </div>
   )
 }
 
-export default Missing
+export default SignUp
