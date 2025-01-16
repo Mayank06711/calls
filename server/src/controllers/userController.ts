@@ -82,18 +82,20 @@ class User {
       if (user) {
         console.log("User created successfully:", user);
         console.log(req.body);
-        const tokens = await AuthServices.getAccAndRefToken(
-          user._id as ObjectId
-        );
-        if (tokens === null) {
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        if (!refreshToken || !accessToken) {
           await UserModel.findByIdAndDelete(user._id);
-          throw new ApiError(500, "Something went wrong");
+          throw new ApiError(
+            500,
+            "Failed to generate access or refresh token."
+          );
         }
         // Set HTTP-only cookie for refresh token (secure it for production)
         res
           .status(200)
-          .cookie("refreshToken", tokens.refreshToken, this.options) // Store refresh token in an HttpOnly cookie
-          .cookie("accessToken", tokens.accessToken, this.refreshOptions) // Store refresh token in an HttpOnly cookie
+          .cookie("refreshToken", refreshToken, this.options) // Store refresh token in an HttpOnly cookie
+          .cookie("accessToken", accessToken, this.refreshOptions) // Store refresh token in an HttpOnly cookie
           .json({
             message: "User signed up successfully, Please fill other fields",
             userId: user._id, // Optional: You can remove this if using only cookies
