@@ -149,10 +149,37 @@ class AuthServices {
     }
   }
 
+  private static async verifyToken(token: string, type: "access" | "refresh") {
+    try {
+      const secret =
+        type === "access"
+          ? process.env.ACCESS_TOKEN_SECRET!
+          : process.env.REFRESH_TOKEN_SECRET!;
+
+      const decoded = JWT.verify(token, secret) as JwtPayload;
+      const query =
+        type === "refresh"
+          ? { _id: decoded._id, refreshToken: token, isActive: true }
+          : { _id: decoded._id, isActive: true };
+
+      const user = await UserModel.findOne(query);
+      if (!user) return null;
+      return {
+        userId: user._id,
+        phoneNumber: user.phoneNumber,
+        username: user.username,
+        status: type === "access" ? "authenticated" : "refreshed",
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
   static genJWT_Token = AuthServices.generate_JWT_Token;
   static RefreshAccessToken = AsyncHandler.wrap(
     AuthServices._refreshAccessToken
   );
+  static verifyJWT_Token = AuthServices.verifyToken;
 }
 
 export { AuthServices };
