@@ -77,7 +77,7 @@ class Middleware {
     }
   }
 
-  private static async verify_JWT(
+  private static async _verifyJWT(
     req: Request,
     res: Response,
     next: NextFunction
@@ -89,7 +89,7 @@ class Middleware {
         req.header("Authorization")?.replace("Bearer ", "");
 
       if (!accessToken || accessToken.length === 0) {
-        throw new ApiError(401, "Invalid Access Token");
+        throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
 
       // Verify and decode the access token
@@ -99,7 +99,32 @@ class Middleware {
       );
 
       if (typeof decodedToken === "string") {
-        throw new ApiError(401, "Invalid Access Token");
+        throw new ApiError(401, "Invalid token type", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Verify standard claims
+      if (decodedToken.iss !== "KYF") {
+        throw new ApiError(401, "Invalid token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Check audience
+      if (decodedToken.aud !== "kyf-api") {
+        throw new ApiError(401, "Invalid token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+
+      // Check issued at time
+      if (decodedToken.iat && decodedToken.iat > now) {
+        throw new ApiError(401, "Token used before issued time", [
+          "Authentication failed",
+        ]);
       }
 
       // Find user based on decodedToken fields (either username or id)
@@ -108,7 +133,9 @@ class Middleware {
       }).select("isExpert isAdmin isMFAEnabled isActive");
       // Check if user does not exist
       if (!user) {
-        throw new ApiError(401, "Invalid access token");
+        throw new ApiError(401, "Invalid access token", [
+          "Authentication failed",
+        ]);
       }
 
       // Attach admin info to the request
@@ -122,7 +149,21 @@ class Middleware {
 
       return next();
     } catch (error) {
-      next(new ApiError(401, "Invalid or expired token"));
+      // JWT-specific error handling
+      if (error instanceof JWT.TokenExpiredError) {
+        const expiredAt = (error as JWT.TokenExpiredError).expiredAt;
+        throw new ApiError(
+          401,
+          `Token expired at  ${expiredAt} Please login again`,
+          ["Authentication failed"]
+        );
+      }
+
+      // For any other errors
+      throw new ApiError(401, "Token verification failed", [
+        "Authentication failed",
+        error as Error,
+      ]);
     }
   }
 
@@ -177,18 +218,40 @@ class Middleware {
   }
 
   //   chech if admin or not
-  private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.user?._id;
-    const originalUrl = req.originalUrl;
-    console.log("isAdmin Middleware originalURL", originalUrl);
-    if (id && req.originalUrl.startsWith("/admin")) {
-      // i do have another logic apache kafka later
-      next();
-    } else {
-      // apache kafka used here
-      res
-        .status(401)
-        .json({ message: "You are not authorized to access this resource" }); // throwing erro instead of thus
+  private static async _isAdmin(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = req.user?._id;
+      const originalUrl = req.originalUrl;
+      console.log("isAdmin Middleware originalURL", originalUrl);
+      if (!id) {
+        throw new ApiError(
+          401,
+          "User ID is missing. Authentication is required to access this resource."
+        );
+      }
+      if (!req.originalUrl.startsWith("/admin")) {
+        throw new ApiError(
+          403,
+          "Access to this resource is restricted to admin users only.",
+          ["Unauthorised Access"]
+        );
+      }
+      // Check if the user is an admin
+      const admin = await Admin.findById(id);
+      if (!admin) {
+        throw new ApiError(
+          401,
+          "You are not an admin and cannot access this resource",
+          ["Unauthorised Access"]
+        );
+      }
+      next(); // Allow access if the user is an admin
+    } catch (error) {
+      throw new ApiError(500, "Internal Server Error");
     }
   }
 
@@ -236,20 +299,6 @@ class Middleware {
       return next(err);
     }
 
-    let statusCode = 500;
-    // Default error response
-    let response: {
-      success: boolean;
-      message: string;
-      data: null;
-      errors: any[]; // Explicitly define the errors type
-    } = {
-      success: false,
-      message: "Internal Server Error",
-      data: null,
-      errors: [] as any[], // This is now a valid assignment
-    };
-
     // Handle ApiError instances
     if (err instanceof ApiError) {
       return res.status(err.statusCode).json({
@@ -273,7 +322,8 @@ class Middleware {
     _res: Response,
     next: NextFunction
   ) => {
-    req.isMobileApp = req.get("x-platform") === "mobile" || Boolean(req.get("x-app-version"));
+    req.isMobileApp =
+      req.get("x-platform") === "mobile" || Boolean(req.get("x-app-version"));
     next();
   };
 
@@ -281,11 +331,11 @@ class Middleware {
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
-  static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
+  static VerifyJWT = AsyncHandler.wrap(Middleware._verifyJWT);
   static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
-  static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
+  static IsAdmin = AsyncHandler.wrap(Middleware._isAdmin);
   static globalErrorHandler = Middleware.ErrorHandler;
-  static platformDetector = Middleware._platformDetector
+  static platformDetector = Middleware._platformDetector;
 }
 
 export { Middleware };
