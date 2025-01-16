@@ -8,7 +8,6 @@ import { RedisManager } from "../utils/redisClient";
 import { toE164Format } from "../utils/formatNum";
 import { successResponse, errorResponse } from "../utils/apiResponse";
 import { CookieOptions } from "express";
-import { AuthServices } from "../helper/auth";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
@@ -186,8 +185,10 @@ class Authentication {
 
   private static async _generateOtp(req: Request, res: Response) {
     const { mobNum, isTesting } = req.body;
-    if (typeof isTesting !== 'boolean') {
-      return res.status(400).json(errorResponse(400, "isTesting must be a boolean"));
+    if (typeof isTesting !== "boolean") {
+      return res
+        .status(400)
+        .json(errorResponse(400, "isTesting must be a boolean"));
     }
     const formattedRecipientNumber = toE164Format(mobNum);
     if (!formattedRecipientNumber) {
@@ -461,12 +462,16 @@ class Authentication {
       });
 
       if (user && user.isPhoneVerified && user.isActive) {
-        const tokens = await AuthServices.getAccAndRefToken(user._id);
-        if (!tokens) {
-          throw new ApiError(500, "Something went wrong");
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        if (!refreshToken || !accessToken) {
+          throw new ApiError(
+            500,
+            "Failed to generate access or refresh token."
+          );
         }
 
-        user.refreshToken = tokens.refreshToken;
+        user.refreshToken = refreshToken;
         await user.save();
 
         const response = {
@@ -479,19 +484,15 @@ class Authentication {
         if (req.isMobileApp) {
           return res
             .status(200)
-            .setHeader("x-access-token", tokens.accessToken)
-            .setHeader("x-refresh-token", tokens.refreshToken)
+            .setHeader("x-access-token", accessToken)
+            .setHeader("x-refresh-token", refreshToken)
             .json(successResponse(response, "User already verified"));
         }
 
         return res
           .status(200)
-          .cookie("accessToken", tokens.accessToken, Authentication.options)
-          .cookie(
-            "refreshToken",
-            tokens.refreshToken,
-            Authentication.refreshOptions
-          )
+          .cookie("accessToken", accessToken, Authentication.options)
+          .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
           .json(successResponse(response, "User already verified"));
       }
 
@@ -515,14 +516,13 @@ class Authentication {
         user.isPhoneVerified = true;
         user.isActive = true;
       }
-
-      const tokens = await AuthServices.getAccAndRefToken(user._id);
-
-      if (!tokens) {
-        throw new ApiError(500, "Something went wrong");
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
+      if (!refreshToken || !accessToken) {
+        throw new ApiError(500, "Failed to generate access or refresh token.");
       }
 
-      user.refreshToken = tokens.refreshToken;
+      user.refreshToken = refreshToken;
       await user.save();
 
       const response = {
@@ -535,16 +535,16 @@ class Authentication {
       if (req.isMobileApp) {
         return res
           .status(200)
-          .setHeader("x-access-token", tokens.accessToken)
-          .setHeader("x-refresh-token", tokens.refreshToken)
+          .setHeader("x-access-token", accessToken)
+          .setHeader("x-refresh-token", refreshToken)
           .json(successResponse(response, "OTP Verified Successfully"));
       }
       return res
         .status(200)
-        .cookie("accessToken", tokens.accessToken, Authentication.options)
+        .cookie("accessToken", accessToken, Authentication.options)
         .cookie(
           "refreshToken",
-          tokens.refreshToken,
+          refreshToken,
           Authentication.refreshOptions
         )
         .json(successResponse(response, "OTP Verified Successfully"));
