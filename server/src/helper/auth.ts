@@ -7,6 +7,7 @@ import { ApiError } from "../utils/apiError";
 import { UserModel } from "../models/userModel";
 import { ObjectId } from "mongoose";
 import { successResponse, errorResponse } from "../utils/apiResponse";
+import { AsyncHandler } from "../utils/AsyncHandler";
 
 class AuthServices {
   private static options: CookieOptions = {
@@ -24,28 +25,24 @@ class AuthServices {
   };
 
   // Method to refresh access token
-  static refreshAccessToken = async (req: Request, res: Response) => {
-    let incomingRefreshToken = req.cookies?.refreshToken;
+  private static async _refreshAccessToken(req: Request, res: Response) {
+    let incomingRefreshToken: string | undefined;
 
-    // If src is "div", try to get refreshToken from Authorization header
-    if (req.body.src === "div") {
+    // Determine refresh token source based on client type
+    if (req.isMobileApp) {
       const authHeader = req.header("Authorization");
-
-      // Check if the Authorization header is in the expected format
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        incomingRefreshToken = authHeader.split(" ")[1];
-      }
+      incomingRefreshToken = authHeader?.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : undefined;
     } else {
-      incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+      incomingRefreshToken =
+        req.cookies?.refreshToken || req.body?.refreshToken;
     }
 
-    console.log(
-      incomingRefreshToken,
-      "incomingRefreshToken in refreshAccessToken"
-    );
-
     if (!incomingRefreshToken) {
-      throw new ApiError(401, "Unauthorized Access");
+      throw new ApiError(401, "No refresh token provided", [
+        "Authentication failed",
+      ]);
     }
 
     try {
@@ -56,12 +53,42 @@ class AuthServices {
       ) as JwtPayload;
       console.log(decodedToken, "decodedToken in refreshAccessToken");
 
+      // Verify standard claims
+      if (decodedToken.iss !== "KYF") {
+        throw new ApiError(401, "Invalid token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (decodedToken.aud !== "kyf-api") {
+        throw new ApiError(401, "Invalid token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.iat && decodedToken.iat > now) {
+        throw new ApiError(401, "Refreshe token used before issued time", [
+          "Authentication failed",
+        ]);
+      }
+
       // Fetch user by the decoded token ID
       const user = await UserModel.findById(decodedToken._id);
       console.log(user, "user in refreshAccessToken");
 
       if (!user) {
-        throw new ApiError(401, "Invalid refresh token");
+        throw new ApiError(401, "Invalid refresh token no user found", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (!user.isActive) {
+        throw new ApiError(
+          401,
+          "User is not active, request for your account activation",
+          ["Authentication failed"]
+        );
       }
 
       // Ensure the incoming refresh token matches the one stored in the user's document
@@ -70,33 +97,35 @@ class AuthServices {
       }
 
       // Generate new access and refresh tokens
-      const tokens = await this.createAccessAndRefreshToken(
-        user._id as ObjectId
-      );
-      if (!tokens) {
-        throw new ApiError(500, "Failed to generate tokens");
-      }
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
 
-      user.refreshToken = tokens.refreshToken;
-      await user.save();
-
-      if (req.body.src === "div") {
+      if (req.isMobileApp) {
         return res
           .status(200)
-          .setHeader("x-access-token", tokens.accessToken)
-          .setHeader("x-refresh-token", tokens.refreshToken)
+          .setHeader("x-access-token", accessToken)
+          .setHeader("x-refresh-token", refreshToken)
           .json(successResponse({}, "Successfully Refreshed Access Token"));
       }
 
       return res
         .status(200)
-        .cookie("accessToken", tokens.accessToken, this.options)
-        .cookie("refreshToken", tokens.refreshToken, this.refreshOptions)
-        .json(successResponse({}, "OTP Verified Successfully"));
-    } catch (error: any) {
-      throw new ApiError(401, error?.message || "Invalid refresh token");
+        .cookie("accessToken", accessToken, this.options)
+        .cookie("refreshToken", refreshToken, this.refreshOptions)
+        .json(successResponse({}, "Successfully Refreshed Access Token"));
+    } catch (error) {
+      if (error instanceof JWT.TokenExpiredError) {
+        throw new ApiError(401, "Refresh token expired, please login again", [
+          "Authentication failed",
+        ]);
+      }
+      throw new ApiError(401, "Invalid refresh token", [
+        "Authentication failed",
+      ]);
     }
-  };
+  }
 
   private static async generate_JWT_Token<T extends string | object>(
     payload: T,
@@ -120,67 +149,10 @@ class AuthServices {
     }
   }
 
-  private static createAccessAndRefreshToken = async (userId: any) => {
-    try {
-      // Find the user by ID
-      const user = await UserModel.findById(userId);
-      if (!user) {
-        throw new ApiError(404, "User not found");
-      }
-      // If user is found, generate access and refresh tokens
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
-
-      // Assign refresh token to user and save
-      user.refreshToken = refreshToken;
-      await user.save({ validateBeforeSave: false });
-
-      // Return the generated tokens
-      return { accessToken, refreshToken };
-    } catch (error) {
-      console.error("Token generation error:", error);
-      // Throw an error if there's an issue generating tokens
-      throw new ApiError(
-        500,
-        error instanceof Error
-          ? `Error creating tokens: ${error.message}`
-          : "Something went wrong while creating tokens"
-      );
-    }
-  };
-
-  private static async verifyToken(
-    token: string,
-    type: "access" | "refresh"
-  ) {
-    try {
-      const secret =
-        type === "access"
-          ? process.env.ACCESS_TOKEN_SECRET!
-          : process.env.REFRESH_TOKEN_SECRET!;
-
-      const decoded = JWT.verify(token, secret) as JwtPayload;
-      const query =
-        type === "refresh"
-          ? { _id: decoded._id, refreshToken: token, isActive: true }
-          : { _id: decoded._id, isActive: true };
-
-      const user = await UserModel.findOne(query);
-      if (!user) return null;
-      return {
-        userId: user._id,
-        phoneNumber: user.phoneNumber,
-        username: user.username,
-        status:type === 'access' ? "authenticated" : "refreshed"
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-
   static genJWT_Token = AuthServices.generate_JWT_Token;
-  static getAccAndRefToken = AuthServices.createAccessAndRefreshToken;
-  static verifyJWT_Token = AuthServices.verifyToken;
+  static RefreshAccessToken = AsyncHandler.wrap(
+    AuthServices._refreshAccessToken
+  );
 }
 
 export { AuthServices };
