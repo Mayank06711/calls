@@ -171,10 +171,13 @@ UserSchema.methods.generateAccessToken = function () {
 
   return JWT.sign(
     {
-      _id: this._id,
+      _id: this._id,  // Subject (user ID)
       email: this.email,
       username: this.username,
       city: this.city,
+      iss:"KYF",
+      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
+      aud: "kyf-api", // Audience
     },
     process.env.ACCESS_TOKEN_SECRET!,
     {
@@ -187,6 +190,9 @@ UserSchema.methods.generateRefreshToken = function () {
   return JWT.sign(
     {
       _id: this._id,
+      iss:"KYF",
+      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
+      aud: "kyf-api", // Audience
     },
     process.env.REFRESH_TOKEN_SECRET!,
     {
