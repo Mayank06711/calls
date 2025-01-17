@@ -64,7 +64,7 @@ class SocketManager {
     MONITOR: {
       GROUP: "monitor",
       KEY: "socket:monitor",
-      INTERVAL: 10 * 60,
+      INTERVAL: (10 * 60),
     },
     AUTH: {
       TIMEOUT: 30000, // 30 seconds
@@ -95,7 +95,7 @@ class SocketManager {
     RedisManager.addChannelHandler(
       "__keyevent@0__:expired",
       async (channel, expiredKey) => {
-        console.log(expiredKey, "Expired Key you got it", "\n🥲");
+        console.log(`Expired key  ${expiredKey} \n`);
         // Check if the expired key belongs to auth group
         if (expiredKey.startsWith(`${this.SOCKET_CONSTANTS.AUTH.GROUP}:`)) {
           const socketId = expiredKey.replace(
@@ -108,23 +108,41 @@ class SocketManager {
             this.handleConnectionError(socket, "Authentication timeout");
           }
         }
-        if (expiredKey === this.SOCKET_CONSTANTS.MONITOR.KEY) {
+        
+        if (
+          expiredKey ===
+          `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`
+        ) {
           await this.runMonitoringCycle();
           // Reset the monitor key after cycle completes
           await this.resetMonitorKey();
         }
       }
     );
-    this.resetMonitorKey();
-    this.runMonitoringCycle();
+    // Initial setup of monitor key
+    this.resetMonitorKey()
+      .then(() => {
+        console.log("Initial monitor key set successfully");
+        return this.runMonitoringCycle();
+      })
+      .catch((error) => {
+        console.error("Error in initial monitor setup:", error);
+      });
   }
 
   private async resetMonitorKey(): Promise<void> {
+    const key = `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`;
     await RedisManager.cacheDataInGroup(
       this.SOCKET_CONSTANTS.MONITOR.GROUP,
       this.SOCKET_CONSTANTS.MONITOR.KEY,
-      { lastReset: Date.now() },
+      {
+        lastReset: Date.now(),
+        nextReset: Date.now() + this.SOCKET_CONSTANTS.MONITOR.INTERVAL * 1000,
+      },
       this.SOCKET_CONSTANTS.MONITOR.INTERVAL // 10 minutes TTL
+    );
+    console.log(
+      `Monitor key ${key} set with TTL of ${this.SOCKET_CONSTANTS.MONITOR.INTERVAL} seconds`
     );
   }
 
