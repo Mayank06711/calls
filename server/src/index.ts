@@ -4,7 +4,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
-import { createServer, Server as HTTPSServer } from "https"; // Import Server type
+import { createServer, Server as HTTPServer } from "http"; // Import Server type
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
@@ -19,7 +19,7 @@ import cronSchuduler from "./auto/cronJob";
 
 class ServerManager {
   private app = express();
-  private server!: HTTPSServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
+  private server!: HTTPServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
   private io!: SocketIOServer; // Socket.io instance
   private socketManager!: SocketManager;
   constructor() {
@@ -135,12 +135,12 @@ class ServerManager {
       path.join(__dirname, "../certs/cert.crt"),
       "utf8"
     );
-    //  HTTPS server with key and cert
+    //  HTTPS server with key and cert and for that createServer must be imported from https not http
     this.server = createServer(
-      {
-        key: key,
-        cert: cert,
-      },
+      // {
+      //   key: key,
+      //   cert: cert,
+      // },
       this.app
     );
     // Socket.io for real-time communication
