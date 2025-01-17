@@ -158,7 +158,7 @@ class ServerManager {
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
-          console.log(`Server is running on https://localhost:${Port}`);
+          console.log(`Server is running on http://localhost:${Port}`);
           resolve();
         });
       });
