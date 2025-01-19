@@ -1,6 +1,7 @@
-import axios from "axios";
-import { setToken, userLogin, userSignup } from "../actions";
+import { generateOtp, setToken, userLogin, userSignup } from "../actions";
 import socketConnection from "../../webRTCUtils/socketConnection";
+import { makeRequest } from "../../utils/apiHandlers";
+import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
 
 export const userLoginThunk = (payload) => async (dispatch) => {
   try {
@@ -56,5 +57,34 @@ export const userSignupThunk = (payload) => async (dispatch) => {
       "Error in the user signup thunk:",
       error.response?.data || error.message
     );
+  }
+};
+
+export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
+  try {
+    const response = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.GENERATE_OTP,
+      {
+        mobNum: mobileNumber,
+        isTesting: true,
+      }
+    );
+    const { parsedBody } = response;
+
+    console.log("OTP Generation Response:", {
+      parsedBody,
+      smsId: parsedBody?.data?.sms_id,
+      referenceId: parsedBody?.data?.reference_id,
+    });
+
+    dispatch(generateOtp(parsedBody));
+    return parsedBody;
+  } catch (error) {
+    console.error(
+      "Error generating OTP:",
+      error.response?.data || error.message
+    );
+    throw error;
   }
 };

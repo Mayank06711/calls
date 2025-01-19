@@ -3,12 +3,18 @@ import Image1 from "../../assets/image2.png";
 import Image2 from "../../assets/image3.png";
 import QRGenerator from "../QRGenerator/QRGenerator";
 import OTPInput from "./OTPInput";
+import { generateOtpThunk } from "../../redux/thunks/login.thunks";
+import { useDispatch } from 'react-redux';
+import { resetTimer, setTimerActive, showNotification } from "../../redux/actions";
+
 
 function Login() {
   const [activeTab, setActiveTab] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  
+  const dispatch = useDispatch();
 
   const handleTabClick = (tabNumber) => {
     setActiveTab(tabNumber);
@@ -16,18 +22,23 @@ function Login() {
 
   const handlePhoneNumberChange = (e) => {
     const value = e.target.value;
-
-    // Allow only numeric input
-    const numericValue = value.replace(/\D/g, ""); // Remove non-numeric characters
+    const numericValue = value.replace(/\D/g, "");
     setPhoneNumber(numericValue);
-
-    // Enable button only if the number is exactly 10 digits
     setIsButtonEnabled(numericValue.length === 10);
   };
 
   const handleSubmit = () => {
-    // Simulate OTP being sent
-    setOtpSent(true);
+    try {
+      dispatch(generateOtpThunk("+91"+phoneNumber));
+      dispatch(resetTimer(60)); // Set initial timer
+      dispatch(setTimerActive(true)); // Activate the timer
+      setOtpSent(true);
+ // Show success notification
+ dispatch(showNotification("OTP sent successfully!", 200));
+    } catch (error) {
+      console.log("error in generating otp", error);
+      dispatch(showNotification("Failed to send OTP. Please try again.", 400));
+    }
   };
 
   return (
@@ -36,25 +47,15 @@ function Login() {
         <div className="banner"></div>
         <label className="title">Know Your Style</label>
         <div className="h-48">
-          {activeTab === 1 ? (
-            <img
-              src={Image1}
-              alt="Login background"
-              className={`w-full h-full object-contain animate__animated ${
-                activeTab === 1 ? "animate__flipInY" : "animate__flipInX"
-              }`}
-            />
-          ) : (
-            <img
-              src={Image2}
-              alt="Login background"
-              className={`w-full h-full object-contain animate__animated ${
-                activeTab === 1 ? "animate__flipInY" : "animate__flipInX"
-              }`}
-            />
-          )}
+        <img
+            src={activeTab === 1 ? Image1 : Image2}
+            alt="Login background"
+            className={`w-full h-full object-contain animate__animated ${
+              activeTab === 1 ? "animate__flipInY" : "animate__flipInX"
+            }`}
+          />
         </div>
-        <div className="tab-container">
+        <div className="tab-container relative">
           <button
             type="button"
             role="tab"
@@ -78,6 +79,7 @@ function Login() {
             QR
           </button>
           <div className="indicator"></div>
+          
         </div>
 
         {activeTab === 1 ? (
@@ -109,7 +111,7 @@ function Login() {
                 </button>
               </>
             ) : (
-              <OTPInput />
+              <OTPInput phoneNumber={phoneNumber} />
             )}
           </div>
         ) : (
