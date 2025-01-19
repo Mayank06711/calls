@@ -7,10 +7,11 @@ import { v2 as cloudinary } from "cloudinary";
 import { newRequest } from "../types/expres";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
-import AsyncHandler from "../utils/AsyncHandler";
 import Admin from "../models/adminModel";
+import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -32,7 +33,7 @@ class Middleware {
     5
   );
 
-  private static getBase64 = (file: any) =>
+  public static getBase64 = (file: any) =>
     `data:${file[0].mimetype};base64,${file[0].buffer.toString("base64")}`;
   private static async uploadFilesToCloudinary(files: any[] = []) {
     if (!files || files.length === 0) {
@@ -76,7 +77,7 @@ class Middleware {
     }
   }
 
-  private static async verify_JWT(
+  private static async _verifyJWT(
     req: Request,
     res: Response,
     next: NextFunction
@@ -88,7 +89,7 @@ class Middleware {
         req.header("Authorization")?.replace("Bearer ", "");
 
       if (!accessToken || accessToken.length === 0) {
-        throw new ApiError(401, "Invalid Access Token");
+        throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
 
       // Verify and decode the access token
@@ -98,48 +99,71 @@ class Middleware {
       );
 
       if (typeof decodedToken === "string") {
-        throw new ApiError(401, "Invalid Access Token");
+        throw new ApiError(401, "Invalid token type", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Verify standard claims
+      if (decodedToken.iss !== "KYF") {
+        throw new ApiError(401, "Invalid token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Check audience
+      if (decodedToken.aud !== "kyf-api") {
+        throw new ApiError(401, "Invalid token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+
+      // Check issued at time
+      if (decodedToken.iat && decodedToken.iat > now) {
+        throw new ApiError(401, "Token used before issued time", [
+          "Authentication failed",
+        ]);
       }
 
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
-        _id: decodedToken.id,
-      }).select("email isMFAEnabled isActive username");
-
+        _id: decodedToken._id,
+      }).select("isExpert isAdmin isMFAEnabled isActive");
       // Check if user does not exist
       if (!user) {
-        // Check if the token belongs to an admin instead
-        const admin = await Admin.findOne({
-          username: decodedToken.username,
-        }).select("adminUsername isActive");
-
-        if (!admin) {
-          throw new ApiError(401, "Invalid access token");
-        }
-
-        // Attach admin info to the request
-        req.admin = {
-          _id: admin._id as ObjectId,
-          adminUsername: admin.adminUsername,
-          isActive: admin.isActive,
-        };
-
-        return next(); // Admin is authenticated
+        throw new ApiError(401, "Invalid access token", [
+          "Authentication failed",
+        ]);
       }
 
-      // Attach user info to the request
+      // Attach admin info to the request
       req.user = {
         _id: user._id as ObjectId,
-        username: user.username,
-        email: user.email,
-        isMFAEnabled: user.isMFAEnabled,
+        isAdmin: user.isAdmin,
+        isExpert: user.isExpert,
         isActive: user.isActive,
+        isMFAEnabled: user.isMFAEnabled,
       };
 
-      next(); // Call the next Middleware function or route handler
+      return next();
     } catch (error) {
-      console.error("Error in verifyJWT:", error);
-      next(new ApiError(401, "Invalid or expired token"));
+      // JWT-specific error handling
+      if (error instanceof JWT.TokenExpiredError) {
+        const expiredAt = (error as JWT.TokenExpiredError).expiredAt;
+        throw new ApiError(
+          401,
+          `Token expired at  ${expiredAt} Please login again`,
+          ["Authentication failed"]
+        );
+      }
+
+      // For any other errors
+      throw new ApiError(401, "Token verification failed", [
+        "Authentication failed",
+        error as Error,
+      ]);
     }
   }
 
@@ -194,47 +218,124 @@ class Middleware {
   }
 
   //   chech if admin or not
-  private static isAdmin(req: Request, res: Response, next: NextFunction) {
-    const id = req.admin?._id;
-    const originalUrl = req.originalUrl;
-    console.log("isAdmin Middleware originalURL", originalUrl);
-    if (id && req.originalUrl.startsWith("/admin")) {
-      // i do have another logic apache kafka later
-      next();
-    } else {
-      // apache kafka used here
-      res
-        .status(401)
-        .json({ message: "You are not authorized to access this resource" }); // throwing erro instead of thus
-    }
-  }
-
-  // for all error
-  private static errorMiddleware(
-    err: any,
+  private static async _isAdmin(
     req: Request,
     res: Response,
     next: NextFunction
   ) {
-    err.message ||= "Internal Server Error, please try again later";
-    const statusCode = err.statusCode || 500;
+    try {
+      const id = req.user?._id;
+      const originalUrl = req.originalUrl;
+      console.log("isAdmin Middleware originalURL", originalUrl);
+      if (!id) {
+        throw new ApiError(
+          401,
+          "User ID is missing. Authentication is required to access this resource."
+        );
+      }
+      if (!req.originalUrl.startsWith("/admin")) {
+        throw new ApiError(
+          403,
+          "Access to this resource is restricted to admin users only.",
+          ["Unauthorised Access"]
+        );
+      }
+      // Check if the user is an admin
+      const admin = await Admin.findById(id);
+      if (!admin) {
+        throw new ApiError(
+          401,
+          "You are not an admin and cannot access this resource",
+          ["Unauthorised Access"]
+        );
+      }
+      next(); // Allow access if the user is an admin
+    } catch (error) {
+      throw new ApiError(500, "Internal Server Error");
+    }
+  }
 
-    console.error(`Error: ${err}`); // apierror
-    res.status(statusCode).json({
-      sucess: false,
+  // for all error
+  private static ErrorHandler(
+    err: Error | ApiError, // The error caught by the middleware
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    // Log the error for internal tracking (you can use a logger library like Winston)
+    console.error("Global Error Handler:", {
+      name: err.name,
       message: err.message,
-      // message: process.env.NODE_ENV.trim() === "DEVELOPMENT" ? err: err.message // here i will use apiError class
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+    });
+    // Handle Validation Errors
+    if (err.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Validation Error",
+        errors: err.message,
+      });
+    }
+
+    if (err.name === "MongoServerError" && (err as any).code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate entry error",
+        error: "A record with this information already exists",
+      });
+    }
+    // Handle MongoDB Errors
+    if (err.name === "MongoError" || err.name === "MongoServerError") {
+      return res.status(500).json({
+        success: false,
+        message: "Database Error",
+        errors: [err.message],
+      });
+    }
+    // If headers are already sent, don't try to send another response
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    // Handle ApiError instances
+    if (err instanceof ApiError) {
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        data: err.data,
+        errors: err.errors,
+      });
+    }
+
+    // Default error response
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      errors: [err.message],
     });
   }
+
+  private static _platformDetector = (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ) => {
+    req.isMobileApp =
+      req.get("x-platform") === "mobile" || Boolean(req.get("x-app-version"));
+    next();
+  };
 
   // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
-  static VerifyJWT = AsyncHandler.wrap(Middleware.verify_JWT);
+  static VerifyJWT = AsyncHandler.wrap(Middleware._verifyJWT);
   static IsMFAEnabled = AsyncHandler.wrap(Middleware.isMFAEnabled);
-  static IsAdmin = AsyncHandler.wrap(Middleware.isAdmin);
-  static ErrorMiddleware = Middleware.errorMiddleware;
+  static IsAdmin = AsyncHandler.wrap(Middleware._isAdmin);
+  static globalErrorHandler = Middleware.ErrorHandler;
+  static platformDetector = Middleware._platformDetector;
 }
 
 export { Middleware };

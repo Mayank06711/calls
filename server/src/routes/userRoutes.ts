@@ -1,19 +1,15 @@
 import User from "../controllers/userController";
 import { Router } from "express";
-
+import { Middleware } from "../middlewares/middlewares";
 const router = Router();
 
 // User routes
 router.route("/signup").post(User.signUp);
 router.route("/verify-email").post(User.verifyEmail);
-// below are secured routes;
 router.route("/login").post(User.login);
-router.route("/verify-phone").post(User.verifyPhone); // Verify phone number
-router.route("/update-profile").put(User.updateProfile); // Update user profile
-router.route("/get-profile").get(User.getProfile); // Get user profile
-router.route("/change-avatar").patch(User.changeAvatar); // Change user avatar
-router.route("/forgot-password").post(User.forgotPassword); // Handle forgot password
-router.route("/change-password").put(User.changePassword); // Change user password
-router.route("/refresh-token").post(User.refreshToken); // Refresh access token
-router.route("/logout").post(User.logout); // User logout
+// Secured routes
+router.use(Middleware.VerifyJWT); // Apply JWT middleware to all routes below
+router.route("/profile").get(User.getProfile).patch(User.updateProfile); // Combined profile routes
+router.route("/password").post(User.forgotPassword).patch(User.changePassword); // Combined password routes
+router.route("/logout").post(User.logout);
 export default router;

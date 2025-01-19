@@ -1,29 +1,48 @@
 import express, { Request, Response } from "express";
+import { CookieOptions } from "express";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
-import AsyncHandler from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
 import { ObjectId } from "mongoose";
+import { successResponse, errorResponse } from "../utils/apiResponse";
+import { AsyncHandler } from "../utils/AsyncHandler";
 
 class AuthServices {
-  static options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // Secure cookies in production
+  private static options: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+  };
+
+  private static refreshOptions: CookieOptions = {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV! === "prod", // Ensures the cookie is sent only over HTTPS
+    sameSite: "strict", // Prevents the browser from sending this cookie along with cross-site requests
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
   };
 
   // Method to refresh access token
-  static refreshAccessToken = async (req: Request, res: Response) => {
-    const incomingRefreshToken =
-      req.cookies.refreshToken || req.body.refreshToken;
+  private static async _refreshAccessToken(req: Request, res: Response) {
+    let incomingRefreshToken: string | undefined;
 
-    console.log(
-      incomingRefreshToken,
-      "incomingRefreshToken in refreshAccessToken"
-    );
+    // Determine refresh token source based on client type
+    if (req.isMobileApp) {
+      const authHeader = req.header("Authorization");
+      incomingRefreshToken = authHeader?.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : undefined;
+    } else {
+      incomingRefreshToken =
+        req.cookies?.refreshToken || req.body?.refreshToken;
+    }
 
     if (!incomingRefreshToken) {
-      throw new ApiError(401, "Unauthorized Access");
+      throw new ApiError(401, "No refresh token provided", [
+        "Authentication failed",
+      ]);
     }
 
     try {
@@ -34,39 +53,80 @@ class AuthServices {
       ) as JwtPayload;
       console.log(decodedToken, "decodedToken in refreshAccessToken");
 
+      // Verify standard claims
+      if (decodedToken.iss !== "KYF") {
+        throw new ApiError(401, "Invalid token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (decodedToken.aud !== "kyf-api") {
+        throw new ApiError(401, "Invalid token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.iat && decodedToken.iat > now) {
+        throw new ApiError(401, "Refreshe token used before issued time", [
+          "Authentication failed",
+        ]);
+      }
+
       // Fetch user by the decoded token ID
       const user = await UserModel.findById(decodedToken._id);
       console.log(user, "user in refreshAccessToken");
 
       if (!user) {
-        throw new ApiError(401, "Invalid refresh token");
+        throw new ApiError(401, "Invalid refresh token no user found", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (!user.isActive) {
+        throw new ApiError(
+          401,
+          "User is not active, request for your account activation",
+          ["Authentication failed"]
+        );
       }
 
       // Ensure the incoming refresh token matches the one stored in the user's document
       if (incomingRefreshToken !== user.refreshToken) {
-        throw new ApiError(401, "Refresh token is expired or used login again");
+        throw new ApiError(401, "Refresh token is expired login again");
       }
 
       // Generate new access and refresh tokens
-      const tokens = await this.createAccessAndRefreshToken(
-        user._id as ObjectId
-      );
-      if (!tokens) {
-        throw new ApiError(500, "Failed to generate tokens");
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+
+      if (req.isMobileApp) {
+        return res
+          .status(200)
+          .setHeader("x-access-token", accessToken)
+          .setHeader("x-refresh-token", refreshToken)
+          .json(successResponse({}, "Successfully Refreshed Access Token"));
       }
 
       return res
         .status(200)
-        .cookie("accessToken", tokens.accessToken, this.options)
-        .cookie("refreshToken", tokens.refreshToken, this.options)
-        .json({
-          localToken: user.username,
-          userID: user._id,
-        });
-    } catch (error: any) {
-      throw new ApiError(401, error?.message || "Invalid refresh token");
+        .cookie("accessToken", accessToken, this.options)
+        .cookie("refreshToken", refreshToken, this.refreshOptions)
+        .json(successResponse({}, "Successfully Refreshed Access Token"));
+    } catch (error) {
+      if (error instanceof JWT.TokenExpiredError) {
+        throw new ApiError(401, "Refresh token expired, please login again", [
+          "Authentication failed",
+        ]);
+      }
+      throw new ApiError(401, "Invalid refresh token", [
+        "Authentication failed",
+      ]);
     }
-  };
+  }
+
   private static async generate_JWT_Token<T extends string | object>(
     payload: T,
     secretToken: string,
@@ -89,37 +149,37 @@ class AuthServices {
     }
   }
 
-  private static createAccessAndRefreshToken = async (userId: ObjectId) => {
+  private static async verifyToken(token: string, type: "access" | "refresh") {
     try {
-      // Find the user by ID
-      const user = await UserModel.findById(userId);
+      const secret =
+        type === "access"
+          ? process.env.ACCESS_TOKEN_SECRET!
+          : process.env.REFRESH_TOKEN_SECRET!;
 
-      // If user is found, generate access and refresh tokens
-      if (user) {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+      const decoded = JWT.verify(token, secret) as JwtPayload;
+      const query =
+        type === "refresh"
+          ? { _id: decoded._id, refreshToken: token, isActive: true }
+          : { _id: decoded._id, isActive: true };
 
-        // Assign refresh token to user and save
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
-
-        // Return the generated tokens
-        return { accessToken, refreshToken };
-      } else {
-        // If no user found, return null (or handle the case accordingly)
-        return null;
-      }
+      const user = await UserModel.findOne(query);
+      if (!user) return null;
+      return {
+        userId: user._id,
+        phoneNumber: user.phoneNumber,
+        username: user.username,
+        status: type === "access" ? "authenticated" : "refreshed",
+      };
     } catch (error) {
-      // Throw an error if there's an issue generating tokens
-      throw new ApiError(
-        500,
-        "Something went wrong, Error creating access and refresh token"
-      );
+      return null;
     }
-  };
+  }
 
   static genJWT_Token = AuthServices.generate_JWT_Token;
-  static getAccAndRefToken = AuthServices.createAccessAndRefreshToken;
+  static RefreshAccessToken = AsyncHandler.wrap(
+    AuthServices._refreshAccessToken
+  );
+  static verifyJWT_Token = AuthServices.verifyToken;
 }
 
 export { AuthServices };
