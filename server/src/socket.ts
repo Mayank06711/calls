@@ -66,7 +66,7 @@ class SocketManager {
     MONITOR: {
       GROUP: "monitor",
       KEY: "socket:monitor",
-      INTERVAL: 10 * 60,
+      INTERVAL: 2 * 60 * 60,
     },
     AUTH: {
       TIMEOUT: 30000, // 30 seconds
@@ -214,11 +214,13 @@ class SocketManager {
 
         console.log(`Monitor key ${key} set/updated`);
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error(`Error resetting monitor key ${key}:`, error);
+      throw error; // Now properly throwing the caught error
+    }
     console.log(
       `Monitor key ${key} set with TTL of ${this.SOCKET_CONSTANTS.MONITOR.INTERVAL} seconds`
     );
-    throw error; // Propagate error for retry mechanism
   }
 
   public static getInstance(io?: SocketServer): SocketManager {
