@@ -10,6 +10,7 @@ import { FileHandler } from "./helper/fileHandler";
 import { SocketUserData, PendingAuthData } from "./types/interface";
 import { SocketData } from "./types/interface";
 import User from "./controllers/userController";
+import { error } from "console";
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections
@@ -45,6 +46,7 @@ class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
+
   private readonly SOCKET_CONSTANTS = {
     REDIS: {
       GROUP: "socketAuthenticatedUsers",
@@ -64,7 +66,7 @@ class SocketManager {
     MONITOR: {
       GROUP: "monitor",
       KEY: "socket:monitor",
-      INTERVAL: (10 * 60),
+      INTERVAL: 10 * 60,
     },
     AUTH: {
       TIMEOUT: 30000, // 30 seconds
@@ -108,42 +110,79 @@ class SocketManager {
             this.handleConnectionError(socket, "Authentication timeout");
           }
         }
-        
+
         if (
           expiredKey ===
           `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`
         ) {
-          await this.runMonitoringCycle();
-          // Reset the monitor key after cycle completes
-          await this.resetMonitorKey();
+          try {
+            await this.runMonitoringCycle();
+            // Reset the monitor key after cycle completes
+            await this.resetMonitorKey();
+          } catch (error) {
+            console.error("Error in monitoring cycle:", error);
+            // Attempt to recover by setting a new monitor key
+            setTimeout(() => this.resetMonitorKey(), 5000);
+          }
         }
       }
     );
     // Initial setup of monitor key
-    this.resetMonitorKey()
-      .then(() => {
+    // Initial setup with retry mechanism
+    const setupMonitor = async (retryCount = 0) => {
+      try {
+        await this.resetMonitorKey();
         console.log("Initial monitor key set successfully");
-        return this.runMonitoringCycle();
-      })
-      .catch((error) => {
-        console.error("Error in initial monitor setup:", error);
-      });
+        await this.runMonitoringCycle();
+      } catch (error) {
+        console.error(
+          `Error in initial monitor setup (attempt ${retryCount + 1}):`,
+          error
+        );
+        if (retryCount < 3) {
+          setTimeout(() => setupMonitor(retryCount + 1), 5000);
+        }
+      }
+    };
+
+    setupMonitor();
   }
 
   private async resetMonitorKey(): Promise<void> {
     const key = `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`;
-    await RedisManager.cacheDataInGroup(
-      this.SOCKET_CONSTANTS.MONITOR.GROUP,
-      this.SOCKET_CONSTANTS.MONITOR.KEY,
-      {
-        lastReset: Date.now(),
-        nextReset: Date.now() + this.SOCKET_CONSTANTS.MONITOR.INTERVAL * 1000,
-      },
-      this.SOCKET_CONSTANTS.MONITOR.INTERVAL // 10 minutes TTL
-    );
+    const now = Date.now();
+    interface MonitorData {
+      lastReset: number;
+      nextReset: number;
+    }
+
+    try {
+      // Check if key exists first
+      const existing = await RedisManager.getDataFromGroup<MonitorData>(
+        this.SOCKET_CONSTANTS.MONITOR.GROUP,
+        this.SOCKET_CONSTANTS.MONITOR.KEY
+      );
+      // Only set new key if it doesn't exist or is close to expiring
+      if (!existing || existing.nextReset - now < 30000) {
+        // 30 seconds buffer
+        await RedisManager.cacheDataInGroup<MonitorData>(
+          this.SOCKET_CONSTANTS.MONITOR.GROUP,
+          this.SOCKET_CONSTANTS.MONITOR.KEY,
+          {
+            lastReset: now,
+            nextReset: now + this.SOCKET_CONSTANTS.MONITOR.INTERVAL * 1000,
+          },
+          this.SOCKET_CONSTANTS.MONITOR.INTERVAL
+        );
+        console.log(
+          `Monitor key ${key} set with TTL of ${this.SOCKET_CONSTANTS.MONITOR.INTERVAL} seconds`
+        );
+      }
+    } catch (error) {}
     console.log(
       `Monitor key ${key} set with TTL of ${this.SOCKET_CONSTANTS.MONITOR.INTERVAL} seconds`
     );
+    throw error; // Propagate error for retry mechanism
   }
 
   public static getInstance(io?: SocketServer): SocketManager {
