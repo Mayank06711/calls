@@ -94,54 +94,90 @@ class SocketManager {
   }
 
   private setupAuthExpirationAndMonitoringHandler(): void {
+    // Debounce monitor execution to prevent multiple simultaneous runs
+    let monitoringInProgress = false;
+    let monitorRetryTimeout: NodeJS.Timeout | null = null;
+
     RedisManager.addChannelHandler(
       "__keyevent@0__:expired",
       async (channel, expiredKey) => {
-        console.log(`Expired key  ${expiredKey} \n`);
-        // Check if the expired key belongs to auth group
-        if (expiredKey.startsWith(`${this.SOCKET_CONSTANTS.AUTH.GROUP}:`)) {
-          const socketId = expiredKey.replace(
-            `${this.SOCKET_CONSTANTS.AUTH.GROUP}:`,
-            ""
-          );
-          const socket = this.io.sockets.sockets.get(socketId);
-
-          if (socket && !socket.data?.authenticated) {
-            this.handleConnectionError(socket, "Authentication timeout");
+        try {
+          // Handle auth expirations immediately but don't block
+          if (expiredKey.startsWith(`${this.SOCKET_CONSTANTS.AUTH.GROUP}:`)) {
+            const socketId = expiredKey.replace(
+              `${this.SOCKET_CONSTANTS.AUTH.GROUP}:`,
+              ""
+            );
+            const socket = this.io.sockets.sockets.get(socketId);
+            if (socket && !socket.data?.authenticated) {
+              // Don't await this
+              this.handleConnectionError(socket, "Authentication timeout");
+            }
           }
-        }
 
-        if (
-          expiredKey ===
-          `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`
-        ) {
-          try {
-            await this.runMonitoringCycle();
-            // Reset the monitor key after cycle completes
-            await this.resetMonitorKey();
-          } catch (error) {
-            console.error("Error in monitoring cycle:", error);
-            // Attempt to recover by setting a new monitor key
-            setTimeout(() => this.resetMonitorKey(), 5000);
+          // Handle monitor key expiration with debouncing
+          if (
+            expiredKey ===
+            `${this.SOCKET_CONSTANTS.MONITOR.GROUP}:${this.SOCKET_CONSTANTS.MONITOR.KEY}`
+          ) {
+            if (monitoringInProgress) {
+              console.log("Monitoring cycle already in progress, skipping...");
+              return;
+            }
+
+            monitoringInProgress = true;
+            try {
+              // Clear any existing retry timeout
+              if (monitorRetryTimeout) {
+                clearTimeout(monitorRetryTimeout);
+              }
+
+              // Ensure monitor key is set first
+              await this.resetMonitorKey();
+
+              // Run the monitoring cycle
+              await this.runMonitoringCycle();
+            } catch (error) {
+              console.error("Monitor cycle failed:", error);
+              // Schedule a retry
+              monitorRetryTimeout = setTimeout(() => {
+                this.resetMonitorKey().catch((err) =>
+                  console.error("Monitor key reset retry failed:", err)
+                );
+              }, 5000);
+            } finally {
+              monitoringInProgress = false;
+            }
           }
+        } catch (error) {
+          console.error("Error in expiration handler:", error);
         }
       }
     );
-    // Initial setup of monitor key
-    // Initial setup with retry mechanism
-    const setupMonitor = async (retryCount = 0) => {
+    // Initial setup with backoff retry
+    const setupMonitor = async (retryCount = 0, maxRetries = 3) => {
       try {
-        await this.resetMonitorKey();
-        console.log("Initial monitor key set successfully");
-        await this.runMonitoringCycle();
-      } catch (error) {
-        console.error(
-          `Error in initial monitor setup (attempt ${retryCount + 1}):`,
-          error
-        );
-        if (retryCount < 3) {
-          setTimeout(() => setupMonitor(retryCount + 1), 5000);
+        if (monitoringInProgress) {
+          console.log("Setup already in progress, waiting...");
+          setTimeout(() => setupMonitor(retryCount), 1000);
+          return;
         }
+
+        monitoringInProgress = true;
+        await this.resetMonitorKey();
+        await this.runMonitoringCycle();
+        console.log("Initial monitor setup successful");
+      } catch (error) {
+        console.error(`Monitor setup attempt ${retryCount + 1} failed:`, error);
+        if (retryCount < maxRetries) {
+          // Exponential backoff
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+          setTimeout(() => setupMonitor(retryCount + 1), delay);
+        } else {
+          console.error("Monitor setup failed after max retries");
+        }
+      } finally {
+        monitoringInProgress = false;
       }
     };
 
@@ -154,6 +190,7 @@ class SocketManager {
     interface MonitorData {
       lastReset: number;
       nextReset: number;
+      serverId: string;
     }
 
     try {
@@ -164,19 +201,18 @@ class SocketManager {
       );
       // Only set new key if it doesn't exist or is close to expiring
       if (!existing || existing.nextReset - now < 30000) {
-        // 30 seconds buffer
         await RedisManager.cacheDataInGroup<MonitorData>(
           this.SOCKET_CONSTANTS.MONITOR.GROUP,
           this.SOCKET_CONSTANTS.MONITOR.KEY,
           {
             lastReset: now,
             nextReset: now + this.SOCKET_CONSTANTS.MONITOR.INTERVAL * 1000,
+            serverId: process.env.SERVER_ID || "default",
           },
           this.SOCKET_CONSTANTS.MONITOR.INTERVAL
         );
-        console.log(
-          `Monitor key ${key} set with TTL of ${this.SOCKET_CONSTANTS.MONITOR.INTERVAL} seconds`
-        );
+
+        console.log(`Monitor key ${key} set/updated`);
       }
     } catch (error) {}
     console.log(
