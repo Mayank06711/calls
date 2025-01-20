@@ -1,12 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { authReducer, callStatusReducer, streamsReducer } from './reducers';
+import { authReducer, callStatusReducer, streamsReducer, notificationReducer } from './reducers';
 import {thunk} from 'redux-thunk';
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     callStatus: callStatusReducer,
-    streams: streamsReducer
+    streams: streamsReducer,
+    notification: notificationReducer
   },
   middleware: (getDefaultMiddleware) => 
     getDefaultMiddleware({

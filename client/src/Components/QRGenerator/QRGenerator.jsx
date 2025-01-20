@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import QRCode from "qrcode";
 
 const QRGenerator = ({ onQRCodeScanned }) => {
-  const [qrCode, setQRCode] = useState('');
+  const [qrCode, setQRCode] = useState("");
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     // Generate a new unique code (e.g., a UUID)
@@ -11,28 +14,23 @@ const QRGenerator = ({ onQRCodeScanned }) => {
     // QR code options for color customization
     const qrOptions = {
       color: {
-        dark: '#059212', // Line color (foreground)
-        light: '#FFFFFF', // Background color
+        dark: "#059212", // Line color (foreground)
+        light: "#FFFFFF", // Background color
       },
     };
 
     // Convert the unique code into a QR code with custom colors
     QRCode.toDataURL(uniqueCode, qrOptions)
-      .then((url) => {
-        setQRCode(url);
-      })
-      .catch((err) => {
-        console.error('Error generating QR code:', err);
-      });
+      .then(setQRCode)
+      .catch((err) => console.error("Error generating QR code:", err));
 
-    // Simulate the QR being scanned after some time (for testing)
     const mockScan = setTimeout(() => {
       onQRCodeScanned(uniqueCode); // Trigger callback when scanned
     }, 10000); // Simulates a scan after 10 seconds
 
     // Cleanup timeout on unmount
     return () => clearTimeout(mockScan);
-  }, [onQRCodeScanned]);
+  }, []);
 
   // Function to generate a unique code
   const generateUniqueCode = () => {
