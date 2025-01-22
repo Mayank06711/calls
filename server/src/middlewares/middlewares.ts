@@ -11,6 +11,7 @@ import Admin from "../models/adminModel";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
+import { AuthServices } from "../helper/auth";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -92,16 +93,27 @@ class Middleware {
         throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
 
-      // Verify and decode the access token
-      let decodedToken: string | JwtPayload = JWT.verify(
+      // First verify JWT signature
+      let wrappedToken: JwtPayload = JWT.verify(
         accessToken,
-        process.env.ACCESS_TOKEN_SECRET!
+        process.env.ACCESS_TOKEN_SECRET!,
+        {
+          algorithms: ["HS512"],
+          complete: true,
+        }
+      ) as JwtPayload;
+
+      // Decrypt the payload
+      const decryptedPayloadStr = AuthServices.decrypt(
+        wrappedToken.payload.data
       );
 
-      if (typeof decodedToken === "string") {
-        throw new ApiError(401, "Invalid token type", [
-          "Authentication failed",
-        ]);
+      const decodedToken = JSON.parse(decryptedPayloadStr);
+      // Verify token expiration
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.exp && decodedToken.exp < now) {
+        console.log(decodedToken.exp, decodedToken.exp < now);
+        throw new ApiError(401, "Token has expired", ["Authentication failed"]);
       }
 
       // Verify standard claims
@@ -117,8 +129,6 @@ class Middleware {
           "Authentication failed",
         ]);
       }
-
-      const now = Math.floor(Date.now() / 1000);
 
       // Check issued at time
       if (decodedToken.iat && decodedToken.iat > now) {
@@ -149,14 +159,8 @@ class Middleware {
 
       return next();
     } catch (error) {
-      // JWT-specific error handling
-      if (error instanceof JWT.TokenExpiredError) {
-        const expiredAt = (error as JWT.TokenExpiredError).expiredAt;
-        throw new ApiError(
-          401,
-          `Token expired at  ${expiredAt} Please login again`,
-          ["Authentication failed"]
-        );
+      if (error instanceof ApiError) {
+        throw error;
       }
 
       // For any other errors
@@ -189,35 +193,35 @@ class Middleware {
       return false;
     }
   }
-
   private static async isMFAEnabled(
     req: newRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> {
-    // we may have to remove promise any
-    if (!req.user?.isMFAEnabled) {
-      next();
-    } else {
+  ) {
+    try {
+      if (!req.user?.isMFAEnabled) {
+        return next();
+      }
+
       const { MFASecretKey } = req.body;
       if (!MFASecretKey) {
-        res
-          .status(401)
-          .json({ message: "Two-factor authentication (MFA) is required" });
-        return;
+        throw new ApiError(401, "Two-factor authentication (MFA) is required");
       }
+
       const isValid = await Middleware.verifyMFA(MFASecretKey, req.user.id);
-      if (isValid) {
-        next();
-      } else {
-        res
-          .status(401)
-          .json({ message: "Invalid two-factor authentication (MFA) code" });
+      if (!isValid) {
+        throw new ApiError(401, "Invalid two-factor authentication (MFA) code");
       }
+
+      next();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "MFA verification failed", [error as Error]);
     }
   }
 
-  //   chech if admin or not
   private static async _isAdmin(
     req: Request,
     res: Response,
@@ -226,32 +230,33 @@ class Middleware {
     try {
       const id = req.user?._id;
       const originalUrl = req.originalUrl;
-      console.log("isAdmin Middleware originalURL", originalUrl);
+
       if (!id) {
         throw new ApiError(
           401,
-          "User ID is missing. Authentication is required to access this resource."
+          "User ID is missing. Authentication is required"
         );
       }
+
       if (!req.originalUrl.startsWith("/admin")) {
-        throw new ApiError(
-          403,
-          "Access to this resource is restricted to admin users only.",
-          ["Unauthorised Access"]
-        );
+        throw new ApiError(403, "Access restricted to admin users only", [
+          "Unauthorized Access",
+        ]);
       }
-      // Check if the user is an admin
+
       const admin = await Admin.findById(id);
       if (!admin) {
-        throw new ApiError(
-          401,
-          "You are not an admin and cannot access this resource",
-          ["Unauthorised Access"]
-        );
+        throw new ApiError(403, "Access denied - Admin privileges required", [
+          "Unauthorized Access",
+        ]);
       }
-      next(); // Allow access if the user is an admin
+
+      next();
     } catch (error) {
-      throw new ApiError(500, "Internal Server Error");
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Admin verification failed", [error as Error]);
     }
   }
 
@@ -270,6 +275,22 @@ class Middleware {
       path: req.path,
       method: req.method,
     });
+
+    // If headers are already sent, don't try to send another response
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    // Handle ApiError instances
+    if (err instanceof ApiError) {
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        data: err.data,
+        errors: err.errors.filter((e) => !(e instanceof ApiError)),
+      });
+    }
+
     // Handle Validation Errors
     if (err.name === "ValidationError") {
       return res.status(400).json({
@@ -292,20 +313,6 @@ class Middleware {
         success: false,
         message: "Database Error",
         errors: [err.message],
-      });
-    }
-    // If headers are already sent, don't try to send another response
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    // Handle ApiError instances
-    if (err instanceof ApiError) {
-      return res.status(err.statusCode).json({
-        success: false,
-        message: err.message || "Internal Server Error",
-        data: err.data,
-        errors: err.errors,
       });
     }
 
