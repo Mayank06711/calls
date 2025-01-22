@@ -104,6 +104,7 @@ class ServerManager {
       if (this.socketManager) {
         await this.socketManager.cleanup();
       }
+      await RedisManager.cleanup();
       // Flush logs
       this.flushLogs();
       // Close database connections (if applicable)
