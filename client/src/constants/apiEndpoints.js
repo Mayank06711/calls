@@ -33,7 +33,7 @@ export const ENDPOINTS = {
   },
   USERS: {
     PROFILE: `/api/${API_CONFIG.VERSION}/users/profile`,
-    UPDATE: `/api/${API_CONFIG.VERSION}/users/update_profile`,
+    UPDATE: `/api/${API_CONFIG.VERSION}/users/profile`,
     GET_USER_BY_ID: `/api/${API_CONFIG.VERSION}/users/get_user_by_id`,
     GET_USER_BY_MOBILE: `/api/${API_CONFIG.VERSION}/users/get_user_by_mobile`,
     LOGOUT: `/api/${API_CONFIG.VERSION}/auth/logout`,
