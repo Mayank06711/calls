@@ -13,11 +13,12 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
     console.log("fetching user info");
     const response = await makeRequest(
       HTTP_METHODS.GET,
-      ENDPOINTS.USERS.UPDATE
+      ENDPOINTS.USERS.PROFILE
     );
     console.log("response in fetchUserInfoThunk", response);
-    if (response.parsedBody.success) {
-      const userInfo = JSON.parse(response.parsedBody).data;
+    if (response.parsedBody?.success) {
+      // response.parsedBody is already parsed, use it directly
+      const userInfo = response.parsedBody.data;
       console.log("userInfo in fetchUserInfoThunk", userInfo);
       dispatch(fetchUserInfoSuccess(userInfo));
       localStorage.setItem("userInfo", JSON.stringify(userInfo));
