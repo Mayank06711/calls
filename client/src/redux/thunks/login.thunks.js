@@ -139,13 +139,13 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
 export const updateUserInfoThunk = (userData) => async (dispatch) => {
   try {
     const response = await makeRequest(
-      HTTP_METHODS.PUT,
+      HTTP_METHODS.PATCH,
       ENDPOINTS.USERS.UPDATE,
       userData 
     );
 
     if (response?.parsedBody?.success) {
-      const userInfo = JSON.parse(response.parsedBody).data;
+      const userInfo = response.parsedBody.data;
       dispatch(setUserInfo(userInfo));
       dispatch(setAlreadyVerified(true));
       localStorage.setItem("userInfo", JSON.stringify(userInfo));
@@ -160,6 +160,7 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
         error.status || 400
       )
     );
+    // We In front and we don't throw errors it is for back end which gracefully handle the errors by showing multiple kind of notifications or pages or something like that
     throw error;
   }
 };
