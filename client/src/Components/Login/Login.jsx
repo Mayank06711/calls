@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image1 from "../../assets/image2.png";
 import Image2 from "../../assets/image3.png";
 import QRGenerator from "../QRGenerator/QRGenerator";
 import OTPInput from "./OTPInput";
 import { generateOtpThunk } from "../../redux/thunks/login.thunks";
-import { useDispatch } from 'react-redux';
-import { resetTimer, setTimerActive, showNotification } from "../../redux/actions";
+import { useDispatch, useSelector } from 'react-redux';
+import { resetTimer, setTimerActive } from "../../redux/actions/login.actions";
+import { showNotification } from "../../redux/actions/notification.actions";
+import UserInfoForm from "./UserInfoForm";
+
 
 
 function Login() {
@@ -13,8 +16,21 @@ function Login() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [referenceId, setReferenceId] = useState(null);
+  const [smsId, setSmsId] = useState(null);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   
   const dispatch = useDispatch();
+  const timer = useSelector(state => state.auth.otpTimer);
+  const isTimerActive = useSelector(state => state.auth.isTimerActive);
+  const isAlreadyVerified = useSelector(state => state.auth.isAlreadyVerified);
+  console.log("isAlreadyVerified", isAlreadyVerified);
+
+  useEffect(() => {
+    return () => {
+      dispatch(setTimerActive(false));
+    };
+  }, [dispatch]);
 
   const handleTabClick = (tabNumber) => {
     setActiveTab(tabNumber);
@@ -27,14 +43,17 @@ function Login() {
     setIsButtonEnabled(numericValue.length === 10);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
-      dispatch(generateOtpThunk("+91"+phoneNumber));
-      dispatch(resetTimer(60)); // Set initial timer
-      dispatch(setTimerActive(true)); // Activate the timer
+      const response = await dispatch(generateOtpThunk("+91"+phoneNumber));
+      setReferenceId(response?.data?.reference_id);
+      setSmsId(response?.data?.sms_id);
+      
+      dispatch(resetTimer());
+      dispatch(setTimerActive(true));
+      
       setOtpSent(true);
- // Show success notification
- dispatch(showNotification("OTP sent successfully!", 200));
+      dispatch(showNotification(response.message || "OTP sent successfully!", 200));
     } catch (error) {
       console.log("error in generating otp", error);
       dispatch(showNotification("Failed to send OTP. Please try again.", 400));
@@ -84,7 +103,9 @@ function Login() {
 
         {activeTab === 1 ? (
           <div className="flex flex-col pt-20 gap-5 items-center justify-center bg-transparent p-6 z-50 animate__animated animate__fadeIn">
-            {!otpSent ? (
+            {!isAlreadyVerified ? (
+              <UserInfoForm />
+            ) : !otpSent ? (
               <>
                 <input
                   type="text"
@@ -111,7 +132,15 @@ function Login() {
                 </button>
               </>
             ) : (
-              <OTPInput phoneNumber={phoneNumber} />
+              <OTPInput 
+                phoneNumber={phoneNumber} 
+                referenceId={referenceId}
+                smsId={smsId}
+                setShowUserInfo={setShowUserInfo}
+                timer={timer}
+                isTimerActive={isTimerActive}
+                onResend={handleSubmit}
+              />
             )}
           </div>
         ) : (

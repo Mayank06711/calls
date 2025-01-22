@@ -1,123 +1,135 @@
-import React, { useState,useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { generateOtpThunk } from "../../redux/thunks/login.thunks";
-import { decrementTimer,resetTimer,setTimerActive, showNotification } from "../../redux/actions";
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { verifyOtpThunk } from "../../redux/thunks/login.thunks";
+import { decrementTimer, setTimerActive } from "../../redux/actions/login.actions";
+import { useNavigate } from 'react-router-dom';
 
-function OTPInput({phoneNumber}) {
-  const [otp, setOtp] = useState(new Array(6).fill("")); // State for 6 digits
-  const timer = useSelector(state => state.auth.otpTimer); // Timer for resend functionality
-  const isTimerActive = useSelector(state => state.auth.isTimerActive);
+function OTPInput({ 
+  phoneNumber, 
+  referenceId, 
+  smsId, 
+  setShowUserInfo,
+  timer,
+  isTimerActive,
+  onResend 
+}) {
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  // Handle OTP input
-  const handleChange = (e, index) => {
-    const value = e.target.value;
-    if (/^\d$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-
-      // Move to the next input field
-      if (e.target.nextSibling) {
-        e.target.nextSibling.focus();
-      }
-    } else if (value === "") {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-    }
-  };
-
-  // Handle backspace navigation
-  const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace" && otp[index] === "" && e.target.previousSibling) {
-      e.target.previousSibling.focus();
-    }
-  };
-
-  // Timer logic
   useEffect(() => {
-    let interval = null;
+    let intervalId;
     
     if (isTimerActive && timer > 0) {
-      interval = setInterval(() => {
+      intervalId = setInterval(() => {
         dispatch(decrementTimer());
       }, 1000);
-    } else if (timer === 0) {
+    }
+
+    if (timer === 0) {
       dispatch(setTimerActive(false));
+      clearInterval(intervalId);
     }
 
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, [timer, isTimerActive, dispatch]);
 
+  const handleChange = (e, index) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value) && value.length <= 1) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
+
+      // Move to next input if value is entered
+      if (value && index < 5) {
+        const nextInput = e.target.nextElementSibling;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = e.target.previousElementSibling;
+      if (prevInput) {
+        prevInput.focus();
+      }
+    }
+  };
+
+  const handleVerify = async () => {
+    try {
+      const verificationData = {
+        referenceId,
+        mobNum: phoneNumber,
+        otp: otp.join('')
+      };
+
+       dispatch(verifyOtpThunk(verificationData));
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+    }
+  };
+
   const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? `0${remainingSeconds}` : remainingSeconds}`;
-  };
-
-  // handle resend OTP
-  const handleResend = () => {
-    try {
-      dispatch(generateOtpThunk("+91"+phoneNumber));
-      dispatch(resetTimer(60)); // Reset timer to 60 seconds
-      dispatch(setTimerActive(true));
-      dispatch(showNotification("OTP resent successfully!", 200));
-    } catch (error) {
-      console.log("error in generating otp", error);
-      dispatch(showNotification("Failed to resend OTP. Please try again.", 400));
-    }
-  };
-
-  const handleVerify =  () => {
-    try {
-      // Your verification logic here
-      dispatch(showNotification("OTP verified successfully!", 200));
-    } catch (error) {
-      dispatch(showNotification("Invalid OTP. Please try again.", 400));
-    }
-    console.log("otp");
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto bg-transparent  rounded-lg animate__animated animate__fadeIn">
-      <div className="flex space-x-4 mb-4">
-        {otp.map((value, index) => (
+    <div className="flex flex-col items-center gap-4 w-full">
+      <div className="flex gap-2">
+        {otp.map((digit, index) => (
           <input
             key={index}
             type="text"
-            value={value}
-            maxLength="1"
+            value={digit}
             onChange={(e) => handleChange(e, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className="w-10 h-10 text-lg font-semibold text-center text-green-700 border-2 border-green-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300"
+            maxLength={1}
+            className="w-12 h-12 text-center text-xl border-2 border-green-500 rounded-lg focus:outline-none focus:border-green-600"
           />
         ))}
       </div>
-      <div className="text-sm text-gray-600 mb-4">
-        Resend OTP after:{" "}
-        <span className="text-green-600 font-bold">{formatTime(timer)}</span>
+      
+      <div className="text-sm text-gray-600">
+        {timer > 0 ? (
+          <span>Resend OTP in: {formatTime(timer)}</span>
+        ) : (
+          <span>You can now resend OTP</span>
+        )}
       </div>
-      {timer > 0 ? <button
-        type="button"
-        className="w-[80%] h-[30px] py-2 text-white flex items-center justify-center bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
-        disabled={otp.includes("") || timer ===0 }
-        onClick={handleVerify}
-      >
-        Verify
-      </button>:
-      <button
-      type="button"
-      className="w-[80%] h-[30px] py-2 text-white flex items-center justify-center bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
-      onClick={handleResend}
-    >
-      Resend OTP
-    </button>
-      }
+
+      {timer > 0 ? (
+        <button
+          type="button"
+          onClick={handleVerify}
+          disabled={otp.join('').length !== 6}
+          className={`w-full py-2 rounded-lg ${
+            otp.join('').length === 6
+              ? 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          Verify OTP
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onResend}
+          className="w-full py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+        >
+          Resend OTP
+        </button>
+      )}
     </div>
   );
 }
