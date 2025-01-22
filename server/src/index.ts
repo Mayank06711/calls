@@ -41,7 +41,7 @@ class ServerManager {
       cors({
         origin: ["http://localhost:5173", "http://localhost:3000", "*"], // Allows requests from the frontend and any origin
         credentials: true, // Allows cookies and credentials to be sent with requests
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
       })
     );
 
