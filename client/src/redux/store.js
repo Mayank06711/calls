@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import env from "../config/env.config";
 import {
   authReducer,
   callStatusReducer,
@@ -20,7 +21,7 @@ const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: false,
     }).concat(thunk),
-  devTools: process.env.NODE_ENV !== "production",
+  devTools: env.NODE_ENV !== "production",
 });
 
 export default store;
