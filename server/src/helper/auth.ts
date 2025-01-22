@@ -195,7 +195,7 @@ class AuthServices {
           .setHeader("x-refresh-token", refreshToken)
           .json(
             successResponse(
-              { accessToken },
+              { token: accessToken },
               "Successfully Refreshed Access Token"
             )
           );
