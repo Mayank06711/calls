@@ -28,8 +28,10 @@ function UserInfoForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await dispatch(updateUserInfoThunk(formData));
-      navigate("/");
+      const response = dispatch(updateUserInfoThunk(formData));
+      if (response?.parsedBody?.success) {
+        navigate("/");
+      }
     } catch (error) {
       console.error("Error updating user info:", error);
     }
@@ -150,3 +152,4 @@ function UserInfoForm() {
 }
 
 export default UserInfoForm;
+
