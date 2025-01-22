@@ -4,11 +4,35 @@ class RedisManager {
   private static subscriber: Redis | null = null; // Separate instance for subscribing
   private static readonly LOCK_PREFIX = "lock:";
   private static readonly DEFAULT_CHANNELS = ["__keyevent@0__:expired"];
+  private static readonly isDockerCompose = process.env.REDIS_HOST! === "redis";
   private static subscriberHandlers: Map<
     string,
     ((channel: string, message: string) => void)[]
   > = new Map();
   private static activeChannels: Set<string> = new Set();
+
+  private static getRedisConfig() {
+    const config = {
+      host: process.env.REDIS_HOST!,
+      port: parseInt(process.env.REDIS_PORT! || "6379"),
+      username: this.isDockerCompose
+        ? process.env.REDIS_USERNAME || "default"
+        : undefined,
+      password: this.isDockerCompose ? process.env.REDIS_PASSWORD : undefined,
+      connectTimeout: 10000,
+      retryStrategy(times: number) {
+        const delay = Math.min(times * 200, 2000);
+        if (times > 10) {
+          return null;
+        }
+        return delay;
+      },
+      showFriendlyErrorStack: true,
+      // Add TLS options if needed
+      // tls: process.env.NODE_ENV === 'production' ? {} : undefined
+    };
+    return config;
+  }
 
   public static async initRedisConnection(additionalChannels: string[] = []) {
     // Initialize main Redis client
@@ -17,41 +41,50 @@ class RedisManager {
         console.log("Redis connection Already Exist");
         return;
       }
-      this.redis = new Redis({
-        host: process.env.REDIS_HOST!,
-        port: +process.env.REDIS_PORT!,
-        connectTimeout: 10000,
-        retryStrategy(times) {
-          const delay = Math.min(times * 200, 2000);
-          // Stop retrying after 10 attempts
-          if (times > 10) {
-            return null; // returning null stops retry attempts
-          }
-          return delay;
-        },
-      });
+      // Only validate environment variables when running in Docker Compose
+      if (this.isDockerCompose) {
+        if (
+          !process.env.REDIS_HOST ||
+          !process.env.REDIS_PORT ||
+          !process.env.REDIS_PASSWORD ||
+          !process.env.REDIS_USERNAME
+        ) {
+          throw new Error("Missing required Redis environment variables");
+        }
+      }
+
+      const redisConfig = RedisManager.getRedisConfig();
+
+      // Initialize main Redis client
+      this.redis = new Redis(redisConfig);
 
       // Wait for main Redis to be ready
       await new Promise<void>((resolve, reject) => {
-        this.redis!.once("ready", resolve);
+        this.redis!.once("ready", () => {
+          console.log("Redis Main Client Ready");
+          resolve();
+        });
         this.redis!.once("error", reject);
       });
 
+      const pong = await this.redis.ping();
+      console.log("Redis PING response:", pong);
+      // Only authenticate if running in Docker Compose
+      if (this.isDockerCompose) {
+        try {
+          await this.redis.auth(
+            process.env.REDIS_USERNAME!,
+            process.env.REDIS_PASSWORD!
+          );
+        } catch (authError) {
+          console.error("Redis authentication failed:", authError);
+          throw authError;
+        }
+      }
+
       // Initialize subscriber client
-      this.subscriber = new Redis({
-        host: process.env.REDIS_HOST!,
-        port: +process.env.REDIS_PORT!,
-        connectTimeout: 10000,
-        retryStrategy(times) {
-          const delay = Math.min(times * 200, 2000);
-
-          // Stop retrying after 10 attempts
-          if (times > 10) {
-            return null; // returning null stops retry attempts
-          }
-
-          return delay;
-        },
+      this.subscriber = this.redis.duplicate({
+        connectionName: "subscriber",
       });
 
       // Set up message handler before subscribing
@@ -76,7 +109,7 @@ class RedisManager {
         console.log("Subscriber reconnected, resubscribing to channels...");
         // Resubscribe to all active channels
         if (this.activeChannels.size > 0) {
-          console.log(this.activeChannels)
+          console.log(this.activeChannels);
           await this.subscriber!.subscribe(...Array.from(this.activeChannels));
         }
       });
@@ -96,10 +129,28 @@ class RedisManager {
         await this.subscriber!.subscribe(...initialChannels);
         initialChannels.forEach((channel) => this.activeChannels.add(channel));
       }
-      console.log('Redis connection initialized successfully');
+      console.log("Redis connection initialized successfully");
     } catch (error) {
       console.error("Failed to initialize Redis connection:", error);
       throw error; // Propagate error up
+    }
+  }
+
+  // Add cleanup method
+  public static async cleanup(): Promise<void> {
+    try {
+      if (this.subscriber) {
+        await this.subscriber.quit();
+        this.subscriber = null;
+      }
+      if (this.redis) {
+        await this.redis.quit();
+        this.redis = null;
+      }
+      console.log("Redis connections cleaned up");
+    } catch (error) {
+      console.error("Error cleaning up Redis connections:", error);
+      throw error;
     }
   }
 
