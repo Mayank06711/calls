@@ -364,6 +364,7 @@ class Authentication {
       }
     } catch (error) {
       console.log("error in generate otp", error);
+      if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Something went wrong");
     }
   }
@@ -478,7 +479,8 @@ class Authentication {
           referenceId: referenceId,
           mobNum: formattedRecipientNumber,
           userId: user._id,
-          isAlreadyVerified: true
+          isAlreadyVerified: true,
+          token: accessToken,
         };
 
         // Handle successful verification (skip OTP validation as user is already verified)
@@ -487,14 +489,14 @@ class Authentication {
             .status(200)
             .setHeader("x-access-token", accessToken)
             .setHeader("x-refresh-token", refreshToken)
-            .json(successResponse(response, "User already verified"));
+            .json(successResponse(response, "OTP Verified Successfully"));
         }
 
         return res
           .status(200)
           .cookie("accessToken", accessToken, Authentication.options)
           .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
-          .json(successResponse(response, "User already verified"));
+          .json(successResponse(response, "OTP Verified Successfully"));
       }
 
       // If the user doesn't exist or is not verified, proceed with OTP verification process
@@ -530,7 +532,8 @@ class Authentication {
         referenceId: referenceId,
         mobNum: formattedRecipientNumber,
         userId: user._id,
-        isAlreadyVerified: false
+        isAlreadyVerified: false,
+        token: accessToken,
       };
 
       // Handle successful verification
@@ -539,19 +542,26 @@ class Authentication {
           .status(200)
           .setHeader("x-access-token", accessToken)
           .setHeader("x-refresh-token", refreshToken)
-          .json(successResponse(response, "OTP Verified Successfully"));
+          .json(
+            successResponse(
+              response,
+              "OTP Verified Successfully, User Registered"
+            )
+          );
       }
       return res
         .status(200)
         .cookie("accessToken", accessToken, Authentication.options)
-        .cookie(
-          "refreshToken",
-          refreshToken,
-          Authentication.refreshOptions
-        )
-        .json(successResponse(response, "OTP Verified Successfully"));
+        .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
+        .json(
+          successResponse(
+            response,
+            "OTP Verified Successfully, User Registered"
+          )
+        );
     } catch (error) {
       console.error("Error updating OTP status:", error);
+      if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Something went wrong");
     }
   }
