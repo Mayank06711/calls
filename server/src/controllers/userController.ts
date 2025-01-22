@@ -106,11 +106,10 @@ class User {
         throw new ApiError(500, "User creation failed without error");
       }
     } catch (error: any) {
-      if (error.name === "ValidationError") {
-        throw new ApiError(400, "Validation Error: " + error.message);
-      } else {
-        throw new ApiError(500, "Internal Server Error: Unable to create user");
+      if (error instanceof ApiError) {
+        throw error;
       }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -128,6 +127,7 @@ class User {
           username: "username",
         });
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       console.log(error);
     }
   }
@@ -169,6 +169,7 @@ class User {
         .json(successResponse({}, "Logged out successfully"));
     } catch (error) {
       console.error("Error in logout:", error);
+      if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Something went wrong during logout");
     }
   }
@@ -187,6 +188,7 @@ class User {
       // check validation here only
       res.json({ message: "Reset Password Link Sent Successfully" });
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       console.log(error);
     }
   }
@@ -196,6 +198,7 @@ class User {
       // check validation here only
       res.json({ message: "Email Verified Successfully" });
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       console.log(error);
     }
   }
@@ -361,9 +364,7 @@ class User {
         .status(200)
         .json(successResponse(responseData, "Profile fetched successfully"));
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
+      if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Error fetching profile: " + error.message);
     }
   }
