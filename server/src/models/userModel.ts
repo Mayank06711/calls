@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-
+import { AuthServices } from "../helper/auth";
 // Define an interface for the Photo object
 interface Photo {
   public_id: string; // Cloudinary's public_id for deletion
@@ -169,33 +169,59 @@ UserSchema.methods.generateAccessToken = function () {
   // Sign the token with the ACCESS_TOKEN_SECRET environment variable
   // Set the expiration time for the token based on the ACCESS_TOKEN_EXPIRY environment variable
 
+  // Create payload
+  const payload = {
+    _id: this._id,
+    email: this.email,
+    username: this.username,
+    city: this.city,
+    iss: "KYF",
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 15 minutes
+    aud: "kyf-api",
+    jti: crypto.randomBytes(16).toString("hex"),
+  };
+
+  // Encrypt the payload
+  const encryptedPayload = AuthServices.encrypt(JSON.stringify(payload));
+
   return JWT.sign(
-    {
-      _id: this._id,  // Subject (user ID)
-      email: this.email,
-      username: this.username,
-      city: this.city,
-      iss:"KYF",
-      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
-      aud: "kyf-api", // Audience
+    { 
+      data: encryptedPayload,
+      iss: "KYF",
+      aud: "kyf-api"
     },
     process.env.ACCESS_TOKEN_SECRET!,
     {
+      algorithm: 'HS512',
       expiresIn: process.env.ACCESS_TOKEN_SECRET_EXPIRY!,
     }
   );
 };
 
 UserSchema.methods.generateRefreshToken = function () {
+  // Creating payload
+  const payload = {
+    _id: this._id,
+    iss: "KYF",
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60, // 15 days
+    aud: "kyf-api",
+    jti: crypto.randomBytes(16).toString("hex"),
+  };
+
+  // Encrypt the payload
+  const encryptedPayload = AuthServices.encrypt(JSON.stringify(payload));
+
   return JWT.sign(
-    {
-      _id: this._id,
-      iss:"KYF",
-      iat: Math.floor(Date.now() / 1000), // Issued at timestamp
-      aud: "kyf-api", // Audience
+    { 
+      data: encryptedPayload,
+      iss: "KYF",
+      aud: "kyf-api"
     },
     process.env.REFRESH_TOKEN_SECRET!,
     {
+      algorithm: 'HS512',
       expiresIn: process.env.REFRESH_TOKEN_SECRET_EXPIRY!,
     }
   );
