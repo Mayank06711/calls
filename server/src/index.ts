@@ -39,9 +39,9 @@ class ServerManager {
   private initializeMiddlewares() {
     this.app.use(
       cors({
-        origin: ["https://localhost:5173", "*"], // Allows requests from the frontend and any origin
+        origin: ["http://localhost:5173", "http://localhost:3000", "*"], // Allows requests from the frontend and any origin
         credentials: true, // Allows cookies and credentials to be sent with requests
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
       })
     );
 
@@ -104,6 +104,7 @@ class ServerManager {
       if (this.socketManager) {
         await this.socketManager.cleanup();
       }
+      await RedisManager.cleanup();
       // Flush logs
       this.flushLogs();
       // Close database connections (if applicable)

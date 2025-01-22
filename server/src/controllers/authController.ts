@@ -190,7 +190,7 @@ class Authentication {
         .status(400)
         .json(errorResponse(400, "isTesting must be a boolean"));
     }
-    const formattedRecipientNumber = toE164Format(mobNum);
+    const formattedRecipientNumber = toE164Format(mobNum, "+91");
     if (!formattedRecipientNumber) {
       return res.status(404).json(errorResponse(404, "Invalid Phone Number"));
     }
@@ -478,6 +478,7 @@ class Authentication {
           referenceId: referenceId,
           mobNum: formattedRecipientNumber,
           userId: user._id,
+          isAlreadyVerified: true
         };
 
         // Handle successful verification (skip OTP validation as user is already verified)
@@ -529,6 +530,7 @@ class Authentication {
         referenceId: referenceId,
         mobNum: formattedRecipientNumber,
         userId: user._id,
+        isAlreadyVerified: false
       };
 
       // Handle successful verification

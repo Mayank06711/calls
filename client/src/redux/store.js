@@ -1,18 +1,27 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { authReducer, callStatusReducer, streamsReducer } from './reducers';
-import {thunk} from 'redux-thunk';
+import { configureStore } from "@reduxjs/toolkit";
+import env from "../config/env.config";
+import {
+  authReducer,
+  callStatusReducer,
+  streamsReducer,
+  notificationReducer,
+  userInfoReducer,
+} from "./reducers";
+import { thunk } from "redux-thunk";
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     callStatus: callStatusReducer,
-    streams: streamsReducer
+    streams: streamsReducer,
+    notification: notificationReducer,
+    userInfo: userInfoReducer,
   },
-  middleware: (getDefaultMiddleware) => 
+  middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
     }).concat(thunk),
-  devTools: process.env.NODE_ENV !== 'production',
+  devTools: env.NODE_ENV !== "production",
 });
 
 export default store;
