@@ -5,24 +5,17 @@ type AsyncRequestHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => void | Promise<void>;
+) => void | Promise<void | Response>;
 
 class AsyncHandler {
   static wrap(requestHandler: AsyncRequestHandler) {
     return (req: Request, res: Response, next: NextFunction) => {
       Promise.resolve(requestHandler(req, res, next)).catch((err: any) => {
         console.log("ERROR FROM REQUEST HANDLER FUNCTION: " + err);
-        if (next) next(err);
-        else {
-          res.status(500).send("An error occurred");
-          console.log(
-            "ERROR FROM REQUEST HANDLER FUNCTION when next does not exist if using middleware"
-          );
-        }
+        next(err);
       });
     };
   }
-
 }
 
-export default AsyncHandler;
+export { AsyncHandler };

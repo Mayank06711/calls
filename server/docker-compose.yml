@@ -1,0 +1,54 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyf-backend-container
+    restart: always
+    ports:
+      - "3003:5005"  # Expose port 5005 inside the container(bcz we have exposed 5005 on dockerfile) to 3003 on the host(windows)
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    # volumes:
+      #   - C:/Users/satya/OneDrive/Desktop/vol_for_nyf_backend:/nyf/service/backend  # Mounting the host directory to the container
+    command: >
+      sh -c '
+      echo "Environment Variables:";
+      echo "REDIS_HOST=${REDIS_HOST}";
+      echo "REDIS_PORT=${REDIS_PORT}";
+      pm2-runtime dist/index.js
+      '
+
+  redis:
+    image: redis/redis-stack:latest  # Use the Redis Stack image
+    container_name: my-redis
+    restart: always
+    ports:
+      - "6379:6379"  # Expose Redis core on localhost:6379
+      - "8001:8001"  # Expose RedisInsight on localhost:8001
+    environment:
+      - REDIS_ARGS= --requirepass ${REDIS_PASSWORD} --user ${REDIS_USERNAME} on >${REDIS_PASSWORD} ~* on allkeys allchannels allcommands  --user default off nopass nocommands
+      - REDISINSIGHT_ARGS= --host 0.0.0.0 --port 8001
+    env_file:
+      - .env
+    # command: /bin/sh -c "redis-stack-server --requirepass ${REDIS_PASSWORD}"
+    volumes:
+      - redis-data:/data  # Redis persistent data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-data:

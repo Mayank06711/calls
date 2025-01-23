@@ -11,13 +11,13 @@ router.post(
 );
 
 // Get Feedbacks (filtered by criteria)
-router.get("/find", Middleware.VerifyJWT, FeedbackController.getFeedback);
+// router.get("/find", Middleware.VerifyJWT, FeedbackController.getFeedback);
 
-// Update Feedback (by feedbackId)
-router.put(
-  "/:feedbackId",
-  Middleware.VerifyJWT,
-  FeedbackController.updateFeedback
-);
+// // Update Feedback (by feedbackId)
+// router.put(
+//   "/:feedbackId",
+//   Middleware.VerifyJWT,
+//   FeedbackController.updateFeedback
+// );
 
 export default router;

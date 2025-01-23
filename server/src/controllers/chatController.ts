@@ -1,128 +1,240 @@
-import { ChatModel, IChat } from "../models/chatModel"; // Adjust the import path accordingly
-import { ChatMessageModel, IChatMessage } from "../models/messageModel"; // Adjust the import path accordingly
-import mongoose, { ObjectId } from "mongoose";
+import { NewMsgModel, INewMsg, INewMessage, IAttachment } from "../models/newMsgModel";
+import { OldMsgModel, IOldMessage } from "../models/oldMsgModel";
+import { SocketManager } from "../socket";
+import { RedisManager } from "../utils/redisClient";
+import mongoose, { Types } from "mongoose";
 import { ApiError } from "../utils/apiError";
 
-// Function to create a chat message using arrow function syntax
-const createChatMessage = async (
-  senderId: string,
-  receiverId: string,
-  message: string,
-  attachments: { key: string; url: string }[],
-  chatType: "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert"
-): Promise<IChat | null> => {
-  try {
-    // Validate sender and receiver IDs
-    const senderObjectId = new mongoose.Types.ObjectId(senderId);
-    const receiverObjectId = new mongoose.Types.ObjectId(receiverId);
+class ChatController {
+  // Create a new chat
+  // static async createChat(
+  //   sender: Types.ObjectId,
+  //   receiver: Types.ObjectId,
+  //   chatType: "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert"
+  // ): Promise<INewMsg> {
+  //   try {
+  //     const existingChat = await NewMsgModel.findOne({
+  //       sender,
+  //       receiver,
+  //       chatType,
+  //     });
 
-    // Create a new chat message
-    const newChatMessage = new ChatMessageModel({
-      message,
-      attachments,
-    });
+  //     if (existingChat) {
+  //       return existingChat;
+  //     }
 
-    // Save the chat message to the database
-    const savedMessage = await newChatMessage.save();
+  //     const newChat = await NewMsgModel.create({
+  //       sender,
+  //       receiver,
+  //       chatType,
+  //       messages: [],
+  //       participantsInfo: {
+  //         sender: { isActive: true, lastSeen: new Date() },
+  //         receiver: { isActive: true, lastSeen: new Date() },
+  //       },
+  //     });
 
-    // Find or create a chat document for this sender and receiver
-    let chat = await ChatModel.findOne({
-      sender: senderObjectId,
-      receiver: receiverObjectId,
-    });
+  //     return newChat;
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error creating chat");
+  //   }
+  // }
 
-    // If the chat does not exist, create it
-    if (!chat) {
-      chat = new ChatModel({
-        sender: senderObjectId,
-        receiver: receiverObjectId,
-        messages: [], // Initialize with an empty array
-        chatType,
-      });
-      await chat.save();
-    }
+  // // Send a message
+  // static async sendMessage(
+  //   chatId: Types.ObjectId,
+  //   senderId: Types.ObjectId,
+  //   text: string,
+  //   attachments?: IAttachment[]
+  // ): Promise<INewMessage> {
+  //   const session = await mongoose.startSession();
+  //   session.startTransaction();
 
-    // Push the new message reference into the chat's messages array
-    chat.messages.push(savedMessage._id as ObjectId);
-    await chat.save();
+  //   try {
+  //     const chat = await NewMsgModel.findById(chatId);
+  //     if (!chat) {
+  //       throw new ApiError(404, "Chat not found");
+  //     }
 
-    return chat; // Return the updated chat document
-  } catch (error) {
-    console.error("Error creating chat message:", error);
-    throw new ApiError(500, "Failed to create chat message");
-  }
-};
+  //     // Add message to NewMsgModel
+  //     await chat.addMessage(text, senderId, attachments);
 
-export const getChatMessages = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { senderId, receiverId } = req.params;
+  //     // Create message in OldMsgModel for archival
+  //     const oldMessage = await OldMsgModel.create({
+  //       chatId,
+  //       text,
+  //       sender: senderId,
+  //       receiver: chat.receiver,
+  //       attachments,
+  //       messageId: chat.messageIdCounter,
+  //     });
 
-    // Validate the sender and receiver IDs
-    if (
-      !mongoose.Types.ObjectId.isValid(senderId) ||
-      !mongoose.Types.ObjectId.isValid(receiverId)
-    ) {
-      throw new ApiError(400, "Invalid sender or receiver ID");
-    }
+  //     await session.commitTransaction();
 
-    const senderObjectId = new mongoose.Types.ObjectId(senderId);
-    const receiverObjectId = new mongoose.Types.ObjectId(receiverId);
+  //     // Emit socket event to receiver
+  //     const socketManager = SocketManager.getInstance();
+  //     await socketManager.emitEvent({
+  //       event: "new_message",
+  //       data: {
+  //         chatId,
+  //         message: oldMessage,
+  //       },
+  //       targetSocketIds: await this.getReceiverSocketIds(chat.receiver),
+  //     });
 
-    // Find the chat between the sender and receiver
-    const chat = await ChatModel.findOne({
-      $or: [
-        { sender: senderObjectId, receiver: receiverObjectId },
-        { sender: receiverObjectId, receiver: senderObjectId },
-      ],
-    }).populate("messages"); // Populate the chat messages
+  //     return chat.messages[chat.messages.length - 1];
+  //   } catch (error) {
+  //     await session.abortTransaction();
+  //     throw new ApiError(500, "Error sending message");
+  //   } finally {
+  //     session.endSession();
+  //   }
+  // }
 
-    // If no chat exists, return an empty array
-    if (!chat || !chat.messages) {
-      console.error("")
-    }
+  // Get chat history
+  // static async getChatHistory(
+  //   chatId: Types.ObjectId,
+  //   userId: Types.ObjectId,
+  //   page: number = 1,
+  //   limit: number = 50
+  // ): Promise<IOldMessage[]> {
+  //   try {
+  //     const messages = await OldMsgModel.find({ chatId })
+  //       .visibleTo(userId)
+  //       .sort({ createdAt: -1 })
+  //       .skip((page - 1) * limit)
+  //       .limit(limit)
+  //       .lean();
 
-    // Cast the messages to the correct type (IChatMessage[])
-    const messages = chat.messages as unknown as IChatMessage[];
+  //     return messages;
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error fetching chat history");
+  //   }
+  // }
 
-    // Format and return the messages
-    const formattedMessages = messages.map((message) => ({
-      message: message.message,
-      attachments: message.attachments || [],
-      createdAt: message.createdAt,
-    }));
+  // // Mark messages as read
+  // static async markMessagesAsRead(
+  //   chatId: Types.ObjectId,
+  //   userId: Types.ObjectId,
+  //   messageIds: number[]
+  // ): Promise<void> {
+  //   try {
+  //     const chat = await NewMsgModel.findById(chatId);
+  //     if (!chat) {
+  //       throw new ApiError(404, "Chat not found");
+  //     }
 
-    // Send the formatted messages as a response
-  } catch (error) {
-    console.error("Error retrieving chat messages:", error);
-  }
-};
+  //     for (const messageId of messageIds) {
+  //       await chat.markMessageAsRead(messageId);
+  //     }
 
-// Example usage function
-const exampleUsage = async () => {
-  const senderId = "603dcd2c30f1c60d78df2361"; // Replace with actual user IDs
-  const receiverId = "603dcd2c30f1c60d78df2362"; // Replace with actual user IDs
+  //     // Emit read receipt to sender
+  //     const socketManager = SocketManager.getInstance();
+  //     await socketManager.emitEvent({
+  //       event: "messages_read",
+  //       data: {
+  //         chatId,
+  //         messageIds,
+  //         readBy: userId,
+  //       },
+  //       targetSocketIds: await this.getReceiverSocketIds(chat.sender),
+  //     });
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error marking messages as read");
+  //   }
+  // }
 
-  try {
-    // Sending a chat message
-    const newChat = await createChatMessage(
-      senderId,
-      receiverId,
-      "Hello, how are you?",
-      [{ key: "photo1", url: "http://example.com/photo1.jpg" }],
-      "userToUser"
-    );
-    console.log("Chat message sent:", newChat);
+  // // Delete message (soft delete)
+  // static async deleteMessage(
+  //   chatId: Types.ObjectId,
+  //   messageId: number,
+  //   userId: Types.ObjectId
+  // ): Promise<void> {
+  //   try {
+  //     const message = await OldMsgModel.findOne({ chatId, messageId });
+  //     if (!message) {
+  //       throw new ApiError(404, "Message not found");
+  //     }
 
-    // Retrieving chat messages
-    const chatMessages = await getChatMessages(senderId, receiverId);
-    console.log("Chat messages:", chatMessages);
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
+  //     await message.softDelete(userId);
 
-// Call the example usage function to test
-exampleUsage();
+  //     // Emit delete event to other participant
+  //     const socketManager = SocketManager.getInstance();
+  //     await socketManager.emitEvent({
+  //       event: "message_deleted",
+  //       data: {
+  //         chatId,
+  //         messageId,
+  //         deletedBy: userId,
+  //       },
+  //       targetSocketIds: await this.getReceiverSocketIds(
+  //         userId.equals(message.sender) ? message.receiver : message.sender
+  //       ),
+  //     });
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error deleting message");
+  //   }
+  // }
+
+  // // Get user's active chats
+  // static async getUserChats(userId: Types.ObjectId): Promise<INewMsg[]> {
+  //   try {
+  //     const chats = await NewMsgModel.find({
+  //       $or: [{ sender: userId }, { receiver: userId }],
+  //       isActive: true,
+  //     })
+  //       .sort({ "lastMessage.createdAt": -1 })
+  //       .lean();
+
+  //     return chats;
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error fetching user chats");
+  //   }
+  // }
+
+  // // Helper method to get socket IDs for a user
+  // private static async getReceiverSocketIds(
+  //   userId: Types.ObjectId
+  // ): Promise<string[]> {
+  //   const sockets = await RedisManager.getAllFromGroup("socketAuthenticatedUsers");
+  //   return sockets
+  //     .filter((socket) => socket.userId === userId.toString())
+  //     .map((socket) => socket.socketId);
+  // }
+
+  // // Update participant status
+  // static async updateParticipantStatus(
+  //   chatId: Types.ObjectId,
+  //   userId: Types.ObjectId,
+  //   isActive: boolean
+  // ): Promise<void> {
+  //   try {
+  //     const chat = await NewMsgModel.findById(chatId);
+  //     if (!chat) {
+  //       throw new ApiError(404, "Chat not found");
+  //     }
+
+  //     await chat.updateParticipantStatus(userId, isActive);
+
+  //     // Emit status update to other participant
+  //     const socketManager = SocketManager.getInstance();
+  //     const otherParticipantId = userId.equals(chat.sender)
+  //       ? chat.receiver
+  //       : chat.sender;
+
+  //     await socketManager.emitEvent({
+  //       event: "participant_status_changed",
+  //       data: {
+  //         chatId,
+  //         userId,
+  //         isActive,
+  //       },
+  //       targetSocketIds: await this.getReceiverSocketIds(otherParticipantId),
+  //     });
+  //   } catch (error) {
+  //     throw new ApiError(500, "Error updating participant status");
+  //   }
+  // }
+}
+
+export { ChatController };

@@ -3,6 +3,7 @@ import { checkHealth } from "../db/index";
 import Notification from "../notifications/notifications";
 // Run health check every 5 minutes
 
+
 const cronSchuduler = (cronTime: string) => {
   crons.schedule(cronTime, async () => {
     try {
