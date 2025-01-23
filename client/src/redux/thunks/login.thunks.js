@@ -13,6 +13,7 @@ import { makeRequest } from "../../utils/apiHandlers";
 import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
 import { ApiError } from "../../utils/globalErrorHandler";
 import { setUserInfo } from "../actions/userInfo.actions";
+import socketManager from "../../socket/config";
 
 export const userLoginThunk = (payload) => async (dispatch) => {
   try {
@@ -108,10 +109,25 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       verificationData
     );
     if (response?.parsedBody?.success) {
-      const { userId, isAlreadyVerified } = response.parsedBody.data;
+      const { userId, isAlreadyVerified ,token} = response.parsedBody.data;
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
       localStorage.setItem("userId", userId);
+      localStorage.setItem("token", token);
+
+      socketManager.init();
+      
+      const socketAuth=socketManager.authenticate({
+        accessToken:token
+      })
+
+      if (socketAuth.status === 'success') {
+        // Socket is now connected and authenticated
+        // Proceed with your app logic
+        console.log("socet connected successfully")
+      }
+
+      
       dispatch(
         showNotification(
           response.parsedBody.message || "OTP verified successfully!",
