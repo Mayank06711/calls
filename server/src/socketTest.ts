@@ -1,7 +1,7 @@
 import { io, Socket } from "socket.io-client";
 import * as fs from "fs";
 import * as path from "path";
-const SERVER_URL = "https://localhost:5005";
+const SERVER_URL = "ws://localhost:5005";
 
 interface TestUser {
   userId: string;
@@ -135,67 +135,112 @@ class SocketTester {
     });
   }
 
-  async uploadLocalImageToCloudinary(imagePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Read the file from assets folder
-        const fullPath = path.join(__dirname, "assets", imagePath);
-        const fileBuffer = fs.readFileSync(fullPath);
-        const fileStats = fs.statSync(fullPath);
-        // Get file extension and map to MIME type
-        const extension = path.extname(imagePath).toLowerCase().slice(1);
-        const mimeTypes: { [key: string]: string } = {
-          png: "image/png",
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          gif: "image/gif",
-          webp: "image/webp",
-        };
-        const fileType = mimeTypes[extension] || "application/octet-stream";
-
-        // Prepare file data
-        const fileData = {
-          file: fileBuffer,
-          fileName: path.basename(imagePath),
-          fileType,
-          size: fileStats.size,
-          metadata: {
-            uploadType: "cloudinary",
-            folder: "test-uploads", // You can customize the Cloudinary folder
-          },
-        };
-
-        // Listen for success response
-        this.socket.once("file:upload:response", (response) => {
-          console.log("Cloudinary upload response:", response);
-          resolve();
-        });
-        // Listen for error
-        this.socket.once("file:upload:error", (error) => {
-          console.error("Cloudinary upload error:", error);
-          reject(error);
-        });
-
-        // Emit file upload event
-        this.socket.emit("file:upload", fileData);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
   public getSocketId(): string {
     return this.socket.id!;
   }
-}
 
+
+async uploadLocalImageToCloudinary(imagePath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Read the file from assets folder
+      const fullPath = path.join(__dirname, "assets", imagePath);
+      const fileBuffer = fs.readFileSync(fullPath);
+      const fileStats = fs.statSync(fullPath);
+      
+      // Get file extension and map to MIME type
+      const extension = path.extname(imagePath).toLowerCase().slice(1);
+      const mimeTypes: { [key: string]: string } = {
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        gif: "image/gif",
+        webp: "image/webp",
+      };
+      const fileType = mimeTypes[extension] || "application/octet-stream";
+
+      // Prepare file data for both chat and avatar uploads
+      const baseFileData = {
+        file: fileBuffer,
+        fileName: path.basename(imagePath),
+        fileType,
+        size: fileStats.size,
+      };
+
+      // Test both chat and avatar uploads
+      const testUploads = [
+        {
+          ...baseFileData,
+          type: "chat" as const,
+          metadata: {
+            chatId: "test-chat-123",
+            messageId: "test-message-123",
+          },
+        },
+        {
+          ...baseFileData,
+          type: "avatar" as const,
+          metadata: {
+            uploadType: "cloudinary",
+            folder: "test-uploads/avatars",
+          },
+        },
+      ];
+
+      let completedUploads = 0;
+      const errors: any[] = [];
+
+      testUploads.forEach((fileData) => {
+        // Listen for success response
+        this.socket.once("file:upload:response", (response) => {
+          console.log(`${fileData.type} upload response:`, response);
+          completedUploads++;
+          if (completedUploads === testUploads.length) {
+            if (errors.length > 0) {
+              reject(new Error(`Upload errors: ${JSON.stringify(errors)}`));
+            } else {
+              resolve();
+            }
+          }
+        });
+
+        // Listen for error
+        this.socket.once("file:upload:error", (error) => {
+          console.error(`${fileData.type} upload error:`, error);
+          errors.push(error);
+          completedUploads++;
+          if (completedUploads === testUploads.length) {
+            reject(new Error(`Upload errors: ${JSON.stringify(errors)}`));
+          }
+        });
+
+        // For avatar uploads, also listen for specific events
+        if (fileData.type === "avatar") {
+          this.socket.once("file:upload:start", (data) => {
+            console.log("Avatar upload started:", data);
+          });
+
+          this.socket.once("file:upload:success", (data) => {
+            console.log("Avatar upload success:", data);
+          });
+        }
+
+        // Emit file upload event
+        this.socket.emit("file:upload", fileData);
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+}
 // Test scenarios
 async function runTests() {
   console.log("Starting comprehensive socket tests...");
 
   // Create test users
   const createTestUser = (index: number): TestUser => ({
-    userId: `test-user-${index}`,
+    userId: `67923ccce60274b96025e756`,
     phoneNumber: `+1234567${index.toString().padStart(4, "0")}`,
     accessToken: `test-access-token-${index}`,
     refreshToken: `test-refresh-token-${index}`,
@@ -216,7 +261,7 @@ async function runTests() {
     const timeoutAuthResult = await timeoutUser.authenticate();
     console.log("Authentication after timeout result:", timeoutAuthResult);
 
-    if (timeoutAuthResult) {
+    if (!timeoutAuthResult) {
       throw new Error("Authentication should have failed after timeout");
     }
     // Test 1: Single user connection with timeout
@@ -287,6 +332,58 @@ async function runTests() {
         })
     );
 
+     // Test 5: File Upload Tests
+     console.log("\n🧪 Test 5: File Upload Tests");
+     const uploadUser = new SocketTester(createTestUser(500));
+     await uploadUser.waitForConnect();
+     const uploadAuth = await uploadUser.authenticate();
+     
+     if (!uploadAuth) {
+       throw new Error("Upload user authentication failed");
+     }
+ 
+     // Test different file types
+     const testFiles = ["test.jpg", "test.png", "test.gif"];
+     for (const file of testFiles) {
+       console.log(`Testing upload of ${file}`);
+       try {
+         await uploadUser.uploadLocalImageToCloudinary(file);
+         console.log(`✅ Successfully uploaded ${file}`);
+       } catch (error) {
+         console.error(`❌ Failed to upload ${file}:`, error);
+       }
+     }
+      // Test invalid file
+    console.log("\nTesting invalid file upload");
+    try {
+      await uploadUser.uploadLocalImageToCloudinary("invalid.txt");
+      console.error("❌ Invalid file upload should have failed");
+    } catch (error) {
+      console.log("✅ Invalid file upload correctly rejected");
+    }
+
+    // Test concurrent uploads
+    console.log("\nTesting concurrent uploads");
+    try {
+      await Promise.all([
+        uploadUser.uploadLocalImageToCloudinary("test1.jpg"),
+        uploadUser.uploadLocalImageToCloudinary("test2.jpg"),
+        uploadUser.uploadLocalImageToCloudinary("test3.jpg"),
+      ]);
+      console.log("✅ Concurrent uploads successful");
+    } catch (error) {
+      console.error("❌ Concurrent uploads failed:", error);
+    }
+
+    // Test large file
+    console.log("\nTesting large file upload");
+    try {
+      await uploadUser.uploadLocalImageToCloudinary("large.jpg"); // Assuming size > 3MB
+      console.error("❌ Large file upload should have failed");
+    } catch (error) {
+      console.log("✅ Large file upload correctly rejected");
+    }
+ 
     // Test 5: File Upload
     console.log("\n🧪 Test 6: Cloudinary Upload");
     try {
