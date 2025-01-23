@@ -48,6 +48,7 @@ class FeedbackController {
         data: feedback,
       });
     } catch (error: any) {
+      if (error instanceof ApiError) throw error;
       throw new ApiError(error.statusCode || 500, error.message);
     }
   }
