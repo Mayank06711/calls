@@ -3,12 +3,8 @@ import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { AuthServices } from "../helper/auth";
+import { MediaItem, MediaModel } from "./mediaModel";
 // Define an interface for the Photo object
-interface Photo {
-  public_id: string; // Cloudinary's public_id for deletion
-  url: string; // Original image URL
-  thumbnail_url?: string; // Optional thumbnail URL
-}
 
 // interface for the User document
 interface IUser extends Document {
@@ -25,7 +21,9 @@ interface IUser extends Document {
   city: string;
   country?: string; // Default is 'India', but not required
   refreshToken: string;
-  photo?: Photo;
+  mediaId: mongoose.Types.ObjectId; // Reference to the user's media collection
+  profilePhotoId?: string; // Store the public_id of the current profile photo
+  profileVideoId?: string; // Store the public_id of the current profile video
   isSubscribed: "Yes" | "No" | "Pending" | "Request"; // Enum for subscription status
   subscriptionDetail: "Premium" | "Casual" | "Medium"; // Enum for subscription details
   referral?: mongoose.Types.ObjectId; // Reference to another User document
@@ -44,6 +42,15 @@ interface IUser extends Document {
   generateAccessToken(): string;
   generateRefreshToken(): string;
   isPasswordCorrect(password: string): Promise<boolean>;
+  getProfileMedia(): Promise<{ photo?: MediaItem; video?: MediaItem }>;
+  getAllMedia(): Promise<{
+    photos: { url: string; thumbnail_url?: string }[];
+    videos: { url: string; thumbnail_url?: string }[];
+  }>;
+  addProfilePhoto(photoData: Partial<MediaItem>): Promise<MediaItem>;
+  addProfileVideo(videoData: Partial<MediaItem>): Promise<MediaItem>;
+  removeProfilePhoto(publicId: string): Promise<void>;
+  removeProfileVideo(publicId: string): Promise<void>;
 }
 
 // User schema
@@ -78,13 +85,9 @@ const UserSchema: Schema<IUser> = new Schema(
     refreshToken: { type: String },
     isEmailVerified: { type: Boolean, required: true, default: false },
     isPhoneVerified: { type: Boolean, required: true, default: false },
-    photo: {
-      type: {
-        public_id: { type: String }, // Required for deletion from Cloudinary
-        url: { type: String }, // Original image URL
-        thumbnail_url: { type: String }, // Optional thumbnail URL
-      },
-    },
+    mediaId: { type: Schema.Types.ObjectId, ref: "Media" },
+    profilePhotoId: { type: String },
+    profileVideoId: { type: String },
     isSubscribed: {
       type: String,
       default: "No",
@@ -177,7 +180,7 @@ UserSchema.methods.generateAccessToken = function () {
     city: this.city,
     iss: "KYF",
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 15 minutes
+    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 15 minutes
     aud: "kyf-api",
     jti: crypto.randomBytes(16).toString("hex"),
   };
@@ -186,14 +189,14 @@ UserSchema.methods.generateAccessToken = function () {
   const encryptedPayload = AuthServices.encrypt(JSON.stringify(payload));
 
   return JWT.sign(
-    { 
+    {
       data: encryptedPayload,
       iss: "KYF",
-      aud: "kyf-api"
+      aud: "kyf-api",
     },
     process.env.ACCESS_TOKEN_SECRET!,
     {
-      algorithm: 'HS512',
+      algorithm: "HS512",
       expiresIn: process.env.ACCESS_TOKEN_SECRET_EXPIRY!,
     }
   );
@@ -214,14 +217,14 @@ UserSchema.methods.generateRefreshToken = function () {
   const encryptedPayload = AuthServices.encrypt(JSON.stringify(payload));
 
   return JWT.sign(
-    { 
+    {
       data: encryptedPayload,
       iss: "KYF",
-      aud: "kyf-api"
+      aud: "kyf-api",
     },
     process.env.REFRESH_TOKEN_SECRET!,
     {
-      algorithm: 'HS512',
+      algorithm: "HS512",
       expiresIn: process.env.REFRESH_TOKEN_SECRET_EXPIRY!,
     }
   );
@@ -229,6 +232,103 @@ UserSchema.methods.generateRefreshToken = function () {
 
 UserSchema.methods.isPasswordCorrect = async function (password: string) {
   return await bcrypt.compare(password, this.password);
+};
+
+// Add instance methods
+UserSchema.methods.getProfileMedia = async function () {
+  const media = await MediaModel.findById(this.mediaId);
+  // Return empty object if no media found instead of throwing error
+  if (!media) return { photo: null, video: null };
+
+  const profilePhoto = this.profilePhotoId
+    ? media.getPhotoById(this.profilePhotoId)
+    : null;
+  const profileVideo = this.profileVideoId
+    ? media.getVideoById(this.profileVideoId)
+    : null;
+
+  return {
+    photo: profilePhoto,
+    video: profileVideo,
+  };
+};
+
+UserSchema.methods.getAllMedia = async function () {
+  const media = await MediaModel.findById(this.mediaId);
+  // Return empty object if no media found instead of throwing error
+  if (!media) return { photo: [], video: [] };
+  return {
+    photos: media.getAllPhotoUrls(),
+    videos: media.getAllVideoUrls(),
+  };
+};
+
+UserSchema.methods.addProfilePhoto = async function (
+  photoData: Partial<MediaItem>
+) {
+  let media = await MediaModel.findById(this.mediaId);
+  // If no media document exists, create one
+  if (!media) {
+    media = await MediaModel.create({
+      userId: this._id,
+      photos: [],
+      videos: [],
+    });
+    this.mediaId = media._id;
+    await this.save();
+  }
+
+  const newPhoto = await media.addPhoto(photoData);
+  this.profilePhotoId = newPhoto.public_id; // Update current profile photo
+  await this.save();
+  return newPhoto;
+};
+
+UserSchema.methods.addProfileVideo = async function (
+  videoData: Partial<MediaItem>
+) {
+  let media = await MediaModel.findById(this.mediaId);
+
+  // If no media document exists, create one
+  if (!media) {
+    media = await MediaModel.create({
+      userId: this._id,
+      photos: [],
+      videos: [],
+    });
+    this.mediaId = media._id;
+    await this.save();
+  }
+  const newVideo = await media.addVideo(videoData);
+  this.profileVideoId = newVideo.public_id; // Update current profile video
+  await this.save();
+  return newVideo;
+};
+
+UserSchema.methods.removeProfilePhoto = async function (publicId: string) {
+  const media = await MediaModel.findById(this.mediaId);
+  if (!media) return; // Silently return if no media exists
+
+  await media.removePhoto(publicId);
+  if (this.profilePhotoId === publicId) {
+    // If removing current profile photo, set to latest photo or null
+    const latestPhoto = media.getLatestPhoto();
+    this.profilePhotoId = latestPhoto?.public_id || null;
+    await this.save();
+  }
+};
+
+UserSchema.methods.removeProfileVideo = async function (publicId: string) {
+  const media = await MediaModel.findById(this.mediaId);
+  if (!media) return;
+
+  await media.removeVideo(publicId);
+  if (this.profileVideoId === publicId) {
+    // If removing current profile video, set to latest video or null
+    const latestVideo = media.getLatestVideo();
+    this.profileVideoId = latestVideo?.public_id || null;
+    await this.save();
+  }
 };
 
 // Create the User model

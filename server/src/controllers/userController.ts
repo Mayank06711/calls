@@ -30,14 +30,7 @@ class User {
       thumbnail_url?: string;
     }
   ) {
-    const user = await UserModel.findByIdAndUpdate(
-      userId,
-      {
-        $set: { photo: photoData },
-      },
-      { new: true }
-    );
-
+    const user = await UserModel.findById(userId);
     if (!user) {
       return {
         status: "error",
@@ -46,11 +39,14 @@ class User {
       };
     }
 
+    await user.addProfilePhoto(photoData);
+    const allMedia = await user.getAllMedia();
     return {
-      photo: {
-        url: user.photo?.url,
-        thumbnail_url: user.photo?.thumbnail_url,
+      currentPhoto: {
+        url: photoData.url,
+        thumbnail_url: photoData.thumbnail_url,
       },
+      allPhotos: allMedia.photos,
       userId: user._id,
     };
   }
@@ -320,6 +316,9 @@ class User {
         throw new ApiError(401, "Account is not active");
       }
 
+      // Get profile media using the new method
+      const profileMedia = await user.getProfileMedia();
+
       // Prepare sanitized response data
       const responseData = {
         fullName: user.fullName,
@@ -346,10 +345,16 @@ class User {
         // Security settings (only boolean flags, no sensitive data)
         isMFAEnabled: user.isMFAEnabled,
         // Photo info (excluding public_id)
-        photo: user.photo
+        photo: profileMedia.photo
           ? {
-              url: user.photo.url,
-              thumbnail_url: user.photo.thumbnail_url,
+              url: profileMedia.photo.url,
+              thumbnail_url: profileMedia.photo.thumbnail_url,
+            }
+          : null,
+        video: profileMedia.video
+          ? {
+              url: profileMedia.video.url,
+              thumbnail_url: profileMedia.video.thumbnail_url,
             }
           : null,
         // Account status
@@ -474,7 +479,11 @@ class User {
     }
   }
 
-  public static sanitizeUserData(user: any) {
+  public static async sanitizeUserData(user: any) {
+    const [profileMedia, allMedia] = await Promise.all([
+      user.getProfileMedia(),
+      user.getAllMedia(),
+    ]);
     return {
       fullName: user.fullName,
       username: user.username,
@@ -491,12 +500,20 @@ class User {
       country: user.country,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
-      photo: user.photo
+      currentPhoto: profileMedia.photo
         ? {
-            url: user.photo.url,
-            thumbnail_url: user.photo.thumbnail_url,
+            url: profileMedia.photo.url,
+            thumbnail_url: profileMedia.photo.thumbnail_url,
           }
-        : null, // Return photo only if it has a value
+        : null,
+      currentVideo: profileMedia.video
+        ? {
+            url: profileMedia.video.url,
+            thumbnail_url: profileMedia.video.thumbnail_url,
+          }
+        : null,
+      allPhotos: allMedia.photos,
+      allVideos: allMedia.videos, // Return photo or video only if it has a value
     };
   }
   public static getProfile = AsyncHandler.wrap(User._getProfile);
