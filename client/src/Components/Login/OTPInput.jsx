@@ -71,7 +71,7 @@ function OTPInput({
         mobNum: phoneNumber,
         otp: otp.join('')
       };
-
+      console.log(verificationData)
        dispatch(verifyOtpThunk(verificationData));
     } catch (error) {
       console.error('Error verifying OTP:', error);
