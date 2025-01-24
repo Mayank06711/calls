@@ -21,9 +21,14 @@ function Login() {
   const [showUserInfo, setShowUserInfo] = useState(false);
   
   const dispatch = useDispatch();
-  const timer = useSelector(state => state.auth.otpTimer);
-  const isTimerActive = useSelector(state => state.auth.isTimerActive);
-  const isAlreadyVerified = useSelector(state => state.auth.isAlreadyVerified);
+  const {
+    otpGenerated,
+    otpVerified,
+    isAlreadyVerified,
+    otpVerificationInProgress,
+    timer,
+    isTimerActive
+  } = useSelector(state => state.auth);
   console.log("isAlreadyVerified", isAlreadyVerified);
 
   useEffect(() => {
@@ -42,6 +47,8 @@ function Login() {
     setPhoneNumber(numericValue);
     setIsButtonEnabled(numericValue.length === 10);
   };
+
+ 
 
   const handleSubmit = async () => {
     try {
@@ -103,9 +110,7 @@ function Login() {
 
         {activeTab === 1 ? (
           <div className="flex flex-col pt-20 gap-5 items-center justify-center bg-transparent p-6 z-50 animate__animated animate__fadeIn">
-            {!isAlreadyVerified ? (
-              <UserInfoForm />
-            ) : !otpSent ? (
+            {!otpGenerated ? (
               <>
                 <input
                   type="text"
@@ -132,15 +137,18 @@ function Login() {
                 </button>
               </>
             ) : (
-              <OTPInput 
-                phoneNumber={phoneNumber} 
-                referenceId={referenceId}
-                smsId={smsId}
-                setShowUserInfo={setShowUserInfo}
-                timer={timer}
-                isTimerActive={isTimerActive}
-                onResend={handleSubmit}
-              />
+               !otpVerified &&
+                 (
+                <OTPInput 
+                  phoneNumber={phoneNumber} 
+                  referenceId={referenceId}
+                  smsId={smsId}
+                  setShowUserInfo={setShowUserInfo}
+                  timer={timer}
+                  isTimerActive={isTimerActive}
+                  onResend={handleSubmit}
+                />
+               )
             )}
           </div>
         ) : (

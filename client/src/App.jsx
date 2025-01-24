@@ -39,16 +39,20 @@ const theme = createTheme({
 
 const App = () => {
   const userId = useSelector((state) => state.auth.userId);
-  const isAlreadyVerified = useSelector(
-    (state) => state.auth.isAlreadyVerified
-  );
-  const timer = useSelector((state) => state.auth.otpTimer);
-  const isTimerActive = useSelector((state) => state.auth.isTimerActive);
   const dispatch = useDispatch();
+  const {
+    otpGenerated,
+    otpVerified,
+    isAlreadyVerified,
+    otpVerificationInProgress,
+    timer,
+    isTimerActive
+  } = useSelector(state => state.auth);
 
   useEffect(() => {
     const savedUserId = localStorage.getItem("userId");
     const savedUserInfo = localStorage.getItem("userInfo");
+   
     if (savedUserId) {
       dispatch(setUserId(savedUserId));
     }
@@ -91,7 +95,7 @@ const App = () => {
               path="/"
               element={
                 userId ? (
-                  isAlreadyVerified === false ? (
+                  !isAlreadyVerified && otpVerified? (
                     <Navigate to="/complete-profile" />
                   ) : (
                     <Home />

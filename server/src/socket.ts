@@ -238,7 +238,7 @@ class SocketManager {
       console.log("New connection attempt", socket.id);
       // Add this condition for testing
       if (
-        process.env.NODE_ENV === "dev" ||
+        process.env.NODE_ENV === "dev" &&
         socket.handshake.query.testMode === "true"
       ) {
         console.log("Test connection - skipping authentication");

@@ -1,27 +1,39 @@
 // Auth Actions
-export const SET_USER_ID = "SET_USER_ID";
-export const CLEAR_USER_ID = "CLEAR_USER_ID";
-export const DECREMENT_TIMER = "DECREMENT_TIMER";
-export const RESET_TIMER = "RESET_TIMER";
-export const SET_TIMER_ACTIVE = "SET_TIMER_ACTIVE";
-export const SET_USER_INFO = "SET_USER_INFO";
-export const SET_ALREADY_VERIFIED = "SET_ALREADY_VERIFIED";
+
+import {
+  OTP_GENERATION_SUCCESS,
+  OTP_GENERATION_FAILURE,
+  OTP_VERIFICATION_START,
+  OTP_VERIFICATION_SUCCESS,
+  OTP_VERIFICATION_FAILURE,
+  RESET_OTP_STATES,
+  SET_USER_ID,
+  CLEAR_USER_ID,
+  DECREMENT_TIMER,
+  RESET_TIMER,
+  SET_TIMER_ACTIVE,
+  SET_USER_INFO,
+  SET_ALREADY_VERIFIED,
+} from "../action_creators/login.action_creaters";
 
 export const setUserId = (userId) => ({
   type: SET_USER_ID,
   payload: userId,
 });
 
-export const clearUserId = () => ({
+export const clearUserId = (payload) => ({
   type: CLEAR_USER_ID,
+  payload: payload,
 });
 
-export const decrementTimer = () => ({
+export const decrementTimer = (payload) => ({
   type: DECREMENT_TIMER,
+  payload: payload,
 });
 
-export const resetTimer = () => ({
+export const resetTimer = (payload) => ({
   type: RESET_TIMER,
+  payload: payload,
 });
 
 export const setTimerActive = (isActive) => ({
@@ -39,4 +51,33 @@ export const setAlreadyVerified = (isVerified) => ({
   payload: isVerified,
 });
 
-// ... other actions ...
+
+export const otpGenerationSuccess = (payload) => ({
+  type: OTP_GENERATION_SUCCESS,
+  payload: payload,
+});
+
+export const otpGenerationFailure = (payload) => ({
+  type: OTP_GENERATION_FAILURE,
+  payload: payload,
+});
+
+export const otpVerificationStart = (payload) => ({
+  type: OTP_VERIFICATION_START,
+  payload: payload,
+});
+
+export const otpVerificationSuccess = (payload) => ({
+  type: OTP_VERIFICATION_SUCCESS,
+  payload: payload,
+});
+
+export const otpVerificationFailure = (payload) => ({
+  type: OTP_VERIFICATION_FAILURE,
+  payload: payload,
+});
+
+export const resetOtpStates = (payload) => ({
+  type: RESET_OTP_STATES,
+  payload: payload,
+});
