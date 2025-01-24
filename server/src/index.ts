@@ -37,17 +37,46 @@ class ServerManager {
   }
   // Initialize middlewares
   private initializeMiddlewares() {
+    this.app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header(
+        "Access-Control-Allow-Origin",
+        req.headers.origin || "http://localhost:3000"
+      );
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET,PUT,POST,DELETE,UPDATE,OPTIONS"
+      );
+      res.header(
+        "Access-Control-Allow-Headers",
+        "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept"
+      );
+      next();
+    });
     this.app.use(
       cors({
-        origin: ["http://localhost:5173", "http://localhost:3000", "*"], // Allows requests from the frontend and any origin
-        credentials: true, // Allows cookies and credentials to be sent with requests
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
+        origin: function (origin, callback) {
+          const allowedOrigins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+          ];
+          // allow requests with no origin (like mobile apps or curl requests)
+          if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+          } else {
+            callback(new Error("Not allowed by CORS"));
+          }
+        },
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+        exposedHeaders: ["set-cookie"],
       })
     );
-
+    this.app.use(cookieParser());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
-    this.app.use(cookieParser());
+
     this.app.use(
       rateLimit({
         windowMs: 10 * 60 * 1000, // 15 minutes
