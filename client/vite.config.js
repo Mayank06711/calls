@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
             cert: fs.readFileSync(path.resolve(__dirname, "./cert/cert.crt")),
           }
         : false,
-      host: "localhost",
+      host: "0.0.0.0",
       port: 3000,
     },
     define: {
