@@ -35,8 +35,10 @@ class ServerManager {
       path: ".env", // Path to your environment variables file
     });
   }
+   
   // Initialize middlewares
   private initializeMiddlewares() {
+    this.app.set("trust proxy", 1)
     this.app.use(
       cors({
         origin: ["http://localhost:5173", "http://localhost:3000", "*"], // Allows requests from the frontend and any origin
@@ -147,14 +149,9 @@ class ServerManager {
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: [
-          `https://localhost:5173`,
-          "http://localhost:3000",
-          "*",
-        ], // You can restrict this to your frontend URL for security
-        methods: ["GET", "POST", "PUT"],
+        origin: [`https://localhost:5173`, `https://localhost:3000`,"*"], // You can restrict this to your frontend URL for security
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
       },
     });
     const Port = process.env.PORT || 5005;

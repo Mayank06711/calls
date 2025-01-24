@@ -88,7 +88,7 @@ class Middleware {
       const accessToken =
         req.cookies?.accessToken ||
         req.header("Authorization")?.replace("Bearer ", "");
-
+      console.log("cookies",req.cookies, req.baseUrl, req.header, req.headers, req.headersDistinct)
       if (!accessToken || accessToken.length === 0) {
         throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }

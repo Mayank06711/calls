@@ -1,4 +1,9 @@
-import { SET_USER_INFO, FETCH_USER_INFO_START, FETCH_USER_INFO_SUCCESS, FETCH_USER_INFO_FAILURE } from "../action_creators/userInfo.creators";
+import {
+  SET_USER_INFO,
+  FETCH_USER_INFO_START,
+  FETCH_USER_INFO_SUCCESS,
+  FETCH_USER_INFO_FAILURE,
+} from "../action_creators/userInfo.creators";
 
 export const setUserInfo = (userInfo) => ({
   type: SET_USER_INFO,
