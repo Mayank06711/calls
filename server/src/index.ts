@@ -35,15 +35,36 @@ class ServerManager {
       path: ".env", // Path to your environment variables file
     });
   }
-   
+
   // Initialize middlewares
   private initializeMiddlewares() {
-    this.app.set("trust proxy", 1)
+    this.app.set("trust proxy", 1);
     this.app.use(
       cors({
-        origin: ["http://localhost:5173", "http://localhost:3000", "*"], // Allows requests from the frontend and any origin
+        origin: function (origin, callback) {
+          const allowedOrigins = [
+            "https://knowyourfashion.in",
+            "https://www.knowyourfashion.in",
+            "http://localhost:3000",
+            "http://localhost:5173",
+          ];
+          // Allow requests with no origin (like mobile apps or curl requests)
+          if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+          } else {
+            callback(new Error("Not allowed by CORS"));
+          }
+        }, // Allows requests from the frontend and any origin
         credentials: true, // Allows cookies and credentials to be sent with requests
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Requested-With",
+          "Accept",
+          "Origin",
+        ],
+        exposedHeaders: ["Set-Cookie"],
       })
     );
 
@@ -149,9 +170,21 @@ class ServerManager {
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: [`https://localhost:5173`, `https://localhost:3000`,"*"], // You can restrict this to your frontend URL for security
+        origin: [
+          "https://knowyourfashion.in",
+          "https://www.knowyourfashion.in",
+          "http://localhost:3000",
+          "http://localhost:5173",
+        ],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         credentials: true,
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Requested-With",
+          "Accept",
+          "Origin",
+        ],
       },
     });
     const Port = process.env.PORT || 5005;
