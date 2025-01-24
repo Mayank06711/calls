@@ -63,7 +63,7 @@ class Authentication {
   private static options: CookieOptions = {
     httpOnly: true,
     secure: false,  // false for development
-    sameSite: 'lax',
+    sameSite: 'none',
     domain: process.env.NODE_ENV === 'production' ? '3.109.102.219' : undefined,
     path: '/', // Prevents the browser from sending this cookie along with cross-site requests
     maxAge: 24 * 60 * 60 * 1000, // 1 day (for access token) - 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
@@ -72,7 +72,7 @@ class Authentication {
   private static refreshOptions: CookieOptions = {
     httpOnly: true,
     secure: false,  // false for development
-    sameSite: 'lax',
+    sameSite: 'none',
     domain: process.env.NODE_ENV === 'production' ? '3.109.102.219' : undefined,
     path: '/',
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
