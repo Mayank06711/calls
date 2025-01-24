@@ -88,7 +88,6 @@ class Middleware {
       const accessToken =
         req.cookies?.accessToken ||
         req.header("Authorization")?.replace("Bearer ", "");
-      console.log("cookies",req.cookies, req.baseUrl, req.header, req.headers, req.headersDistinct)
       if (!accessToken || accessToken.length === 0) {
         throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
@@ -112,7 +111,6 @@ class Middleware {
       // Verify token expiration
       const now = Math.floor(Date.now() / 1000);
       if (decodedToken.exp && decodedToken.exp < now) {
-        console.log(decodedToken.exp, decodedToken.exp < now);
         throw new ApiError(401, "Token has expired", ["Authentication failed"]);
       }
 
