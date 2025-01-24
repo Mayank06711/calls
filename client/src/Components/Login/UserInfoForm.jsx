@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { updateUserInfoThunk } from "../../redux/thunks/login.thunks";
+import { updateUserInfoThunk } from "../../redux/thunks/userInfo.thunks";
 import { useNavigate } from "react-router-dom";
 import { showNotification } from "../../redux/actions";
 import { fetchUserInfoThunk } from "../../redux/thunks/userInfo.thunks";
