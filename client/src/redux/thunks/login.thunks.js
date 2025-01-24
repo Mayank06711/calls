@@ -1,9 +1,7 @@
 import {
   generateOtp,
-  setToken,
+  // setToken,
   showNotification,
-  userLogin,
-  userSignup,
   setUserId,
   clearUserId,
   setAlreadyVerified,
@@ -11,74 +9,19 @@ import {
   otpGenerationFailure,
   otpGenerationSuccess,
 } from "../actions";
-import socketConnection from "../../webRTCUtils/socketConnection";
 import { makeRequest } from "../../utils/apiHandlers";
 import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
-import { ApiError } from "../../utils/globalErrorHandler";
-import { setUserInfo } from "../actions/userInfo.actions";
 import { authenticate } from "../../socket/authentication";
-import { otpVerificationFailure, otpVerificationSuccess, resetTimer, setTimerActive } from "../actions/auth.actions";
-
-export const userLoginThunk = (payload) => async (dispatch) => {
-  try {
-    const response = await axios.post(
-      "https://localhost:5005/api/v1/users/login",
-      {
-        email: payload.email,
-        password: payload.password,
-      },
-      {
-        withCredentials: true,
-      }
-    );
-    console.log(response.data);
-
-    // Store token in Redux store and localStorage
-    const token = response.data.localToken;
-    if (token) {
-      localStorage.setItem("token", token);
-      dispatch(setToken(token));
-    }
-    dispatch(userLogin(response.data)); // Dispatch userLogin action
-    socketConnection(response.data.token);
-  } catch (error) {
-    console.log(
-      "Error in the user login thunk:",
-      error.response?.data || error.message
-    );
-  }
-};
-
-export const userSignupThunk = (payload) => async (dispatch) => {
-  try {
-    const response = await axios.post(
-      "https://localhost:5005/api/v1/users/signup",
-      {
-        username: payload.username,
-        email: payload.email,
-        password: payload.password,
-      }
-    );
-    console.log(response.data);
-
-    const token = response.data.localToken;
-    if (token) {
-      localStorage.setItem("token", token);
-      dispatch(setToken(token));
-    }
-    dispatch(userSignup(response.data));
-    socketConnection(response.data.token);
-  } catch (error) {
-    console.log(
-      "Error in the user signup thunk:",
-      error.response?.data || error.message
-    );
-  }
-};
+import {
+  otpVerificationFailure,
+  otpVerificationSuccess,
+  resetTimer,
+  setTimerActive,
+} from "../actions/auth.actions";
 
 export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
   try {
-    const response = await makeRequest(
+    const { data, error, statusCode } = await makeRequest(
       HTTP_METHODS.POST,
       ENDPOINTS.AUTH.GENERATE_OTP,
       {
@@ -86,111 +29,73 @@ export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
         isTesting: true,
       }
     );
-    const { parsedBody } = response;
+    if (error) {
+      dispatch(otpGenerationFailure());
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
 
-    if (parsedBody.success) {
-      dispatch(generateOtp(parsedBody));
+    if (data.success) {
+      dispatch(generateOtp(data));
       dispatch(otpGenerationSuccess(true));
       dispatch(resetTimer());
       dispatch(setTimerActive(true));
-      dispatch(showNotification("OTP sent successfully!", 200));
-
+      dispatch(
+        showNotification(data.message || "OTP sent successfully!", statusCode)
+      );
     } else {
       dispatch(otpGenerationFailure());
-      dispatch(showNotification("Failed to send OTP", 400));
+      dispatch(showNotification("Failed to send OTP", statusCode || 400));
     }
 
-    
-    return parsedBody;
+    return data;
   } catch (error) {
     dispatch(otpGenerationFailure());
     dispatch(showNotification("Failed to send OTP", 400));
-    console.error(
-      "Error generating OTP:",
-      error.response?.data || error
-    );
+    console.error("Error generating OTP:", error);
   }
 };
 
 export const verifyOtpThunk = (verificationData) => async (dispatch) => {
   try {
     dispatch(otpVerificationStart());
-    const response = await makeRequest(
+    const { data, error, statusCode } = await makeRequest(
       HTTP_METHODS.POST,
       ENDPOINTS.AUTH.VERIFY_OTP,
       verificationData
     );
-    if (response?.parsedBody?.success) {
-      const { userId, isAlreadyVerified ,token} = response.parsedBody.data;
+    if (error) {
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const { userId, isAlreadyVerified, token } = data.data;
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
+
       localStorage.setItem("userId", userId);
       localStorage.setItem("token", token);
       localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
 
-     
-         authenticate(token);
+      authenticate(token);
 
-      
-      // const socketAuth=socketManager.authenticate({
-      //   accessToken:token
-      // })
-
-      // if (socketAuth.status === 'success') {
-      //   // Socket is now connected and authenticated
-      //   // Proceed with your app logic
-      //   console.log("socet connected successfully")
-      // }
-
-      
       dispatch(
         showNotification(
-          response.parsedBody.message || "OTP verified successfully!",
-          response.parsedBody.status || 200
+          data.message || "OTP verified successfully!",
+          statusCode
         )
       );
-    }else{
+    } else {
       dispatch(otpVerificationFailure(true));
-      dispatch(showNotification("Invalid OTP", 400));
+      dispatch(showNotification("Invalid OTP", statusCode || 400));
     }
-    return response;
+    return data;
   } catch (error) {
     console.error("Error verifying OTP:", error);
-    dispatch(
-      showNotification(
-        error.response?.data?.message || "Failed to verify OTP",
-        error.response?.status || 400
-      )
-    );
-  }
-};
-
-export const updateUserInfoThunk = (userData) => async (dispatch) => {
-  try {
-    const response = await makeRequest(
-      HTTP_METHODS.PATCH,
-      ENDPOINTS.USERS.UPDATE,
-      userData 
-    );
-
-    if (response?.parsedBody?.success) {
-      const userInfo = response.parsedBody.data;
-      dispatch(setUserInfo(userInfo));
-      dispatch(setAlreadyVerified(true));
-      dispatch(showNotification("Profile updated successfully!", 200));
-    }
-    return response;
-  } catch (error) {
-    console.error("Error updating user info:", error);
-    dispatch(
-      showNotification(
-        error.message || "Failed to update profile",
-        error.status || 400
-      )
-    );
-    // We In front and we don't throw errors it is for back end which gracefully handle the errors by showing multiple kind of notifications or pages or something like that
-    throw error;
+    dispatch(otpVerificationFailure(true));
+    dispatch(showNotification(error.message || "Failed to verify OTP", 400));
   }
 };
 
@@ -199,6 +104,8 @@ export const logoutThunk = () => async (dispatch) => {
     // Clear local storage
     localStorage.removeItem("userId");
     localStorage.removeItem("mobNum");
+    localStorage.removeItem("token");
+    localStorage.removeItem("isAlreadyVerified");
 
     // Clear Redux state
     dispatch(clearUserId());
