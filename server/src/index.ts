@@ -39,6 +39,9 @@ class ServerManager {
   // Initialize middlewares
   private initializeMiddlewares() {
     this.app.set("trust proxy", 1);
+
+    // Pre-flight request handling
+    this.app.options("*", cors());
     this.app.use(
       cors({
         origin: function (origin, callback) {
@@ -67,6 +70,10 @@ class ServerManager {
         exposedHeaders: ["Set-Cookie"],
       })
     );
+    this.app.use((req, res, next) => {
+      res.header("Access-Control-Allow-Credentials", "true");
+      next();
+    });
 
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
