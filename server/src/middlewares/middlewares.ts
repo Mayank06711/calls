@@ -112,7 +112,6 @@ class Middleware {
       // Verify token expiration
       const now = Math.floor(Date.now() / 1000);
       if (decodedToken.exp && decodedToken.exp < now) {
-        console.log(decodedToken.exp, decodedToken.exp < now);
         throw new ApiError(401, "Token has expired", ["Authentication failed"]);
       }
 
