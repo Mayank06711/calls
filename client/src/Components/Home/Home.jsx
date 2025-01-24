@@ -31,7 +31,7 @@ function Home() {
       </div>
     );
   }
-
+ 
   return (
     <div className="p-8 max-w-2xl mx-auto bg-white rounded-lg shadow-lg">
       <h1 className="text-3xl font-bold text-green-600 mb-6">

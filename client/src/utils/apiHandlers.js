@@ -26,45 +26,35 @@ export const makeRequest = async (
 
     // For GET and DELETE requests, payload should be passed as params
     if (upperMethod === "GET" || upperMethod === "DELETE") {
-      const response = await axiosInstance[method.toLowerCase()](url, payload ? {
-        params: payload,
-      } : undefined);
+      const response = await axiosInstance[method.toLowerCase()](
+        url,
+        payload
+          ? {
+              params: payload,
+            }
+          : undefined
+      );
       return response.data;
     }
 
     // For POST, PUT, PATCH requests
     const response = await axiosInstance[method.toLowerCase()](url, payload);
+    console.log("response from makereuest", response);
     return response.data;
   } catch (error) {
     console.error("Error in api handler:", error);
-
-    // Handle 401 Unauthorized errors specifically
-    if (error.response?.status === 401) {
-      const errorMessage =
-        error.response.data?.message ||
-        (error.response.data?.body &&
-          JSON.parse(error.response.data.body)?.message) ||
-        "Unauthorized access";
-      throw new ApiError(errorMessage, 401, error.response.data);
+    // If error is already in our format, return it directly
+    if (error.data !== undefined && error.error !== undefined) {
+      return error;
     }
-
-    // Handle other errors with stringified body
-    if (
-      error.response?.data?.body &&
-      typeof error.response.data.body === "string"
-    ) {
-      try {
-        const parsedError = JSON.parse(error.response.data.body);
-        throw new ApiError(
-          parsedError.message || "Request failed",
-          error.response.status,
-          parsedError
-        );
-      } catch (parseError) {
-        console.warn("Failed to parse error body:", parseError);
-      }
-    }
-
-    throw error;
+    // Otherwise, format the error
+    return {
+      data: null,
+      error: {
+        message: error.message || "Something went wrong",
+        statusCode: error.response?.status || 500,
+        errors: error.errors || [],
+      },
+    };
   }
 };

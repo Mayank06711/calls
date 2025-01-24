@@ -147,14 +147,9 @@ class ServerManager {
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: {
-        origin: [
-          `https://localhost:5173`,
-          "http://localhost:3000",
-          "*",
-        ], // You can restrict this to your frontend URL for security
-        methods: ["GET", "POST", "PUT"],
+        origin: [`https://localhost:5173`, "http://localhost:3000", "*"], // You can restrict this to your frontend URL for security
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       },
     });
     const Port = process.env.PORT || 5005;

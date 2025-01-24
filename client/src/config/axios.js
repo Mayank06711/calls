@@ -23,8 +23,6 @@ const createAxiosInstance = (config = {}) => {
     baseURL: API_CONFIG.BASE_URL,
     headers: { ...defaultHeaders, ...headers },
     withCredentials: true, // Always true to handle HTTP-only cookies
-    xsrfCookieName: "XSRF-TOKEN", // If your backend uses CSRF protection
-    xsrfHeaderName: "X-XSRF-TOKEN",
     ...additionalConfig,
   });
 
@@ -41,32 +39,43 @@ const createAxiosInstance = (config = {}) => {
   // Response interceptor
   instance.interceptors.response.use(
     (response) => {
-      // Handle successful responses
-      if (response.headers["set-cookie"]) {
-        // Cookies will be automatically handled by the browser
-        console.debug("Cookies received from server");
-      }
-
       // Parse stringified JSON in body if it exists
       if (response.data?.body && typeof response.data.body === "string") {
         try {
           const parsedBody = JSON.parse(response.data.body);
-          response.data.parsedBody = parsedBody;
-
+          response.data = {
+            data: parsedBody,
+            error: null,
+            statusCode: response.data.statusCode || response.status,
+          };
           // Store user data if available in successful response
           if (parsedBody.success && parsedBody.data) {
-            const { userId, mobNum } = parsedBody.data;
+            const { userId } = parsedBody.data;
             if (userId) localStorage.setItem("userId", userId);
-            if (mobNum) localStorage.setItem("mobNum", mobNum);
           }
         } catch (error) {
           console.warn("Failed to parse response body:", error);
         }
+      } else {
+        // Handle non-stringified responses
+        response.data = {
+          data: response.data,
+          error: null,
+          statusCode: response.status,
+        };
       }
       return response;
     },
     (error) => {
-      return Promise.reject(handleApiError(error));
+      const processedError = handleApiError(error);
+      return Promise.reject({
+        data: null,
+        error: {
+          message: processedError.message || "Something went wrong",
+          statusCode: error.response?.status || 500,
+          errors: processedError.errors || [],
+        },
+      });
     }
   );
 

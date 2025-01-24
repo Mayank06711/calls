@@ -4,33 +4,76 @@ import {
   fetchUserInfoStart,
   fetchUserInfoSuccess,
   fetchUserInfoFailure,
+  setUserInfo,
 } from "../actions/userInfo.actions";
 import { showNotification } from "../actions/notification.actions";
+import { setAlreadyVerified } from "../actions/auth.actions";
 
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
     dispatch(fetchUserInfoStart());
     console.log("fetching user info");
-    const response = await makeRequest(
+    const { data, error, statusCode } = await makeRequest(
       HTTP_METHODS.GET,
       ENDPOINTS.USERS.PROFILE
     );
-    console.log("response in fetchUserInfoThunk", response);
-    if (response.parsedBody?.success) {
-      // response.parsedBody is already parsed, use it directly
-      const userInfo = response.parsedBody.data;
+    if (error) {
+      dispatch(fetchUserInfoFailure(error.message));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    console.log("response in fetchUserInfoThunk", data);
+    if (data.success) {
+      const userInfo = data.data;
       console.log("userInfo in fetchUserInfoThunk", userInfo);
+      dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode))
       dispatch(fetchUserInfoSuccess(userInfo));
-      localStorage.setItem("userInfo", JSON.stringify(userInfo));
+    } else {
+      dispatch(
+        showNotification("Profile cannot be fetched", statusCode || 500)
+      );
     }
   } catch (error) {
     console.error("Error fetching user info:", error);
     dispatch(fetchUserInfoFailure(error.message));
     dispatch(
-      showNotification(
-        error.message || "Failed to fetch user info",
-        error.status || 400
-      )
+      showNotification(error.message || "Failed to fetch user info", 400)
     );
+  }
+};
+
+export const updateUserInfoThunk = (userData) => async (dispatch) => {
+  try {
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.PATCH,
+      ENDPOINTS.USERS.UPDATE,
+      userData
+    );
+
+    if (error) {
+      console.log("error in update user thunk", error);
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const userInfo = data.data;
+      dispatch(setUserInfo(userInfo));
+      dispatch(setAlreadyVerified(true));
+      dispatch(showNotification("Congrats your Profile updated successfully!", statusCode));
+      dispatch(showNotification("You can update your profile photo Anytime"))
+    } else {
+      console.log("response from updateUserThunk", data);
+      dispatch(
+        showNotification("Profile cannot be updated", statusCode || 500)
+      );
+    }
+    return data;
+  } catch (error) {
+    console.error("Error updating user info:", error);
+    dispatch(
+      showNotification(error.message || "Failed to update profile", 400)
+    );
+    // We In front and we don't throw errors it is for back end which gracefully handle the errors by showing multiple kind of notifications or pages or something like that
+    return;
   }
 };
