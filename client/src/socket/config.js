@@ -1,161 +1,173 @@
-import { io } from 'socket.io-client';
-import env from '../config/env.config';
+import { io} from "socket.io-client";
+import env from "../config/env.config";
 
 // Create socket instance
-const createSocket = () => {
+const createSocket = (testSocket = false) => {
   const SERVER_URL = env.API_BASE_URL;
-  return io(SERVER_URL, {
+
+  const socketOptions = {
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
     timeout: 10000,
+    secure: true,
+    rejectUnauthorized: false,
     autoConnect: false,
-    transports: ['websocket', 'polling'],
-    withCredentials: true,
-  });
+  };
+
+  if (testSocket) {
+    socketOptions.query = {
+      testMode: "true",
+      userId: "123", 
+      phoneNumber: "1234567890"
+    };
+  }
+
+  const socket = io(SERVER_URL, socketOptions);
+  return socket;
 };
+
+export { createSocket };
 
 // Socket state
-let socket = null;
-let connected = false;
-let authenticated = false;
+// let socket = null;
+// let connected = false;
+// let authenticated = false;
 
 // Socket management functions
-const socketManager = {
-  // Initialize socket connection
-  init() {
-    if (!socket) {
-      socket = createSocket();
-      this.setupEventListeners();
-    }
-    return socket;
-  },
+// const socketManager = {
+//   // Initialize socket connection
+//   init() {
+//     if (!socket) {
+//       socket = createSocket();
+//       this.setupEventListeners();
+//     }
+//     return socket;
+//   },
 
-  // Setup default event listeners
-  setupEventListeners() {
-    socket.on('connect', () => {
-      console.log('Connected to socket server');
-      connected = true;
-    });
+//   // Setup default event listeners
+//   setupEventListeners() {
+//     socket.on("connect", () => {
+//       console.log("Connected to socket server");
+//       connected = true;
+//     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('Disconnected from socket server:', reason);
-      connected = false;
-      authenticated = false;
-    });
+//     socket.on("disconnect", (reason) => {
+//       console.log("Disconnected from socket server:", reason);
+//       connected = false;
+//       authenticated = false;
+//     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      connected = false;
-    });
+//     socket.on("connect_error", (error) => {
+//       console.error("Socket connection error:", error);
+//       connected = false;
+//     });
 
-    socket.on('error', (error) => {
-      console.error('Socket error:', error);
-    });
+//     socket.on("error", (error) => {
+//       console.error("Socket error:", error);
+//     });
 
-    socket.on('authenticate', (response) => {
-      authenticated = response.status === 'success';
-      console.log('Authentication response:', response);
-    });
-  },
+//     socket.on("authenticate", (response) => {
+//       authenticated = response.status === "success";
+//       console.log("Authentication response:", response);
+//     });
+//   },
 
-  // Connect to socket server
-  connect() {
-    if (!socket) this.init();
-    if (!connected) socket.connect();
-  },
+//   // Connect to socket server
+//   connect() {
+//     if (!socket) this.init();
+//     socket.connect();
+//   },
 
-  // Disconnect from socket server
-  disconnect() {
-    if (connected && socket) {
-      socket.disconnect();
-    }
-  },
+//   // Disconnect from socket server
+//   disconnect() {
+//     if (connected && socket) {
+//       socket.disconnect();
+//     }
+//   },
 
-  // Authenticate socket connection
-  async authenticate(tokens) { 
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        resolve({ status: 'error', message: 'Authentication timeout' });
-      }, 5000);
+//   // Authenticate socket connection
+//   async authenticate(tokens) {
+//     return new Promise((resolve) => {
+//       const timeout = setTimeout(() => {
+//         resolve({ status: "error", message: "Authentication timeout" });
+//       }, 5000);
 
-      socket.emit('authenticate', tokens, (response) => {
-        clearTimeout(timeout);
-        authenticated = response.status === 'success';
-        resolve(response);
-      });
-    });
-  },
+//       socket.emit("authenticate", tokens, (response) => {
+//         clearTimeout(timeout);
+//         authenticated = response.status === "success";
+//         resolve(response);
+//       });
+//     });
+//   },
 
-  // Handle file uploads
-  async uploadFile(fileData) {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('File upload timeout'));
-      }, 30000);
+//   // Handle file uploads
+//   async uploadFile(fileData) {
+//     return new Promise((resolve, reject) => {
+//       const timeout = setTimeout(() => {
+//         reject(new Error("File upload timeout"));
+//       }, 30000);
 
-      socket.emit('file:upload', fileData, (response) => {
-        clearTimeout(timeout);
-        if (response.status === 'success') {
-          resolve(response);
-        } else {
-          reject(new Error(response.message));
-        }
-      });
-    });
-  },
+//       socket.emit("file:upload", fileData, (response) => {
+//         clearTimeout(timeout);
+//         if (response.status === "success") {
+//           resolve(response);
+//         } else {
+//           reject(new Error(response.message));
+//         }
+//       });
+//     });
+//   },
 
-  // Emit events with timeout
-  async emit(event, data, options = {}) {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Event ${event} timeout`));
-      }, options.timeout || 5000);
+//   // Emit events with timeout
+//   async emit(event, data, options = {}) {
+//     return new Promise((resolve, reject) => {
+//       const timeout = setTimeout(() => {
+//         reject(new Error(`Event ${event} timeout`));
+//       }, options.timeout || 5000);
 
-      socket.emit(event, data, (response) => {
-        clearTimeout(timeout);
-        resolve(response);
-      });
-    });
-  },
+//       socket.emit(event, data, (response) => {
+//         clearTimeout(timeout);
+//         resolve(response);
+//       });
+//     });
+//   },
 
-  // Subscribe to events
-  on(event, callback) {
-    if (!socket) this.init();
-    socket.on(event, callback);
-    return () => socket.off(event, callback);
-  },
+//   // Subscribe to events
+//   on(event, callback) {
+//     if (!socket) this.init();
+//     socket.on(event, callback);
+//     return () => socket.off(event, callback);
+//   },
 
-  // Status checks
-  isConnected() {
-    return connected;
-  },
+//   // Status checks
+//   isConnected() {
+//     return connected;
+//   },
 
-  isAuthenticated() {
-    return authenticated;
-  },
+//   isAuthenticated() {
+//     return authenticated;
+//   },
 
-  getSocketId() {
-    return socket?.id;
-  },
+//   getSocketId() {
+//     return socket?.id;
+//   },
 
-  // Room management
-  joinRoom(room) {
-    socket.emit('join:room', { room });
-  },
+//   // Room management
+//   joinRoom(room) {
+//     socket.emit("join:room", { room });
+//   },
 
-  leaveRoom(room) {
-    socket.emit('leave:room', { room });
-  },
+//   leaveRoom(room) {
+//     socket.emit("leave:room", { room });
+//   },
 
-  // Get socket instance
-  getSocket() {
-    if (!socket) this.init();
-    return socket;
-  }
-};
+//   // Get socket instance
+//   getSocket() {
+//     if (!socket) this.init();
+//     return socket;
+//   },
+// };
 
-export default socketManager;
+// export default socketManager;
 
 // Example usage in React components:
 /*

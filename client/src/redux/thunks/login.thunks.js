@@ -7,13 +7,17 @@ import {
   setUserId,
   clearUserId,
   setAlreadyVerified,
+  otpVerificationStart,
+  otpGenerationFailure,
+  otpGenerationSuccess,
 } from "../actions";
 import socketConnection from "../../webRTCUtils/socketConnection";
 import { makeRequest } from "../../utils/apiHandlers";
 import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
 import { ApiError } from "../../utils/globalErrorHandler";
 import { setUserInfo } from "../actions/userInfo.actions";
-import socketManager from "../../socket/config";
+import { authenticate } from "../../socket/authentication";
+import { otpVerificationFailure, otpVerificationSuccess, resetTimer, setTimerActive } from "../actions/auth.actions";
 
 export const userLoginThunk = (payload) => async (dispatch) => {
   try {
@@ -84,25 +88,33 @@ export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
     );
     const { parsedBody } = response;
 
-    console.log("OTP Generation Response:", {
-      parsedBody,
-      smsId: parsedBody?.data?.sms_id,
-      referenceId: parsedBody?.data?.reference_id,
-    });
+    if (parsedBody.success) {
+      dispatch(generateOtp(parsedBody));
+      dispatch(otpGenerationSuccess(true));
+      dispatch(resetTimer());
+      dispatch(setTimerActive(true));
+      dispatch(showNotification("OTP sent successfully!", 200));
 
-    dispatch(generateOtp(parsedBody));
+    } else {
+      dispatch(otpGenerationFailure());
+      dispatch(showNotification("Failed to send OTP", 400));
+    }
+
+    
     return parsedBody;
   } catch (error) {
+    dispatch(otpGenerationFailure());
+    dispatch(showNotification("Failed to send OTP", 400));
     console.error(
       "Error generating OTP:",
-      error.response?.data || error.message
+      error.response?.data || error
     );
-    throw error;
   }
 };
 
 export const verifyOtpThunk = (verificationData) => async (dispatch) => {
   try {
+    dispatch(otpVerificationStart());
     const response = await makeRequest(
       HTTP_METHODS.POST,
       ENDPOINTS.AUTH.VERIFY_OTP,
@@ -110,30 +122,37 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
     );
     if (response?.parsedBody?.success) {
       const { userId, isAlreadyVerified ,token} = response.parsedBody.data;
+      dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
       localStorage.setItem("userId", userId);
       localStorage.setItem("token", token);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
 
-      socketManager.init();
+     
+         authenticate(token);
+
       
-      const socketAuth=socketManager.authenticate({
-        accessToken:token
-      })
+      // const socketAuth=socketManager.authenticate({
+      //   accessToken:token
+      // })
 
-      if (socketAuth.status === 'success') {
-        // Socket is now connected and authenticated
-        // Proceed with your app logic
-        console.log("socet connected successfully")
-      }
+      // if (socketAuth.status === 'success') {
+      //   // Socket is now connected and authenticated
+      //   // Proceed with your app logic
+      //   console.log("socet connected successfully")
+      // }
 
       
       dispatch(
         showNotification(
           response.parsedBody.message || "OTP verified successfully!",
-          200
+          response.parsedBody.status || 200
         )
       );
+    }else{
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification("Invalid OTP", 400));
     }
     return response;
   } catch (error) {
@@ -144,11 +163,6 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
         error.response?.status || 400
       )
     );
-    throw {
-      message: error.response?.data?.message || "Failed to verify OTP", 
-      status: error.response?.status || 400,
-      error
-    };
   }
 };
 
@@ -164,7 +178,6 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
       const userInfo = response.parsedBody.data;
       dispatch(setUserInfo(userInfo));
       dispatch(setAlreadyVerified(true));
-      localStorage.setItem("userInfo", JSON.stringify(userInfo));
       dispatch(showNotification("Profile updated successfully!", 200));
     }
     return response;
