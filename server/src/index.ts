@@ -43,7 +43,7 @@ class ServerManager {
       cors({
         origin: [
           "http://localhost:5173",
-          `http://${process.env.AWS_PUBLIC_IP}:3003`,
+          `http://${process.env.AWS_PUBLIC_IP}:3000`,
           "http://localhost:3000",
         ], // Allows requests from the frontend and any origin
         credentials: true, // Allows cookies and credentials to be sent with requests
@@ -155,8 +155,8 @@ class ServerManager {
       cors: {
         origin: [
           `https://localhost:5173`,
-          `http://${process.env.AWS_PUBLIC_IP}:3003`,
-          `https://localhost:3000`,
+          `http://${process.env.AWS_PUBLIC_IP}:3000`,
+          `http://localhost:3000`,
         ], // You can restrict this to your frontend URL for security
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         credentials: true,
