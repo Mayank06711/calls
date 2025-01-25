@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      proxy:{
+        "/api":"https://knowyourfashion.in"
+      },
       https: env.USE_HTTPS === 'true'
         ? {
             key: fs.readFileSync(path.resolve(__dirname, "./cert/key.pem")),
