@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
     server: {
       https: env.USE_HTTPS === 'true'
         ? {
-            key: fs.readFileSync(path.resolve(__dirname, "./cert/cert.key")),
-            cert: fs.readFileSync(path.resolve(__dirname, "./cert/cert.crt")),
+            key: fs.readFileSync(path.resolve(__dirname, "./cert/key.pem")),
+            cert: fs.readFileSync(path.resolve(__dirname, "./cert/cert.pem")),
           }
         : false,
       host: "0.0.0.0",
