@@ -32,7 +32,7 @@ export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
     if (error) {
       dispatch(otpGenerationFailure());
       dispatch(showNotification(error.message, error.statusCode));
-      return;
+      return null;
     }
 
     if (data.success) {
@@ -45,14 +45,27 @@ export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
       );
     } else {
       dispatch(otpGenerationFailure());
-      dispatch(showNotification("Failed to send OTP", statusCode || 400));
+      dispatch(
+        showNotification(
+          "Failed to send OTP, please try again",
+          statusCode || 400
+        )
+      );
+      return null;
     }
 
     return data;
   } catch (error) {
+    // Handle network or other unexpected errors
     dispatch(otpGenerationFailure());
-    dispatch(showNotification("Failed to send OTP", 400));
+    dispatch(
+      showNotification(
+        "Unable to connect to server. Please check your internet connection.",
+        500
+      )
+    );
     console.error("Error generating OTP:", error);
+    return null;
   }
 };
 
@@ -79,7 +92,7 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       localStorage.setItem("token", token);
       localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
 
-      authenticate(token);
+      // authenticate(token);
 
       dispatch(
         showNotification(

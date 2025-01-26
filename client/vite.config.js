@@ -15,13 +15,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      proxy:{
+        "/api":"https://knowyourfashion.in"
+      },
       https: env.USE_HTTPS === 'true'
         ? {
-            key: fs.readFileSync(path.resolve(__dirname, "./cert/cert.key")),
-            cert: fs.readFileSync(path.resolve(__dirname, "./cert/cert.crt")),
+            key: fs.readFileSync(path.resolve(__dirname, "./cert/key.pem")),
+            cert: fs.readFileSync(path.resolve(__dirname, "./cert/cert.pem")),
           }
         : false,
-      host: "localhost",
+      host: "0.0.0.0",
       port: 3000,
     },
     define: {

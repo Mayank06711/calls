@@ -10,7 +10,7 @@ import {
 } from "react-router-dom";
 
 import backgroundImage from "./assets/loginBackground.jpg";
-import Login from "./Components/login/Login";
+import Login from "./Components/Login/Login";
 import Home from "./Components/Home/Home";
 import Missing from "./Components/Missing";
 import Toast from "./Components/Notification/Toast";
