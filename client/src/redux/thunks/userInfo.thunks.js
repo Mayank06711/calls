@@ -12,7 +12,6 @@ import { setAlreadyVerified } from "../actions/auth.actions";
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
     dispatch(fetchUserInfoStart());
-    console.log("fetching user info");
     const { data, error, statusCode } = await makeRequest(
       HTTP_METHODS.GET,
       ENDPOINTS.USERS.PROFILE
@@ -22,11 +21,9 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
       dispatch(showNotification(error.message, error.statusCode));
       return;
     }
-    console.log("response in fetchUserInfoThunk", data);
     if (data.success) {
       const userInfo = data.data;
-      console.log("userInfo in fetchUserInfoThunk", userInfo);
-      dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode))
+      dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       dispatch(fetchUserInfoSuccess(userInfo));
     } else {
       dispatch(
@@ -59,10 +56,14 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
       const userInfo = data.data;
       dispatch(setUserInfo(userInfo));
       dispatch(setAlreadyVerified(true));
-      dispatch(showNotification("Congrats your Profile updated successfully!", statusCode));
-      dispatch(showNotification("You can update your profile photo Anytime"))
+      dispatch(
+        showNotification(
+          "Congrats your Profile updated successfully!",
+          statusCode
+        )
+      );
+      dispatch(showNotification("You can update your profile photo Anytime"));
     } else {
-      console.log("response from updateUserThunk", data);
       dispatch(
         showNotification("Profile cannot be updated", statusCode || 500)
       );
