@@ -13,9 +13,10 @@ export const socketConnected = () => {
   };
 };
 
-export const socketAuthenticated = () => {
+export const socketAuthenticated = (authenticate) => {
   return {
     type: SOCKET_AUTHENTICATED,
+    payload: authenticate,
   };
 };
 
