@@ -11,13 +11,14 @@ import {
 } from "../actions";
 import { makeRequest } from "../../utils/apiHandlers";
 import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
-import { authenticate } from "../../socket/authentication";
+// import { authenticate } from "../../socket/authentication";
 import {
   otpVerificationFailure,
   otpVerificationSuccess,
   resetTimer,
   setTimerActive,
 } from "../actions/auth.actions";
+import { authenticateSocket } from "../../socket/authentication";
 
 export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
   try {
@@ -92,7 +93,13 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       localStorage.setItem("token", token);
       localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
 
-      // authenticate(token);
+      // Authenticate socket connection
+      try {
+        await authenticateSocket(token);
+      } catch (socketError) {
+        console.error("Socket authentication failed:", socketError);
+        // Optionally show a notification but don't fail the login
+      }
 
       dispatch(
         showNotification(
