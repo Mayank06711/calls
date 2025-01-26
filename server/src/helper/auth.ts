@@ -271,7 +271,7 @@ class AuthServices {
       }) as JwtPayload;
 
       // Decrypt the payload
-      const decryptedPayloadStr = AuthServices.decrypt(wrappedToken.data);
+      const decryptedPayloadStr = AuthServices.decrypt(wrappedToken.payload.data);
       const decodedToken = JSON.parse(decryptedPayloadStr);
 
       // Verify token expiration
