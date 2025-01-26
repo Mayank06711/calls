@@ -62,18 +62,18 @@ class Authentication {
 
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
-    secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "none", // Allow cross-site cookies in production with HTTPS
+    secure: process.env.NODE_ENV === "prod" ? true : true, // Use HTTPS in production
+    sameSite: process.env.NODE_ENV === "prod" ? "none" : "none", // Allow cross-site cookies in production with HTTPS
     maxAge: 24 * 60 * 60 * 1000, // Cookie lifespan: 1 day
-    domain: process.env.NODE_ENV === "production" ? "frontend.com" : undefined, // Set domain in production (replace with actual domain)
+    domain: process.env.NODE_ENV === "prod" ? "frontend.com" : undefined, // Set domain in production (replace with actual domain)
   };
 
   private static refreshOptions: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
-    secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "none", // Allow cross-site cookies in production with HTTPS
+    secure: process.env.NODE_ENV === "prod" ? true : true, // Use HTTPS in production
+    sameSite: process.env.NODE_ENV === "prod" ? "none" : "none", // Allow cross-site cookies in production with HTTPS
     maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days (for refresh token) - 15 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
-    domain: process.env.NODE_ENV === "production" ? "frontend.com" : undefined, // Set domain in production (replace with actual domain)
+    domain: process.env.NODE_ENV === "prod" ? "frontend.com" : undefined, // Set domain in production (replace with actual domain)
   };
 
   // async encryptKeys(accessToken: string, refreshToken: string) {

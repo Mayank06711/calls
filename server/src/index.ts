@@ -22,6 +22,18 @@ class ServerManager {
   private server!: HTTPServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
   private io!: SocketIOServer; // Socket.io instance
   private socketManager!: SocketManager;
+  private static readonly CORS_OPTIONS = {
+    origin: [
+      "http://localhost:5173",
+      `http://${process.env.AWS_PUBLIC_IP}:3000`,
+      `https://${process.env.AWS_PUBLIC_IP}:3000`,
+      "http://localhost:3000",
+      "https://localhost:3000",
+      "https://1e17-49-43-115-113.ngrok-free.app",
+    ],
+    credentials: true, // Allows cookies and credentials to be sent with requests
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  };
   constructor() {
     this.loadEnvironmentVariables();
     configureCloudinary();
@@ -38,20 +50,7 @@ class ServerManager {
 
   // Initialize middlewares
   private initializeMiddlewares() {
-    this.app.use(
-      cors({
-        origin: [
-          "http://localhost:5173",
-          `http://${process.env.AWS_PUBLIC_IP}:3000`,
-          `https://${process.env.AWS_PUBLIC_IP}:3000`,
-          "http://localhost:3000",
-          "https://localhost:3000",
-          "https://1e17-49-43-115-113.ngrok-free.app"
-        ], // Allows requests from the frontend and any origin
-        credentials: true, // Allows cookies and credentials to be sent with requests
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
-      })
-    );
+    this.app.use(cors(ServerManager.CORS_OPTIONS));
     this.app.set("trust proxy", 1);
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
@@ -154,18 +153,7 @@ class ServerManager {
     );
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
-      cors: {
-        origin: [
-          "http://localhost:5173",
-          `http://${process.env.AWS_PUBLIC_IP}:3000`,
-          `https://${process.env.AWS_PUBLIC_IP}:3000`,
-          "http://localhost:3000",
-          "https://localhost:3000",
-          "https://1e17-49-43-115-113.ngrok-free.app"
-        ], // You can restrict this to your frontend URL for security
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        credentials: true,
-      },
+      cors: ServerManager.CORS_OPTIONS,
     });
     const Port = process.env.PORT || 5005;
     try {
