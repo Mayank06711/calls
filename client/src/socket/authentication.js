@@ -1,21 +1,14 @@
-import { createSocket } from "../socket/config";
+import { SocketManager } from "../socket/config";
 import { emitEvent } from "../socket/socketUtils";
 import { SOCKET_CONSTANTS } from "../constants/socketContanst";
-import {
-  socketConnected,
-  socketAuthenticated,
-} from "../redux/actions/socket.actions";
+import { socketAuthenticated } from "../redux/actions/socket.actions";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
 
-export const authenticateSocket = async (token) => {
+const authenticateSocket = async (token) => {
   try {
-    const socket = createSocket(false);
-
-    if (!socket.connected) {
-      socket.connect();
-      store.dispatch(socketConnected());
-    }
+    // Get a connected socket using the SocketManager
+    const socket = SocketManager.getSocket(false, true);
 
     const response = await emitEvent(socket, {
       event: SOCKET_CONSTANTS.AUTH.AUTHENTICATE,
@@ -37,15 +30,25 @@ export const authenticateSocket = async (token) => {
         },
         onSuccess: (response) => {
           if (response.status === SOCKET_CONSTANTS.STATUS.AUTHENTICATED) {
-            store.dispatch(socketAuthenticated());
-            console.log("Socket authenticated successfully:", response);
+            store.dispatch(socketAuthenticated(true));
+            console.log("Socket authenticated successfully");
+            store.dispatch(
+              showNotification("Socket authenticated successfully", "info")
+            );
           } else {
-            store.dispatch(showNotification("You may not be able to chat... since not connected with real time connection", "info"))
+            store.dispatch(
+              showNotification(
+                "You may not be able to chat... since not connected with real time connection",
+                "info"
+              )
+            );
           }
         },
         onError: (error) => {
           console.error("Socket authentication error:", error);
-          store.dispatch(showNotification("Real-time services limited", "error"));
+          store.dispatch(
+            showNotification("Real-time services limited", "error")
+          );
         },
         onTimeout: () => {
           store.dispatch(
@@ -57,10 +60,34 @@ export const authenticateSocket = async (token) => {
         return response.status === SOCKET_CONSTANTS.STATUS.AUTHENTICATED;
       },
     });
-
     return response;
   } catch (error) {
     console.error("Socket authentication failed:", error);
     return null;
   }
 };
+
+const isSocketAuthenticated = () => {
+  const state = store.getState();
+  return state.socketMetrics.authenticated;
+};
+
+// Helper to ensure socket is authenticated
+const ensureSocketAuthenticated = async () => {
+  if (!isSocketAuthenticated()) {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    const response = await authenticateSocket(token);
+    if (
+      !response ||
+      response.status !== SOCKET_CONSTANTS.STATUS.AUTHENTICATED
+    ) {
+      throw new Error("Socket authentication failed");
+    }
+  }
+  return true;
+};
+
+export { ensureSocketAuthenticated, isSocketAuthenticated, authenticateSocket };
