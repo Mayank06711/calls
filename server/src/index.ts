@@ -50,6 +50,12 @@ class ServerManager {
 
   // Initialize middlewares
   private initializeMiddlewares() {
+    this.app.use("/", (req, res, next)=>{
+      console.dir(req.cookies)
+      console.dir(req.header)
+      console.log(req)
+      next()
+    })
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     this.app.set("trust proxy", 1);
     this.app.use(express.json());
