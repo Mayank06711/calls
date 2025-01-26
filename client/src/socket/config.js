@@ -1,4 +1,4 @@
-import { io} from "socket.io-client";
+import { io } from "socket.io-client";
 import env from "../config/env.config";
 
 // Create socket instance
@@ -7,21 +7,26 @@ const createSocket = (testSocket = false) => {
 
   const socketOptions = {
     reconnection: true,
+    reconnectionAttempts: 3,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
     timeout: 10000,
     secure: true,
     rejectUnauthorized: false,
     autoConnect: false,
+    transports: ["websocket", "polling"],
   };
 
   if (testSocket) {
     socketOptions.query = {
       testMode: "true",
-      userId: "123", 
-      phoneNumber: "1234567890"
+      userId: "123",
+      phoneNumber: "1234567890",
     };
   }
 
   const socket = io(SERVER_URL, socketOptions);
+
   return socket;
 };
 
