@@ -46,6 +46,7 @@ class ServerManager {
           `https://${process.env.AWS_PUBLIC_IP}:3000`,
           "http://localhost:3000",
           "https://localhost:3000",
+          "https://1e17-49-43-115-113.ngrok-free.app"
         ], // Allows requests from the frontend and any origin
         credentials: true, // Allows cookies and credentials to be sent with requests
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
@@ -160,6 +161,7 @@ class ServerManager {
           `https://${process.env.AWS_PUBLIC_IP}:3000`,
           "http://localhost:3000",
           "https://localhost:3000",
+          "https://1e17-49-43-115-113.ngrok-free.app"
         ], // You can restrict this to your frontend URL for security
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         credentials: true,
