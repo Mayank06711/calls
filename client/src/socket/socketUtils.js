@@ -118,6 +118,7 @@ export const emitEvent = (
             } else {
               socket.emit(event, data, (response) => {
                 try {
+                  console.log(socket.connected, event, data, !validateResponse(response), validateResponse)
                   if (validateResponse && !validateResponse(response)) {
                     const error = new Error("Invalid response received");
                     onError?.(error);
