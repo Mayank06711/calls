@@ -4,14 +4,16 @@ import { IconButton, TextField } from "@mui/material";
 import { RiSendPlaneFill } from "react-icons/ri";
 import CycloneIcon from "@mui/icons-material/Cyclone";
 import { getRandomResponse } from "../../../../constants/dummyMessages";
+import MessageBubble from "./MessageBubble";
 
 function AIAssistant() {
   const [isStarted, setIsStarted] = useState(false);
-  const colors = useSubscriptionColors();
+  const [activeTypingId, setActiveTypingId] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef(null);
-
+  const colors = useSubscriptionColors();
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -20,14 +22,32 @@ function AIAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleKeyPress = React.useCallback((e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  });
+
+  const handleInputChange = React.useCallback((e) => {
+    e.preventDefault();
+    setInputMessage(e.target.value);
+  }, []);
+
+  const handleSendMessage = React.useCallback(() => {
     if (!inputMessage.trim()) return;
 
+    if (isTyping) {
+      setActiveTypingId(null);
+      setIsTyping(false);
+    }
     // Add user message
     const userMessage = {
       text: inputMessage,
       sender: "user",
       timestamp: new Date().toISOString(),
+      isComplete: true,
+      id: `user-${Date.now()}`, // Add unique ID for each message
     };
 
     // Get AI response
@@ -35,76 +55,22 @@ function AIAssistant() {
       text: getRandomResponse().text,
       sender: "ai",
       timestamp: new Date().toISOString(),
+      isComplete: false,
+      id: `ai-${Date.now()}`,
     };
 
+    // Stop any current typing and start new message
+    setActiveTypingId(aiResponse.id);
+    setIsTyping(true);
     setMessages((prev) => [...prev, userMessage, aiResponse]);
     setInputMessage("");
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+  },[inputMessage,isTyping]);
 
   // Message component
-  const MessageBubble = ({ message }) => {
-    const isAI = message.sender === "ai";
-
-    return (
-      <div className={`flex items-start ${isAI ? "" : "justify-end"}`}>
-        {isAI && (
-          <div
-            className="w-5 h-5 rounded-full flex items-center justify-center -mr-2 z-10"
-            style={{
-              background: `linear-gradient(135deg, ${colors.first}, ${colors.third})`,
-            }}
-          >
-            <CycloneIcon sx={{ color: colors.fourth, fontSize: 12 }} />
-          </div>
-        )}
-        <div className={`flex-1 ${isAI ? "" : "text-right"}`}>
-          <div
-            className={`${
-              isAI
-                ? "bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800"
-                : "bg-gradient-to-l from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800"
-            } rounded-lg pl-4 p-2 shadow-sm`}
-            style={
-              !isAI
-                ? {
-                    background: `linear-gradient(135deg, ${colors.second}20, ${colors.third}30)`,
-                    borderRadius: "16px",
-                    borderTopRightRadius: "0",
-                  }
-                : {}
-            }
-          >
-            <p>{message.text}</p>
-          </div>
-          <span
-            className={`text-xs text-gray-400 ${isAI ? "ml-2" : "mr-2"} mt-1`}
-          >
-            {isAI ? "Strut AI" : "You"}
-          </span>
-        </div>
-        {!isAI && (
-          <div
-            className="w-5 h-5 rounded-full flex items-center justify-center -ml-2 z-10"
-            style={{
-              background: `linear-gradient(135deg, ${colors.second}, ${colors.third})`,
-            }}
-          >
-            <span className="text-white text-xs font-medium">H</span>
-          </div>
-        )}
-      </div>
-    );
-  };
+ 
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col">
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       {!isStarted ? (
         // Welcome Screen
         <div className="flex-1 flex flex-col items-center justify-center px-6">
@@ -130,9 +96,9 @@ function AIAssistant() {
         </div>
       ) : (
         // Chat Interface
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full ">
           {/* Chat Messages Area */}
-          <div className="flex-1 overflow-y-auto px-1 py-2 space-y-4 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto px-1 pb-2 pt-4 space-y-4 scrollbar-hide">
             {/* Initial AI message  */}
             <div className="flex items-start">
               <div className="flex items-start">
@@ -159,7 +125,7 @@ function AIAssistant() {
             </div>
 
             {messages.map((message, index) => (
-              <MessageBubble key={index} message={message} />
+              <MessageBubble key={message.id} message={message} activeTypingId={activeTypingId} setActiveTypingId={setActiveTypingId} setIsTyping={setIsTyping} setMessages={setMessages}/>
             ))}
 
             {/* Invisible element for auto-scrolling */}
@@ -167,27 +133,34 @@ function AIAssistant() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t dark:border-gray-700">
-            <div className="flex gap-2 items-center">
+          <div className="p-4 border-t dark:border-gray-700 ">
+            <div className="flex gap-2 items-center ">
               <TextField
                 fullWidth
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
+                placeholder={
+                  isTyping ? "Please wait..." : "Type your message..."
+                }
                 size="small"
                 variant="outlined"
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    "& fieldset": {
-                      borderColor: `${colors.fourth}50`,
-                    },
+                    color: 'inherit', // This will inherit from parent theme
                     "&:hover fieldset": {
                       borderColor: colors.fourth,
                     },
                     "&.Mui-focused fieldset": {
                       borderColor: colors.fourth,
                     },
+                  },
+                  "& .MuiInputBase-input": {
+                    color: 'inherit', // This ensures the input text follows theme
+                  },
+                  "& .MuiInputBase-input::placeholder": {
+                    color: 'inherit', // This makes placeholder inherit theme color
+                    opacity: 0.5, // Reduced opacity to distinguish from actual text
                   },
                 }}
               />
