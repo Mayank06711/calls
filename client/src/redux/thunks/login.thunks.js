@@ -121,19 +121,18 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
 
 
 export const logoutThunk = () => async (dispatch) => {
-  console.log("111111111111")
+  dispatch({ type: 'LOGOUT_REQUEST' });
   try {
     const { data, error, statusCode } = await makeRequest(
       HTTP_METHODS.POST,
       ENDPOINTS.USERS.LOGOUT
     );
-   console.log("2222222222222")
+ 
     if (error) {
-      console.log("333333333333333")
+      dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
       dispatch(showNotification(error.message, error.statusCode));
       return;
     }
-     console.log("44444444444444")
     if (data.success) {
       // Clear local storage
       localStorage.removeItem("userId");
@@ -142,17 +141,19 @@ export const logoutThunk = () => async (dispatch) => {
       localStorage.removeItem("isAlreadyVerified");
 
       // Clear Redux state
+      dispatch({ type: 'LOGOUT_SUCCESS' });
       dispatch(clearUserId());
-
       dispatch(showNotification("Logged out successfully", statusCode));
 
       // Redirect to login page
       window.location.href = '/login';
     } else {
+      dispatch({ type: 'LOGOUT_FAILURE', payload: 'Logout failed' });
       dispatch(showNotification("Logout failed", statusCode || 400));
     }
   } catch (error) {
     console.error("Error during logout:", error);
+    dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
     dispatch(showNotification(
       "Unable to connect to server. Please check your internet connection.",
       500
