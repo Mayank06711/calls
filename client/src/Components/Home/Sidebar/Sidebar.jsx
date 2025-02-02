@@ -28,7 +28,7 @@ function Sidebar({isDarkMode}) {
         } shadow-lg 
         ${
           isSidebarExpanded ? "w-48" : "w-16"
-        } transition-all duration-300 ease-in-out z-40`}
+        } transition-[width] duration-300 ease-in-out z-40`}
         
       >
         <div className="flex flex-col justify-between h-full">
@@ -47,7 +47,7 @@ function Sidebar({isDarkMode}) {
                   className={`ml-4 whitespace-nowrap ${
                     isSidebarExpanded ? "opacity-100" : "opacity-0"
                   } 
-                transition-opacity duration-300`}
+                transition-opacity duration-200`}
                 >
                   {item.label}
                 </span>
