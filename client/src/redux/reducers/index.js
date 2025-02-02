@@ -4,3 +4,4 @@ export * from "./streamReducer";
 export * from "./notification.reducer";
 export * from "./userInfo.reducer";
 export * from "./socket.reducers";
+export * from "./subscription.reducer";
