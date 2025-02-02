@@ -119,20 +119,43 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
   }
 };
 
+
 export const logoutThunk = () => async (dispatch) => {
+  console.log("111111111111")
   try {
-    // Clear local storage
-    localStorage.removeItem("userId");
-    localStorage.removeItem("mobNum");
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAlreadyVerified");
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.USERS.LOGOUT
+    );
+   console.log("2222222222222")
+    if (error) {
+      console.log("333333333333333")
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+     console.log("44444444444444")
+    if (data.success) {
+      // Clear local storage
+      localStorage.removeItem("userId");
+      localStorage.removeItem("mobNum");
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAlreadyVerified");
 
-    // Clear Redux state
-    dispatch(clearUserId());
+      // Clear Redux state
+      dispatch(clearUserId());
 
-    dispatch(showNotification("Logged out successfully", 200));
+      dispatch(showNotification("Logged out successfully", statusCode));
+
+      // Redirect to login page
+      window.location.href = '/login';
+    } else {
+      dispatch(showNotification("Logout failed", statusCode || 400));
+    }
   } catch (error) {
     console.error("Error during logout:", error);
-    dispatch(showNotification("Error during logout", 400));
+    dispatch(showNotification(
+      "Unable to connect to server. Please check your internet connection.",
+      500
+    ));
   }
 };

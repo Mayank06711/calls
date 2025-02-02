@@ -31,7 +31,7 @@ function Home() {
       <Sidebar isDarkMode={isDarkMode} />
 
       {/* Main Content */}
-      <div className="p-20">hhhhhhhhhhhhhhhh</div>
+      <div className="pl-16 pt-16">hhhhhhhhhhhhhhhhBH</div>
 
       {/* AI Assistant Panel */}
       <AISidebar isDarkMode={isDarkMode} />

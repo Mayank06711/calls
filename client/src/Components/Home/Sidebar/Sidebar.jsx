@@ -6,6 +6,8 @@ import { PiFilmReelFill } from "react-icons/pi";
 import { BiSolidBadgeDollar } from "react-icons/bi";
 import { IconButton } from '@mui/material';
 import { useSubscriptionColors } from '../../../utils/getSubscriptionColors';
+import { useDispatch } from 'react-redux';
+import { logoutThunk } from '../../../redux/thunks/login.thunks';
 
 const MENU_ITEMS = [
     { icon: <BsChatLeftTextFill />, label: "Chat", path: "/chat" },
@@ -19,8 +21,14 @@ const MENU_ITEMS = [
   ];
 
 function Sidebar({isDarkMode}) {
+    const dispatch = useDispatch();
     const [isSidebarExpanded, setSidebarExpanded] = useState(false);
     const colors =useSubscriptionColors();
+
+    const handleLogout = () => {
+        dispatch(logoutThunk());
+      };
+
   return (
     <nav
         className={`fixed left-0 top-16 h-[calc(100vh-4rem)] ${
@@ -56,7 +64,7 @@ function Sidebar({isDarkMode}) {
           </div>
 
           <div className="ml-3 mb-5 ">
-            <IconButton>
+            <IconButton onClick={handleLogout}>
               <IoMdLogOut style={{color:colors.fourth}}/>
             </IconButton>
           </div>
