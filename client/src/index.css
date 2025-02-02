@@ -2,7 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Login form styling****************************************** */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 
 /* From Uiverse.io by zanina-yassine */ 
 .modal {

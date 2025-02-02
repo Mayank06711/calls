@@ -4,24 +4,27 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // This enables class-based dark mode
   theme: {
     extend: {
-      animation: {
-        'bounce-slow': 'bounce 3s infinite',
-      },
-      keyframes: {
-        bounce: {
-          '0%, 100%': {
-            transform: 'translateY(-1%)',
-            animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)',
-          },
-          '50%': {
-            transform: 'translateY(0)',
-            animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
-          },
+      colors: {
+        // Light mode colors
+        light: {
+          primary: '#ffffff',
+          secondary: '#f3f4f6',
+          text: '#111827',
+          accent: '#3b82f6',
         },
-      },
+        // Dark mode colors
+        dark: {
+          primary: '#1f2937',
+          secondary: '#111827',
+          text: '#f9fafb',
+          accent: '#60a5fa',
+        }
+      }
     },
   },
+
   plugins: [],
 }
