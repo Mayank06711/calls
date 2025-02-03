@@ -14,6 +14,7 @@ import { Middleware } from "./middlewares/middlewares";
 import userRouter from "./routes/userRoutes";
 import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
+import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import { connectDB, configureCloudinary } from "./db";
 import cronSchuduler from "./auto/cronJob";
@@ -70,6 +71,7 @@ class ServerManager {
   private initializeRoutes() {
     this.app.use("/api/v1/auth", authRouter);
     this.app.use("/api/v1/users", userRouter);
+    this.app.use("/api/v1/settings", settingRoute);
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
