@@ -16,6 +16,7 @@ router.get("/config", Subscription.getSubscriptionConfig);
 router.post("/create", Subscription.createSubscription);
 router.get("/current", Subscription.getCurrentSubscription);
 router.get("/history", Subscription.getSubscriptionHistory);
+router.get("/update", Subscription.updateSubscription);
 
 // Individual subscription operations (with parameters)
 router.get("/detials/:subscriptionId", Subscription.getSubscriptionDetails);

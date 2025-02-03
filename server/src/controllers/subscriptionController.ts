@@ -88,6 +88,7 @@ class Subscription {
 
     return { creditAmount, newAmount };
   }
+
   private static calculateUpgradeDetails(
     currentSubscription: ISubscription,
     newType: SubscriptionType,
@@ -1177,6 +1178,7 @@ class Subscription {
     }
   }
 
+  private static async _updateSubscription(req: Request, res: Response) {}
   // Public methods using AsyncHandler wrapper
   public static getCurrentSubscription = AsyncHandler.wrap(
     Subscription._getCurrentSubscription
@@ -1204,6 +1206,9 @@ class Subscription {
 
   public static getSubscriptionConfig = AsyncHandler.wrap(
     Subscription._getSubscriptionConfig
+  );
+  public static updateSubscription = AsyncHandler.wrap(
+    Subscription._updateSubscription
   );
 }
 
