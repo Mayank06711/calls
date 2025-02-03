@@ -23,8 +23,10 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
     }
     if (data.success) {
       const userInfo = data.data;
+      console.log("userinfoooooooor1111111111111",userInfo);
       dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       dispatch(fetchUserInfoSuccess(userInfo));
+      dispatch(setUserInfo(userInfo));
     } else {
       dispatch(
         showNotification("Profile cannot be fetched", statusCode || 500)
@@ -53,8 +55,7 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
       return;
     }
     if (data.success) {
-      const userInfo = data.data;
-      dispatch(setUserInfo(userInfo));
+      
       dispatch(setAlreadyVerified(true));
       dispatch(
         showNotification(
@@ -62,7 +63,9 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
           statusCode
         )
       );
+
       dispatch(showNotification("You can update your profile photo Anytime"));
+      dispatch(fetchUserInfoThunk());
     } else {
       dispatch(
         showNotification("Profile cannot be updated", statusCode || 500)

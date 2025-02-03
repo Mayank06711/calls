@@ -4,9 +4,9 @@ import { Box, Typography, Container, Chip, Avatar } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import "animate.css";
-import { fetchUserInfoThunk } from "../../redux/thunks/userInfo.thunks";
-import { uploadImage } from "../../socket/handleImageUpload";
-import { showNotification } from "../../redux/actions";
+import { fetchUserInfoThunk } from "../../redux/thunks/userInfo.thunks.js";
+import { uploadImage } from "../../socket/handleImageUpload.js";
+import { showNotification } from "../../redux/actions/index.js";
 import { useImageCarousel } from "../../hooks/useImageCarousel.js";
 
 function UserProfile() {
