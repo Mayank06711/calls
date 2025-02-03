@@ -6,7 +6,7 @@ import mongoose, {
   Types,
   Schema,
 } from "mongoose";
-import { SubscriptionType } from "../models/subscriptionModel";
+import { SubscriptionType } from "./typesGeneral";
 
 // ----------------
 // Common Types
