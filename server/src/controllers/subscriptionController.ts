@@ -592,7 +592,10 @@ class Subscription {
           throw new ApiError(404, "Subscription not found");
         }
         if (!subscription.isActive()) {
-          throw new ApiError(400, "Subscription is not active");
+          throw new ApiError(
+            400,
+            "Subscription is not active, no need to cancel"
+          );
         }
         if (subscription.type === "Free") {
           throw new ApiError(400, "Cannot cancel a Free subscription");

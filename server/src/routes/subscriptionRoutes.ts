@@ -18,12 +18,12 @@ router.get("/current", Subscription.getCurrentSubscription);
 router.get("/history", Subscription.getSubscriptionHistory);
 
 // Individual subscription operations (with parameters)
-router.get("/:subscriptionId/detials", Subscription.getSubscriptionDetails);
+router.get("/detials/:subscriptionId", Subscription.getSubscriptionDetails);
 router.post(
-  "/:subscriptionId/payment-status",
+  "/payment-status/:subscriptionId",
   Subscription.updatePaymentStatus
 );
-router.post("/:subscriptionId/cancel", Subscription.cancelSubscription);
+router.post("/cancel/:subscriptionId", Subscription.cancelSubscription);
 
 /**
  * @swagger
