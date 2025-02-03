@@ -1,24 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { IFeedback, IFeedbackModel } from "../interface/IFeedback";
 
 // Feedback Type
-interface IFeedback extends Document {
-  user: mongoose.Types.ObjectId;
-  expert?: mongoose.Types.ObjectId;
-  stars: number;
-  message: string;
-  resolved: boolean;
-  type: string;
-  response?: string;
-  reviewDate?: Date;
-  createdAt: Date;
-}
-
-interface IFeedbackModel extends mongoose.Model<IFeedback> {
-  countByType(type: string): Promise<number>;
-  findPendingFeedback(): Promise<IFeedback[]>;
-  findExpertFeedback(expertId: mongoose.Types.ObjectId): Promise<IFeedback[]>;
-  getAverageRating(): Promise<number>;
-}
 
 const FeedbackSchema: Schema = new Schema<IFeedback>(
   {
@@ -66,20 +49,20 @@ const FeedbackSchema: Schema = new Schema<IFeedback>(
 );
 
 // Pre-save hook to validate message length
-FeedbackSchema.pre('save', function(next) {
-  if (typeof this.message === 'string' && this.message.length < 10) {
-    next(new Error('Feedback message must be at least 10 characters long'));
+FeedbackSchema.pre("save", function (next) {
+  if (typeof this.message === "string" && this.message.length < 10) {
+    next(new Error("Feedback message must be at least 10 characters long"));
   }
   next();
 });
 
 // Pre-update hook to set reviewDate when response is added
-FeedbackSchema.pre('findOneAndUpdate', function(next) {
-  const update = this.getUpdate() as { 
-    response?: string; 
-    reviewDate?: Date 
+FeedbackSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate() as {
+    response?: string;
+    reviewDate?: Date;
   };
-  
+
   if (update?.response && !update.reviewDate) {
     update.reviewDate = new Date();
   }
@@ -114,7 +97,8 @@ FeedbackSchema.statics.getAverageRating = async function () {
 };
 
 FeedbackSchema.statics.findUrgentBugs = async function () {
-  return this.find({ // 'this' refers to model, refers to the entire Feedback model
+  return this.find({
+    // 'this' refers to model, refers to the entire Feedback model
     type: "bug",
     resolved: false,
     createdAt: {
@@ -154,18 +138,18 @@ FeedbackSchema.methods.addResponse = async function (
 };
 
 // Virtual for response time in hours
-FeedbackSchema.virtual('responseTime').get(function(this: IFeedback) {
+FeedbackSchema.virtual("responseTime").get(function (this: IFeedback) {
   if (!this.reviewDate || !this.createdAt) return null;
-  
+
   // Type guard to ensure we have Date objects
-  const reviewDate = this.reviewDate instanceof Date 
-    ? this.reviewDate 
-    : new Date(this.reviewDate);
-    
-  const createdAt = this.createdAt instanceof Date 
-    ? this.createdAt 
-    : new Date(this.createdAt);
-  
+  const reviewDate =
+    this.reviewDate instanceof Date
+      ? this.reviewDate
+      : new Date(this.reviewDate);
+
+  const createdAt =
+    this.createdAt instanceof Date ? this.createdAt : new Date(this.createdAt);
+
   const diff = reviewDate.getTime() - createdAt.getTime();
   return Math.round(diff / (1000 * 60 * 60)); // Convert to hours
 });

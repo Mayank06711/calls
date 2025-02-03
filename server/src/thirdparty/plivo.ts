@@ -3,7 +3,7 @@ import { formatIndianNumber, toE164Format } from "../utils/formatNum";
 import {
   SendOtpMessageResponse,
   SendOtpMessageError,
-} from "../types/interface";
+} from "../interface/interface";
 
 const plivoClient = new plivo.Client(
   process.env.PLIVO_ACCOUNT_SID || "",

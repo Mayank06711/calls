@@ -5,12 +5,12 @@ import {
   EmitOptions,
   FileUploadData,
   FileUploadResponse,
-} from "./types/interface";
+  PendingAuthData,
+  SocketUserData,
+  SocketData,
+} from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
-import { SocketUserData, PendingAuthData } from "./types/interface";
-import { SocketData } from "./types/interface";
 import User from "./controllers/userController";
-import { error } from "console";
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections

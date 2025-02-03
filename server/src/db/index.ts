@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 import { Pool, PoolClient } from "pg";
-import { Query } from "../types/interface";
+import { Query } from "../interface/interface";
 
 let pool: Pool | null = null;
 let isConfigured = false;
