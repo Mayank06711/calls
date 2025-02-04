@@ -12,6 +12,10 @@ import {
   OTP_VERIFICATION_SUCCESS,
   OTP_VERIFICATION_FAILURE,
   RESET_OTP_STATES,
+  LOGOUT_REQUEST,
+  LOGOUT_SUCCESS,
+  LOGOUT_FAILURE,
+  SET_PROFILE_DATA_LOADING,
 } from "../action_creators/login.action_creaters";
 
 const initialState = {
@@ -23,6 +27,9 @@ const initialState = {
   otpGenerated: false,
   otpVerified: false,
   otpVerificationInProgress: false,
+  isLoggingOut: false,
+  logoutError: null,
+  isProfileDataLoading: false,
 };
 
 const authReducer = (state = initialState, action) => {
@@ -62,40 +69,64 @@ const authReducer = (state = initialState, action) => {
         ...state,
         isAlreadyVerified: action.payload,
       };
-      case OTP_GENERATION_SUCCESS:
-        return {
-          ...state,
-          otpGenerated: true,
-        };
-      case OTP_GENERATION_FAILURE:
-        return {
-          ...state,
-          otpGenerated: false,
-        };
-      case OTP_VERIFICATION_START:
-        return {
-          ...state,
-          otpVerificationInProgress: true,
-        };
-      case OTP_VERIFICATION_SUCCESS:
-        return {
-          ...state,
-          otpVerified: action.payload,
-          otpVerificationInProgress: false,
-        };
-      case OTP_VERIFICATION_FAILURE:
-        return {
-          ...state,
-          otpVerified: false,
-          otpVerificationInProgress: false,
-        };
-      case RESET_OTP_STATES:
-        return {
-          ...state,
-          otpGenerated: false,
-          otpVerified: false,
-          otpVerificationInProgress: false,
-        };
+    case OTP_GENERATION_SUCCESS:
+      return {
+        ...state,
+        otpGenerated: true,
+      };
+    case OTP_GENERATION_FAILURE:
+      return {
+        ...state,
+        otpGenerated: false,
+      };
+    case OTP_VERIFICATION_START:
+      return {
+        ...state,
+        otpVerificationInProgress: true,
+      };
+    case OTP_VERIFICATION_SUCCESS:
+      return {
+        ...state,
+        otpVerified: action.payload,
+        otpVerificationInProgress: false,
+      };
+    case OTP_VERIFICATION_FAILURE:
+      return {
+        ...state,
+        otpVerified: false,
+        otpVerificationInProgress: false,
+      };
+    case RESET_OTP_STATES:
+      return {
+        ...state,
+        otpGenerated: false,
+        otpVerified: false,
+        otpVerificationInProgress: false,
+      };
+    case LOGOUT_REQUEST:
+      return {
+        ...state,
+        isLoggingOut: true,
+        logoutError: null,
+      };
+
+    case LOGOUT_SUCCESS:
+      return {
+        ...initialState,
+      };
+
+    case LOGOUT_FAILURE:
+      return {
+        ...state,
+        isLoggingOut: false,
+        logoutError: action.payload,
+      };
+
+    case SET_PROFILE_DATA_LOADING:
+      return {
+        ...state,
+        isProfileDataLoading: action.payload,
+      };
     default:
       return state;
   }

@@ -7,7 +7,7 @@ import {
   setUserInfo,
 } from "../actions/userInfo.actions";
 import { showNotification } from "../actions/notification.actions";
-import { setAlreadyVerified } from "../actions/auth.actions";
+import { setAlreadyVerified, setProfileDataLoading } from "../actions/auth.actions";
 
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
@@ -23,8 +23,11 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
     }
     if (data.success) {
       const userInfo = data.data;
+      console.log("userinfoooooooor1111111111111",userInfo);
       dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       dispatch(fetchUserInfoSuccess(userInfo));
+      dispatch(setUserInfo(userInfo));
+      dispatch(setProfileDataLoading(false));
     } else {
       dispatch(
         showNotification("Profile cannot be fetched", statusCode || 500)
@@ -33,6 +36,7 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
   } catch (error) {
     console.error("Error fetching user info:", error);
     dispatch(fetchUserInfoFailure(error.message));
+    dispatch(setProfileDataLoading(false));
     dispatch(
       showNotification(error.message || "Failed to fetch user info", 400)
     );
@@ -53,8 +57,7 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
       return;
     }
     if (data.success) {
-      const userInfo = data.data;
-      dispatch(setUserInfo(userInfo));
+      
       dispatch(setAlreadyVerified(true));
       dispatch(
         showNotification(
@@ -62,7 +65,9 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
           statusCode
         )
       );
+
       dispatch(showNotification("You can update your profile photo Anytime"));
+      dispatch(fetchUserInfoThunk());
     } else {
       dispatch(
         showNotification("Profile cannot be updated", statusCode || 500)

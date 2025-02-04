@@ -36,7 +36,7 @@ export const ENDPOINTS = {
     UPDATE: `/api/${API_CONFIG.VERSION}/users/profile`,
     GET_USER_BY_ID: `/api/${API_CONFIG.VERSION}/users/get_user_by_id`,
     GET_USER_BY_MOBILE: `/api/${API_CONFIG.VERSION}/users/get_user_by_mobile`,
-    LOGOUT: `/api/${API_CONFIG.VERSION}/auth/logout`,
+    LOGOUT: `/api/${API_CONFIG.VERSION}/users/logout`,
   },
   // Add more endpoint categories as needed
 };

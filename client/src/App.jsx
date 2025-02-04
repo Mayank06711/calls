@@ -7,15 +7,26 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
-import backgroundImage from "./assets/loginBackground.jpg";
 import Login from "./Components/Login/Login";
 import Home from "./Components/Home/Home";
 import Missing from "./Components/Missing";
 import Toast from "./Components/Notification/Toast";
 import { createTheme, ThemeProvider } from "@mui/material";
 import UserInfoForm from "./Components/Login/UserInfoForm";
+import Chats from "./Components/Home/Sidebar/Chats/Chats";
+import Reels from "./Components/Home/Sidebar/Reels/Reels";
+import Subscriptions from "./Components/Home/Sidebar/Subscriptions/Subscriptions";
+import Settings from "./Components/Home/Sidebar/Settings/Settings";
+import UserProfile from "./Components/Home/Hearders/UserProfile/UserProfile";
+import NotificationPanel from "./Components/Home/Hearders/Notifications/NotificationPanel";
+import UserSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings";
+import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle";
+import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
+import Likes from "./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes";
+import Posts from "./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts";
 
 const theme = createTheme({
   palette: {
@@ -46,13 +57,13 @@ const App = () => {
     isAlreadyVerified,
     otpVerificationInProgress,
     timer,
-    isTimerActive
-  } = useSelector(state => state.auth);
+    isTimerActive,
+  } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const savedUserId = localStorage.getItem("userId");
     const savedUserInfo = localStorage.getItem("userInfo");
-   
+
     if (savedUserId) {
       dispatch(setUserId(savedUserId));
     }
@@ -95,7 +106,7 @@ const App = () => {
               path="/"
               element={
                 userId ? (
-                  !isAlreadyVerified && otpVerified? (
+                  !isAlreadyVerified && otpVerified ? (
                     <Navigate to="/complete-profile" />
                   ) : (
                     <Home />
@@ -104,7 +115,23 @@ const App = () => {
                   <Navigate to="/login" />
                 )
               }
-            />
+            >
+              {/* Nested routes for main content area */}
+              <Route path="/chats" element={<Chats />} />
+              <Route path="/reels" element={<Reels />} />
+              <Route path="/subscriptions" element={<Subscriptions />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/notifications" element={<NotificationPanel />} />
+              <Route path="/profile" element={<UserProfile />}>
+                <Route index element={<Navigate to="posts" />} />
+                <Route path="posts" element={<Posts />} />
+                <Route path="likes" element={<Likes />} />
+                <Route path="history" element={<UserHistory />} />
+                <Route path="my-style" element={<MyStyle />} />
+                <Route path="settings" element={<UserSettings />} />
+              </Route>
+            </Route>
+
             <Route
               path="/login"
               element={!userId ? <Login /> : <Navigate to="/" />}

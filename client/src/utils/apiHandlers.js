@@ -38,7 +38,7 @@ export const makeRequest = async (
     }
 
     // For POST, PUT, PATCH requests
-    const response = await axiosInstance[method.toLowerCase()](url, payload);
+    const response = await axiosInstance[method.toLowerCase()](url, payload||{});
     console.log("response from makereuest", response);
     return response.data;
   } catch (error) {
