@@ -1,18 +1,38 @@
 {
-    "templates": {
-        "email_verification": {
-            "template_id": "email_verification",
-            "subject": "Verify Your Email Address",
-            "body": "Dear {{name}},\n\nThank you for registering with us. Please verify your email address by clicking the link below:\n\n{{verification_link}}\n\nBest regards,\n NYF"
-        },
-        "otp": {
-            "template_id": "otp",
-            "body": "Your OTP code is {{otp_code}}. Please use this code to complete your verification. The code is valid for {{expiryAt}} minutes."
-        },
-        "promotional_notification": {
-            "template_id": "promotional_notification",
-            "subject": "Special Offer Just for You!",
-            "body": "Hi {{name}},\n\nWe have an exciting offer just for you! Get {{discount_percentage}}% off on your next purchase. Use the code {{promo_code}} at checkout.\n\nHurry, this offer is valid until {{expiry_date}}.\n\nBest regards,\nYour Company"
-        }
+  "templates": {
+    "EMAIL_VERIFICATION": {
+      "template_id": "EMAIL_VERIFICATION",
+      "type": "email",
+      "subject": "Verify Your Email Address",
+      "content": {
+        "html": "<html><body style=\"font-family: Arial, sans-serif; padding: 20px; color: #333;\"><h2>Email Verification</h2><p>Hello {{fullName}},</p><p>{{message}}</p><div style=\"margin: 30px 0;\"><a href=\"{{url}}\" style=\"background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;\">Verify Email</a></div><p>Or copy and paste this link in your browser:</p><p style=\"color: #666;\">{{url}}</p><p>This link will expire in 24 hours.</p><p>If you didn't request this verification, please ignore this email.</p></body></html>",
+        "text": "Hello {{fullName}}, {{message}} Please verify your email by clicking this link: {{url}}. This link will expire in 24 hours."
+      }
+    },
+    "EMAIL_UPDATED": {
+      "template_id": "EMAIL_UPDATED",
+      "type": "email",
+      "subject": "Verify Your New Email Address",
+      "content": {
+        "html": "<html><body style=\"font-family: Arial, sans-serif; padding: 20px; color: #333;\"><h2>Verify New Email</h2><p>Hello {{fullName}},</p><p>You recently updated your email address. Please verify this new email by clicking the button below:</p><div style=\"margin: 30px 0;\"><a href=\"{{url}}\" style=\"background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;\">Verify New Email</a></div><p>Or copy and paste this link in your browser:</p><p style=\"color: #666;\">{{url}}</p><p>This link will expire in 24 hours.</p><p>If you didn't make this change, please contact support immediately.</p></body></html>",
+        "text": "Hello {{fullName}}, You recently updated your email address. Please verify your new email by clicking this link: {{url}}. This link will expire in 24 hours."
+      }
+    },
+    "PASSWORD_RESET": {
+      "template_id": "PASSWORD_RESET",
+      "type": "both",
+      "subject": "Password Reset Request",
+      "content": {
+        "html": "<html><body style=\"font-family: Arial, sans-serif; padding: 20px; color: #333;\"><h2>Password Reset</h2><p>Hello {{fullName}},</p><p>We received a request to reset your password. Click the button below to create a new password:</p><div style=\"margin: 30px 0;\"><a href=\"{{url}}\" style=\"background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;\">Reset Password</a></div><p>Or copy and paste this link in your browser:</p><p style=\"color: #666;\">{{url}}</p><p>This link will expire in 24 hours.</p><p>If you didn't request a password reset, please ignore this email.</p></body></html>",
+        "text": "Hello {{fullName}}, We received a request to reset your password. Please click this link to create a new password: {{url}}. This link will expire in 24 hours."
+      }
+    },
+    "PHONE_VERIFICATION": {
+      "template_id": "PHONE_VERIFICATION",
+      "type": "sms",
+      "content": {
+        "text": "Your verification code is {{otp_code}}. Valid for {{expiryAt}} minutes. Do not share this code."
+      }
     }
+  }
 }
