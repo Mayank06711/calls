@@ -24,6 +24,7 @@ const UserSchema: Schema<IUser> = new Schema(
         message: "Email cannot be null or empty",
       },
     },
+    emailToken:{type:String},
     phoneNumber: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     gender: {
