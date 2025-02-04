@@ -173,7 +173,7 @@ class SocketManager {
           // Exponential backoff
           const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
           setTimeout(() => setupMonitor(retryCount + 1), delay);
-        } else {
+        } else {  
           console.error("Monitor setup failed after max retries");
         }
       } finally {

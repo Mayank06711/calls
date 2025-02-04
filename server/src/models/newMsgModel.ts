@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema, model, Types } from "mongoose";
 
+
 // Define the Attachment interface
 interface IAttachment {
   key: string;
@@ -20,27 +21,14 @@ interface INewMessage {
 
 // Define the NewMsg interface (represents a chat document)
 interface INewMsg extends Document {
-  sender: Types.ObjectId; // Use Types.ObjectId for sender (correct type)
-  receiver: Types.ObjectId; // Use Types.ObjectId for receiver (correct type)
-  messages: INewMessage[]; // Array of messages
-  chatType: "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert";
+  message: INewMessage; // Array of messages
   messageIdCounter: number;
-  lastMessage?: INewMessage; // Track last message for preview
-  isActive: boolean; // Track if chat is active/archived
-  participantsInfo: {
-    // Track participant details
-    sender: {
-      isActive: boolean;
-      lastSeen: Date;
-    };
-    receiver: {
-      isActive: boolean;
-      lastSeen: Date;
-    };
-  };
+  conversationId: Types.ObjectId;
+  isActive: boolean;
+
   //methods
   // Methods with proper typing
-  addMessage(text: string, sender: Types.ObjectId, attachments?: IAttachment[]): Promise<void>;
+  addMessage(text: string, sender: Types.ObjectId,receiver: Types.ObjectId ,  attachments?: IAttachment[] , ): Promise<void>;
   markMessageAsRead(messageId: number): Promise<void>;
   markMessageAsDelivered(messageId: number): Promise<void>;
   updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
@@ -49,27 +37,16 @@ interface INewMsg extends Document {
 // Define the NewMsg Schema
 const NewMsgSchema = new Schema<INewMsg>(
   {
-    sender: {
-      type: mongoose.Schema.Types.ObjectId, // Define it as an ObjectId
-      ref: "User",
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
       required: true,
       index: true,
     },
-    receiver: {
-      type: mongoose.Schema.Types.ObjectId, // Define it as an ObjectId
-      ref: "User",
-      required: true,
-      index: true,
-    },
-    messages: [
+    message: 
       {
         messageId: { type: Number, required: true },
         text: { type: String, required: true },
-        sender: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
         attachments: [
           {
             key: { type: String },
@@ -81,33 +58,7 @@ const NewMsgSchema = new Schema<INewMsg>(
         readAt: { type: Date },
         deliveredAt: { type: Date },
       },
-    ],
-    lastMessage: {
-      messageId: { type: Number },
-      text: { type: String },
-      sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      createdAt: { type: Date },
-      isRead: { type: Boolean },
-    },
-
     isActive: { type: Boolean, default: true },
-
-    participantsInfo: {
-      sender: {
-        isActive: { type: Boolean, default: true },
-        lastSeen: { type: Date, default: Date.now },
-      },
-      receiver: {
-        isActive: { type: Boolean, default: true },
-        lastSeen: { type: Date, default: Date.now },
-      },
-    },
-    chatType: {
-      type: String,
-      enum: ["userToUser", "adminToUser", "adminToExpert", "userToExpert"],
-      required: true,
-      index: true,
-    },
     messageIdCounter: {
       type: Number,
       default: 0,
@@ -126,19 +77,19 @@ NewMsgSchema.index({ "participantsInfo.sender.lastSeen": 1 });
 NewMsgSchema.index({ "participantsInfo.receiver.lastSeen": 1 });
 // Create the NewMsg model
 
-NewMsgSchema.methods.addMessage = async function(text: string, sender: Types.ObjectId, attachments?: IAttachment[]) {
+NewMsgSchema.methods.addMessage = async function(text: string, sender: Types.ObjectId,  receiver: Types.ObjectId ,  attachments?: IAttachment[] ) {
   this.messageIdCounter += 1;
   const newMessage = {
     messageId: this.messageIdCounter,
     text,
     sender,
+    receiver,
     attachments,
     createdAt: new Date(),
     isRead: false
   };
   
-  this.messages.push(newMessage);
-  this.lastMessage = newMessage;
+ 
   await this.save();
 };
 
@@ -168,19 +119,19 @@ NewMsgSchema.methods.updateParticipantStatus = async function(userId: Types.Obje
 };
 
 // Pre-save hook to update lastMessage
-NewMsgSchema.pre('save', function(next) {
-  if (this.messages.length > 0) {
-    const lastMsg = this.messages[this.messages.length - 1] as INewMessage;
-    this.lastMessage = {
-      messageId: lastMsg.messageId,
-      text: lastMsg.text,
-      sender: lastMsg.sender,
-      createdAt: lastMsg.createdAt,
-      isRead: lastMsg.isRead
-    };
-  }
-  next();
-});
+// NewMsgSchema.pre('save', function(next) {
+//   if (this.message.length > 0) {
+//     const lastMsg = this.message[this.message.length - 1] as INewMessage;
+//     this.lastMessage = {
+//       messageId: lastMsg.messageId,
+//       text: lastMsg.text,
+//       sender: lastMsg.sender,
+//       createdAt: lastMsg.createdAt,
+//       isRead: lastMsg.isRead
+//     };
+//   }
+//   next();
+// });
 
 const NewMsgModel = model<INewMsg>("NewMsg", NewMsgSchema);
 
