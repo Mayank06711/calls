@@ -1,11 +1,11 @@
 import twilio from "twilio";
-import { getTemplate } from "../utils/getTemplates";
+import { getTemplate, replaceTemplateVariables } from "../utils/getTemplates";
 
 class SmsService {
   private static client: twilio.Twilio;
 
-   // Initialize the Twilio client lazily
-   private static initializeClient() {
+  // Initialize the Twilio client lazily
+  private static initializeClient() {
     if (!SmsService.client) {
       const accountSid = process.env.TWILIO_ACCOUNT_SID;
       const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -25,20 +25,17 @@ class SmsService {
 
   public static async sendSMS(
     recipientNum: string,
-    template_id: string = "otp",
+    template_id: string = "PHONE_VERIFICATION",
     params: { [key: string]: string }
   ) {
     try {
       SmsService.initializeClient();
       const template = getTemplate(template_id);
-      let message;
-      if (template) {
-        message = template.body;
+      if (!template || !template.content.text) {
+        throw new Error(`Template ${template_id} not found or invalid`);
       }
-      // Replace placeholders in the template with actual values
-      for (const key in params) {
-        if (message) message = message.replace(`{{${key}}}`, params[key]);
-      }
+      // Replace variables in the template text
+      const message = replaceTemplateVariables(template.content.text, params);
       const response = await SmsService.client.messages.create({
         to: recipientNum,
         from: process.env.TWILIO_SMS_NUMBER,
