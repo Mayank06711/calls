@@ -4,11 +4,14 @@ import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { executeModelOperation } from "../utils/mongoUtils";
 import { sanitizeData } from "../helper/sanitizeData";
+import mongoose from "mongoose";
+import { sendCachedResponse, successResponse } from "../utils/apiResponse";
 
 class UserSettings {
   private static async _createSettings(req: Request, res: Response) {
     try {
       const userId = req.user?._id;
+
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
@@ -64,7 +67,8 @@ class UserSettings {
 
   private static async _getSettings(req: Request, res: Response) {
     try {
-      const userId = req.user?._id;
+      //   let userId = req.user?._id;
+      let userId = new mongoose.Types.ObjectId("67a13aaf1671cc9fde7fce16");
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
@@ -92,11 +96,17 @@ class UserSettings {
           },
         },
       });
-
-      res.status(200).json({
-        success: true,
-        data: sanitizedSettings,
-      });
+      return sendCachedResponse(
+        req,
+        res,
+        sanitizedSettings,
+        "Fetched settings successfully",
+        200,
+        {
+          isPublic: true,
+          maxAge: 7200, // 2 hours
+        }
+      );
     } catch (error: any) {
       if (error instanceof ApiError) {
         throw error;

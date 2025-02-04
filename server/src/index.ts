@@ -35,6 +35,7 @@ class ServerManager {
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    exposedHeaders: ['Cache-Control', 'ETag'], 
   };
   constructor() {
     this.loadEnvironmentVariables();
@@ -60,7 +61,7 @@ class ServerManager {
     this.app.use(
       rateLimit({
         windowMs: 10 * 60 * 1000, // 15 minutes
-        max: 100, // limit each IP to 100 requests per windowMs
+        max: 1000, // limit each IP to 100 requests per windowMs
         message:
           "Too many requests from this IP, please try again later after 15 mins.",
       })
