@@ -273,53 +273,61 @@ class Middleware {
       path: req.path,
       method: req.method,
     });
+    try {
+      // If headers are already sent, don't try to send another response
+      if (res.headersSent) {
+        return next(err);
+      }
 
-    // If headers are already sent, don't try to send another response
-    if (res.headersSent) {
-      return next(err);
-    }
+      // Handle ApiError instances
+      if (err instanceof ApiError) {
+        return res.status(err.statusCode).json({
+          success: false,
+          message: err.message || "Internal Server Error",
+          data: err.data,
+          errors: err.errors.filter((e) => !(e instanceof ApiError)),
+        });
+      }
 
-    // Handle ApiError instances
-    if (err instanceof ApiError) {
-      return res.status(err.statusCode).json({
-        success: false,
-        message: err.message || "Internal Server Error",
-        data: err.data,
-        errors: err.errors.filter((e) => !(e instanceof ApiError)),
-      });
-    }
+      // Handle Validation Errors
+      if (err.name === "ValidationError") {
+        return res.status(400).json({
+          success: false,
+          message: "Validation Error",
+          errors: err.message,
+        });
+      }
 
-    // Handle Validation Errors
-    if (err.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: "Validation Error",
-        errors: err.message,
-      });
-    }
-
-    if (err.name === "MongoServerError" && (err as any).code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Duplicate entry error",
-        error: "A record with this information already exists",
-      });
-    }
-    // Handle MongoDB Errors
-    if (err.name === "MongoError" || err.name === "MongoServerError") {
+      if (err.name === "MongoServerError" && (err as any).code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Duplicate entry error",
+          error: "A record with this information already exists",
+        });
+      }
+      // Handle MongoDB Errors
+      if (err.name === "MongoError" || err.name === "MongoServerError") {
+        return res.status(500).json({
+          success: false,
+          message: "Database Error",
+          errors: [err.message],
+        });
+      }
+      // Default error response
       return res.status(500).json({
         success: false,
-        message: "Database Error",
+        message: "Internal Server Error",
         errors: [err.message],
       });
+    } catch (error) {
+      console.error("Error in error handler:", error);
+      // Last resort error response
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+        errors: ["An unexpected error occurred"],
+      });
     }
-
-    // Default error response
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      errors: [err.message],
-    });
   }
 
   private static _platformDetector = (
