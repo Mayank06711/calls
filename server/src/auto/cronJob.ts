@@ -11,10 +11,10 @@ const cronSchuduler = (cronTime: string) => {
       if (health) {
         console.log("Database is healthy");
       } else {
-        console.error("Database is not healthy:", health.error);
-        await Notification.sendEmailNotification(
-          "Database health check failed."
-        ); // Send notification
+        console.error("Database is not healthy:", health);
+        // await Notification.sendEmailNotification(
+        //   "Database health check failed."
+        // ); // Send notification
         process.exit(1);
       }
       console.log("Database health check result:", health);
