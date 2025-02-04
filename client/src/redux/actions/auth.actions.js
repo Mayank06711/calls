@@ -14,6 +14,7 @@ import {
   SET_TIMER_ACTIVE,
   SET_USER_INFO,
   SET_ALREADY_VERIFIED,
+  SET_PROFILE_DATA_LOADING
 } from "../action_creators/login.action_creaters";
 
 export const setUserId = (userId) => ({
@@ -80,4 +81,9 @@ export const otpVerificationFailure = (payload) => ({
 export const resetOtpStates = (payload) => ({
   type: RESET_OTP_STATES,
   payload: payload,
+});
+
+export const setProfileDataLoading = (isLoading) => ({
+  type: SET_PROFILE_DATA_LOADING,
+  payload: isLoading,
 });

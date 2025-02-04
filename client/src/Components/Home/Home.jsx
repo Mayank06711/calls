@@ -5,7 +5,7 @@ import Headers from "./Hearders/Headers";
 import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
 import AISidebar from "./AISidebar/AISidebar";
-import { useLocation, useNavigate ,Outlet} from "react-router-dom";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 
 function Home() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -34,8 +34,8 @@ function Home() {
       <Sidebar isDarkMode={isDarkMode} />
 
       {/* Main Content */}
-      <div className="pl-16 pt-16">
-        <Outlet/>
+      <div className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide">
+        <Outlet />
       </div>
 
       {/* AI Assistant Panel */}

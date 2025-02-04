@@ -74,7 +74,7 @@ function UserInfo() {
   );
 
   return (
-    <div className="flex flex-col p-2 bg-transparent dark:text-dark-text text-light-text h-auro w-[600px] rounded-md">
+    <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auro w-[600px] rounded-md">
         {/* avatar section */}
 
         <div className="w-full flex flex-col justify-center items-start p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20">

@@ -7,7 +7,7 @@ import {
   setUserInfo,
 } from "../actions/userInfo.actions";
 import { showNotification } from "../actions/notification.actions";
-import { setAlreadyVerified } from "../actions/auth.actions";
+import { setAlreadyVerified, setProfileDataLoading } from "../actions/auth.actions";
 
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
@@ -27,6 +27,7 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
       dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       dispatch(fetchUserInfoSuccess(userInfo));
       dispatch(setUserInfo(userInfo));
+      dispatch(setProfileDataLoading(false));
     } else {
       dispatch(
         showNotification("Profile cannot be fetched", statusCode || 500)
@@ -35,6 +36,7 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
   } catch (error) {
     console.error("Error fetching user info:", error);
     dispatch(fetchUserInfoFailure(error.message));
+    dispatch(setProfileDataLoading(false));
     dispatch(
       showNotification(error.message || "Failed to fetch user info", 400)
     );

@@ -15,6 +15,7 @@ import {
   LOGOUT_REQUEST,
   LOGOUT_SUCCESS,
   LOGOUT_FAILURE,
+  SET_PROFILE_DATA_LOADING,
 } from "../action_creators/login.action_creaters";
 
 const initialState = {
@@ -28,6 +29,7 @@ const initialState = {
   otpVerificationInProgress: false,
   isLoggingOut: false,
   logoutError: null,
+  isProfileDataLoading: false,
 };
 
 const authReducer = (state = initialState, action) => {
@@ -118,6 +120,12 @@ const authReducer = (state = initialState, action) => {
         ...state,
         isLoggingOut: false,
         logoutError: action.payload,
+      };
+
+    case SET_PROFILE_DATA_LOADING:
+      return {
+        ...state,
+        isProfileDataLoading: action.payload,
       };
     default:
       return state;

@@ -4,14 +4,16 @@ import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors'
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { fetchUserInfoThunk } from '../../../../redux/thunks/userInfo.thunks';
+import { setProfileDataLoading } from '../../../../redux/actions';
 
 function UserProfile() {
   const colors=useSubscriptionColors();
   const navigate=useNavigate();
   const dispatch= useDispatch();
   const handleClick=(path)=>{
+    dispatch(setProfileDataLoading(true));
     navigate(path);
-    dispatch(fetchUserInfoThunk());j
+    dispatch(fetchUserInfoThunk());
   }
   return (
     <div>

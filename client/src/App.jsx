@@ -22,7 +22,11 @@ import Subscriptions from "./Components/Home/Sidebar/Subscriptions/Subscriptions
 import Settings from "./Components/Home/Sidebar/Settings/Settings";
 import UserProfile from "./Components/Home/Hearders/UserProfile/UserProfile";
 import NotificationPanel from "./Components/Home/Hearders/Notifications/NotificationPanel";
-
+import UserSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings";
+import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle";
+import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
+import Likes from "./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes";
+import Posts from "./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts";
 
 const theme = createTheme({
   palette: {
@@ -118,7 +122,14 @@ const App = () => {
               <Route path="/subscriptions" element={<Subscriptions />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/notifications" element={<NotificationPanel />} />
-              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/profile" element={<UserProfile />}>
+                <Route index element={<Navigate to="posts" />} />
+                <Route path="posts" element={<Posts />} />
+                <Route path="likes" element={<Likes />} />
+                <Route path="history" element={<UserHistory />} />
+                <Route path="my-style" element={<MyStyle />} />
+                <Route path="settings" element={<UserSettings />} />
+              </Route>
             </Route>
 
             <Route
