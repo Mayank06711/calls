@@ -79,7 +79,7 @@ const App = () => {
     <ThemeProvider theme={theme}>
       <div className="relative flex justify-center items-center h-[100vh]">
         <Toast />
-        <div
+        {/* <div
           className="absolute inset-0"
           style={{
             backgroundImage: `url(${backgroundImage})`,
@@ -88,7 +88,7 @@ const App = () => {
             opacity: 0.05,
             zIndex: 0,
           }}
-        />
+        /> */}
         <Router>
           <Routes>
             <Route

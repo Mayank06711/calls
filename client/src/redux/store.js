@@ -7,6 +7,7 @@ import {
   notificationReducer,
   userInfoReducer,
   socketMetricsReducer,
+  subscriptionReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -18,6 +19,7 @@ const store = configureStore({
     notification: notificationReducer,
     userInfo: userInfoReducer,
     socketMetrics: socketMetricsReducer,
+    subscription: subscriptionReducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
