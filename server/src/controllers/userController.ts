@@ -6,6 +6,8 @@ import { successResponse } from "../utils/apiResponse";
 import { FileUploadData, FileUploadResponse } from "../interface/interface";
 import { FileHandler } from "../helper/fileHandler";
 import { ISubscription } from "../interface/ISubscription";
+import { sendEmails } from "../utils/email";
+import { generateToken, verifyToken } from "../utils/tokens";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -124,8 +126,10 @@ class User {
           username: "username",
         });
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      console.log(error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -165,9 +169,10 @@ class User {
         .clearCookie("refreshToken", User.refreshOptions)
         .json(successResponse({}, "Logged out successfully"));
     } catch (error) {
-      console.error("Error in logout:", error);
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Something went wrong during logout");
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -190,13 +195,164 @@ class User {
     }
   }
 
-  static verifyEmail(req: express.Request, res: express.Response) {
+  static async _verifyEmail(req: express.Request, res: express.Response) {
     try {
-      // check validation here only
-      res.json({ message: "Email Verified Successfully" });
+      const userId = req.user?._id;
+      const { email } = req.body;
+
+      // Combine validation checks
+      if (!userId || !email) {
+        throw new ApiError(
+          400,
+          !userId ? "Unauthorized access" : "Email not provided"
+        );
+      }
+      const user = await UserModel.findOne(
+        { _id: userId },
+        { email: 1, isEmailVerified: 1, fullName: 1 }
+      );
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      // Combine validation checks
+      if (user.isEmailVerified || !user.email || user.email !== email) {
+        throw new ApiError(
+          400,
+          user.isEmailVerified
+            ? "Email is already verified"
+            : !user.email
+            ? "First update your profile with email id"
+            : "Email does not match"
+        );
+      }
+
+      // Generate token with minimal data
+      const token = generateToken({
+        id: userId.toString(),
+        email: user.email,
+        fullName: user.fullName,
+      });
+
+      if (!token) {
+        throw new ApiError(
+          500,
+          "Something went wrong while sending verification email"
+        );
+      }
+      const verificationUrl = `${process.env.API_URL}/api/v1/users/email_verify/${token}`;
+
+      // Run database update and email sending in parallel
+      await Promise.all([
+        UserModel.updateOne({ _id: userId }, { emailToken: token }),
+        sendEmails({
+          email,
+          templateCode: "EMAIL_VERIFICATION",
+          subject: "Email Verification",
+          message: "Please verify your email address",
+          data: {
+            fullName: user.fullName,
+            url: verificationUrl,
+          },
+        }),
+      ]);
+
+      res.json(successResponse({}, "Email verification sent"));
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      console.log(error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
+    }
+  }
+
+  static async verifyEmailToken(req: express.Request, res: express.Response) {
+    const clientUrl = process.env.CLIENT_URL;
+    try {
+      const { token } = req.params;
+
+      // Verify token exists
+      if (!token) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=Token is required`
+        // );
+
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      const verificationResult = verifyToken(token);
+
+      if (!verificationResult.isValid || !verificationResult.data) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     verificationResult.error || "Invalid token"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      // Find user with matching token
+      const user = await UserModel.findOne({
+        _id: verificationResult.data.id,
+        emailToken: token,
+      });
+
+      if (!user) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     "User not found or token already used"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      // If already verified, redirect to success with a different message
+      if (user.isEmailVerified) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-success?message=${encodeURIComponent(
+        //     "Email already verified"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      // Verify email matches
+      if (user.email !== verificationResult.data.email) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     "Email mismatch"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      // Update user verification status
+      await UserModel.findByIdAndUpdate(user._id, {
+        isEmailVerified: true,
+        emailToken: undefined, // Clear the token
+      });
+
+      const redirectUrl = `${clientUrl}/hello`;
+
+      // Ensure we have a valid URL to redirect to
+      if (!redirectUrl) {
+        console.log("novalid url");
+        return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+      // Redirect to frontend success page
+      // res.redirect(redirectUrl);
+      return res.redirect(
+        `${redirectUrl}?message=${encodeURIComponent(
+          "Email verified successfully"
+        )}`
+      );
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.redirect(
+        `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+          "Verification failed"
+        )}`
+      );
     }
   }
 
@@ -388,9 +544,11 @@ class User {
       return res
         .status(200)
         .json(successResponse(responseData, "Profile fetched successfully"));
-    } catch (error: any) {
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Error fetching profile: " + error.message);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -493,11 +651,11 @@ class User {
       return res
         .status(200)
         .json(successResponse(responseData, "Profile updated successfully"));
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, "Error updating profile: " + error.message);
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -559,6 +717,7 @@ class User {
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
   public static logout = AsyncHandler.wrap(User._logout);
+  public static verifyEmail = AsyncHandler.wrap(User._verifyEmail);
 }
 
 export default User;
