@@ -5,3 +5,5 @@ export interface CacheOptions {
   maxAge?: number; // in seconds
   identifier?: string; // Optional custom identifier
 }
+
+export type ContentType = "html" | "text" | "both";
