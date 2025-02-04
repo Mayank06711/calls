@@ -270,7 +270,8 @@ class Authentication {
       // Send OTP message via Twilio
       let smsRes;
       if (!isTesting) {
-        smsRes = await SmsService.sendSMS(formattedRecipientNumber, "otp", {
+        console.log(otp)
+        smsRes = await SmsService.sendSMS(formattedRecipientNumber, "PHONE_VERIFICATION", {
           otp_code: otp,
           expiryAt: "10",
         });
@@ -422,7 +423,7 @@ class Authentication {
       if (!otpData) {
         return res
           .status(401)
-          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP"));
       }
       // Check OTP expiry
       if (Date.now() > otpData.expiry_at) {
@@ -505,7 +506,7 @@ class Authentication {
       if (!user) {
         user = await UserModel.create({
           phoneNumber: formattedRecipientNumber,
-          username: formattedRecipientNumber,
+          username: `user_${uuidv4().split('-')[0]}`,
           password: formattedRecipientNumber,
           isPhoneVerified: true,
           refreshToken: "",
