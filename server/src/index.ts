@@ -16,7 +16,12 @@ import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
 import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
-import { connectDB, configureCloudinary } from "./db";
+import {
+  connectDB,
+  disconnectDB,
+  configureCloudinary,
+  checkHealth,
+} from "./db";
 import cronSchuduler from "./auto/cronJob";
 
 class ServerManager {
@@ -35,7 +40,7 @@ class ServerManager {
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    exposedHeaders: ['Cache-Control', 'ETag'], 
+    exposedHeaders: ["Cache-Control", "ETag"],
   };
   constructor() {
     this.loadEnvironmentVariables();
@@ -76,6 +81,43 @@ class ServerManager {
     // this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
+    this.app.get(
+      "/system/_status/health_check",
+      async (req: Request, res: Response) => {
+        try {
+          const isHealthy = await checkHealth();
+
+          if (isHealthy) {
+            return res.status(200).json({
+              status: "success",
+              message: "All systems operational",
+              timestamp: new Date().toISOString(),
+              services: {
+                server: "healthy",
+                database: "connected",
+              },
+            });
+          } else {
+            return res.status(503).json({
+              status: "error",
+              message: "Service unavailable",
+              timestamp: new Date().toISOString(),
+              services: {
+                server: "healthy",
+                database: "disconnected",
+              },
+            });
+          }
+        } catch (error) {
+          return res.status(500).json({
+            status: "error",
+            message: "Health check failed",
+            timestamp: new Date().toISOString(),
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+    );
     this.app.get("/hello", (req: Request, res: Response) => {
       res.status(200).send("Hello Now my application is working!");
     });
@@ -83,7 +125,7 @@ class ServerManager {
 
   private initializeErrorHandling() {
     this.app.use("*", (req, res) => {
-      res.status(404).json({ message: "Page not found" });
+      res.status(404).json({ message: "No such routes exists" });
     });
     this.app.use(Middleware.globalErrorHandler);
   }
@@ -120,6 +162,7 @@ class ServerManager {
       // Flush logs
       this.flushLogs();
       // Close database connections (if applicable)
+      await disconnectDB();
       await this.stopServer();
 
       console.log("Cleanup completed. Exiting application.");
@@ -170,7 +213,7 @@ class ServerManager {
           console.log(`Server is running on http://localhost:${Port}`);
           resolve();
         });
-      });
+      }); 
     } catch (error) {
       console.error("Error during server initialization:", error);
       process.exit(1);

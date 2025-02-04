@@ -49,11 +49,14 @@ class UserSettings {
         },
       });
 
-      res.status(201).json({
-        success: true,
-        message: "User settings created successfully",
-        data: sanitizedSettings,
-      });
+      res
+        .status(201)
+        .json(
+          successResponse(
+            sanitizedSettings,
+            "User settings created successfully"
+          )
+        );
     } catch (error: any) {
       if (error instanceof ApiError) {
         throw error;
@@ -104,7 +107,7 @@ class UserSettings {
         200,
         {
           isPublic: true,
-          maxAge: 7200, // 2 hours
+          maxAge: 4 * 3600, // 4 hours
         }
       );
     } catch (error: any) {

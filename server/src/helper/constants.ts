@@ -243,3 +243,36 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
 } as const;
+
+export type HttpStatusCode = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
+
+export const HTTP_STATUS = {
+  OK: 200,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  METHOD_NOT_ALLOWED: 405,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_SERVER: 500,
+  NOT_IMPLEMENTED: 501,
+  BAD_GATEWAY: 502,
+  SERVICE_UNAVAILABLE: 503,
+} as const;
+
+export const DEFAULT_ERROR_MESSAGES = {
+  400: "Invalid request. Please check your input.",
+  401: "Authentication required. Please login.",
+  403: "You don't have permission to access this resource.",
+  404: "The requested resource was not found.",
+  405: "This operation is not allowed.",
+  409: "This operation caused a conflict.",
+  422: "Unable to process the request.",
+  429: "Too many requests. Please try again later.",
+  500: "Something went wrong. Please try again later.",
+  501: "This feature is not implemented yet.",
+  502: "Bad gateway. Please try again later.",
+  503: "Service temporarily unavailable.",
+} as const;

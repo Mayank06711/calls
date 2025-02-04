@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { Request, Response } from "express";
 import { CacheOptions } from "../types/IGeneral";
+import { ApiError } from "./apiError";
 
 const sendCachedResponse = (
   req: Request,
@@ -93,17 +94,12 @@ const successResponse = (
     }),
   };
 };
-const errorResponse = (
-  statusCode: number,
-  message: string = "Something Went Wrong"
-) => {
-  return {
-    statusCode,
-    body: JSON.stringify({
-      success: false,
-      message,
-    }),
-  };
+
+const errorResponse = (error: any, msg: string = "Error") => {
+  if (error instanceof ApiError) {
+    throw error;
+  }
+  throw new ApiError(500, msg + error.message);
 };
 
 export { errorResponse, successResponse, sendCachedResponse };

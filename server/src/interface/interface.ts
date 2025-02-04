@@ -1,4 +1,30 @@
 import { AggregateOptions, ClientSession, PipelineStage } from "mongoose";
+import { ContentType } from "../types/IGeneral";
+
+export interface Template {
+  template_id: string;
+  type: "email" | "sms" | "both";
+  subject?: string;
+  content: {
+    html?: string;
+    text: string;
+  };
+  contentType?: ContentType;
+}
+
+export interface Templates {
+  [key: string]: Template;
+}
+
+export interface EmailOptions {
+  email: string;
+  subject?: string;
+  message?: string;
+  templateCode?: string;
+  contentType?: ContentType;
+  data?: Record<string, any>;
+  req?: any;
+}
 
 export interface AggregationConfig {
   pipeline: PipelineStage[];
@@ -28,7 +54,7 @@ export interface EventData {
   subject?: string;
   req?: any; // Optional request object
   data?: Record<string, any>; // Optional additional data
-  message: string; // Message related to the event
+  message?: string; // Message related to the event
 }
 
 export interface SendOtpMessageResponse {

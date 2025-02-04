@@ -5,8 +5,7 @@ import crypto from "crypto";
 import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
 import { UserModel } from "../models/userModel";
-import { ObjectId } from "mongoose";
-import { successResponse, errorResponse } from "../utils/apiResponse";
+import { successResponse } from "../utils/apiResponse";
 import { AsyncHandler } from "../utils/AsyncHandler";
 
 class AuthServices {
