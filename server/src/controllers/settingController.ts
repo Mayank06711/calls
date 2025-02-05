@@ -70,8 +70,8 @@ class UserSettings {
 
   private static async _getSettings(req: Request, res: Response) {
     try {
-      //   let userId = req.user?._id;
-      let userId = new mongoose.Types.ObjectId("67a13aaf1671cc9fde7fce16");
+      let userId = req.user?._id;
+      // let userId = new mongoose.Types.ObjectId("67a13aaf1671cc9fde7fce16");
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
