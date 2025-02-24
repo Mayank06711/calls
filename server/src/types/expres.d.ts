@@ -12,6 +12,7 @@ declare global {
         isActive: boolean;
       };
       isMobileApp: boolean;
+      aiAgent:string;
     }
   }
 }
