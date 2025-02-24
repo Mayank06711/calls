@@ -12,4 +12,5 @@ router.post("/verify_otp", Authentication.verifyOtp);
 // refreshAccessToken
 router.post("/refresh_token", AuthServices.RefreshAccessToken)
 
+router.post("/strutai", AuthServices.verifyAndForwardToAI)
 export default router;
