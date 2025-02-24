@@ -270,7 +270,9 @@ class AuthServices {
       }) as JwtPayload;
 
       // Decrypt the payload
-      const decryptedPayloadStr = AuthServices.decrypt(wrappedToken.payload.data);
+      const decryptedPayloadStr = AuthServices.decrypt(
+        wrappedToken.payload.data
+      );
       const decodedToken = JSON.parse(decryptedPayloadStr);
 
       // Verify token expiration
@@ -300,9 +302,74 @@ class AuthServices {
         phoneNumber: user.phoneNumber,
         username: user.username,
         status: type === "access" ? "authenticated" : "refreshed",
+        tokenExpiry: decodedToken.exp,
       };
     } catch (error) {
       return null;
+    }
+  }
+
+  public static async verifyAndForwardToAI(req: Request, res: Response) {
+    try {
+      const userId = req.user?._id;
+      if (!userId) {
+        throw new ApiError(401, "No user Id found, try login again");
+      }
+
+      // Generate a timestamp in milliseconds
+      const timestamp = Date.now().toString();
+
+      // Create signature with consistent encoding
+      const signaturePayload = `${userId}-${timestamp}`;
+      const signature = crypto
+        .createHmac("sha256", process.env.AI_SERVICE_SECRET!)
+        .update(signaturePayload)
+        .digest("hex");
+
+      // Add timeout and error handling for fetch
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+      try {
+        const aiServiceResponse = await fetch(
+          `${process.env.AI_SERVICE_URL}/process`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-KYF-Timestamp": timestamp,
+              "X-KYF-Signature": signature,
+              "X-KYF-User-ID": userId.toString(),
+            },
+            body: JSON.stringify({
+              payload: req.body,
+            }),
+            signal: controller.signal,
+          }
+        );
+
+        if (!aiServiceResponse.ok) {
+          const errorData = await aiServiceResponse.json().catch(() => ({}));
+          throw new ApiError(
+            aiServiceResponse.status,
+            errorData.message || "AI Service Processing Failed",
+            errorData.errors
+          );
+        }
+
+        const aiData = await aiServiceResponse.json();
+        return res
+          .status(200)
+          .json(successResponse(aiData, "AI Processing Complete"));
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (error: any) {
+      if (error instanceof ApiError) throw error;
+      if (error.name === "AbortError") {
+        throw new ApiError(504, "AI Service Timeout");
+      }
+      throw new ApiError(500, "AI Service Processing Failed");
     }
   }
 
