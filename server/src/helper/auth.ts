@@ -8,6 +8,13 @@ import { UserModel } from "../models/userModel";
 import { successResponse } from "../utils/apiResponse";
 import { AsyncHandler } from "../utils/AsyncHandler";
 
+interface AIRequestPayload {
+  question: string;
+  context?: string;
+  userinfo?: Record<string, any>;
+  isSubscription?: string | boolean;
+}
+
 class AuthServices {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -308,27 +315,37 @@ class AuthServices {
       return null;
     }
   }
-
+  
   public static async verifyAndForwardToAI(req: Request, res: Response) {
     try {
       const userId = req.user?._id;
       if (!userId) {
-        throw new ApiError(401, "No user Id found, try login again");
+        throw new ApiError(401, "No user Id found, try login again", [
+          "Authentication failed",
+        ]);
+      }
+      // Validate required fields
+      const { question, context, userinfo, isSubscription } = req.body;
+
+      if (!question || typeof question !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid request format",
+          errors: ["Question is required and must be a string"],
+        });
       }
 
-      // Generate a timestamp in milliseconds
-      const timestamp = Date.now().toString();
-
-      // Create signature with consistent encoding
-      const signaturePayload = `${userId}-${timestamp}`;
-      const signature = crypto
-        .createHmac("sha256", process.env.AI_SERVICE_SECRET!)
-        .update(signaturePayload)
-        .digest("hex");
+      // Prepare payload with optional fields
+      const aiPayload: AIRequestPayload = {
+        question,
+        ...(context && { context }),
+        ...(userinfo && { userinfo }),
+        ...(isSubscription !== undefined && { isSubscription }),
+      };
 
       // Add timeout and error handling for fetch
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      const timeout = setTimeout(() => controller.abort(), 30000);
 
       try {
         const aiServiceResponse = await fetch(
@@ -337,39 +354,61 @@ class AuthServices {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-KYF-Timestamp": timestamp,
-              "X-KYF-Signature": signature,
-              "X-KYF-User-ID": userId.toString(),
+              Authorization: `Bearer ${process.env.AI_SERVICE_SECRET}`,
             },
             body: JSON.stringify({
-              payload: req.body,
+              userId: userId.toString(),
+              payload: aiPayload,
             }),
             signal: controller.signal,
           }
         );
 
+        // Get error response as JSON if possible
         if (!aiServiceResponse.ok) {
-          const errorData = await aiServiceResponse.json().catch(() => ({}));
+          const errorData = await aiServiceResponse.json().catch(() => ({
+            error: "Unknown error",
+            detail: "Could not parse error response",
+          }));
+
           throw new ApiError(
             aiServiceResponse.status,
-            errorData.message || "AI Service Processing Failed",
-            errorData.errors
+            errorData.error || "AI Service Processing Failed",
+            [errorData.detail || "Unknown error occurred"]
           );
         }
 
         const aiData = await aiServiceResponse.json();
+
+        if (!aiData?.data?.result) {
+          throw new ApiError(500, "Invalid AI service response format", [
+            "Response format error",
+          ]);
+        }
+
         return res
           .status(200)
-          .json(successResponse(aiData, "AI Processing Complete"));
+          .json(successResponse(aiData.data.result, "AI Processing Complete"));
       } finally {
         clearTimeout(timeout);
       }
     } catch (error: any) {
-      if (error instanceof ApiError) throw error;
-      if (error.name === "AbortError") {
-        throw new ApiError(504, "AI Service Timeout");
-      }
-      throw new ApiError(500, "AI Service Processing Failed");
+      // Don't throw errors, handle them here
+      const statusCode = error instanceof ApiError ? error.statusCode : 500;
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "AI Service Processing Failed";
+      const errors =
+        error instanceof ApiError
+          ? error.errors
+          : [error.message || "Unknown error"];
+
+      return res.status(statusCode).json({
+        success: false,
+        message,
+        errors,
+      });
     }
   }
 
