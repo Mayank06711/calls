@@ -8,6 +8,7 @@ import {
   userInfoReducer,
   socketMetricsReducer,
   subscriptionReducer,
+  loaderReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -20,6 +21,7 @@ const store = configureStore({
     userInfo: userInfoReducer,
     socketMetrics: socketMetricsReducer,
     subscription: subscriptionReducer, 
+    loaderState: loaderReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

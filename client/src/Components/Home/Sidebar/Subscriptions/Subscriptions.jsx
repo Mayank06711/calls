@@ -1,9 +1,10 @@
 import React from 'react'
+import SubscriptionCard from './SubscriptionCard'
 
 function Subscriptions() {
   return (
     <div>
-      subscriptions
+      <SubscriptionCard/>
     </div>
   )
 }

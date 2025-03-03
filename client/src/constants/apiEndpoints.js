@@ -38,6 +38,10 @@ export const ENDPOINTS = {
     GET_USER_BY_MOBILE: `/api/${API_CONFIG.VERSION}/users/get_user_by_mobile`,
     LOGOUT: `/api/${API_CONFIG.VERSION}/users/logout`,
   },
+
+  AI: {
+    PROCESS_CHAT: `/api/${API_CONFIG.VERSION}/auth/process`,
+  },
   // Add more endpoint categories as needed
 };
 
