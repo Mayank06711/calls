@@ -46,6 +46,7 @@ class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
+  private authenticatedSocket: Socket | null = null;
 
   private readonly SOCKET_CONSTANTS = {
     REDIS: {
@@ -834,6 +835,19 @@ class SocketManager {
     const lastActivity = socketData.lastRefreshedAt || socketData.connectedAt;
     const hoursSinceLastActivity = (now - lastActivity) / (60 * 60 * 1000);
 
+    // If socket is still active (has events in last hour), update lastRefreshedAt
+    if (socket.connected && hoursSinceLastActivity < 1) {
+      await RedisManager.cacheDataInGroup(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socket.id,
+        {
+          ...socketData,
+          lastRefreshedAt: now,
+        },
+        this.SOCKET_CONSTANTS.REDIS.TTL.SOCKET_DATA
+      );
+      return true;
+    }
     // If more than 24 hours since last activity for authenticated status
     // or more than 15 days for refreshed status
     const maxHours =
@@ -1032,6 +1046,12 @@ class SocketManager {
       console.error("Error during socket cleanup:", error);
       throw error;
     }
+  }
+
+  public getAuthenticatedSocket(): Socket | null {
+    return this.authenticatedSocket?.connected
+      ? this.authenticatedSocket
+      : null;
   }
 }
 
