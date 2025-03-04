@@ -17,10 +17,12 @@ function AIAssistant() {
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef(null);
   const colors = useSubscriptionColors();
+  const userFullName = localStorage.getItem('fullName');
 
   const dispatch = useDispatch();
   const loaders = useSelector(state => state.loaderState.loaders);
-  console.log("111111111111111",loaders[LOADER_TYPES.AI_CHAT_PROCESS]);
+  const user=useSelector(state => state.userInfo);
+  console.log("111111111111111",user);
   // const userInfo = useSelector(state => state.auth.userInfo); // Assuming you have user info in auth reducer
   // const subscription = useSelector(state => state.subscription.type); // Assuming you have subscription info
 
@@ -53,6 +55,7 @@ function AIAssistant() {
   }, []);
 
   const handleSendMessage = React.useCallback(async () => {
+    console.log("00000000000000000")
     if (!inputMessage.trim()) return;
 
     if (isTyping) {
@@ -90,14 +93,14 @@ function AIAssistant() {
         question: inputMessage,
         context: `user is going to wear something cool`,
         userInfo: {
-          name: "Mayank",
-          gender: "male",
+          name: user.data?.fullName||userFullName,
+          gender: user.data?.gender,
           skinColor:  "Medium Skin",
-          age:  18,
+          age:  user.data?.age,
           height:  "45",
           colorsILove:  "pink"
         },
-        isSubscription:  "CASUAL"
+        isSubscription: user.subscription?.type
       }));
 
       if (response && response.data) {

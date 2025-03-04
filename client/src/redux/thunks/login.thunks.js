@@ -84,7 +84,7 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       return;
     }
     if (data.success) {
-      const { userId, isAlreadyVerified, token } = data.data;
+      const { userId, isAlreadyVerified, token,fullName } = data.data;
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
@@ -92,6 +92,7 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       localStorage.setItem("userId", userId);
       localStorage.setItem("token", token);
       localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
 
       // Authenticate socket connection
       try {
