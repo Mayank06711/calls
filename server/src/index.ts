@@ -37,7 +37,7 @@ class ServerManager {
       "http://localhost:3000",
       "https://localhost:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
-      "https://staging.dbohc3xrmf0u7.amplifyapp.com"
+      "https://staging.d15sv24wr1qszx.amplifyapp.com"
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
