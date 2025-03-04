@@ -484,6 +484,7 @@ class Authentication {
           userId: user._id,
           isAlreadyVerified: true,
           token: accessToken,
+          fullName: user.fullName,
         };
 
         // Handle successful verification (skip OTP validation as user is already verified)
@@ -537,6 +538,7 @@ class Authentication {
         userId: user._id,
         isAlreadyVerified: false,
         token: accessToken,
+        fullName: user.fullName,
       };
 
       // Handle successful verification
