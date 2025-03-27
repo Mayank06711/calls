@@ -2,11 +2,10 @@ import express, { CookieOptions } from "express";
 import { UserModel } from "../models/userModel";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
-import { ObjectId } from "mongoose";
-import { AuthServices } from "../helper/auth";
 import { successResponse } from "../utils/apiResponse";
-import { FileUploadData, FileUploadResponse } from "../types/interface";
+import { FileUploadData, FileUploadResponse } from "../interface/interface";
 import { FileHandler } from "../helper/fileHandler";
+import { ISubscription } from "../interface/ISubscription";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -309,7 +308,11 @@ class User {
         throw new ApiError(401, "Unauthorized access");
       }
 
-      const user = await UserModel.findById(userId);
+      // Get user and current subscription in parallel
+      const user = await UserModel.findById(userId).populate(
+        "currentSubscriptionId"
+      );
+
       if (!user) {
         throw new ApiError(404, "User not found");
       }
@@ -320,6 +323,13 @@ class User {
 
       // Get profile media using the new method
       const profileMedia = await user.getProfileMedia();
+
+      // Type guard to check if subscription is populated
+      const isSubscriptionPopulated = (sub: any): sub is ISubscription => {
+        return (
+          sub && typeof sub === "object" && "type" in sub && "status" in sub
+        );
+      };
 
       // Prepare sanitized response data
       const responseData = {
@@ -341,9 +351,6 @@ class User {
         // Verification statuses
         isEmailVerified: user.isEmailVerified,
         isPhoneVerified: user.isPhoneVerified,
-        // Subscription info
-        isSubscribed: user.isSubscribed,
-        subscriptionDetail: user.subscriptionDetail,
         // Security settings (only boolean flags, no sensitive data)
         isMFAEnabled: user.isMFAEnabled,
         // Photo info (excluding public_id)
@@ -365,6 +372,17 @@ class User {
         // Add timestamps
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        // Add subscription details
+        isSubscribed: user.isSubscribed,
+        subscription: isSubscriptionPopulated(user.currentSubscriptionId)
+          ? {
+              type: user.currentSubscriptionId.type,
+              status: user.currentSubscriptionId.status,
+            }
+          : {
+              type: "Free",
+              status: "N/A",
+            },
       };
 
       return res
@@ -404,7 +422,9 @@ class User {
       }
 
       // Find the user
-      const user = await UserModel.findById(userId);
+      const user = await UserModel.findById(userId).populate(
+        "currentSubscriptionId"
+      );
       if (!user) {
         throw new ApiError(404, "User not found");
       }
@@ -468,7 +488,7 @@ class User {
       // Save the updated user
       await user.save();
 
-      const responseData = User.sanitizeUserData(user);
+      const responseData = await User.sanitizeUserData(user);
 
       return res
         .status(200)
@@ -486,6 +506,12 @@ class User {
       user.getProfileMedia(),
       user.getAllMedia(),
     ]);
+
+    // Add type guard for subscription
+    const isSubscriptionPopulated = (sub: any): sub is ISubscription => {
+      return sub && typeof sub === "object" && "type" in sub && "status" in sub;
+    };
+
     return {
       fullName: user.fullName,
       username: user.username,
@@ -502,6 +528,17 @@ class User {
       country: user.country,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
+      // Add subscription data
+      isSubscribed: user.isSubscribed,
+      subscription: isSubscriptionPopulated(user.currentSubscriptionId)
+        ? {
+            type: user.currentSubscriptionId.type,
+            status: user.currentSubscriptionId.status,
+          }
+        : {
+            type: "Free",
+            status: "N/A",
+          },
       currentPhoto: profileMedia.photo
         ? {
             url: profileMedia.photo.url,
@@ -518,6 +555,7 @@ class User {
       allVideos: allMedia.videos, // Return photo or video only if it has a value
     };
   }
+
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
   public static logout = AsyncHandler.wrap(User._logout);

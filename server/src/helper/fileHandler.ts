@@ -3,7 +3,7 @@ import {
   FileUploadData,
   FileUploadResponse,
   CloudinaryUploadOptions,
-} from "../types/interface";
+} from "../interface/interface";
 import { getCloudinary } from "../db";
 
 class FileHandler {

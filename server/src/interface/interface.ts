@@ -1,3 +1,28 @@
+import { AggregateOptions, ClientSession, PipelineStage } from "mongoose";
+
+export interface AggregationConfig {
+  pipeline: PipelineStage[];
+  options?: AggregateOptions;
+}
+
+interface QueryOptions<T> {
+  pagination?: {
+    page: number;
+    limit: number;
+  };
+  sort?: Record<string, 1 | -1>;
+  select?: Record<keyof T, number | boolean | object> | string | string[];
+  populate?: string | string[];
+  lean?: boolean;
+  session?: ClientSession; // Add session to QueryOptions
+}
+
+export interface ModelOperationConfig<T> {
+  aggregation?: boolean;
+  aggregationConfig?: AggregationConfig;
+  queryOptions?: QueryOptions<T>;
+}
+
 export interface EventData {
   email?: string;
   subject?: string;
@@ -42,7 +67,7 @@ export interface SocketData {
   socketId: string;
   connectedAt: number;
   lastRefreshedAt?: number;
-  status: 'authenticated' | 'refreshed';
+  status: "authenticated" | "refreshed";
 }
 
 export interface PendingAuthData {
@@ -64,7 +89,7 @@ export interface FileUploadData {
   fileName: string;
   fileType: string;
   size: number;
-  type: "chat" | "avatar"; 
+  type: "chat" | "avatar";
   metadata?: {
     width?: number;
     height?: number;
@@ -85,8 +110,8 @@ export interface FileUploadResponse {
     width?: number;
     height?: number;
     duration?: number;
-    size?: number;     // Made optional
-    type?: string;     // Made optional
+    size?: number; // Made optional
+    type?: string; // Made optional
     error?: string;
   };
 }
@@ -104,7 +129,7 @@ export interface ChatMessage {
     size: number;
     width?: number;
     height?: number;
-    thumbnailUrl?: string; 
+    thumbnailUrl?: string;
   };
   timestamp: number;
   status: "sent" | "delivered" | "read";

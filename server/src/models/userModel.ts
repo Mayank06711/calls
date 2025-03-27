@@ -1,57 +1,11 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import JWT, { JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { AuthServices } from "../helper/auth";
-import { MediaItem, MediaModel } from "./mediaModel";
-// Define an interface for the Photo object
-
-// interface for the User document
-interface IUser extends Document {
-  fullName: string;
-  username: string;
-  email: string;
-  phoneNumber: string;
-  isEmailVerified: boolean;
-  isPhoneVerified: boolean;
-  password: string;
-  gender: "Male" | "Female" | "Not to say"; // Enum for gender
-  age: number;
-  dob: string;
-  city: string;
-  country?: string; // Default is 'India', but not required
-  refreshToken: string;
-  mediaId: mongoose.Types.ObjectId; // Reference to the user's media collection
-  profilePhotoId?: string; // Store the public_id of the current profile photo
-  profileVideoId?: string; // Store the public_id of the current profile video
-  isSubscribed: "Yes" | "No" | "Pending" | "Request"; // Enum for subscription status
-  subscriptionDetail: "Premium" | "Casual" | "Medium"; // Enum for subscription details
-  referral?: mongoose.Types.ObjectId; // Reference to another User document
-  isMFAEnabled: boolean;
-  MFASecretKey?: string; // Optional MFA key
-  isActive: boolean;
-  isAdmin: boolean; // Whether or not
-  isExpert: boolean; // Whether or not the user is an expert
-
-  // Add timestamp fields
-  createdAt: Date;
-  updatedAt: Date;
-
-  // defining methods here so that typescript can
-  // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
-  generateAccessToken(): string;
-  generateRefreshToken(): string;
-  isPasswordCorrect(password: string): Promise<boolean>;
-  getProfileMedia(): Promise<{ photo?: MediaItem; video?: MediaItem }>;
-  getAllMedia(): Promise<{
-    photos: { url: string; thumbnail_url?: string }[];
-    videos: { url: string; thumbnail_url?: string }[];
-  }>;
-  addProfilePhoto(photoData: Partial<MediaItem>): Promise<MediaItem>;
-  addProfileVideo(videoData: Partial<MediaItem>): Promise<MediaItem>;
-  removeProfilePhoto(publicId: string): Promise<void>;
-  removeProfileVideo(publicId: string): Promise<void>;
-}
+import { MediaModel } from "./mediaModel";
+import { IUser } from "../interface/IUser";
+import { MediaItem } from "../interface/IMedia";
 
 // User schema
 const UserSchema: Schema<IUser> = new Schema(
@@ -88,16 +42,18 @@ const UserSchema: Schema<IUser> = new Schema(
     mediaId: { type: Schema.Types.ObjectId, ref: "Media" },
     profilePhotoId: { type: String },
     profileVideoId: { type: String },
+    currentSubscriptionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Subscription",
+    },
     isSubscribed: {
-      type: String,
-      default: "No",
-      enum: ["Yes", "No", "Pending", "Requested"],
+      type:Boolean,
+      default: false
     },
-    subscriptionDetail: {
-      type: String,
-      enum: ["Premium", "Casual", "Medium"],
+    referral: {
+      type: Schema.Types.ObjectId,
+      ref: "Referral",
     },
-    referral: { type: Schema.Types.ObjectId, ref: "User" },
     isMFAEnabled: {
       type: Boolean,
       default: false, // Default to false

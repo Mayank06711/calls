@@ -1,37 +1,5 @@
-import mongoose, { Document, Schema } from "mongoose";
-
-interface MediaItem {
-  public_id: string;
-  url: string;
-  thumbnail_url?: string;
-  title?: string;
-  description?: string;
-  tags?: string[];
-  createdAt: Date;
-}
-
-interface IMedia extends Document {
-  userId: mongoose.Types.ObjectId;
-  chatId?: mongoose.Types.ObjectId;
-  photos: MediaItem[];
-  videos: MediaItem[];
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Add these method signatures
-  getPhotoById(publicId: string): MediaItem | null;
-  getVideoById(publicId: string): MediaItem | null;
-  getLatestPhoto(): MediaItem | null;
-  getLatestVideo(): MediaItem | null;
-  addPhoto(photoData: Partial<MediaItem>): Promise<MediaItem>;
-  addVideo(videoData: Partial<MediaItem>): Promise<MediaItem>;
-  getAllPhotos(): MediaItem[];
-  getAllVideos(): MediaItem[];
-  getAllPhotoUrls(): { url: string; thumbnail_url?: string }[];
-  getAllVideoUrls(): { url: string; thumbnail_url?: string }[];
-  removePhoto(publicId: string): Promise<void>;
-  removeVideo(publicId: string): Promise<void>;
-}
+import mongoose, { Schema } from "mongoose";
+import { IMedia, MediaItem } from "../interface/IMedia";
 
 const MediaItemSchema = new Schema({
   public_id: { type: String, required: true },
@@ -150,4 +118,4 @@ MediaSchema.index({ userId: 1 });
 
 const MediaModel = mongoose.model<IMedia>("Media", MediaSchema); // Fixed model name from "User" to "Media"
 
-export { MediaModel, IMedia, MediaItem };
+export { MediaModel };
