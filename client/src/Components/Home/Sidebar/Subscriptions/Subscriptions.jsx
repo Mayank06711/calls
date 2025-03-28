@@ -9,14 +9,21 @@ import CreditCardIcon from "@mui/icons-material/CreditCard";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import QrCodeIcon from "@mui/icons-material/QrCode";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
-import GooglePayIcon from '@mui/icons-material/Payment';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-
+import GooglePayIcon from "@mui/icons-material/Payment";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import { useSelector } from "react-redux";
+import { LOADER_TYPES } from "../../../../redux/action_creators";
+import SubscriptionSkeleton from "./SubscriptionSkeleton";
+import {useNavigate } from "react-router-dom";
 
 function Subscriptions() {
   const currentColors = useSubscriptionColors();
-  const userName = localStorage.getItem('fullName') || 'Guest';
-  const firstName = userName.split(' ')[0];
+  const userName = localStorage.getItem("fullName") || "Guest";
+  const firstName = userName.split(" ")[0];
+  const subscriptionPlans = useSelector((state) => state.plans);
+  const plans = subscriptionPlans.plans;
+  const loaders = useSelector((state) => state.loaderState.loaders);
+  const navigate = useNavigate();
 
   // Get colors for each subscription type
   const subscriptionColors = {
@@ -33,13 +40,93 @@ function Subscriptions() {
             transition-all `;
   };
 
+  const transformedPlanHeaders = plans
+    ?.map((plan) => ({
+      type: plan.type.toUpperCase(),
+      name: plan.type,
+      price: `₹${plan.price}`,
+      recommended: plan.type === "Gold", // Keep the same recommendation logic
+      duration: plan.duration,
+      features: plan.features,
+      limits: plan.limits,
+    }))
+    .sort((a, b) => {
+      const planOrder = {
+        PLATINUM: 4,
+        GOLD: 3,
+        SILVER: 2,
+        FREE: 1,
+      };
+      return planOrder[a.type] - planOrder[b.type];
+    });
+
+  const getAllFeatures = () => {
+    if (!plans) return []; // Return empty array if no plans
+
+    const sortedPlans = [...plans].sort((a, b) => {
+      const planOrder = {
+        Platinum: 4,
+        Gold: 3,
+        Silver: 2,
+        Free: 1,
+      };
+      return planOrder[a.type] - planOrder[b.type];
+    });
+
+    // Get all unique features
+    const allFeatures = new Set();
+    sortedPlans.forEach((plan) => {
+      plan.features.forEach((feature) => allFeatures.add(feature));
+    });
+
+    // Transform to required format
+    return Array.from(allFeatures).map((feature) => ({
+      name: feature,
+      platinum:
+        sortedPlans
+          .find((p) => p.type === "Platinum")
+          ?.features.includes(feature) || false,
+      gold:
+        sortedPlans
+          .find((p) => p.type === "Gold")
+          ?.features.includes(feature) || false,
+      silver:
+        sortedPlans
+          .find((p) => p.type === "Silver")
+          ?.features.includes(feature) || false,
+      free:
+        sortedPlans
+          .find((p) => p.type === "Free")
+          ?.features.includes(feature) || false,
+    }));
+  };
+
+  const dynamicFeatures = getAllFeatures();
+
+  const handleSubscriptionSelect = (planType) => {
+    console.log("plaaaaaaaaaaaaan type", planType);
+    const routeMap = {
+      'PLATINUM': 'platinum',
+      'GOLD': 'gold',
+      'SILVER': 'silver',
+    };
+
+    const route = routeMap[planType];
+    if (route) {
+      navigate(`/subscriptions/${route}`, { replace: true });
+    }
+  };
+
   return (
     <div className="px-14 py-10 bg-light-secondary/30 dark:bg-dark-secondary/30 rounded-3xl">
-
-       {/* Personal Greeting */}
-       <div className="text-center mb-8">
+      {/* Personal Greeting */}
+      <div className="text-center mb-8">
         <h2 className="text-2xl font-medium mb-2 text-light-text/90 dark:text-dark-text/90">
-          Hey <span className="font-bold text-light-accent dark:text-dark-accent">{firstName}</span>! Ready to unlock premium features? ✨
+          Hey{" "}
+          <span className="font-bold text-light-accent dark:text-dark-accent">
+            {firstName}
+          </span>
+          ! Ready to unlock premium features? ✨
         </h2>
       </div>
       <div className="text-center mb-10">
@@ -52,121 +139,182 @@ function Subscriptions() {
           support your journey.
         </p>
       </div>
-
-      <table
-        className="w-full rounded-2xl overflow-hidden shadow-2xl 
+      {/* table content */}
+      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] && !plans ? (
+        <SubscriptionSkeleton />
+      ) : (
+        <table
+          className="w-full rounded-2xl overflow-hidden shadow-2xl 
         border-separate border-spacing-[3px]
         bg-light-secondary/20 dark:bg-dark-secondary/20"
-      >
-        <thead>
-          <tr>
-            <th
-              className="p-2 text-center text-light-text dark:text-dark-text 
-              font-bold text-lg bg-slate-200 dark:bg-slate-700 rounded-tl-xl"
-            >
-              Features
-            </th>
-            {planHeaders.map((plan, index) => (
+        >
+          <thead>
+            <tr>
               <th
-                key={plan.type}
-                className={`p-3 text-center text-light-text dark:text-dark-text 
-                  font-bold bg-slate-200 dark:bg-slate-700
-                  ${index === planHeaders.length - 1 ? "rounded-tr-xl" : ""}
-                  ${getColumnStyle(plan.type)}`}
+                className="p-2 text-center text-light-text dark:text-dark-text 
+              font-bold text-lg bg-slate-200 dark:bg-slate-700 rounded-tl-xl"
               >
-                <div className="flex flex-col gap-1 py-2">
-                  <span className="text-lg font-bold">{plan.name}</span>
-                  <span
-                    className="text-2xl font-extrabold"
-                    style={{
-                      color:
-                        subscriptionColors[plan.type.toUpperCase()]?.fourth,
-                    }}
-                  >
-                    {plan.price}
-                  </span>
-                  <span className="text-xs opacity-75">per month</span>
-                </div>
+                Features
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {subscriptionFeatures.map((feature, index) => (
-            <tr key={index}>
-              <td
-                className="p-3 text-left font-medium text-light-text dark:text-dark-text
+              {transformedPlanHeaders.map((plan, index) => (
+                <th
+                  key={plan.type}
+                  className={`p-3 text-center text-light-text dark:text-dark-text 
+                  font-bold bg-slate-200 dark:bg-slate-700
+                  ${
+                    index === transformedPlanHeaders.length - 1
+                      ? "rounded-tr-xl"
+                      : ""
+                  }
+                  ${getColumnStyle(plan.type)}`}
+                >
+                  <div className="flex flex-col gap-1 py-2">
+                    <span className="text-lg font-bold">{plan.name}</span>
+                    <span
+                      className="text-2xl font-extrabold"
+                      style={{
+                        color: subscriptionColors[plan.type]?.fourth,
+                      }}
+                    >
+                      {plan.price}
+                    </span>
+                    {plan.type !== "FREE" && (
+                      <span className="text-xs opacity-75">
+                        {plan.duration} days
+                      </span>
+                    )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dynamicFeatures.map((feature, index) => (
+              <tr key={index}>
+                <td
+                  className="p-3 text-left font-medium text-light-text dark:text-dark-text
                 bg-light-primary dark:bg-dark-primary"
-              >
-                {feature.name}
-              </td>
-              {planHeaders.map((plan) => (
+                >
+                  {feature.name}
+                </td>
+                {transformedPlanHeaders.map((plan) => (
+                  <td
+                    key={plan.type}
+                    className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
+                    ${getColumnStyle(plan.type)}`}
+                  >
+                    {feature[plan.type.toLowerCase()] ? (
+                      <CheckIcon
+                        sx={{ fontSize: "2rem", fontWeight: "bold" }}
+                        style={{
+                          color: subscriptionColors[plan.type]?.fourth,
+                        }}
+                      />
+                    ) : (
+                      <CloseIcon
+                        sx={{
+                          fontSize: "1.25rem",
+                          opacity: 0.3,
+                          color: "var(--light-text)",
+                          ".dark &": { color: "var(--dark-text)" },
+                        }}
+                      />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {/* Limits Section */}
+            {plans && (
+              <>
+                <tr>
+                  <td
+                    colSpan={transformedPlanHeaders.length + 1}
+                    className="p-3 font-bold text-light-text dark:text-dark-text
+                    bg-light-primary dark:bg-dark-primary"
+                  >
+                    Usage Limits
+                  </td>
+                </tr>
+                {Object.keys(plans[0].limits).map((limitKey, index) => (
+                  <tr key={`limit-${index}`}>
+                    <td
+                      className="p-3 text-left font-medium text-light-text dark:text-dark-text
+                      bg-light-primary dark:bg-dark-primary"
+                    >
+                      {limitKey.replace(/([A-Z])/g, " $1").trim()}{" "}
+                      {/* Format camelCase to spaces */}
+                    </td>
+                    {transformedPlanHeaders.map((plan) => {
+                      const planData = plans.find((p) => p.type === plan.name);
+                      const limitValue = planData?.limits[limitKey];
+                      return (
+                        <td
+                          key={plan.type}
+                          className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
+                            ${getColumnStyle(plan.type)}`}
+                        >
+                          <span
+                            style={{
+                              color: subscriptionColors[plan.type]?.fourth,
+                            }}
+                          >
+                            {limitValue === -1 ? "Unlimited" : limitValue}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </>
+            )}
+            <tr>
+              <td className="p-3 bg-light-primary dark:bg-dark-primary rounded-bl-xl"></td>
+              {transformedPlanHeaders.map((plan, index) => (
                 <td
                   key={plan.type}
-                  className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
-                    ${getColumnStyle(plan.type)}`}
+                  className={`p-6 bg-light-primary dark:bg-dark-primary
+                  ${
+                    index === transformedPlanHeaders.length - 1
+                      ? "rounded-br-xl"
+                      : ""
+                  }
+                  ${getColumnStyle(plan.type)}`}
                 >
-                  {feature[plan.type.toLowerCase()] ? (
-                    <CheckIcon
-                      sx={{ fontSize: "2rem", fontWeight: "bold" }}
-                      style={{
-                        color:
-                          subscriptionColors[plan.type.toUpperCase()]?.fourth,
-                      }}
-                    />
-                  ) : (
-                    <CloseIcon
+                  {plan.type !== "FREE" && (
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleSubscriptionSelect(plan.type)}
                       sx={{
-                        fontSize: "1.25rem",
-                        opacity: 0.3,
-                        color: "var(--light-text)",
-                        ".dark &": { color: "var(--dark-text)" },
+                        width: "100%",
+                        padding: "0.375rem 1rem",
+                        borderRadius: "0.375rem",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                        transition: "all",
+                        color: plan.recommended ? "white" : "inherit",
                       }}
-                    />
+                      style={{
+                        backgroundColor: plan.recommended
+                          ? subscriptionColors[plan.type.toUpperCase()]?.fourth
+                          : "transparent",
+                        borderColor:
+                          subscriptionColors[plan.type.toUpperCase()]?.fourth,
+                        borderWidth: "2px",
+                        color: plan.recommended
+                          ? "white"
+                          : subscriptionColors[plan.type.toUpperCase()]?.fourth,
+                      }}
+                    >
+                      {plan.recommended ? "Recommended" : "Select Plan"}
+                    </Button>
                   )}
                 </td>
               ))}
             </tr>
-          ))}
-          <tr>
-            <td className="p-3 bg-light-primary dark:bg-dark-primary rounded-bl-xl"></td>
-            {planHeaders.map((plan, index) => (
-              <td
-                key={plan.type}
-                className={`p-6 bg-light-primary dark:bg-dark-primary
-                  ${index === planHeaders.length - 1 ? "rounded-br-xl" : ""}
-                  ${getColumnStyle(plan.type)}`}
-              >
-                <Button
-                  variant="outlined"
-                  sx={{
-                    width: "100%",
-                    padding: "0.375rem 1rem",
-                    borderRadius: "0.375rem",
-                    fontWeight: 600,
-                    fontSize: "1rem",
-                    transition: "all",
-                    color: plan.recommended ? "white" : "inherit",
-                  }}
-                  style={{
-                    backgroundColor: plan.recommended
-                      ? subscriptionColors[plan.type.toUpperCase()]?.fourth
-                      : "transparent",
-                    borderColor:
-                      subscriptionColors[plan.type.toUpperCase()]?.fourth,
-                    borderWidth: "2px",
-                    color: plan.recommended
-                      ? "white"
-                      : subscriptionColors[plan.type.toUpperCase()]?.fourth,
-                  }}
-                >
-                  {plan.recommended ? "Recommended" : "Select Plan"}
-                </Button>
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      )}
 
       <div className="mt-12 grid grid-cols-3 gap-8">
         <div className="text-center p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
@@ -221,7 +369,10 @@ function Subscriptions() {
       {/* Call to Action */}
       <div className="mt-8 text-center">
         <p className="text-light-text/90 dark:text-dark-text/90 text-lg mb-2">
-          Start your journey today with our <span className="font-bold text-light-accent dark:text-dark-accent">free 30-day trial</span>
+          Start your journey today with our{" "}
+          <span className="font-bold text-light-accent dark:text-dark-accent">
+            free 30-day trial
+          </span>
         </p>
         <p className="text-light-text/70 dark:text-dark-text/70">
           No credit card required. Cancel anytime.
@@ -373,90 +524,95 @@ function Subscriptions() {
   );
 }
 
-const planHeaders = [
-  { type: "CASUAL", name: "Casual", price: "$0", recommended: false },
-  { type: "GOLD", name: "Gold", price: "$29", recommended: false },
-  { type: "SILVER", name: "Silver", price: "$49", recommended: true },
-  { type: "PLATINUM", name: "Platinum", price: "$99", recommended: false },
-];
+// const planHeaders = [
+//   {
+//     type: "CASUAL",
+//     name: "Available for everyone",
+//     price: "Free",
+//     recommended: false,
+//   },
+//   { type: "GOLD", name: "Gold", price: "$29", recommended: false },
+//   { type: "SILVER", name: "Silver", price: "$49", recommended: true },
+//   { type: "PLATINUM", name: "Platinum", price: "$99", recommended: false },
+// ];
 
-const subscriptionFeatures = [
-  {
-    name: "Unlimited Access",
-    casual: false,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "24/7 Support",
-    casual: false,
-    gold: false,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Analytics",
-    casual: false,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Custom Integration",
-    casual: false,
-    gold: false,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "100GB Cloud Storage",
-    casual: true,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Full API Access",
-    casual: false,
-    gold: false,
-    silver: false,
-    platinum: true,
-  },
-  {
-    name: "Team Management",
-    casual: false,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Custom Reports",
-    casual: false,
-    gold: false,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Automated Backups",
-    casual: true,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Premium Templates",
-    casual: false,
-    gold: true,
-    silver: true,
-    platinum: true,
-  },
-  {
-    name: "Advanced Security",
-    casual: false,
-    gold: false,
-    silver: true,
-    platinum: true,
-  },
-];
+// const subscriptionFeatures = [
+//   {
+//     name: "Unlimited Access",
+//     casual: false,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "24/7 Support",
+//     casual: false,
+//     gold: false,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Analytics",
+//     casual: false,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Custom Integration",
+//     casual: false,
+//     gold: false,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "100GB Cloud Storage",
+//     casual: true,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Full API Access",
+//     casual: false,
+//     gold: false,
+//     silver: false,
+//     platinum: true,
+//   },
+//   {
+//     name: "Team Management",
+//     casual: false,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Custom Reports",
+//     casual: false,
+//     gold: false,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Automated Backups",
+//     casual: true,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Premium Templates",
+//     casual: false,
+//     gold: true,
+//     silver: true,
+//     platinum: true,
+//   },
+//   {
+//     name: "Advanced Security",
+//     casual: false,
+//     gold: false,
+//     silver: true,
+//     platinum: true,
+//   },
+// ];
 export default Subscriptions;
