@@ -1,5 +1,5 @@
-export const SUBSCRIPTION_TYPES = ["Platinum", "Silver", "Gold"] as const;
-export type SubscriptionTier = "Silver" | "Gold" | "Platinum" | "Free";
+export const SUBSCRIPTION_TYPES = ["Platinum", "Gold", "Silver", "Free"] as const;
+export type SubscriptionTier = "Platinum" | "Gold" | "Silver" | "Free";
 
 export const SUBSCRIPTION_CONFIG = {
   TIERS: {
@@ -8,11 +8,32 @@ export const SUBSCRIPTION_CONFIG = {
       duration: 365, // 1 year
       price: 999,
       features: [
+        // Common Features (Available in all plans)
+        "Basic AI style recommendations",
+        "Community chat access",
+        "Basic wardrobe tips",
+        "Digital wardrobe management",
+        
+        // Silver+ Features
+        "Email style support",
+        "Weekly style tips",
+        "Basic wardrobe organization tools",
+        "Limited outfit suggestions",
+        
+        // Gold+ Features
+        "Advanced AI style suggestions",
+        "Priority support during business hours",
+        "Access to style workshops",
+        "Monthly trend updates",
+        "Basic color analysis",
+        "AI-powered outfit combinations",
+        
+        // Platinum Exclusive Features
         "Unlimited AI style recommendations",
-        "8 one-on-one video consultations with top stylists monthly",
-        "Priority booking for emergency style consultations",
+        "8 one-on-one video consultations monthly",
+        "Priority booking for emergency consultations",
         "Personalized wardrobe planning with AI",
-        "Exclusive access to designer collaborations",
+        "Exclusive designer collaborations",
         "Virtual closet organization tools",
         "Trend forecasting reports",
         "Personal shopping assistance",
@@ -20,7 +41,7 @@ export const SUBSCRIPTION_CONFIG = {
         "24/7 style emergency support",
         "Seasonal color analysis",
         "Body shape analysis with AI",
-        "Outfit planning for special events",
+        "Outfit planning for special events"
       ],
       limits: {
         videoConsultations: -1, // unlimited
@@ -36,15 +57,26 @@ export const SUBSCRIPTION_CONFIG = {
       duration: 180, // 6 months
       price: 599,
       features: [
-        "Advanced AI style suggestions",
-        "4 video consultations with professional stylists monthly",
-        "Priority support during business hours",
+        // Common Features
+        "Basic AI style recommendations",
+        "Community chat access",
+        "Basic wardrobe tips",
         "Digital wardrobe management",
-        "Personalized shopping recommendations",
+        
+        // Silver+ Features
+        "Email style support",
+        "Weekly style tips",
+        "Basic wardrobe organization tools",
+        "Limited outfit suggestions",
+        
+        // Gold Features
+        "Advanced AI style suggestions",
+        "4 video consultations monthly",
+        "Priority support during business hours",
         "Access to style workshops",
         "Monthly trend updates",
         "Basic color analysis",
-        "AI-powered outfit combinations",
+        "AI-powered outfit combinations"
       ],
       limits: {
         videoConsultations: 10,
@@ -60,13 +92,18 @@ export const SUBSCRIPTION_CONFIG = {
       duration: 120, // 3 months
       price: 299,
       features: [
+        // Common Features
         "Basic AI style recommendations",
-        "2 video consultations with stylists monthly",
+        "Community chat access",
+        "Basic wardrobe tips",
+        "Digital wardrobe management",
+        
+        // Silver Features
+        "2 video consultations monthly",
         "Email style support",
-        "Basic wardrobe organization tools",
         "Weekly style tips",
-        "Access to style community",
-        "Limited outfit suggestions",
+        "Basic wardrobe organization tools",
+        "Limited outfit suggestions"
       ],
       limits: {
         videoConsultations: 5,
@@ -82,27 +119,28 @@ export const SUBSCRIPTION_CONFIG = {
       duration: 30, // 30 days free trial
       price: 0,
       features: [
+        // Basic Features Only
         "Basic AI style recommendations",
         "1 video consultation per month",
         "Community chat access",
         "Basic wardrobe tips",
-        "Limited AI features trial",
+        "Limited AI features trial"
       ],
       limits: {
-        videoConsultations: 1, // 1 per month
-        aiCredits: 50, // 50 credits for trial
-        styleReports: 2, // 2 reports per month
-        dailyRecommendations: 3, // 3 recommendations per day
-        outfitAnalysis: 5, // 5 analyses per month
+        videoConsultations: 1,
+        aiCredits: 50,
+        styleReports: 2,
+        dailyRecommendations: 3,
+        outfitAnalysis: 5,
         stylePreferences: "basic",
       },
       trialFeatures: {
-        extraVideoCallPrice: 29.99, // Price for additional video calls
-        extraAiCreditsPrice: 9.99, // Price for 50 additional AI credits
-        extraAnalysisPrice: 4.99, // Price per additional outfit analysis
-        validityPeriod: 30, // Days before needing to upgrade
-        maxExtraVideoCalls: 2, // Maximum additional video calls purchasable
-        maxExtraAiCredits: 100, // Maximum additional AI credits purchasable
+        extraVideoCallPrice: 29.99,
+        extraAiCreditsPrice: 9.99,
+        extraAnalysisPrice: 4.99,
+        validityPeriod: 30,
+        maxExtraVideoCalls: 2,
+        maxExtraAiCredits: 100,
         restrictions: [
           "Must upgrade to paid tier after trial period",
           "Extra purchases do not extend trial period",
@@ -149,9 +187,9 @@ export const SUBSCRIPTION_CONFIG = {
   },
   POLICIES: {
     CANCELLATION_POLICY: {
-      allowedUntil: 7, // days after subscription start
+      allowedUntil: 7,
       refundPolicy: "pro-rata",
-      cooldownPeriod: 24, // hours to revert cancellation
+      cooldownPeriod: 24,
       restrictions: [
         "Unused video consultations are non-refundable",
         "AI-generated recommendations will be archived",
@@ -166,7 +204,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
     },
     REFUND_POLICY: {
-      eligibilityPeriod: 7, // days
+      eligibilityPeriod: 7,
       processingTime: "5-7 business days",
       conditions: [
         "Technical issues affecting video consultations",
@@ -211,9 +249,9 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
   VIDEO_CONSULTATION_RULES: {
-    maxDuration: 45, // minutes
-    rescheduleNotice: 24, // hours
-    cancellationNotice: 12, // hours
+    maxDuration: 45,
+    rescheduleNotice: 24,
+    cancellationNotice: 12,
     latePenalty: "counts as completed session",
     specialistTypes: [
       "Personal Stylist",
