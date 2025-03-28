@@ -22,7 +22,6 @@ function AIAssistant() {
   const dispatch = useDispatch();
   const loaders = useSelector(state => state.loaderState.loaders);
   const user=useSelector(state => state.userInfo);
-  console.log("111111111111111",user);
   // const userInfo = useSelector(state => state.auth.userInfo); // Assuming you have user info in auth reducer
   // const subscription = useSelector(state => state.subscription.type); // Assuming you have subscription info
 
