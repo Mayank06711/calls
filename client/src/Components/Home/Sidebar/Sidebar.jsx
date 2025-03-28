@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logoutThunk } from "../../../redux/thunks/login.thunks";
 import { CircularProgress } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getSubscriptionPlansThunk } from "../../../redux/thunks/subscription.thunks";
 
 const MENU_ITEMS = [
   { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats" },
@@ -27,6 +28,7 @@ function Sidebar({ isDarkMode }) {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
   const colors = useSubscriptionColors();
   const isLoggingOut = useSelector((state) => state.auth.isLoggingOut);
+  const subscriptionPlans = useSelector((state) => state.plans);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,6 +39,11 @@ function Sidebar({ isDarkMode }) {
 
   const handleNavigation = (path) => {
     navigate(path);
+    if(path==="/subscriptions"){
+      if(!subscriptionPlans.plans){
+        dispatch(getSubscriptionPlansThunk());
+      }  
+    }
   };
 
   return (
