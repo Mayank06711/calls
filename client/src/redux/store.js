@@ -9,6 +9,7 @@ import {
   socketMetricsReducer,
   subscriptionReducer,
   loaderReducer,
+  subscriptionPlansReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -22,6 +23,7 @@ const store = configureStore({
     socketMetrics: socketMetricsReducer,
     subscription: subscriptionReducer, 
     loaderState: loaderReducer,
+    plans:subscriptionPlansReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
