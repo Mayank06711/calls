@@ -27,6 +27,10 @@ import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle
 import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
 import Likes from "./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes";
 import Posts from "./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts";
+import CasualSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
+import SilverSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription";
+import PlatinumSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription";
+import GoldSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
 
 const theme = createTheme({
   palette: {
@@ -119,7 +123,14 @@ const App = () => {
               {/* Nested routes for main content area */}
               <Route path="/chats" element={<Chats />} />
               <Route path="/reels" element={<Reels />} />
-              <Route path="/subscriptions" element={<Subscriptions />} />
+              
+              <Route path="subscriptions">
+                <Route index element={<Subscriptions />} />
+                <Route path="gold" element={<GoldSubscription />} />
+                <Route path="silver" element={<SilverSubscription />} />
+                <Route path="platinum" element={<PlatinumSubscription />} />
+              </Route>
+
               <Route path="/settings" element={<Settings />} />
               <Route path="/notifications" element={<NotificationPanel />} />
               <Route path="/profile" element={<UserProfile />}>
