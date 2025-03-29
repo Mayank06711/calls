@@ -60,6 +60,7 @@ function Subscriptions() {
       return planOrder[a.type] - planOrder[b.type];
     });
 
+    console.log("transform plan headers",transformedPlanHeaders);
   const getAllFeatures = () => {
     if (!plans) return []; // Return empty array if no plans
 
@@ -140,7 +141,7 @@ function Subscriptions() {
         </p>
       </div>
       {/* table content */}
-      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] && !plans ? (
+      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] || !transformedPlanHeaders ? (
         <SubscriptionSkeleton />
       ) : (
         <table
@@ -156,7 +157,7 @@ function Subscriptions() {
               >
                 Features
               </th>
-              {transformedPlanHeaders.map((plan, index) => (
+              {transformedPlanHeaders?.map((plan, index) => (
                 <th
                   key={plan.type}
                   className={`p-3 text-center text-light-text dark:text-dark-text 
@@ -197,7 +198,7 @@ function Subscriptions() {
                 >
                   {feature.name}
                 </td>
-                {transformedPlanHeaders.map((plan) => (
+                {transformedPlanHeaders?.map((plan) => (
                   <td
                     key={plan.type}
                     className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
@@ -229,7 +230,7 @@ function Subscriptions() {
               <>
                 <tr>
                   <td
-                    colSpan={transformedPlanHeaders.length + 1}
+                    colSpan={transformedPlanHeaders?.length + 1}
                     className="p-3 font-bold text-light-text dark:text-dark-text
                     bg-light-primary dark:bg-dark-primary"
                   >
@@ -245,7 +246,7 @@ function Subscriptions() {
                       {limitKey.replace(/([A-Z])/g, " $1").trim()}{" "}
                       {/* Format camelCase to spaces */}
                     </td>
-                    {transformedPlanHeaders.map((plan) => {
+                    {transformedPlanHeaders?.map((plan) => {
                       const planData = plans.find((p) => p.type === plan.name);
                       const limitValue = planData?.limits[limitKey];
                       return (
@@ -270,12 +271,12 @@ function Subscriptions() {
             )}
             <tr>
               <td className="p-3 bg-light-primary dark:bg-dark-primary rounded-bl-xl"></td>
-              {transformedPlanHeaders.map((plan, index) => (
+              {transformedPlanHeaders?.map((plan, index) => (
                 <td
                   key={plan.type}
                   className={`p-6 bg-light-primary dark:bg-dark-primary
                   ${
-                    index === transformedPlanHeaders.length - 1
+                    index === transformedPlanHeaders?.length - 1
                       ? "rounded-br-xl"
                       : ""
                   }
