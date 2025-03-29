@@ -6,13 +6,14 @@ import AISidebar from "./AISidebar/AISidebar";
 import { Outlet } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
+import { Box, Button, Modal, Typography } from "@mui/material";
 
 function Home() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem("isDarkMode");
     return savedTheme ? JSON.parse(savedTheme) : false;
   });
-
+  const [showTourModal, setShowTourModal] = useState(true);
   const colors = useSubscriptionColors();
   const isAlreadyVerified =
     localStorage.getItem("isAlreadyVerified") === "true";
@@ -27,10 +28,19 @@ function Home() {
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (!isTourCompleted && !isAlreadyVerified) {
-      startTour();
+    if (!isTourCompleted && !isAlreadyVerified &&!showTourModal) {
+        startTour();
     }
-  }, [isAlreadyVerified, isTourCompleted]);
+  }, [isAlreadyVerified, isTourCompleted, showTourModal]);
+
+  const handleStartTour = () => {
+    setShowTourModal(false);
+  };
+
+  const handleSkipTour = () => {
+    setShowTourModal(false);
+    localStorage.setItem("isTourCompleted", "true");
+  };
 
   const startTour = () => {
     const intro = introJs();
@@ -121,6 +131,7 @@ function Home() {
       nextLabel: "Next →",
       prevLabel: "← Back",
       doneLabel: "Finish",
+      showProgress: true,
       tooltipClass: isDarkMode
         ? "introjs-tooltip-dark"
         : "introjs-tooltip-light",
@@ -192,9 +203,32 @@ function Home() {
     document.head.appendChild(style);
 
     intro.start();
+
     intro.oncomplete(() => {
       localStorage.setItem("isTourCompleted", "true"); // Mark tour as completed
     });
+
+    intro.onexit(() => {
+      localStorage.setItem("isTourCompleted", "true"); // Mark tour as completed when exited
+    });
+  };
+
+  // Modal style with subscription colors
+  const modalStyle = {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: 400,
+    bgcolor: isDarkMode
+      ? "rgba(17, 24, 39, 0.95)"
+      : "rgba(255, 255, 255, 0.95)",
+    border: `2px solid ${colors.fourth}`,
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+    backdropFilter: "blur(8px)",
+    outline: "none",
   };
 
   return (
@@ -203,6 +237,65 @@ function Home() {
         isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
       }`}
     >
+      {/* Tour Confirmation Modal */}
+      <Modal
+        open={!isTourCompleted && !isAlreadyVerified && showTourModal}
+        aria-labelledby="tour-modal-title"
+        aria-describedby="tour-modal-description"
+      >
+        <Box sx={modalStyle}>
+          <Typography
+            id="tour-modal-title"
+            variant="h6"
+            component="h2"
+            sx={{
+              color: isDarkMode ? colors.second : colors.fourth,
+              fontWeight: "bold",
+              mb: 2,
+            }}
+          >
+            Welcome to the Application!
+          </Typography>
+          <Typography
+            id="tour-modal-description"
+            sx={{
+              mb: 3,
+              color: isDarkMode ? "#ffffff" : "#000000",
+            }}
+          >
+            Would you like to take a quick tour to learn about the main features
+            and sections of our application?
+          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+            <Button
+              onClick={handleSkipTour}
+              sx={{
+                color: isDarkMode ? colors.second : colors.fourth,
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.05)",
+                },
+              }}
+            >
+              Skip Tour
+            </Button>
+            <Button
+              onClick={handleStartTour}
+              variant="contained"
+              sx={{
+                backgroundColor: colors.fourth,
+                color: isDarkMode ? "#000000" : "#ffffff",
+                "&:hover": {
+                  backgroundColor: colors.second,
+                  color: isDarkMode ? "#ffffff" : "#000000",
+                },
+              }}
+            >
+              Start Tour
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+
       {/* Header */}
       <Headers isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
 
