@@ -140,6 +140,8 @@ export const logoutThunk = () => async (dispatch) => {
       localStorage.removeItem("mobNum");
       localStorage.removeItem("token");
       localStorage.removeItem("isAlreadyVerified");
+      localStorage.removeItem("isTourCompleted");
+
 
       // Clear Redux state
       dispatch({ type: 'LOGOUT_SUCCESS' });
