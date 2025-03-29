@@ -4,8 +4,8 @@ import React from 'react'
 
 function Searchbar({isDarkMode}) {
   return (
-    <div className="flex items-center flex-1 mx-4">
-          <div className={`flex items-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-full px-4 py-2 w-full max-w-md`}>
+    <div className="flex items-center flex-1 mx-4 ">
+          <div className={`tour1 flex items-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-full px-4 py-2 w-full max-w-md`}>
             <IconButton size="small">
               <Search className="text-gray-500" />
             </IconButton>
