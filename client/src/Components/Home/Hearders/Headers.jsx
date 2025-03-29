@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import Searchbar from "./Searchbar/Searchbar";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
@@ -7,10 +7,10 @@ import Notification from "./Notifications/NotificationIcon";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import { useNavigate } from "react-router-dom";
 
+
 function Headers({ isDarkMode, setIsDarkMode }) {
   const colors = useSubscriptionColors();
   const navigate = useNavigate();
-
   const handleClick = (path) => {
     navigate(path);
   };
@@ -29,7 +29,7 @@ function Headers({ isDarkMode, setIsDarkMode }) {
         Know Your Style
       </h1>
       <Searchbar isDarkMode={isDarkMode} />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 step1 tour9">
         <Notification  />
         <UserProfileAvatar/>
         <IconButton
