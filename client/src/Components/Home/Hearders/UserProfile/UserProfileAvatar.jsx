@@ -31,7 +31,7 @@ function UserProfile() {
 
 
   return (
-    <div>
+    <div className='tour10'>
      <IconButton  onClick={() => handleClick("/profile")}>
      <Avatar sx={{width:30,height:30,backgroundColor:colors.fourth}}> {getInitial()}</Avatar>
      </IconButton>
