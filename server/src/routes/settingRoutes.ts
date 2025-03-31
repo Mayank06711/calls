@@ -3,9 +3,19 @@ import { Middleware } from "../middlewares/middlewares";
 import { UserSettings } from "../controllers/settingController";
 const router = Router();
 
-// Settiings routes
+// Settings routes with JWT verification
 router.use(Middleware.VerifyJWT);
-router.post("/create", UserSettings.createSettings);
+
+// Initialize and fetch settings
+router.post("/initialize", UserSettings.initializeSettings);
 router.get("/fetch", UserSettings.getSettings);
-router.patch("/update", UserSettings.updateSettings);
+
+// Specific settings update routes
+router.patch("/theme", UserSettings.updateThemeSettings);
+router.patch("/notifications", UserSettings.updateNotificationSettings);
+router.patch("/privacy", UserSettings.updatePrivacySettings);
+router.patch("/preferences", UserSettings.updatePreferenceSettings);
+router.patch("/layout", UserSettings.updateLayoutSettings);
+router.patch("/accessibility", UserSettings.updateAccessibilitySettings);
+
 export default router;
