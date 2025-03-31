@@ -31,12 +31,12 @@ class UserSettings {
           "create",
           {},
           { userId }
-        );
+        ).then(doc=>doc.toObject());
       }
 
       // Sanitize the response
       const sanitizedSettings = sanitizeData(settings, {
-        exclude: ["__v"],
+        exclude: ["__v","$__", "_doc","$isNew"],
         deep: {
           lastLoginInfo: {
             mask: {
@@ -46,12 +46,14 @@ class UserSettings {
         },
       });
 
-      res.status(200).json(
-        successResponse(
-          sanitizedSettings,
-          "User settings initialized successfully"
-        )
-      );
+      res
+        .status(200)
+        .json(
+          successResponse(
+            sanitizedSettings,
+            "User settings initialized successfully"
+          )
+        );
     } catch (error: any) {
       if (error instanceof ApiError) {
         throw error;
@@ -116,53 +118,6 @@ class UserSettings {
     }
   }
 
-  private static async _updateSettings(req: Request, res: Response) {
-    try {
-      const userId = req.user?._id;
-      if (!userId) {
-        throw new ApiError(401, "Unauthorized access");
-      }
-
-      const settings = await executeModelOperation(
-        UserSettingsModel,
-        "findOneAndUpdate",
-        { queryOptions: { lean: true } },
-        req.body,
-        { userId }
-      );
-
-      if (!settings) {
-        throw new ApiError(404, "Settings not found");
-      }
-
-      // Sanitize the response
-      const sanitizedSettings = sanitizeData(settings, {
-        exclude: ["__v"],
-        deep: {
-          lastLoginInfo: {
-            mask: {
-              ip: { type: "custom", customMask: (ip) => "***.***.***.**" },
-            },
-          },
-        },
-      });
-
-      res.status(200).json({
-        success: true,
-        message: "Settings updated successfully",
-        data: sanitizedSettings,
-      });
-    } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        500,
-        "Internal Server Error: Unable to update user settings"
-      );
-    }
-  }
-
   private static async _updateSpecificSettings(
     req: Request,
     res: Response,
@@ -198,12 +153,14 @@ class UserSettings {
         },
       });
 
-      res.status(200).json(
-        successResponse(
-          sanitizedSettings,
-          `${settingType} settings updated successfully`
-        )
-      );
+      res
+        .status(200)
+        .json(
+          successResponse(
+            sanitizedSettings,
+            `${settingType} settings updated successfully`
+          )
+        );
     } catch (error: any) {
       if (error instanceof ApiError) {
         throw error;
@@ -220,7 +177,10 @@ class UserSettings {
     return UserSettings._updateSpecificSettings(req, res, "theme");
   }
 
-  private static async _updateNotificationSettings(req: Request, res: Response) {
+  private static async _updateNotificationSettings(
+    req: Request,
+    res: Response
+  ) {
     return UserSettings._updateSpecificSettings(req, res, "notifications");
   }
 
@@ -236,7 +196,10 @@ class UserSettings {
     return UserSettings._updateSpecificSettings(req, res, "layout");
   }
 
-  private static async _updateAccessibilitySettings(req: Request, res: Response) {
+  private static async _updateAccessibilitySettings(
+    req: Request,
+    res: Response
+  ) {
     return UserSettings._updateSpecificSettings(req, res, "accessibility");
   }
 
@@ -262,10 +225,6 @@ class UserSettings {
   );
   public static updateAccessibilitySettings = AsyncHandler.wrap(
     UserSettings._updateAccessibilitySettings
-  );
-  
-  public static updateSettings = AsyncHandler.wrap(
-    UserSettings._updateSettings
   );
 }
 
