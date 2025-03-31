@@ -30,6 +30,7 @@ export interface ISubscription extends Document, ISubscriptionMethods {
   extraValidityDays?: number;
   createdAt: Date;
   updatedAt: Date;
+  durationInDays: number;
   // Add only essential referral method
   applyReferralCode(referralCode: string): Promise<void>;
 }
