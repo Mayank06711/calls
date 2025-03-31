@@ -19,7 +19,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
       features: {
         "AI Style Recommendations": "Unlimited",
-        videoChatConsultations: "7 Videos per day",
+        'Video Chat Consultations': "7 Videos per day",
         "Community Access": "Unlimited",
         "Wardrobe Tips": "Premium Tips",
         "Digital Wardrobe Tools": "All Premium Tools",
@@ -60,7 +60,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
       features: {
         "AI Style Recommendations": "50 per day",
-        videoChatConsultations: "4 Videos per day",
+        'Video Chat Consultations': "4 Videos per day",
         "Community Access": "Full Access",
         "Wardrobe Tips": "Advanced Tips",
         "Digital Wardrobe Tools": "Advanced Tools",
@@ -101,7 +101,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
       features: {
         "AI Style Recommendations": "20 per day",
-        videoChatConsultations: "2 Videos per day",
+        'Video Chat Consultations': "2 Videos per day",
         "Community Access": "Basic Access",
         "Wardrobe Tips": "Basic Tips",
         "Digital Wardrobe Tools": "Basic Tools",
@@ -143,7 +143,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
       features: {
         "AI Style Recommendations": "Trial (3/day)", // 0 = trial
-        videoChatConsultations: "1 Trial Call", // 0 = trial
+        'Video Chat Consultations': "1 Trial Call", // 0 = trial
         "Community Access": "Read Only", // 0 = limited
         "Wardrobe Tips": "Basic Tips Only", // 0 = basic
         "Digital Wardrobe Tools": "Preview Only", // 0 = preview
