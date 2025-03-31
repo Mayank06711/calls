@@ -979,21 +979,150 @@ class Subscription {
     }
   }
 
+  // private static async _getSubscriptionPlans(req: Request, res: Response) {
+  //   try {
+  //     if (!SUBSCRIPTION_CONFIG?.TIERS) {
+  //       throw new ApiError(500, "Subscription configuration is not properly initialized");
+  //     }
+  
+  //     const response = {
+  //       plans: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => ({
+  //         type,
+  //         level: config.level,
+  //         features: config.features,
+  //         limits: config.limits,
+  //         support: config.support,
+  //         pricing: config.dailyPricing,
+  //       })),
+  //       rules: {
+  //         subscription: {
+  //           minimumDays: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS,
+  //           maximumDays: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS,
+  //           maximumReferralDiscount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_REFERRAL_DISCOUNT,
+  //           minimumAmount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_AMOUNT,
+  //           featureLevels: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.FEATURE_LEVELS,
+  //           allowedStatusTransitions: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS
+  //         },
+  //         videoConsultation: {
+  //           ...SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
+  //         },
+  //         aiFeatures: {
+  //           ...SUBSCRIPTION_CONFIG.AI_FEATURES
+  //         }
+  //       },
+  //       policies: {
+  //         cancellation: {
+  //           ...SUBSCRIPTION_CONFIG.POLICIES.CANCELLATION_POLICY,
+  //           title: "Cancellation Policy",
+  //           description: "Terms and conditions for cancelling your subscription"
+  //         },
+  //         refund: {
+  //           ...SUBSCRIPTION_CONFIG.POLICIES.REFUND_POLICY,
+  //           title: "Refund Policy",
+  //           description: "Guidelines for refund eligibility and processing"
+  //         },
+  //         upgrade: {
+  //           ...SUBSCRIPTION_CONFIG.POLICIES.UPGRADE_POLICY,
+  //           title: "Upgrade Policy",
+  //           description: "Rules and benefits for upgrading your subscription"
+  //         },
+  //         downgrade: {
+  //           ...SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY,
+  //           title: "Downgrade Policy",
+  //           description: "Terms and conditions for downgrading your subscription"
+  //         }
+  //       },
+  //       payment: {
+  //         methods: Object.entries(SUBSCRIPTION_CONFIG.PAYMENT_METHODS).map(([method, config]) => ({
+  //           method,
+  //           ...config
+  //         }))
+  //       },
+  //     };
+  
+  //     return res.status(200).json(
+  //       successResponse(response, "Subscription plans and policies retrieved successfully")
+  //     );
+  //   } catch (error) {
+  //     if (error instanceof ApiError) throw error;
+  //     throw new ApiError(500, "Error retrieving subscription plans");
+  //   }
+  // }
+
   private static async _getSubscriptionPlans(req: Request, res: Response) {
     try {
       if (!SUBSCRIPTION_CONFIG?.TIERS) {
         throw new ApiError(500, "Subscription configuration is not properly initialized");
       }
   
+      // Define types for our transformed objects
+      type TierValues = [string, string, string, string]; // [Free, Silver, Gold, Platinum]
+      type TierNumericValues = [string | number, string | number, string | number, string | number];
+      
+      interface TransformedFeatures {
+        [key: string]: TierValues;
+      }
+  
+      interface TransformedLimits {
+        [key: string]: TierNumericValues;
+      }
+  
+      interface TransformedSupport {
+        [key: string]: TierValues;
+      }
+  
+      // Create type-safe transformation helper
+      const transformFeature = (key: keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.features): TierValues => [
+        SUBSCRIPTION_CONFIG.TIERS.Free.features[key],
+        SUBSCRIPTION_CONFIG.TIERS.Silver.features[key],
+        SUBSCRIPTION_CONFIG.TIERS.Gold.features[key],
+        SUBSCRIPTION_CONFIG.TIERS.Platinum.features[key]
+      ];
+  
+      const transformLimit = (key: keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.limits): TierNumericValues => [
+        SUBSCRIPTION_CONFIG.TIERS.Free.limits[key],
+        SUBSCRIPTION_CONFIG.TIERS.Silver.limits[key],
+        SUBSCRIPTION_CONFIG.TIERS.Gold.limits[key],
+        SUBSCRIPTION_CONFIG.TIERS.Platinum.limits[key]
+      ];
+  
+      const transformSupport = (key: keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.support): TierValues => [
+        SUBSCRIPTION_CONFIG.TIERS.Free.support[key],
+        SUBSCRIPTION_CONFIG.TIERS.Silver.support[key],
+        SUBSCRIPTION_CONFIG.TIERS.Gold.support[key],
+        SUBSCRIPTION_CONFIG.TIERS.Platinum.support[key]
+      ];
+  
+      // Transform features
+      const transformedFeatures: TransformedFeatures = {};
+      (Object.keys(SUBSCRIPTION_CONFIG.TIERS.Platinum.features) as Array<keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.features>)
+        .forEach(featureKey => {
+          transformedFeatures[featureKey] = transformFeature(featureKey);
+        });
+  
+      // Transform limits
+      const transformedLimits: TransformedLimits = {};
+      (Object.keys(SUBSCRIPTION_CONFIG.TIERS.Platinum.limits) as Array<keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.limits>)
+        .forEach(limitKey => {
+          transformedLimits[limitKey] = transformLimit(limitKey);
+        });
+  
+      // Transform support
+      const transformedSupport: TransformedSupport = {};
+      (Object.keys(SUBSCRIPTION_CONFIG.TIERS.Platinum.support) as Array<keyof typeof SUBSCRIPTION_CONFIG.TIERS.Platinum.support>)
+        .forEach(supportKey => {
+          transformedSupport[supportKey] = transformSupport(supportKey);
+        });
+  
       const response = {
         plans: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => ({
           type,
           level: config.level,
-          features: config.features,
-          limits: config.limits,
-          support: config.support,
           pricing: config.dailyPricing,
         })),
+        features: transformedFeatures,
+        limits: transformedLimits,
+        support: transformedSupport,
         rules: {
           subscription: {
             minimumDays: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS,
@@ -1003,41 +1132,13 @@ class Subscription {
             featureLevels: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.FEATURE_LEVELS,
             allowedStatusTransitions: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS
           },
-          videoConsultation: {
-            ...SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
-          },
-          aiFeatures: {
-            ...SUBSCRIPTION_CONFIG.AI_FEATURES
-          }
+          videoConsultation: SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
+          aiFeatures: SUBSCRIPTION_CONFIG.AI_FEATURES
         },
-        policies: {
-          cancellation: {
-            ...SUBSCRIPTION_CONFIG.POLICIES.CANCELLATION_POLICY,
-            title: "Cancellation Policy",
-            description: "Terms and conditions for cancelling your subscription"
-          },
-          refund: {
-            ...SUBSCRIPTION_CONFIG.POLICIES.REFUND_POLICY,
-            title: "Refund Policy",
-            description: "Guidelines for refund eligibility and processing"
-          },
-          upgrade: {
-            ...SUBSCRIPTION_CONFIG.POLICIES.UPGRADE_POLICY,
-            title: "Upgrade Policy",
-            description: "Rules and benefits for upgrading your subscription"
-          },
-          downgrade: {
-            ...SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY,
-            title: "Downgrade Policy",
-            description: "Terms and conditions for downgrading your subscription"
-          }
-        },
+        policies: SUBSCRIPTION_CONFIG.POLICIES,
         payment: {
-          methods: Object.entries(SUBSCRIPTION_CONFIG.PAYMENT_METHODS).map(([method, config]) => ({
-            method,
-            ...config
-          }))
-        },
+          methods: SUBSCRIPTION_CONFIG.PAYMENT_METHODS
+        }
       };
   
       return res.status(200).json(
