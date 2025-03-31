@@ -135,11 +135,11 @@ export const SUBSCRIPTION_CONFIG = {
       level: 0,
       duration: 7, // 7 days trial
       dailyPricing: [
-        { minDays: 7, maxDays: 15, pricePerDay: 24 },
-        { minDays: 16, maxDays: 30, pricePerDay: 20 },
-        { minDays: 31, maxDays: 90, pricePerDay: 13 },
-        { minDays: 91, maxDays: 180, pricePerDay: 10 },
-        { minDays: 181, maxDays: 365, pricePerDay: 8 },
+        { minDays: 7, maxDays: 15, pricePerDay: 0 },
+        { minDays: 16, maxDays: 30, pricePerDay: 0 },
+        { minDays: 31, maxDays: 90, pricePerDay: 0 },
+        { minDays: 91, maxDays: 180, pricePerDay: 0 },
+        { minDays: 181, maxDays: 365, pricePerDay: 0 },
       ],
       features: {
         "AI Style Recommendations": "Trial (3/day)", // 0 = trial
