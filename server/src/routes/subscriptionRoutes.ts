@@ -19,7 +19,7 @@ router.get("/history", Subscription.getSubscriptionHistory);
 router.get("/update", Subscription.updateSubscription);
 
 // Individual subscription operations (with parameters)
-router.get("/detials/:subscriptionId", Subscription.getSubscriptionDetails);
+router.get("/details/:subscriptionId", Subscription.getSubscriptionDetails);
 router.post(
   "/payment-status/:subscriptionId",
   Subscription.updatePaymentStatus
