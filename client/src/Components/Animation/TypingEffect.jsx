@@ -1,52 +1,61 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-const TypingEffect = ({ text, stopTyping, onComplete }) => {
+const TypingEffect = ({ text, speed = 30, onComplete, stopTyping }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const isTypingRef = useRef(false);
-  const textRef = useRef(text);
 
-  useEffect(() => {
-    textRef.current = text;
-    // Start typing only if not already typing
-    if (!isTypingRef.current) {
-      isTypingRef.current = true;
+  const typeNextCharacter = useCallback(() => {
+    if (!text) return;
+    
+    if (currentIndex < text.length) {
+      // Type character by character
+      const nextChar = text[currentIndex];
+      setDisplayedText(prev => prev + nextChar);
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      // Typing is complete
+      if (onComplete) {
+        onComplete();
+      }
     }
+  }, [currentIndex, text, onComplete]);
 
-    // Handle immediate stop
-    if (stopTyping) {
-      setDisplayedText(text);
-      setCurrentIndex(text.length);
-      onComplete();
-      isTypingRef.current = false;
+  // Reset effect when text changes
+  useEffect(() => {
+    setDisplayedText('');
+    setCurrentIndex(0);
+  }, [text]);
+
+  // Handle typing animation
+  useEffect(() => {
+    if (!text || stopTyping) {
+      // If stopped, show full text immediately
+      setDisplayedText(text || '');
+      setCurrentIndex(text ? text.length : 0);
+      if (onComplete) onComplete();
       return;
     }
 
-    // Continue typing
-    if (currentIndex < text.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
-      }, 30);
+    // Continue typing with delay
+    const timeout = setTimeout(typeNextCharacter, speed);
+    return () => clearTimeout(timeout);
+  }, [text, currentIndex, speed, stopTyping, typeNextCharacter]);
 
-      return () => clearTimeout(timeout);
-    } else if (onComplete) {
-      onComplete();
-      isTypingRef.current = false;
-    }
-  }, [currentIndex, stopTyping, onComplete]);
-
-  // Prevent re-renders from parent component affecting the typing
-  const memoizedDisplay = React.useMemo(() => (
-    <>
-      <span>{displayedText}</span>
-      {currentIndex < text.length && (
-        <span className="inline-block w-1 h-4 ml-1 bg-current animate-pulse" />
+  return (
+    <div className="min-h-[20px]">
+      {displayedText}
+      {currentIndex < (text?.length || 0) && (
+        <span className="animate-pulse ml-[1px]">|</span>
       )}
-    </>
-  ), [displayedText, currentIndex]);
-
-  return memoizedDisplay;
+    </div>
+  );
 };
 
-export default React.memo(TypingEffect);
+// Only re-render when necessary props change
+export default React.memo(TypingEffect, (prevProps, nextProps) => {
+  return (
+    prevProps.text === nextProps.text &&
+    prevProps.stopTyping === nextProps.stopTyping &&
+    prevProps.speed === nextProps.speed
+  );
+});

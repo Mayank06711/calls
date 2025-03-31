@@ -11,6 +11,13 @@ function UserProfile() {
   const navigate=useNavigate();
   const dispatch= useDispatch();
   const userinfo =useSelector((state) => state.userInfo.data);
+  const getInitial = () => {
+    const fullName = localStorage.getItem('fullName');
+    if (fullName) {
+      return fullName.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
   const handleClick=(path)=>{
     if(userinfo){
       navigate(path);
@@ -21,10 +28,12 @@ function UserProfile() {
     
     dispatch(fetchUserInfoThunk());
   }
+
+
   return (
-    <div>
+    <div className='tour10'>
      <IconButton  onClick={() => handleClick("/profile")}>
-     <Avatar sx={{width:30,height:30,backgroundColor:colors.fourth}}>H</Avatar>
+     <Avatar sx={{width:30,height:30,backgroundColor:colors.fourth}}> {getInitial()}</Avatar>
      </IconButton>
 
     </div>

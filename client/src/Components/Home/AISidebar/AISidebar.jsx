@@ -25,7 +25,7 @@ function AISidebar({ isDarkMode }) {
         <div className="relative h-12 ">
           <div className="absolute top-1/2 transform -translate-y-1/2 z-40 ">
             <div
-              className={`relative cursor-pointer ${
+              className={`tour2 relative cursor-pointer ${
                 !isAIOpen ? "-left-10" : "left-1"
               } transition-all duration-700`}
               onClick={() => setIsAIOpen(!isAIOpen)}

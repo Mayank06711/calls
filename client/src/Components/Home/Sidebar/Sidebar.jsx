@@ -10,9 +10,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { logoutThunk } from "../../../redux/thunks/login.thunks";
 import { CircularProgress } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getSubscriptionPlansThunk } from "../../../redux/thunks/subscription.thunks";
 
 const MENU_ITEMS = [
-  { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats" },
+  { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats", },
   {
     icon: <BiSolidBadgeDollar />,
     label: "Subscriptions",
@@ -27,6 +28,7 @@ function Sidebar({ isDarkMode }) {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
   const colors = useSubscriptionColors();
   const isLoggingOut = useSelector((state) => state.auth.isLoggingOut);
+  const subscriptionPlans = useSelector((state) => state.plans);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,23 +39,28 @@ function Sidebar({ isDarkMode }) {
 
   const handleNavigation = (path) => {
     navigate(path);
+    if(path==="/subscriptions"){
+      if(!subscriptionPlans.plans){
+        dispatch(getSubscriptionPlansThunk());
+      }  
+    }
   };
 
   return (
     <nav
-      className={`fixed left-0 top-16 h-[calc(100vh-4rem)] ${
+      className={` fixed left-0 top-16 h-[calc(100vh-4rem)] ${
         isDarkMode ? "bg-gray-800" : "bg-white"
       } shadow-lg 
         ${
           isSidebarExpanded ? "w-48" : "w-16"
         } transition-[width] duration-300 ease-in-out z-40`}
     >
-      <div className="flex flex-col justify-between h-full">
+      <div className="flex flex-col justify-between h-full tour3">
         <div className="py-4">
           {MENU_ITEMS.map((item, index) => (
             <div
               key={index}
-              className="flex items-center px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}
               onMouseEnter={() => setSidebarExpanded(true)}
               onMouseLeave={() => setSidebarExpanded(false)}
               onClick={()=> handleNavigation(item.path)}
@@ -76,7 +83,7 @@ function Sidebar({ isDarkMode }) {
           ))}
         </div>
 
-        <div className="ml-3 mb-5">
+        <div className="ml-3 mb-5 tour8">
           <IconButton onClick={handleLogout} disabled={isLoggingOut}>
             {isLoggingOut ? (
               <CircularProgress size={24} style={{ color: colors.fourth }} />

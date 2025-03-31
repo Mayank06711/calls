@@ -313,3 +313,130 @@
   font-size: 18px;
   margin-bottom: 10px;
 }
+
+/* date range picker style *************/
+
+/* Add this to your global CSS file */
+.rdrDayDisabled {
+  background-color: transparent ;
+  opacity: 0.5;
+  
+}
+
+.rdrDayDisabled .rdrDayNumber span {
+  color: #9CA3AF ;
+ 
+  font-style: italic;
+}
+
+/* Dark mode disabled date styles */
+.dark .rdrDayDisabled {
+  background-color: transparent !important;
+  opacity: 0.5;
+  
+}
+
+.dark .rdrDayDisabled .rdrDayNumber span {
+  color: #4B5563 ;
+  font-style: italic;
+  
+}
+
+.dark .rdrCalendarWrapper {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+.dark .rdrDateDisplayWrapper {
+  background-color: #1f2937;
+}
+
+.dark .rdrDateDisplay input {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+.dark .rdrMonth {
+  background-color: #111827;
+}
+
+.dark .rdrDayNumber span {
+  color: #f9fafb;
+}
+
+.dark .rdrDayToday .rdrDayNumber span:after {
+  background: #60a5fa;
+}
+
+.dark .rdrDateRangeWrapper {
+  background-color: #111827;
+}
+
+.dark .rdrDefinedRangesWrapper {
+  background-color: #1f2937;
+  border-right: 1px solid #374151;
+}
+
+.dark .rdrStaticRange {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+.dark .rdrInputRange input {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+/* Styling for selected range start and end dates */
+.date-range-custom .rdrStartEdge,
+.date-range-custom .rdrEndEdge {
+  background-color: #1d4ed8 !important; /* Darker blue for edges */
+}
+
+.date-range-custom .rdrInRange {
+  background-color: #3b82f6 !important; /* Regular blue for range */
+  opacity: 0.7;
+}
+
+/* Dark mode adjustments */
+.dark .date-range-custom .rdrStartEdge,
+.dark .date-range-custom .rdrEndEdge {
+  background-color: #1e40af !important; /* Even darker blue for dark mode */
+}
+
+.dark .date-range-custom .rdrInRange {
+  background-color: #3b82f6 !important;
+  opacity: 0.5;
+}
+
+/* Hover effects for better interaction */
+.date-range-custom .rdrDay:not(.rdrDayDisabled):hover .rdrDayNumber span {
+  border-color: #1d4ed8;
+}
+
+.dark .date-range-custom .rdrDay:not(.rdrDayDisabled):hover .rdrDayNumber span {
+  border-color: #1e40af;
+}
+
+/* Selected date text color */
+.date-range-custom .rdrStartEdge .rdrDayNumber span,
+.date-range-custom .rdrEndEdge .rdrDayNumber span {
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Day number styling for in-range dates */
+.date-range-custom .rdrInRange .rdrDayNumber span {
+  color: white !important;
+}
+
+/* Additional styles for better visibility */
+.date-range-custom .rdrDayStartPreview,
+.date-range-custom .rdrDayEndPreview {
+  border-color: #1d4ed8 !important;
+}
+
+.dark .date-range-custom .rdrDayStartPreview,
+.dark .date-range-custom .rdrDayEndPreview {
+  border-color: #1e40af !important;
+}
