@@ -14,7 +14,7 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       mode: {
         type: String,
         enum: ["light", "dark", "system"],
-        default: "system",
+        default: "dark",
       },
       primaryColor: String,
       fontSize: {
@@ -73,10 +73,12 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       weekStartDay: {
         type: String,
         enum: ["sunday", "monday"],
+        default:"monday"
       },
       measurements: {
         type: String,
         enum: ["metric", "imperial"],
+        default:"metric"
       },
     },
 
@@ -87,6 +89,7 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       defaultView: {
         type: String,
         enum: ["grid", "list"],
+        default:"grid"
       },
       customLayout: {
         widgets: [String],
@@ -103,6 +106,7 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       cursorSize: {
         type: String,
         enum: ["default", "large"],
+        default:"default"
       },
     },
 
