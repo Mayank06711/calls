@@ -23,12 +23,34 @@ class Subscription {
     return SUBSCRIPTION_CONFIG.TIERS[tier]?.level || 0;
   };
 
-  public static getSubscriptionPrice = (tier: SubscriptionTier): number => {
-    return SUBSCRIPTION_CONFIG.TIERS[tier]?.price || 0;
-  };
+  private static calculatePriceForDuration(
+    tier: SubscriptionTier,
+    numberOfDays: number
+  ): number {
+    if (tier === "Free") return 0;
 
-  public static getSubscriptionDuration = (tier: SubscriptionTier): number => {
-    return SUBSCRIPTION_CONFIG.TIERS[tier]?.duration || 0;
+    const pricingTiers = SUBSCRIPTION_CONFIG.TIERS[tier].dailyPricing;
+    const applicableTier = pricingTiers.find(
+      (pricing) =>
+        numberOfDays >= pricing.minDays && numberOfDays <= pricing.maxDays
+    );
+
+    if (!applicableTier) {
+      throw new ApiError(
+        400,
+        `Invalid duration. Must be between ${SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS} and ${SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS} days`
+      );
+    }
+
+    return Math.round(applicableTier.pricePerDay * numberOfDays);
+  }
+
+  public static getSubscriptionPrice = (tier: SubscriptionTier): number => {
+    if (tier === "Free") return 0;
+    const pricingTiers = SUBSCRIPTION_CONFIG.TIERS[tier].dailyPricing;
+    if (!pricingTiers || !pricingTiers.length) return 0;
+    // Return the base price (first tier's price per day)
+    return pricingTiers[0].pricePerDay;
   };
 
   public static isValidUpgrade = (currentTier: any, newTier: any): boolean => {
@@ -49,7 +71,8 @@ class Subscription {
 
   private static calculateProRatedAmount(
     currentSubscription: ISubscription,
-    newType: SubscriptionTier
+    newType: SubscriptionTier,
+    numberOfDays: number
   ): { creditAmount: number; newAmount: number } {
     // If downgrading to Free tier, no credit or new amount is needed
     if (newType === "Free") {
@@ -63,35 +86,38 @@ class Subscription {
     if (currentSubscription.type === "Free") {
       return {
         creditAmount: 0,
-        newAmount: Subscription.getSubscriptionPrice(newType),
+        newAmount: Subscription.calculatePriceForDuration(
+          newType,
+          numberOfDays
+        ),
       };
     }
 
     // Calculate pro-rated amount for paid tier transitions
     const daysRemaining = currentSubscription.getDaysRemaining();
-    const currentDuration = Subscription.getSubscriptionDuration(
-      currentSubscription.type
+    const currentDailyRate =
+      currentSubscription.amount / currentSubscription.durationInDays;
+
+    // Calculate credit amount based on remaining days
+    const creditAmount = Math.round(currentDailyRate * daysRemaining);
+
+    // Calculate new amount based on new subscription duration
+    const newAmount = Subscription.calculatePriceForDuration(
+      newType,
+      numberOfDays
     );
 
-    // Safety check for division by zero or negative duration
-    if (currentDuration <= 0) {
-      return {
-        creditAmount: 0,
-        newAmount: Subscription.getSubscriptionPrice(newType),
-      };
-    }
+    // Final amount after applying credit
+    const finalAmount = Math.max(0, newAmount - creditAmount);
 
-    const dailyRate = currentSubscription.amount / currentDuration;
-    const creditAmount = Math.round(dailyRate * daysRemaining);
-    const newBaseAmount = Subscription.getSubscriptionPrice(newType);
-    const newAmount = Math.max(0, newBaseAmount - creditAmount);
-
-    return { creditAmount, newAmount };
+    return { creditAmount, newAmount: finalAmount };
   }
 
+  // Update calculateUpgradeDetails method
   private static calculateUpgradeDetails(
     currentSubscription: ISubscription,
     newType: SubscriptionType,
+    numberOfDays: number,
     referralDiscount: number = 0
   ): {
     startDate: Date;
@@ -102,17 +128,16 @@ class Subscription {
   } {
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(
-      endDate.getDate() + Subscription.getSubscriptionDuration(newType)
-    );
+    endDate.setDate(startDate.getDate() + numberOfDays);
 
     const { creditAmount, newAmount } = Subscription.calculateProRatedAmount(
       currentSubscription,
-      newType
+      newType,
+      numberOfDays
     );
 
     // Apply referral discount if any
-    const finalAmount = (newAmount * (1 - referralDiscount * 100)) / 100;
+    const finalAmount = Math.round(newAmount * (1 - referralDiscount / 100));
 
     const upgradeDetails = {
       previousType: currentSubscription.type,
@@ -120,6 +145,7 @@ class Subscription {
       proRatedCredit: creditAmount,
       previousEndDate: currentSubscription.endDate,
       previousAmount: currentSubscription.amount,
+      previousDurationInDays: currentSubscription.durationInDays,
     };
 
     return {
@@ -281,7 +307,22 @@ class Subscription {
         throw new ApiError(401, "Unauthorized access");
       }
 
-      const { type, referralCode } = req.body;
+      const { type, referralCode, numberOfDays } = req.body;
+
+      // Validate number of days
+      if (!numberOfDays || typeof numberOfDays !== "number") {
+        throw new ApiError(400, "Number of days is required");
+      }
+
+      if (
+        numberOfDays < SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS ||
+        numberOfDays > SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS
+      ) {
+        throw new ApiError(
+          400,
+          `Subscription duration must be between ${SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS} and ${SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS} days`
+        );
+      }
 
       // Validate subscription type using type guard
       if (!Subscription.isValidSubscriptionTier(type)) {
@@ -318,7 +359,7 @@ class Subscription {
         ) {
           throw new ApiError(
             400,
-            `You have a pending ${existingSubscription.type} subscription request, Please either cancel or first get that subscription`
+            `You have a pending ${existingSubscription.type} subscription request, Please make payment if paid raise complain.`
           );
         }
 
@@ -341,12 +382,12 @@ class Subscription {
       const result = await withTransaction(async (session) => {
         const startDate = new Date();
         const endDate = new Date();
-        endDate.setDate(
-          endDate.getDate() +
-            Subscription.getSubscriptionDuration(subscriptionType)
+        endDate.setDate(startDate.getDate() + numberOfDays);
+        // Calculate base price using daily pricing
+        let finalAmount = Subscription.calculatePriceForDuration(
+          subscriptionType,
+          numberOfDays
         );
-
-        let finalAmount = Subscription.getSubscriptionPrice(subscriptionType);
         let upgradeDetails = null;
 
         // Handle upgrade scenario
@@ -354,7 +395,8 @@ class Subscription {
           let { creditAmount, newAmount } =
             Subscription.calculateProRatedAmount(
               existingSubscription,
-              subscriptionType
+              subscriptionType,
+              numberOfDays
             );
 
           finalAmount = newAmount;
@@ -364,6 +406,7 @@ class Subscription {
             proRatedCredit: creditAmount,
             previousEndDate: existingSubscription.endDate,
             previousAmount: existingSubscription.amount,
+            previousDurationInDays: existingSubscription.durationInDays
           };
         }
 
@@ -455,6 +498,7 @@ class Subscription {
           startDate,
           endDate,
           amount: finalAmount,
+          durationInDays: numberOfDays,
           historyId: subscriptionHistory._id,
           ...(referralData.referralId && {
             referralId: referralData.referralId,
@@ -480,7 +524,6 @@ class Subscription {
             : undefined
         );
 
-        console.log(newSubscription);
         // Update subscription history with minimal required fields
         const historyEntry = {
           subscriptionId: newSubscription._id,
@@ -938,66 +981,116 @@ class Subscription {
 
   private static async _getSubscriptionPlans(req: Request, res: Response) {
     try {
-      // Check if SUBSCRIPTION_CONFIG and TIERS exist
       if (!SUBSCRIPTION_CONFIG?.TIERS) {
-        throw new ApiError(
-          500,
-          "Subscription configuration is not properly initialized"
-        );
+        throw new ApiError(500, "Subscription configuration is not properly initialized");
       }
-      const plans = Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(
-        ([type, config]) => ({
+  
+      const plans = Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => {
+        // Base plan structure
+        const basePlan = {
           type,
-          price: config.price,
-          duration: config.duration,
+          level: config.level,
           features: config.features,
           limits: config.limits,
-        })
+          support: config.support
+        };
+  
+        // Add pricing for paid tiers
+        if (type !== 'Free' && 'dailyPricing' in config) {
+          return {
+            ...basePlan,
+            pricing: config.dailyPricing
+          };
+        }
+  
+        // For Free tier
+        return {
+          ...basePlan,
+          duration: (config as typeof SUBSCRIPTION_CONFIG.TIERS.Free).duration
+        };
+      });
+  
+      return res.status(200).json(
+        successResponse(plans, "Subscription plans retrieved successfully")
       );
-
-      return res
-        .status(200)
-        .json(
-          successResponse(plans, "Subscription plans retrieved successfully")
-        );
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Error retrieving subscription plans");
     }
   }
-
+  
   private static async _getSubscriptionConfig(req: Request, res: Response) {
     try {
       const config = {
-        tiers: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(
-          ([type, config]) => ({
+        tiers: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => {
+          // Base structure for all tiers
+          const tierConfig = {
             type,
-            price: config.price,
-            duration: config.duration,
+            level: config.level,
             features: config.features,
             limits: config.limits,
-          })
-        ),
+            support: config.support
+          };
+  
+          // Type guard to check if tier has dailyPricing
+          if (type !== 'Free' && 'dailyPricing' in config) {
+            const paidConfig = config as typeof SUBSCRIPTION_CONFIG.TIERS.Silver | 
+                                     typeof SUBSCRIPTION_CONFIG.TIERS.Gold | 
+                                     typeof SUBSCRIPTION_CONFIG.TIERS.Platinum;
+            
+            return {
+              ...tierConfig,
+              pricing: paidConfig.dailyPricing.map(pricing => ({
+                duration: {
+                  min: pricing.minDays,
+                  max: pricing.maxDays
+                },
+                pricePerDay: pricing.pricePerDay,
+                examples: {
+                  minDuration: {
+                    days: pricing.minDays,
+                    totalPrice: pricing.pricePerDay * pricing.minDays
+                  },
+                  maxDuration: {
+                    days: pricing.maxDays,
+                    totalPrice: pricing.pricePerDay * pricing.maxDays
+                  }
+                }
+              }))
+            };
+          }
+  
+          // For Free tier
+          return {
+            ...tierConfig,
+            duration: (config as typeof SUBSCRIPTION_CONFIG.TIERS.Free).duration
+          };
+        }),
+        rules: {
+          duration: {
+            minimum: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS,
+            maximum: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS
+          },
+          referral: {
+            maximumDiscount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_REFERRAL_DISCOUNT
+          },
+          featureLevels: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.FEATURE_LEVELS,
+          statusTransitions: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS
+        },
         paymentMethods: SUBSCRIPTION_CONFIG.PAYMENT_METHODS,
-        subscriptionRules: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES,
         policies: {
           cancellation: SUBSCRIPTION_CONFIG.POLICIES.CANCELLATION_POLICY,
           refund: SUBSCRIPTION_CONFIG.POLICIES.REFUND_POLICY,
           upgrade: SUBSCRIPTION_CONFIG.POLICIES.UPGRADE_POLICY,
-          downgrade: SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY,
+          downgrade: SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY
         },
         videoConsultationRules: SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
-        aiFeatures: SUBSCRIPTION_CONFIG.AI_FEATURES,
+        aiFeatures: SUBSCRIPTION_CONFIG.AI_FEATURES
       };
-
-      return res
-        .status(200)
-        .json(
-          successResponse(
-            config,
-            "Subscription configuration retrieved successfully"
-          )
-        );
+  
+      return res.status(200).json(
+        successResponse(config, "Subscription configuration retrieved successfully")
+      );
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Error retrieving subscription configuration");
