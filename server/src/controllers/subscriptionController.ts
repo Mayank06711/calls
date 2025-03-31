@@ -406,7 +406,7 @@ class Subscription {
             proRatedCredit: creditAmount,
             previousEndDate: existingSubscription.endDate,
             previousAmount: existingSubscription.amount,
-            previousDurationInDays: existingSubscription.durationInDays
+            previousDurationInDays: existingSubscription.durationInDays,
           };
         }
 
@@ -985,112 +985,153 @@ class Subscription {
         throw new ApiError(500, "Subscription configuration is not properly initialized");
       }
   
-      const plans = Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => {
-        // Base plan structure
-        const basePlan = {
+      const response = {
+        plans: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => ({
           type,
           level: config.level,
           features: config.features,
           limits: config.limits,
-          support: config.support
-        };
-  
-        // Add pricing for paid tiers
-        if (type !== 'Free' && 'dailyPricing' in config) {
-          return {
-            ...basePlan,
-            pricing: config.dailyPricing
-          };
-        }
-  
-        // For Free tier
-        return {
-          ...basePlan,
-          duration: (config as typeof SUBSCRIPTION_CONFIG.TIERS.Free).duration
-        };
-      });
+          support: config.support,
+          pricing: config.dailyPricing,
+        })),
+        rules: {
+          subscription: {
+            minimumDays: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS,
+            maximumDays: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS,
+            maximumReferralDiscount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_REFERRAL_DISCOUNT,
+            minimumAmount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_AMOUNT,
+            featureLevels: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.FEATURE_LEVELS,
+            allowedStatusTransitions: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS
+          },
+          videoConsultation: {
+            ...SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
+          },
+          aiFeatures: {
+            ...SUBSCRIPTION_CONFIG.AI_FEATURES
+          }
+        },
+        policies: {
+          cancellation: {
+            ...SUBSCRIPTION_CONFIG.POLICIES.CANCELLATION_POLICY,
+            title: "Cancellation Policy",
+            description: "Terms and conditions for cancelling your subscription"
+          },
+          refund: {
+            ...SUBSCRIPTION_CONFIG.POLICIES.REFUND_POLICY,
+            title: "Refund Policy",
+            description: "Guidelines for refund eligibility and processing"
+          },
+          upgrade: {
+            ...SUBSCRIPTION_CONFIG.POLICIES.UPGRADE_POLICY,
+            title: "Upgrade Policy",
+            description: "Rules and benefits for upgrading your subscription"
+          },
+          downgrade: {
+            ...SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY,
+            title: "Downgrade Policy",
+            description: "Terms and conditions for downgrading your subscription"
+          }
+        },
+        payment: {
+          methods: Object.entries(SUBSCRIPTION_CONFIG.PAYMENT_METHODS).map(([method, config]) => ({
+            method,
+            ...config
+          }))
+        },
+      };
   
       return res.status(200).json(
-        successResponse(plans, "Subscription plans retrieved successfully")
+        successResponse(response, "Subscription plans and policies retrieved successfully")
       );
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Error retrieving subscription plans");
     }
   }
-  
+
   private static async _getSubscriptionConfig(req: Request, res: Response) {
     try {
       const config = {
-        tiers: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(([type, config]) => {
-          // Base structure for all tiers
-          const tierConfig = {
-            type,
-            level: config.level,
-            features: config.features,
-            limits: config.limits,
-            support: config.support
-          };
-  
-          // Type guard to check if tier has dailyPricing
-          if (type !== 'Free' && 'dailyPricing' in config) {
-            const paidConfig = config as typeof SUBSCRIPTION_CONFIG.TIERS.Silver | 
-                                     typeof SUBSCRIPTION_CONFIG.TIERS.Gold | 
-                                     typeof SUBSCRIPTION_CONFIG.TIERS.Platinum;
-            
+        tiers: Object.entries(SUBSCRIPTION_CONFIG.TIERS).map(
+          ([type, config]) => {
+            // Base structure for all tiers
+            const tierConfig = {
+              type,
+              level: config.level,
+              features: config.features,
+              limits: config.limits,
+              support: config.support,
+            };
+
+            // Type guard to check if tier has dailyPricing
+            if (type !== "Free" && "dailyPricing" in config) {
+              const paidConfig = config as
+                | typeof SUBSCRIPTION_CONFIG.TIERS.Silver
+                | typeof SUBSCRIPTION_CONFIG.TIERS.Gold
+                | typeof SUBSCRIPTION_CONFIG.TIERS.Platinum;
+
+              return {
+                ...tierConfig,
+                pricing: paidConfig.dailyPricing.map((pricing) => ({
+                  duration: {
+                    min: pricing.minDays,
+                    max: pricing.maxDays,
+                  },
+                  pricePerDay: pricing.pricePerDay,
+                  examples: {
+                    minDuration: {
+                      days: pricing.minDays,
+                      totalPrice: pricing.pricePerDay * pricing.minDays,
+                    },
+                    maxDuration: {
+                      days: pricing.maxDays,
+                      totalPrice: pricing.pricePerDay * pricing.maxDays,
+                    },
+                  },
+                })),
+              };
+            }
+
+            // For Free tier
             return {
               ...tierConfig,
-              pricing: paidConfig.dailyPricing.map(pricing => ({
-                duration: {
-                  min: pricing.minDays,
-                  max: pricing.maxDays
-                },
-                pricePerDay: pricing.pricePerDay,
-                examples: {
-                  minDuration: {
-                    days: pricing.minDays,
-                    totalPrice: pricing.pricePerDay * pricing.minDays
-                  },
-                  maxDuration: {
-                    days: pricing.maxDays,
-                    totalPrice: pricing.pricePerDay * pricing.maxDays
-                  }
-                }
-              }))
+              duration: (config as typeof SUBSCRIPTION_CONFIG.TIERS.Free)
+                .duration,
             };
           }
-  
-          // For Free tier
-          return {
-            ...tierConfig,
-            duration: (config as typeof SUBSCRIPTION_CONFIG.TIERS.Free).duration
-          };
-        }),
+        ),
         rules: {
           duration: {
             minimum: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MINIMUM_DAYS,
-            maximum: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS
+            maximum: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_DAYS,
           },
           referral: {
-            maximumDiscount: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_REFERRAL_DISCOUNT
+            maximumDiscount:
+              SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.MAXIMUM_REFERRAL_DISCOUNT,
           },
           featureLevels: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.FEATURE_LEVELS,
-          statusTransitions: SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS
+          statusTransitions:
+            SUBSCRIPTION_CONFIG.SUBSCRIPTION_RULES.STATUS_TRANSITIONS,
         },
         paymentMethods: SUBSCRIPTION_CONFIG.PAYMENT_METHODS,
         policies: {
           cancellation: SUBSCRIPTION_CONFIG.POLICIES.CANCELLATION_POLICY,
           refund: SUBSCRIPTION_CONFIG.POLICIES.REFUND_POLICY,
           upgrade: SUBSCRIPTION_CONFIG.POLICIES.UPGRADE_POLICY,
-          downgrade: SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY
+          downgrade: SUBSCRIPTION_CONFIG.POLICIES.DOWNGRADE_POLICY,
         },
         videoConsultationRules: SUBSCRIPTION_CONFIG.VIDEO_CONSULTATION_RULES,
-        aiFeatures: SUBSCRIPTION_CONFIG.AI_FEATURES
+        aiFeatures: SUBSCRIPTION_CONFIG.AI_FEATURES,
       };
-  
-      return res.status(200).json(
-        successResponse(config, "Subscription configuration retrieved successfully")
-      );
+
+      return res
+        .status(200)
+        .json(
+          successResponse(
+            config,
+            "Subscription configuration retrieved successfully"
+          )
+        );
     } catch (error) {
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Error retrieving subscription configuration");
