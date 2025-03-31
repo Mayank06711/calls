@@ -18,35 +18,35 @@ export const SUBSCRIPTION_CONFIG = {
         { minDays: 181, maxDays: 365, pricePerDay: 8 },
       ],
       features: {
-        aiStyleRecommendations: 3, // 3 = unlimited
-        videoChatConsultations: 8, // 8 per month
-        communityAccess: 3, // 3 = full access
-        wardrobeTips: 3, // 3 = advanced tips
-        digitalWardrobeTools: 3, // 3 = all tools
-        emailSupport: 3, // 3 = priority
-        styleWorkshops: 3, // 3 = unlimited access
-        trendUpdates: 3, // 3 = daily updates
-        colorAnalysis: 3, // 3 = advanced analysis
-        outfitSuggestions: 3, // 3 = unlimited
-        emergencyConsultations: 2, // 2 = available
-        designerCollaborations: 2, // 2 = access
-        personalShopping: 2, // 2 = available
-        styleEvents: 2, // 2 = VIP access
-        bodyShapeAnalysis: 2, // 2 = advanced
+        aiStyleRecommendations: "Unlimited",
+        videoChatConsultations: "7 Videos per day",
+        communityAccess: "Unlimited",
+        wardrobeTips: "Unlimited",
+        digitalWardrobeTools: "All",
+        emailSupport: "Unlimited",
+        styleWorkshops: "Unlimited",
+        trendUpdates: "3 Per day",
+        colorAnalysis: "Unlimited",
+        outfitSuggestions: "Unlimited",
+        emergencyConsultations: "3 Per day",
+        designerCollaborations: "Unlimited",
+        personalShopping: "Unlimited",
+        styleEvents: "3 Per month",
+        bodyShapeAnalysis: "Unlimited",
       },
       limits: {
-        videoCallsPerMonth: -1, // unlimited
-        aiCreditsPerMonth: -1, // unlimited
-        styleReportsPerMonth: -1, // unlimited
-        dailyOutfitSuggestions: -1, // unlimited
+        videoCallsPerMonth: 210,
+        aiCreditsPerMonth: "Unlimited",
+        styleReportsPerMonth: "Unlimited",
+        dailyOutfitSuggestions: "Unlimited",
         wardrobeItemsLimit: 1000,
-        priorityQueuePosition: 1,
+        priorityQueuePosition: "Top",
       },
       support: {
-        responseTime: 1, // 1 hour
-        supportChannels: 3, // all channels
-        priorityLevel: 3, // highest
-        dedicatedStylist: 2, // yes
+        responseTime: "Max 5 Minutes", // 1 hour
+        supportChannels: "3 Priority Channels", // all channels
+        priorityLevel: "Top", // highest
+        dedicatedStylist: "1 Highest Rated", // yes
       },
     },
     Gold: {
@@ -59,35 +59,35 @@ export const SUBSCRIPTION_CONFIG = {
         { minDays: 181, maxDays: 365, pricePerDay: 5 },
       ],
       features: {
-        aiStyleRecommendations: 2, // 2 = advanced
-        videoChatConsultations: 4, // 4 per month
-        communityAccess: 2, // 2 = enhanced access
-        wardrobeTips: 2, // 2 = intermediate tips
-        digitalWardrobeTools: 2, // 2 = enhanced tools
-        emailSupport: 2, // 2 = priority
-        styleWorkshops: 2, // 2 = limited access
-        trendUpdates: 2, // 2 = weekly updates
-        colorAnalysis: 2, // 2 = basic analysis
-        outfitSuggestions: 2, // 2 = enhanced
-        emergencyConsultations: 1, // 1 = limited
-        designerCollaborations: 1, // 1 = limited
-        personalShopping: 1, // 1 = basic
-        styleEvents: 1, // 1 = basic access
-        bodyShapeAnalysis: 1, // 1 = basic
+        aiStyleRecommendations: "Limited to 50/day",
+        videoChatConsultations: "4 Videos per day",
+        communityAccess: "Full Access",
+        wardrobeTips: "Advanced",
+        digitalWardrobeTools: "Standard Set",
+        emailSupport: "Priority",
+        styleWorkshops: "15 per month",
+        trendUpdates: "2 Per day",
+        colorAnalysis: "Advanced",
+        outfitSuggestions: "50 per day",
+        emergencyConsultations: "1 Per day",
+        designerCollaborations: "Basic Access",
+        personalShopping: "Available",
+        styleEvents: "1 Per month",
+        bodyShapeAnalysis: "Standard",
       },
       limits: {
-        videoCallsPerMonth: 10,
-        aiCreditsPerMonth: 500,
-        styleReportsPerMonth: 100,
+        videoCallsPerMonth: 120,
+        aiCreditsPerMonth: 1500,
+        styleReportsPerMonth: 50,
         dailyOutfitSuggestions: 50,
         wardrobeItemsLimit: 500,
-        priorityQueuePosition: 2,
+        priorityQueuePosition: "High",
       },
       support: {
-        responseTime: 4, // 4 hours
-        supportChannels: 2, // email + chat
-        priorityLevel: 2, // medium
-        dedicatedStylist: 1, // shared
+        responseTime: "2 Hours",
+        supportChannels: "2 Priority Channels",
+        priorityLevel: "High",
+        dedicatedStylist: "Shared Pool",
       },
     },
     Silver: {
@@ -100,71 +100,78 @@ export const SUBSCRIPTION_CONFIG = {
         { minDays: 181, maxDays: 365, pricePerDay: 2 },
       ],
       features: {
-        aiStyleRecommendations: 1, // 1 = basic
-        videoChatConsultations: 2, // 2 per month
-        communityAccess: 1, // 1 = basic access
-        wardrobeTips: 1, // 1 = basic tips
-        digitalWardrobeTools: 1, // 1 = basic tools
-        emailSupport: 1, // 1 = standard
-        styleWorkshops: 1, // 1 = basic access
-        trendUpdates: 1, // 1 = monthly updates
-        colorAnalysis: 1, // 1 = basic
-        outfitSuggestions: 1, // 1 = basic
-        emergencyConsultations: 0, // 0 = not available
-        designerCollaborations: 0, // 0 = not available
-        personalShopping: 0, // 0 = not available
-        styleEvents: 0, // 0 = not available
-        bodyShapeAnalysis: 0, // 0 = not available
+        aiStyleRecommendations: "Limited to 20/day",
+        videoChatConsultations: "2 Videos per day",
+        communityAccess: "Basic Access",
+        wardrobeTips: "Basic",
+        digitalWardrobeTools: "Basic Set",
+        emailSupport: "Standard",
+        styleWorkshops: "5 per month",
+        trendUpdates: "1 Per day",
+        colorAnalysis: "Basic",
+        outfitSuggestions: "20 per day",
+        emergencyConsultations: "2 Per month",
+        designerCollaborations: "View Only",
+        personalShopping: "Basic",
+        styleEvents: "Regular Access",
+        bodyShapeAnalysis: "Basic",
       },
       limits: {
-        videoCallsPerMonth: 5,
-        aiCreditsPerMonth: 200,
-        styleReportsPerMonth: 50,
+        videoCallsPerMonth: 60,
+        aiCreditsPerMonth: 600,
+        styleReportsPerMonth: 20,
         dailyOutfitSuggestions: 20,
         wardrobeItemsLimit: 200,
-        priorityQueuePosition: 3,
+        priorityQueuePosition: "Standard",
       },
       support: {
-        responseTime: 24, // 24 hours
-        supportChannels: 1, // email only
-        priorityLevel: 1, // low
-        dedicatedStylist: 0, // no
+        responseTime: "24 Hours",
+        supportChannels: "Email + Chat",
+        priorityLevel: "Standard",
+        dedicatedStylist: "No",
       },
     },
     Free: {
       level: 0,
+      duration: 7, // 7 days trial
+      dailyPricing: [
+        { minDays: 7, maxDays: 15, pricePerDay: 24 },
+        { minDays: 16, maxDays: 30, pricePerDay: 20 },
+        { minDays: 31, maxDays: 90, pricePerDay: 13 },
+        { minDays: 91, maxDays: 180, pricePerDay: 10 },
+        { minDays: 181, maxDays: 365, pricePerDay: 8 },
+      ],
       features: {
-        aiStyleRecommendations: 0, // 0 = trial
-        videoChatConsultations: 1, // 1 per month
-        communityAccess: 0, // 0 = limited
-        wardrobeTips: 0, // 0 = basic
-        digitalWardrobeTools: 0, // 0 = basic
-        emailSupport: 0, // 0 = basic
-        styleWorkshops: 0, // 0 = none
-        trendUpdates: 0, // 0 = none
-        colorAnalysis: 0, // 0 = none
-        outfitSuggestions: 0, // 0 = limited
-        emergencyConsultations: 0, // 0 = not available
-        designerCollaborations: 0, // 0 = not available
-        personalShopping: 0, // 0 = not available
-        styleEvents: 0, // 0 = not available
-        bodyShapeAnalysis: 0, // 0 = not available
+        aiStyleRecommendations: "Trial (3/day)", // 0 = trial
+        videoChatConsultations: "1 Trial Call", // 0 = trial
+        communityAccess: "Read Only", // 0 = limited
+        wardrobeTips: "Basic Tips Only", // 0 = basic
+        digitalWardrobeTools: "Preview Only", // 0 = preview
+        emailSupport: "Basic", // 0 = basic
+        styleWorkshops: "Preview Only", // 0 = preview
+        trendUpdates: "Weekly Only", // 0 = limited
+        colorAnalysis: "Basic Only", // 0 = basic
+        outfitSuggestions: "3 per day", // 0 = trial
+        emergencyConsultations: "Not Available", // 0 = none
+        designerCollaborations: "Not Available", // 0 = none
+        personalShopping: "Not Available", // 0 = none
+        styleEvents: "Not Available", // 0 = none
+        bodyShapeAnalysis: "Basic Only", // 0 = basic
       },
       limits: {
         videoCallsPerMonth: 1,
-        aiCreditsPerMonth: 50,
-        styleReportsPerMonth: 2,
+        aiCreditsPerMonth: 90, // 3 per day for 30 days
+        styleReportsPerMonth: 3,
         dailyOutfitSuggestions: 3,
         wardrobeItemsLimit: 50,
-        priorityQueuePosition: 4,
+        priorityQueuePosition: "Basic",
       },
       support: {
-        responseTime: 48, // 48 hours
-        supportChannels: 0, // community only
-        priorityLevel: 0, // lowest
-        dedicatedStylist: 0, // no
+        responseTime: "48 Hours",
+        supportChannels: "Email Only",
+        priorityLevel: "Basic",
+        dedicatedStylist: "No",
       },
-      duration: 7, // 7 days trial
     },
   },
   SUBSCRIPTION_RULES: {
