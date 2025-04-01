@@ -1,376 +1,624 @@
-import React, { useState } from "react";
-import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
-import { addDays } from "date-fns";
-import { enGB } from "date-fns/locale";
-import { format } from "date-fns";
-import { Button, Chip, CircularProgress } from "@mui/material";
-import { CheckCircleOutline } from "@mui/icons-material";
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import React from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { COLORS } from "../../../../../constants/colorPalettes";
+import { motion } from "framer-motion";
+import { Button, TextField } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import TimelineIcon from "@mui/icons-material/Timeline";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import PaymentIcon from "@mui/icons-material/Payment";
+import SecurityIcon from "@mui/icons-material/Security";
+import { useState } from "react";
+import CalculateIcon from "@mui/icons-material/Calculate";
+import DataSaverOnIcon from "@mui/icons-material/DataSaverOn";
+import StarIcon from "@mui/icons-material/Star";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import SpeedIcon from "@mui/icons-material/Speed";
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 
-const GoldSubscription = () => {
-  const [activeStep, setActiveStep] = useState(0);
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: new Date(),
-      endDate: addDays(new Date(), 7),
-      key: "selection",
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [referralCode, setReferralCode] = useState("");
+function GoldSubscription() {
+  const location = useLocation();
+  const { planType } = useParams();
+  const { planDetails, pricingOptions, features, paymentMethods, policies } =
+    location.state || {};
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  // Example steps data
-  const steps = [
+  const [customDays, setCustomDays] = useState("");
+  const [calculatedPrice, setCalculatedPrice] = useState(null);
+
+  const planColor = COLORS.GOLD.fourth;
+
+  // Enhanced duration plans for Gold
+  const durationPlans = [
     {
-      label: "Select Date Range",
-      description: "Choose your subscription period",
+      duration: "7 Days",
+      pricePerDay: planDetails?.basePrice || 0,
+      savings: 0,
+      tag: "Trial",
     },
     {
-      label: "Referral Code (Optional)",
-      description: "Enter a referral code if you have one",
-      optional: true
+      duration: "15 Days",
+      pricePerDay: planDetails?.basePrice * 0.95 || 0,
+      savings: 5,
+      tag: "Quick Start",
     },
     {
-      label: "Payment Details",
-      description: "Enter your payment information",
+      duration: "1 Month",
+      pricePerDay: planDetails?.basePrice * 0.9 || 0,
+      savings: 10,
+      tag: "Popular",
     },
     {
-      label: "Confirmation",
-      description: "Review and confirm your subscription",
+      duration: "3 Months",
+      pricePerDay: planDetails?.basePrice * 0.85 || 0,
+      savings: 15,
+      tag: "Best Value",
+    },
+    {
+      duration: "6 Months",
+      pricePerDay: planDetails?.basePrice * 0.8 || 0,
+      savings: 20,
+      tag: "Pro Choice",
     },
   ];
 
-  // Handle step completion
-  const handleStepComplete = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setActiveStep((prevStep) =>
-        prevStep < steps.length - 1 ? prevStep + 1 : prevStep
-      );
-    }, 2000);
+  const fadeIn = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 },
   };
 
-  const formatDateDisplay = (date) => {
-    if (!date) return "";
-    return format(date, "dd/MM/yyyy");
+  // Function to calculate total price
+  const calculateTotalPrice = (pricePerDay, duration) => {
+    const durationMap = {
+      "7 Days": 7,
+      "15 Days": 15,
+      "1 Month": 30,
+      "3 Months": 90,
+      "6 Months": 180,
+    };
+    return Math.round(pricePerDay * durationMap[duration]);
   };
 
-  const formatDateCustom = (date) => {
-    if (!date) return "";
-    const day = format(date, "dd");
-    const month = format(date, "MMM");
-    const year = format(date, "yyyy");
-    return `${day} ${month} ${year}`;
-  };
+  // Function to calculate custom price
+  const calculateCustomPrice = () => {
+    const days = parseInt(customDays);
+    if (isNaN(days) || days < 7 || days > 180) return;
 
+    let pricePerDay = planDetails?.basePrice || 0;
+    let savings = 0;
 
-  const handleSkipStep = () => {
-    setActiveStep((prevStep) => 
-      prevStep < steps.length - 1 ? prevStep + 1 : prevStep
-    );
-  };
-
-  const handleGoBack = () => {
-    if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
+    // Calculate price based on duration
+    if (days <= 15) {
+      pricePerDay = planDetails?.basePrice * 0.95;
+      savings = 5;
+    } else if (days <= 30) {
+      pricePerDay = planDetails?.basePrice * 0.9;
+      savings = 10;
+    } else if (days <= 90) {
+      pricePerDay = planDetails?.basePrice * 0.85;
+      savings = 15;
+    } else {
+      pricePerDay = planDetails?.basePrice * 0.8;
+      savings = 20;
     }
-  };
 
+    const totalPrice = Math.round(pricePerDay * days);
+    const regularPrice = Math.round(planDetails?.basePrice * days);
+    const savedAmount = regularPrice - totalPrice;
+    const dailySavings = planDetails?.basePrice - pricePerDay;
+    const monthlyEquivalent = Math.round(pricePerDay * 30);
+
+    setCalculatedPrice({
+      total: totalPrice,
+      perDay: pricePerDay.toFixed(2),
+      savings,
+      savedAmount,
+      dailySavings: dailySavings.toFixed(2),
+      monthlyEquivalent,
+      days,
+    });
+  };
 
   return (
-    <div className="p-6 dark:bg-dark-primary bg-light-primary rounded-lg shadow-lg flex flex-col items-center">
-      {/* Stepper */}
-      <div className="relative w-full max-w-md mx-auto">
-        {steps.map((step, index) => (
-          <div key={step.label} className="mb-8 relative">
-            {/* Vertical line */}
-            {index !== steps.length - 1 && (
-              <div
-                className={`absolute left-4 top-10 w-0.5 h-full 
-                  ${
-                    index < activeStep
-                      ? "bg-blue-500 dark:bg-dark-accent"
-                      : "bg-gray-200 dark:bg-gray-700"
-                  }`}
-              />
-            )}
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Hero Section */}
+      <motion.div
+        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-light-primary/50 to-light-secondary/10 dark:from-dark-primary/50 dark:to-dark-secondary/10 p-5 mb-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Background accent */}
+        <div
+          className="absolute top-0 right-0 w-48 h-48 opacity-10"
+          style={{
+            background: `radial-gradient(circle, ${planColor}40 0%, transparent 70%)`,
+            transform: "translate(20%, -20%)",
+          }}
+        />
 
-            {/* Step circle */}
-            <div className="flex items-start">
-              <div className="relative">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center relative z-10
-                    ${
-                      index <= activeStep
-                        ? "bg-blue-500 dark:bg-dark-accent text-white"
-                        : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                    }`}
-                >
-                  {index + 1}
-                </div>
-                  
-                  {index === activeStep && activeStep!==0 && (
-                    <div className="absolute top-0 right-12 cursor-pointer" onClick={handleGoBack}>
-                    <ArrowUpwardIcon sx={{
-                      color: "rgb(59, 130, 246)",
-                      "&:hover": {
-                        color: "rgb(29, 78, 216)"
-                      },
-                      transition: "colors 0.2s"
-                    }} />
-                   </div>
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Plan badge and main heading group */}
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-light-secondary/10 dark:bg-dark-secondary/10 mb-2">
+              <WorkspacePremiumIcon sx={{ color: planColor, fontSize: 30 }} />
+              <span className="text-3xl font-bold" style={{ color: planColor }}>
+                Gold Plan
+              </span>
+            </div>
 
-                  )}
-                {/* L-ripples effect for active step */}
-                {index === activeStep && (
-                  <div className="absolute top-5 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0  ">
-                    <l-ripples
-                      size="70"
-                      speed="4"
-                      color={`rgba(59, 130, 246, ${
-                        index === activeStep ? "0.7" : "0"
-                      })`}
-                      target=".ripple-target"
-                      className="pointer-events-none"
-                    ></l-ripples>
-                  </div>
-                )}
-              </div>
+            <h1
+              className="text-2xl md:text-3xl font-extrabold"
+              style={{
+                background: `linear-gradient(135deg, ${planColor}, ${planColor})`,
+                WebkitBackgroundClip: "text",
+              
+              }}
+            >
+              Unlock Premium Experience
+            </h1>
+            <p className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
+              Enhanced features with premium support
+            </p>
+          </div>
 
-              {/* Step content */}
-              <div className="ml-4">
-                <h3 className="font-medium text-gray-900 dark:text-dark-text">
-                  {step.label}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {step.description}
-                </p>
-
-                {/* Date Range Picker for first step */}
-                {index === 0 && (
-                  <div className={`mt-4 flex ${activeStep!==index ? 'opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none': ''} `}>
-                    <div>
-                      <DateRange
-                        editableDateInputs={true}
-                        onChange={(item) => setDateRange([item.selection])}
-                        moveRangeOnFirstSelection={false}
-                        ranges={dateRange}
-                        minDate={today}
-                        showDisabledDates={true}
-                        className="date-range-custom dark:bg-dark-secondary bg-white 
-                        border dark:border-gray-700 border-gray-200 rounded-lg shadow-lg"
-                        rangeColors={["#3b82f6"]}
-                        showDateDisplay={true}
-                        direction="vertical"
-                        scroll={{ enabled: false }}
-                        color="#3b82f6"
-                        showPreview={true}
-                        calendarFocus="forwards"
-                        preventSnapRefocus={true}
-                        locale={enGB} // Using UK English locale (day/month/year format)
-                        dateDisplayFormat="dd/MM/yyyy" // Format for the date display
-                        formatDisplayDate={formatDateDisplay} // Custom formatter function
-                        inputRanges={[]} // Remove the predefined ranges
-                        staticRanges={[]}
-                      />
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        Select dates starting from today onwards
-                      </p>
-                    </div>
-
-                   <div className="flex flex-col ml-4">
-
-                     {/* Date range confirmation section - compact and modern */}
-                     <div className=" w-64 bg-white dark:bg-gray-800 rounded-lg  shadow-lg p-4 border border-blue-100 dark:border-gray-700">
-                      <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-                        Selected Period
-                      </h4>
-
-                      <div className="space-y-5">
-                        {/* Date Cards - Compact */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-2 h-10 bg-blue-500 dark:bg-blue-400 rounded-full mr-2"></div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                From
-                              </p>
-                              <p className="font-bold text-gray-800 dark:text-gray-200">
-                                {format(dateRange[0].startDate, "dd")}
-                                <span className="text-blue-500 dark:text-blue-400">
-                                  {" "}
-                                  {format(dateRange[0].startDate, "MMM")}{" "}
-                                </span>
-                                {format(dateRange[0].startDate, "yyyy")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="w-2 h-10 bg-indigo-500 dark:bg-indigo-400 rounded-full mr-2"></div>
-                            <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                To
-                              </p>
-                              <p className="font-bold text-gray-800 dark:text-gray-200">
-                                {format(dateRange[0].endDate, "dd")}
-                                <span className="text-indigo-500 dark:text-indigo-400">
-                                  {" "}
-                                  {format(dateRange[0].endDate, "MMM")}{" "}
-                                </span>
-                                {format(dateRange[0].endDate, "yyyy")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Duration Badge */}
-                        <div className="flex justify-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                            {Math.ceil(
-                              (dateRange[0].endDate - dateRange[0].startDate) /
-                                (1000 * 60 * 60 * 24)
-                            )}{" "}
-                            days
-                          </span>
-                        </div>
-
-                        {/* Confirm Button - Compact */}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outlined"
-                      onClick={handleStepComplete}
-                    
-                      startIcon={
-                        isLoading ? (
-                          <CircularProgress size={16} color="inherit" />
-                        ) : (
-                          <CheckCircleOutline fontSize="small" />
-                        )
-                      }
-                      sx={{
-                        mt: 1,
-                        borderColor: "rgb(59, 130, 246)",
-                        color: "rgb(59, 130, 246)",
-                        "&:hover": {
-                          borderColor: "rgb(37, 99, 235)",
-                          backgroundColor: "rgba(59, 130, 246, 0.04)",
-                        },
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        borderWidth: "1.5px",
-                        textTransform: "none",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      {isLoading ? "Processing..." : "Confirm"}
-                    </Button>
-                   </div>
-                  </div>
-                )}
-
-                {/* Referral code input for second step */}
-                {index === 1  && (
-                  <div className={`mt-4 max-w-sm ${activeStep!==index ? 'opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none': ''}`}>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-blue-100 dark:border-gray-700">
-                      <div className="space-y-4">
-                        <div>
-                          <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Have a referral code?
-                          </label>
-                          <input
-                            type="text"
-                            id="referralCode"
-                            value={referralCode}
-                            onChange={(e) => setReferralCode(e.target.value)}
-                            placeholder="Enter code (if any)"
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm dark:bg-gray-700 text-slate-500 dark:text-slate-300 text-sm focus:outline-none focus:border-2 "
-                          />
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Enter a referral code to get special benefits
-                          </p>
-                        </div>
-                        
-                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-                            This step is optional. You can skip if you don't have a code.
-                          </p>
-                          <div className="flex space-x-3">
-                            <Button
-                              variant="text"
-                              onClick={handleSkipStep}
-                              sx={{
-                                color: "rgb(107, 114, 128)",
-                                "&:hover": {
-                                  backgroundColor: "rgba(107, 114, 128, 0.04)",
-                                },
-                                textTransform: "none",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                              }}
-                            >
-                              Skip
-                            </Button>
-                            <Button
-                              variant="contained"
-                              onClick={handleStepComplete}
-                              
-                              startIcon={
-                                isLoading ? (
-                                  <CircularProgress size={16} color="inherit" />
-                                ) : null
-                              }
-                              sx={{
-                                backgroundColor: "rgb(59, 130, 246)",
-                                "&:hover": {
-                                  backgroundColor: "rgb(37, 99, 235)",
-                                },
-                                textTransform: "none",
-                                fontWeight: 500,
-                                fontSize: "0.875rem",
-                              }}
-                            >
-                              {isLoading ? "Processing..." : "Confirm"}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-
-
-
-                {/* Loading indicator for active step */}
-                {activeStep === index && isLoading && (
-                  <div className="mt-4 flex items-center">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-dark-accent animate-pulse-dot-1" />
-                      <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-dark-accent animate-pulse-dot-2" />
-                      <div className="w-2 h-2 rounded-full bg-blue-500 dark:bg-dark-accent animate-pulse-dot-3" />
-                    </div>
-                    <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">
-                      Processing...
+          {/* Price and features in a compact card */}
+          <div className="w-full max-w-3xl bg-light-secondary/5 dark:bg-dark-secondary/5 rounded-lg p-4 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Price section */}
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold" style={{ color: planColor }}>
+                      ₹{planDetails?.basePrice}
                     </span>
+                    <span className="text-sm text-light-text/60 dark:text-dark-text/60">/day</span>
                   </div>
-                )}
+                  <span className="text-xs font-medium text-green-500">
+                    Save up to 20% on longer plans
+                  </span>
+                </div>
               </div>
+
+              {/* Feature highlights */}
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2">
+                  <SpeedIcon sx={{ color: planColor, fontSize: 20 }} />
+                  <div>
+                    <h3 className="text-sm font-bold">Premium Features</h3>
+                    <p className="text-xs text-light-text/60">Enhanced access</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SupportAgentIcon sx={{ color: planColor, fontSize: 20 }} />
+                  <div>
+                    <h3 className="text-sm font-bold">Premium Support</h3>
+                    <p className="text-xs text-light-text/60">Priority assistance</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <Button
+                variant="contained"
+                size="medium"
+                sx={{
+                  backgroundColor: planColor,
+                  fontSize: "0.875rem",
+                  padding: "6px 16px",
+                  "&:hover": {
+                    backgroundColor: planColor + "dd",
+                    boxShadow: `0 2px 8px ${planColor}40`,
+                  },
+                  minWidth: "140px",
+                  borderRadius: "9999px",
+                }}
+              >
+                Get Started
+              </Button>
             </div>
           </div>
-        ))}
+
+          {/* Bottom text */}
+          <p className="text-xs text-light-text/60 dark:text-dark-text/60">
+            No credit card required • Instant access • Cancel anytime
+          </p>
+        </div>
+      </motion.div>
+
+
+      {/* Price Calculator */}
+      <motion.div
+        className="mb-12 bg-light-primary dark:bg-dark-primary rounded-xl p-6 shadow-lg"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold mb-2">Calculate Your Custom Price</h2>
+          <p className="text-light-text/70 dark:text-dark-text/70 text-sm">
+            Enter number of days (7-180) to calculate your custom price
+          </p>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+          <TextField
+            type="number"
+            value={customDays}
+            onChange={(e) => setCustomDays(e.target.value)}
+            placeholder="Enter days"
+            size="small"
+            inputProps={{
+              min: 7,
+              max: 180,
+              style: {
+                WebkitAppearance: "none",
+                MozAppearance: "textfield",
+              },
+            }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: planColor + "80" },
+                "&:hover fieldset": { borderColor: planColor },
+                "&.Mui-focused fieldset": { borderColor: planColor },
+                "& input": { color: planColor },
+                border: `1px solid ${planColor}`,
+              },
+              width: { xs: "100%", md: "200px" },
+            }}
+          />
+          <Button
+            variant="contained"
+            onClick={calculateCustomPrice}
+            startIcon={<CalculateIcon />}
+            disabled={!customDays || customDays < 7 || customDays > 180}
+            sx={{
+              backgroundColor: planColor,
+              "&:hover": { backgroundColor: planColor + "dd" },
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
+            Calculate Price
+          </Button>
+        </div>
+
+        {calculatedPrice && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            {/* Price Summary */}
+            <div className="bg-light-secondary/10 dark:bg-dark-secondary/10 rounded-lg p-4">
+              <h3 className="font-semibold mb-3">Price Summary</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Per Day:
+                  </span>
+                  <span className="font-bold" style={{ color: planColor }}>
+                    ₹{calculatedPrice.perDay}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Total ({calculatedPrice.days} days):
+                  </span>
+                  <span className="font-bold" style={{ color: planColor }}>
+                    ₹{calculatedPrice.total}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Monthly Equivalent:
+                  </span>
+                  <span className="font-bold" style={{ color: planColor }}>
+                    ₹{calculatedPrice.monthlyEquivalent}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Savings */}
+            <div className="bg-light-secondary/10 dark:bg-dark-secondary/10 rounded-lg p-4">
+              <h3 className="font-semibold mb-3">Your Savings</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Discount:
+                  </span>
+                  <span className="font-bold text-green-500">
+                    {calculatedPrice.savings}%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Daily Savings:
+                  </span>
+                  <span className="font-bold text-green-500">
+                    ₹{calculatedPrice.dailySavings}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-light-text/70 dark:text-dark-text/70">
+                    Total Savings:
+                  </span>
+                  <span className="font-bold text-green-500">
+                    ₹{calculatedPrice.savedAmount}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendation */}
+            <div
+              className="rounded-lg p-4"
+              style={{ backgroundColor: planColor + "15" }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <DataSaverOnIcon sx={{ color: planColor }} />
+                <h3 className="font-semibold">Smart Choice</h3>
+              </div>
+              <p className="text-sm text-light-text/70 dark:text-dark-text/70 mb-4">
+                {calculatedPrice.days >= 90
+                  ? "Great choice! Long-term commitment brings maximum savings."
+                  : "Consider a longer duration for better savings!"}
+              </p>
+              <Button
+                variant="outlined"
+                fullWidth
+                size="small"
+                sx={{
+                  borderColor: planColor,
+                  color: planColor,
+                  "&:hover": { borderColor: planColor + "dd" },
+                }}
+              >
+                Select This Plan
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* Pricing Tiers */}
+      <motion.section
+        className="mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <h2 className="text-2xl font-bold mb-3 text-center">
+          Choose Your Duration
+        </h2>
+        <p className="text-center text-light-text/70 dark:text-dark-text/70 mb-8 max-w-2xl mx-auto text-sm">
+          Longer commitments come with greater savings
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {durationPlans.map((plan, index) => (
+            <motion.div
+              key={index}
+              className="relative p-4 bg-light-primary dark:bg-dark-primary rounded-lg border border-light-secondary/20 dark:border-dark-secondary/20"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              style={{
+                transition: "box-shadow 0.1s ease, border-color 0.1s ease",
+              }}
+              whileHover={{
+                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                borderColor: planColor,
+              }}
+            >
+              {/* Tag Badge */}
+              {plan.tag && (
+                <div
+                  className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor:
+                      plan.tag === "Best Value" ? "#22c55e" : planColor,
+                    color: "white",
+                  }}
+                >
+                  {plan.tag}
+                </div>
+              )}
+
+              {/* Duration and Price */}
+              <div className="text-center">
+                <h3 className="text-lg font-bold mb-2">{plan.duration}</h3>
+                <div className="mb-2">
+                  <span
+                    className="text-xl font-bold"
+                    style={{ color: planColor }}
+                  >
+                    ₹{plan.pricePerDay.toFixed(2)}
+                  </span>
+                  <span className="text-sm text-light-text/70 dark:text-dark-text/70">
+                    /day
+                  </span>
+                </div>
+                <div className="space-y-1 mb-3">
+                  <p className="text-xs text-light-text/60 dark:text-dark-text/60">
+                    Total: ₹
+                    {calculateTotalPrice(plan.pricePerDay, plan.duration)}
+                  </p>
+                  {plan.savings > 0 && (
+                    <p className="text-xs font-medium text-green-500">
+                      Save {plan.savings}%
+                    </p>
+                  )}
+                </div>
+
+                {/* Compact Features List */}
+                <div className="space-y-1 mb-4 text-xs text-light-text/70 dark:text-dark-text/70">
+                  <div className="flex items-center justify-center gap-1">
+                    <CheckCircleIcon sx={{ color: planColor, fontSize: 14 }} />
+                    <span>All Features</span>
+                  </div>
+                  {plan.duration !== "7 Days" && (
+                    <div className="flex items-center justify-center gap-1">
+                      <CheckCircleIcon
+                        sx={{ color: planColor, fontSize: 14 }}
+                      />
+                      <span>Priority Support</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Button */}
+                <Button
+                  fullWidth
+                  size="small"
+                  variant={plan.tag === "Best Value" ? "contained" : "outlined"}
+                  sx={{
+                    borderColor: planColor,
+                    backgroundColor:
+                      plan.tag === "Best Value" ? planColor : "transparent",
+                    color: plan.tag === "Best Value" ? "white" : planColor,
+                    "&:hover": {
+                      backgroundColor:
+                        plan.tag === "Best Value"
+                          ? planColor
+                          : `${planColor}10`,
+                      borderColor: planColor,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    },
+                    fontSize: "0.875rem",
+                    padding: "4px 8px",
+                    minHeight: "32px",
+                  }}
+                >
+                  {plan.tag === "Trial" ? "Start Trial" : "Select"}
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* Features Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Features */}
+        <motion.div
+          className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
+          {...fadeIn}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircleIcon sx={{ color: planColor, fontSize: 20 }} />
+            <h3 className="text-lg font-semibold">Features</h3>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {features?.included?.map((feature, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">•</span>
+                <span>{feature.name}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+
+        {/* Limits */}
+        <motion.div
+          className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
+          {...fadeIn}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <TimelineIcon sx={{ color: planColor, fontSize: 20 }} />
+            <h3 className="text-lg font-semibold">Limits</h3>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {features?.limits?.map((limit, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-blue-500 mt-1">•</span>
+                <span>{limit.name}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+
+        {/* Support */}
+        <motion.div
+          className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
+          {...fadeIn}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <SupportAgentIcon sx={{ color: planColor, fontSize: 20 }} />
+            <h3 className="text-lg font-semibold">Support</h3>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {features?.support?.map((item, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-purple-500 mt-1">•</span>
+                <span>{item.name}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+
+        {/* Payment Methods */}
+        <motion.div
+          className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
+          {...fadeIn}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <PaymentIcon sx={{ color: planColor, fontSize: 20 }} />
+            <h3 className="text-lg font-semibold">Payment</h3>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {paymentMethods?.map((method, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <span className="text-orange-500 mt-1">•</span>
+                <span>{method.type}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
       </div>
+
+
+
+      {/* Policies */}
+      <motion.div
+        className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
+        {...fadeIn}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <SecurityIcon sx={{ color: planColor, fontSize: 20 }} />
+          <h2 className="text-lg font-semibold">Policies</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          {Object.entries(policies || {}).map(([key, value]) => (
+            <div
+              key={key}
+              className="p-3 bg-light-secondary/10 dark:bg-dark-secondary/10 rounded-lg"
+            >
+              <h3 className="font-medium mb-1 capitalize">
+                {key.replace(/([A-Z])/g, " $1").trim()}
+              </h3>
+              <p className="text-light-text/70 dark:text-dark-text/70 text-xs">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Bottom CTA Section */}
+      <motion.div
+        className="mt-8 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+    
+        <p className="mt-4 text-sm text-light-text/60 dark:text-dark-text/60">
+          Experience premium features and dedicated support with our Gold subscription
+        </p>
+      </motion.div>
     </div>
   );
-};
+}
 
 export default GoldSubscription;
