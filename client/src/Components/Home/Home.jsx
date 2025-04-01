@@ -7,29 +7,42 @@ import { Outlet } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
+import { useSelector } from "react-redux";
 
 function Home() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem("isDarkMode");
-    return savedTheme ? JSON.parse(savedTheme) : false;
-  });
+  const darkMode = useSelector((state) => state.auth.isDarkMode);
+
+  const [isDarkMode, setIsDarkMode] = useState(
+    localStorage.getItem("isDarkMode") === "true"
+  );
+  console.log(
+    "daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaark moffffffffffffffffffffd",
+    darkMode,
+    isDarkMode
+  );
+
   const [showTourModal, setShowTourModal] = useState(true);
   const colors = useSubscriptionColors();
   const isAlreadyVerified =
     localStorage.getItem("isAlreadyVerified") === "true";
   const isTourCompleted = localStorage.getItem("isTourCompleted") === "true";
-  console.log("object1", isAlreadyVerified);
-  console.log("object2", isTourCompleted);
 
   useEffect(() => {
-    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
-    // Optionally update document body/html class for global theme
+    if (darkMode !== null) {
+      localStorage.setItem("isDarkMode", darkMode);
+      setIsDarkMode(darkMode);
+    } // Optionally update document body/html class for global theme
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem("isDarkMode", isDarkMode);
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (!isTourCompleted && !isAlreadyVerified &&!showTourModal) {
-        startTour();
+    if (!isTourCompleted && !isAlreadyVerified && !showTourModal) {
+      startTour();
     }
   }, [isAlreadyVerified, isTourCompleted, showTourModal]);
 
