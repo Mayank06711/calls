@@ -19,6 +19,8 @@ import {
   setTimerActive,
 } from "../actions/auth.actions";
 import { authenticateSocket } from "../../socket/authentication";
+import { fetchUserInfoThunk } from "./userInfo.thunks";
+import { initializeSettingsThunk } from "./settings.thunk";
 
 export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
   try {
@@ -85,14 +87,26 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
     }
     if (data.success) {
       const { userId, isAlreadyVerified, token,fullName } = data.data;
+      dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
+      if(isAlreadyVerified){
+        dispatch(fetchUserInfoThunk());
+      }
 
       localStorage.setItem("userId", userId);
       localStorage.setItem("token", token);
       localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
       localStorage.setItem("fullName", fullName);
+
+      
+      dispatch(
+        showNotification(
+          data.message || "OTP verified successfully!",
+          statusCode
+        )
+      );
 
       // Authenticate socket connection
       try {
@@ -102,12 +116,6 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
         // Optionally show a notification but don't fail the login
       }
 
-      dispatch(
-        showNotification(
-          data.message || "OTP verified successfully!",
-          statusCode
-        )
-      );
     } else {
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification("Invalid OTP", statusCode || 400));
