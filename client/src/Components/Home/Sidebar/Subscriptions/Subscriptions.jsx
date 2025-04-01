@@ -14,7 +14,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { useSelector } from "react-redux";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import SubscriptionSkeleton from "./SubscriptionSkeleton";
-import {useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function Subscriptions() {
   const currentColors = useSubscriptionColors();
@@ -27,7 +27,7 @@ function Subscriptions() {
 
   // Get colors for each subscription type
   const subscriptionColors = {
-    CASUAL: COLORS.CASUAL,
+    FREE: COLORS.CASUAL,
     GOLD: COLORS.GOLD,
     SILVER: COLORS.SILVER,
     PLATINUM: COLORS.PLATINUM,
@@ -40,81 +40,160 @@ function Subscriptions() {
             transition-all `;
   };
 
-  const transformedPlanHeaders = plans
-    ?.map((plan) => ({
-      type: plan.type.toUpperCase(),
-      name: plan.type,
-      price: `₹${plan.price}`,
-      recommended: plan.type === "Gold", // Keep the same recommendation logic
-      duration: plan.duration,
-      features: plan.features,
-      limits: plan.limits,
-    }))
-    .sort((a, b) => {
-      const planOrder = {
-        PLATINUM: 4,
-        GOLD: 3,
-        SILVER: 2,
-        FREE: 1,
-      };
-      return planOrder[a.type] - planOrder[b.type];
-    });
+  const planHeader = [
+    {
+      type: "FREE",
+      name: "Free",
+      price: "₹0/day",
+      recommended: false,
+      duration: "Lifetime",
+      level: 0,
+    },
+    {
+      type: "SILVER",
+      name: "Silver",
+      price: "₹2/day",
+      recommended: false,
+      duration: "Annualy",
+      level: 1,
+    },
+    {
+      type: "GOLD",
+      name: "Gold",
+      price: "₹5/day",
+      recommended: true,
+      duration: "Annualy",
+      level: 2,
+    },
+    {
+      type: "PLATINUM",
+      name: "Platinum",
+      price: "₹8/day",
+      recommended: false,
+      duration: "Annualy",
+      level: 3,
+    },
+  ].sort((a, b) => b.level - a.level);
 
-    console.log("transform plan headers",transformedPlanHeaders);
   const getAllFeatures = () => {
-    if (!plans) return []; // Return empty array if no plans
+    if (!plans) return [];
 
-    const sortedPlans = [...plans].sort((a, b) => {
-      const planOrder = {
-        Platinum: 4,
-        Gold: 3,
-        Silver: 2,
-        Free: 1,
-      };
-      return planOrder[a.type] - planOrder[b.type];
-    });
+    const features = [];
+    const planTypes = ["Free", "Silver", "Gold", "Platinum"];
 
-    // Get all unique features
-    const allFeatures = new Set();
-    sortedPlans.forEach((plan) => {
-      plan.features.forEach((feature) => allFeatures.add(feature));
-    });
+    // Get all feature categories
+    const firstPlan = plans.features;
+    for (const [category, values] of Object.entries(firstPlan)) {
+      if (Array.isArray(values)) {
+        const formattedName = category.replace(/([A-Z])/g, " $1").trim();
 
-    // Transform to required format
-    return Array.from(allFeatures).map((feature) => ({
-      name: feature,
-      platinum:
-        sortedPlans
-          .find((p) => p.type === "Platinum")
-          ?.features.includes(feature) || false,
-      gold:
-        sortedPlans
-          .find((p) => p.type === "Gold")
-          ?.features.includes(feature) || false,
-      silver:
-        sortedPlans
-          .find((p) => p.type === "Silver")
-          ?.features.includes(feature) || false,
-      free:
-        sortedPlans
-          .find((p) => p.type === "Free")
-          ?.features.includes(feature) || false,
-    }));
+        features.push({
+          name: formattedName,
+          platinum: values[3] || "Not Available",
+          gold: values[2] || "Not Available",
+          silver: values[1] || "Not Available",
+          free: values[0] || "Not Available",
+        });
+      }
+    }
+
+    return features;
   };
 
   const dynamicFeatures = getAllFeatures();
 
+  // Update the handleSubscriptionSelect function
   const handleSubscriptionSelect = (planType) => {
-    console.log("plaaaaaaaaaaaaan type", planType);
     const routeMap = {
-      'PLATINUM': 'platinum',
-      'GOLD': 'gold',
-      'SILVER': 'silver',
+      PLATINUM: "platinum",
+      GOLD: "gold",
+      SILVER: "silver",
     };
 
     const route = routeMap[planType];
     if (route) {
-      navigate(`/subscriptions/${route}`, { replace: true });
+      // Find the selected plan data
+      const selectedPlan = plans?.plans?.find(
+        (p) => p.type.toUpperCase() === planType
+      );
+
+      if (!selectedPlan) {
+        console.error("Selected plan not found");
+        return;
+      }
+
+      // Get the minimum duration pricing tier
+      const minimumPricing = selectedPlan.pricing?.[0];
+
+      if (!minimumPricing) {
+        console.error("Pricing information not found");
+        return;
+      }
+
+      // Create a formatted plan summary with null checks
+      const planSummary = {
+        type: selectedPlan.type || planType,
+        level: selectedPlan.level || 0,
+        basePrice: minimumPricing.pricePerDay || 0,
+        minDuration: minimumPricing.minDays || 7,
+        maxDuration: minimumPricing.maxDays || 15,
+        features: plans.features || {}, // Use plans.features instead of selectedPlan.features
+        limits: plans.limits || {}, // Use plans.limits instead of selectedPlan.limits
+        support: plans.support || {}, // Use plans.support instead of selectedPlan.support
+        pricing: selectedPlan.pricing || [],
+      };
+
+      // Get the index for the current plan type to access correct feature values
+      const planIndex = ["FREE", "SILVER", "GOLD", "PLATINUM"].indexOf(
+        planType
+      );
+
+      // Navigate to the subscription route with plan details
+      navigate(`/subscriptions/${route}`, {
+        state: {
+          planDetails: planSummary,
+          pricingOptions: (selectedPlan.pricing || []).map((tier) => ({
+            duration: `${tier.minDays}-${tier.maxDays} days`,
+            pricePerDay: tier.pricePerDay,
+            totalPrice: tier.pricePerDay * tier.minDays,
+            savings: (
+              ((minimumPricing.pricePerDay - tier.pricePerDay) /
+                minimumPricing.pricePerDay) *
+              100
+            ).toFixed(1),
+          })),
+          features: {
+            included: Object.entries(plans.features || {}).map(
+              ([key, values]) => ({
+                name: key.replace(/([A-Z])/g, " $1").trim(),
+                value: Array.isArray(values) ? values[planIndex] : values,
+              })
+            ),
+            limits: Object.entries(plans.limits || {}).map(([key, values]) => ({
+              name: key.replace(/([A-Z])/g, " $1").trim(),
+              value: Array.isArray(values) ? values[planIndex] : values,
+            })),
+            support: Object.entries(plans.support || {}).map(
+              ([key, values]) => ({
+                name: key.replace(/([A-Z])/g, " $1").trim(),
+                value: Array.isArray(values) ? values[planIndex] : values,
+              })
+            ),
+          },
+          paymentMethods: [
+            { type: "UPI", options: ["GPay", "PhonePe", "Paytm"] },
+            { type: "Cards", options: ["Credit Card", "Debit Card", "RuPay"] },
+            { type: "NetBanking", options: ["All Indian Banks"] },
+            { type: "QR", options: ["UPI QR"] },
+          ],
+          policies: {
+            refund: "7-day money-back guarantee",
+            cancellation: "Cancel anytime, no questions asked",
+            prorated: "Prorated refunds for unused time",
+            autoRenewal: "Auto-renewal can be turned off anytime",
+          },
+        },
+      });
     }
   };
 
@@ -141,7 +220,7 @@ function Subscriptions() {
         </p>
       </div>
       {/* table content */}
-      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] || !transformedPlanHeaders ? (
+      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] || !planHeader ? (
         <SubscriptionSkeleton />
       ) : (
         <table
@@ -157,19 +236,15 @@ function Subscriptions() {
               >
                 Features
               </th>
-              {transformedPlanHeaders?.map((plan, index) => (
+              {planHeader?.map((plan, index) => (
                 <th
                   key={plan.type}
                   className={`p-3 text-center text-light-text dark:text-dark-text 
                   font-bold bg-slate-200 dark:bg-slate-700
-                  ${
-                    index === transformedPlanHeaders.length - 1
-                      ? "rounded-tr-xl"
-                      : ""
-                  }
+          ${index === planHeader.length - 1 ? "rounded-tr-xl" : ""}
                   ${getColumnStyle(plan.type)}`}
                 >
-                  <div className="flex flex-col gap-1 py-2">
+                  <div className="flex flex-col gap-1 py-2  ">
                     <span className="text-lg font-bold">{plan.name}</span>
                     <span
                       className="text-2xl font-extrabold"
@@ -180,106 +255,314 @@ function Subscriptions() {
                       {plan.price}
                     </span>
                     {plan.type !== "FREE" && (
-                      <span className="text-xs opacity-75">
-                        {plan.duration} days
+                      <>
+                        <span className="text-xs opacity-75">
+                          {plan.duration}
+                        </span>
+                        {/* {plan.recommended && (
+                          <span
+                            className="text-xs mt-1 py-1 px-2 rounded-full"
+                            style={{
+                              backgroundColor:
+                                subscriptionColors[plan.type]?.fourth,
+                              color: "white",
+                            }}
+                          >
+                            Recommended
                       </span>
+                        )} */}
+                      </>
                     )}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
+
           <tbody>
             {dynamicFeatures.map((feature, index) => (
               <tr key={index}>
-                <td
-                  className="p-3 text-left font-medium text-light-text dark:text-dark-text
-                bg-light-primary dark:bg-dark-primary"
-                >
+                <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
                   {feature.name}
                 </td>
-                {transformedPlanHeaders?.map((plan) => (
+                {planHeader?.map((plan) => (
                   <td
                     key={plan.type}
                     className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
                     ${getColumnStyle(plan.type)}`}
                   >
-                    {feature[plan.type.toLowerCase()] ? (
-                      <CheckIcon
-                        sx={{ fontSize: "2rem", fontWeight: "bold" }}
-                        style={{
-                          color: subscriptionColors[plan.type]?.fourth,
-                        }}
-                      />
-                    ) : (
-                      <CloseIcon
-                        sx={{
-                          fontSize: "1.25rem",
-                          opacity: 0.3,
-                          color: "var(--light-text)",
-                          ".dark &": { color: "var(--dark-text)" },
-                        }}
-                      />
-                    )}
+                    <span
+                      style={{ color: subscriptionColors[plan.type]?.fourth }}
+                    >
+                      {feature[plan.type.toLowerCase()]}
+                    </span>
                   </td>
                 ))}
               </tr>
             ))}
+
             {/* Limits Section */}
+
             {plans && (
               <>
                 <tr>
                   <td
-                    colSpan={transformedPlanHeaders?.length + 1}
-                    className="p-3 font-bold text-light-text dark:text-dark-text
-                    bg-light-primary dark:bg-dark-primary"
+                    colSpan={planHeader?.length + 1}
+                    className="p-3 font-bold text-light-text dark:text-dark-text bg-light-secondary dark:bg-dark-secondary text-center  "
                   >
                     Usage Limits
                   </td>
                 </tr>
-                {Object.keys(plans[0].limits).map((limitKey, index) => (
-                  <tr key={`limit-${index}`}>
-                    <td
-                      className="p-3 text-left font-medium text-light-text dark:text-dark-text
-                      bg-light-primary dark:bg-dark-primary"
-                    >
-                      {limitKey.replace(/([A-Z])/g, " $1").trim()}{" "}
-                      {/* Format camelCase to spaces */}
-                    </td>
-                    {transformedPlanHeaders?.map((plan) => {
-                      const planData = plans.find((p) => p.type === plan.name);
-                      const limitValue = planData?.limits[limitKey];
-                      return (
+                {Object.entries(plans.limits).map(
+                  ([limitKey, values], index) => (
+                    <tr key={`limit-${index}`}>
+                      <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                        {limitKey.replace(/([A-Z])/g, " $1").trim()}
+                      </td>
+                      {planHeader?.map((plan, planIndex) => (
                         <td
                           key={plan.type}
-                          className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary
-                            ${getColumnStyle(plan.type)}`}
+                          className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                            plan.type
+                          )}`}
                         >
                           <span
                             style={{
                               color: subscriptionColors[plan.type]?.fourth,
                             }}
                           >
-                            {limitValue === -1 ? "Unlimited" : limitValue}
+                            {Array.isArray(values)
+                              ? values[3 - planIndex]
+                              : values}
                           </span>
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      ))}
+                    </tr>
+                  )
+                )}
+
+                {/* Support Section */}
+                <tr>
+                  <td
+                    colSpan={planHeader?.length + 1}
+                    className="p-3 font-bold text-light-text dark:text-dark-text bg-light-secondary dark:bg-dark-secondary text-center "
+                  >
+                    Support Features
+                  </td>
+                </tr>
+                {Object.entries(plans.support).map(
+                  ([supportKey, values], index) => (
+                    <tr key={`support-${index}`}>
+                      <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                        {supportKey.replace(/([A-Z])/g, " $1").trim()}
+                      </td>
+                      {planHeader?.map((plan, planIndex) => (
+                        <td
+                          key={plan.type}
+                          className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                            plan.type
+                          )}`}
+                        >
+                          <span
+                            style={{
+                              color: subscriptionColors[plan.type]?.fourth,
+                            }}
+                          >
+                            {Array.isArray(values)
+                              ? values[3 - planIndex]
+                              : values}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                )}
+
+                {/* Pricing Details Section */}
+                <tr>
+                  <td
+                    colSpan={planHeader?.length + 1}
+                    className="p-3 font-bold text-light-text dark:text-dark-text bg-light-secondary dark:bg-dark-secondary text-center"
+                  >
+                    Pricing Details
+                  </td>
+                </tr>
+
+                {/* Duration Rows */}
+                <tr>
+                  <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                    7-15 days
+                  </td>
+                  {planHeader?.map((header) => {
+                    const planData = plans?.plans?.find(
+                      (p) => p.type.toUpperCase() === header.type
+                    );
+                    const price = planData?.pricing[0]?.pricePerDay;
+
+                    return (
+                      <td
+                        key={header.type}
+                        className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                          header.type
+                        )}`}
+                      >
+                        <span
+                          style={{
+                            color: subscriptionColors[header.type]?.fourth,
+                          }}
+                        >
+                          {header.type === "FREE"
+                            ? "Free"
+                            : price
+                            ? `₹${price}/day`
+                            : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr>
+                  <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                    16-30 days
+                  </td>
+                  {planHeader?.map((header) => {
+                    const planData = plans?.plans?.find(
+                      (p) => p.type.toUpperCase() === header.type
+                    );
+                    const price = planData?.pricing[1]?.pricePerDay;
+
+                    return (
+                      <td
+                        key={header.type}
+                        className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                          header.type
+                        )}`}
+                      >
+                        <span
+                          style={{
+                            color: subscriptionColors[header.type]?.fourth,
+                          }}
+                        >
+                          {header.type === "FREE"
+                            ? "Free"
+                            : price
+                            ? `₹${price}/day`
+                            : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr>
+                  <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                    31-90 days
+                  </td>
+                  {planHeader?.map((header) => {
+                    const planData = plans?.plans?.find(
+                      (p) => p.type.toUpperCase() === header.type
+                    );
+                    const price = planData?.pricing[2]?.pricePerDay;
+
+                    return (
+                      <td
+                        key={header.type}
+                        className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                          header.type
+                        )}`}
+                      >
+                        <span
+                          style={{
+                            color: subscriptionColors[header.type]?.fourth,
+                          }}
+                        >
+                          {header.type === "FREE"
+                            ? "Free"
+                            : price
+                            ? `₹${price}/day`
+                            : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr>
+                  <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                    91-180 days
+                  </td>
+                  {planHeader?.map((header) => {
+                    const planData = plans?.plans?.find(
+                      (p) => p.type.toUpperCase() === header.type
+                    );
+                    const price = planData?.pricing[3]?.pricePerDay;
+
+                    return (
+                      <td
+                        key={header.type}
+                        className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                          header.type
+                        )}`}
+                      >
+                        <span
+                          style={{
+                            color: subscriptionColors[header.type]?.fourth,
+                          }}
+                        >
+                          {header.type === "FREE"
+                            ? "Free"
+                            : price
+                            ? `₹${price}/day`
+                            : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr>
+                  <td className="p-3 text-left font-medium text-light-text dark:text-dark-text bg-light-primary dark:bg-dark-primary">
+                    181-365 days
+                  </td>
+                  {planHeader?.map((header) => {
+                    const planData = plans?.plans?.find(
+                      (p) => p.type.toUpperCase() === header.type
+                    );
+                    const price = planData?.pricing[4]?.pricePerDay;
+
+                    return (
+                      <td
+                        key={header.type}
+                        className={`p-3 text-center rounded-sm bg-light-primary dark:bg-dark-primary ${getColumnStyle(
+                          header.type
+                        )}`}
+                      >
+                        <span
+                          style={{
+                            color: subscriptionColors[header.type]?.fourth,
+                          }}
+                        >
+                          {header.type === "FREE"
+                            ? "Free"
+                            : price
+                            ? `₹${price}/day`
+                            : "-"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
               </>
             )}
+
             <tr>
               <td className="p-3 bg-light-primary dark:bg-dark-primary rounded-bl-xl"></td>
-              {transformedPlanHeaders?.map((plan, index) => (
+              {planHeader?.map((plan, index) => (
                 <td
                   key={plan.type}
                   className={`p-6 bg-light-primary dark:bg-dark-primary
-                  ${
-                    index === transformedPlanHeaders?.length - 1
-                      ? "rounded-br-xl"
-                      : ""
-                  }
+                  ${index === planHeader?.length - 1 ? "rounded-br-xl" : ""}
                   ${getColumnStyle(plan.type)}`}
                 >
                   {plan.type !== "FREE" && (
