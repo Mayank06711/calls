@@ -55,13 +55,21 @@ export const ENDPOINTS = {
     DETAILS_SUBSCRIPTION: `/api/${API_CONFIG.VERSION}/subscriptions/delails`,//get
     // GET /api/subscriptions/details/:subscriptionId
     CONFIG_SUBSCRIPTION: `/api/${API_CONFIG.VERSION}/subscriptions/config`,//get
-
-
     
+  },
 
-
+  SETTINGS: {
+    INITIALIZE: `/api/${API_CONFIG.VERSION}/settings/initialize`,  //POST
+    FETCH: `/api/${API_CONFIG.VERSION}/settings/fetch`,  //GET
     
-  }
+    // Category-specific endpoints, ALL Patch-specific endpoints
+    THEME: `/api/${API_CONFIG.VERSION}/settings/theme`,
+    NOTIFICATIONS: `/api/${API_CONFIG.VERSION}/settings/notifications`,
+    PRIVACY: `/api/${API_CONFIG.VERSION}/settings/privacy`,
+    PREFERENCES: `/api/${API_CONFIG.VERSION}/settings/preferences`,
+    LAYOUT: `/api/${API_CONFIG.VERSION}/settings/layout`,
+    ACCESSIBILITY: `/api/${API_CONFIG.VERSION}/settings/accessibility`,
+  },
   // Add more endpoint categories as needed
 };
 
