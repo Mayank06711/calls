@@ -26,6 +26,7 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
       console.log("userinfoooooooor1111111111111",userInfo);
       dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       localStorage.setItem("fullName",userInfo.fullName );
+      localStorage.setItem("isEmailVerified", userInfo.isEmailVerified);
       dispatch(fetchUserInfoSuccess(userInfo));
       dispatch(setUserInfo(userInfo));
       dispatch(setProfileDataLoading(false));
