@@ -148,6 +148,7 @@ export const logoutThunk = () => async (dispatch) => {
       localStorage.removeItem("mobNum");
       localStorage.removeItem("token");
       localStorage.removeItem("isAlreadyVerified");
+      localStorage.removeItem("isEmailVerified"); 
       localStorage.removeItem("isTourCompleted");
       // add more
 
