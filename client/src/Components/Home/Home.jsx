@@ -3,11 +3,12 @@ import Headers from "./Hearders/Headers";
 import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
 import AISidebar from "./AISidebar/AISidebar";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
 import { useSelector } from "react-redux";
+import { LocalGasStation } from "@mui/icons-material";
 
 function Home() {
   const darkMode = useSelector((state) => state.auth.isDarkMode);
@@ -20,12 +21,31 @@ function Home() {
     darkMode,
     isDarkMode
   );
+  const location = useLocation();
+  const mainContentRef = useRef(null);
+  console.log("laction path name",location.pathname);
 
   const [showTourModal, setShowTourModal] = useState(true);
   const colors = useSubscriptionColors();
   const isAlreadyVerified =
     localStorage.getItem("isAlreadyVerified") === "true";
   const isTourCompleted = localStorage.getItem("isTourCompleted") === "true";
+
+  useEffect(() => {
+    try {
+      if (location && location.pathname) {
+        console.log("Current path:", location.pathname);
+        if (mainContentRef.current) {
+          mainContentRef.current.scrollTo({
+            top: 0,
+            behavior: 'instant'
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Scroll error:", error);
+    }
+  }, [location?.pathname]);
 
   useEffect(() => {
     if (darkMode !== null) {
@@ -316,7 +336,9 @@ function Home() {
       <Sidebar isDarkMode={isDarkMode} />
 
       {/* Main Content */}
-      <div className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide">
+      <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide"
+        style={{ scrollBehavior: 'instant' }}
+      >
         <Outlet />
       </div>
 
