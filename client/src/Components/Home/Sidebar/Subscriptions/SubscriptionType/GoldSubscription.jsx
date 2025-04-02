@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { COLORS } from "../../../../../constants/colorPalettes";
 import { motion } from "framer-motion";
@@ -15,7 +15,8 @@ import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SpeedIcon from "@mui/icons-material/Speed";
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import Payment from "../Payment/Payment";
 
 function GoldSubscription() {
   const location = useLocation();
@@ -25,6 +26,7 @@ function GoldSubscription() {
 
   const [customDays, setCustomDays] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
+  const [selectedDays, setSelectedDays] = useState(null);
 
   const planColor = COLORS.GOLD.fourth;
 
@@ -118,7 +120,38 @@ function GoldSubscription() {
       monthlyEquivalent,
       days,
     });
+    setSelectedDays(days);
   };
+
+  const handleDurationSelect = (duration) => {
+    const durationMap = {
+      "7 Days": 7,
+      "15 Days": 15,
+      "1 Month": 30,
+      "3 Months": 90,
+      "6 Months": 180,
+    };
+    setSelectedDays(durationMap[duration]);
+  };
+
+  const MemoizedPayment = useMemo(() => {
+    if (!selectedDays) return null;
+
+    return (
+      <motion.div
+        className="mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Payment
+          key={selectedDays} // Add key prop to force update only when days change
+          numberOfDays={selectedDays}
+          planColor={planColor}
+        />
+      </motion.div>
+    );
+  }, [selectedDays, planColor]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -153,7 +186,6 @@ function GoldSubscription() {
               style={{
                 background: `linear-gradient(135deg, ${planColor}, ${planColor})`,
                 WebkitBackgroundClip: "text",
-              
               }}
             >
               Unlock Premium Experience
@@ -170,10 +202,15 @@ function GoldSubscription() {
               <div className="flex items-center gap-3">
                 <div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold" style={{ color: planColor }}>
+                    <span
+                      className="text-3xl font-bold"
+                      style={{ color: planColor }}
+                    >
                       ₹{planDetails?.basePrice}
                     </span>
-                    <span className="text-sm text-light-text/60 dark:text-dark-text/60">/day</span>
+                    <span className="text-sm text-light-text/60 dark:text-dark-text/60">
+                      /day
+                    </span>
                   </div>
                   <span className="text-xs font-medium text-green-500">
                     Save up to 20% on longer plans
@@ -187,14 +224,18 @@ function GoldSubscription() {
                   <SpeedIcon sx={{ color: planColor, fontSize: 20 }} />
                   <div>
                     <h3 className="text-sm font-bold">Premium Features</h3>
-                    <p className="text-xs text-light-text/60">Enhanced access</p>
+                    <p className="text-xs text-light-text/60">
+                      Enhanced access
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <SupportAgentIcon sx={{ color: planColor, fontSize: 20 }} />
                   <div>
                     <h3 className="text-sm font-bold">Premium Support</h3>
-                    <p className="text-xs text-light-text/60">Priority assistance</p>
+                    <p className="text-xs text-light-text/60">
+                      Priority assistance
+                    </p>
                   </div>
                 </div>
               </div>
@@ -227,7 +268,6 @@ function GoldSubscription() {
         </div>
       </motion.div>
 
-
       {/* Price Calculator */}
       <motion.div
         className="mb-12 bg-light-primary dark:bg-dark-primary rounded-xl p-6 shadow-lg"
@@ -236,7 +276,9 @@ function GoldSubscription() {
         transition={{ delay: 0.1 }}
       >
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold mb-2">Calculate Your Custom Price</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            Calculate Your Custom Price
+          </h2>
           <p className="text-light-text/70 dark:text-dark-text/70 text-sm">
             Enter number of days (7-180) to calculate your custom price
           </p>
@@ -472,6 +514,7 @@ function GoldSubscription() {
                   fullWidth
                   size="small"
                   variant={plan.tag === "Best Value" ? "contained" : "outlined"}
+                  onClick={() => handleDurationSelect(plan.duration)}
                   sx={{
                     borderColor: planColor,
                     backgroundColor:
@@ -497,6 +540,9 @@ function GoldSubscription() {
           ))}
         </div>
       </motion.section>
+
+      {/*Payment Component */}
+      {MemoizedPayment}
 
       {/* Features Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -577,8 +623,6 @@ function GoldSubscription() {
         </motion.div>
       </div>
 
-
-
       {/* Policies */}
       <motion.div
         className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
@@ -612,9 +656,9 @@ function GoldSubscription() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-    
         <p className="mt-4 text-sm text-light-text/60 dark:text-dark-text/60">
-          Experience premium features and dedicated support with our Gold subscription
+          Experience premium features and dedicated support with our Gold
+          subscription
         </p>
       </motion.div>
     </div>

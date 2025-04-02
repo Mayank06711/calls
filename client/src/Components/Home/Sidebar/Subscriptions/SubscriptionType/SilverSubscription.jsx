@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { COLORS } from "../../../../../constants/colorPalettes";
 import { motion } from "framer-motion";
@@ -16,6 +16,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SpeedIcon from "@mui/icons-material/Speed";
 import DiamondIcon from "@mui/icons-material/Diamond";
+import Payment from "../Payment/Payment";
 
 function SilverSubscription() {
   const location = useLocation();
@@ -25,6 +26,7 @@ function SilverSubscription() {
 
   const [customDays, setCustomDays] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
+  const [selectedDays, setSelectedDays] = useState(null);
 
   const planColor = COLORS.SILVER.fourth;
 
@@ -118,8 +120,57 @@ function SilverSubscription() {
       monthlyEquivalent,
       days,
     });
+    setSelectedDays(days);
   };
 
+  const handleDurationSelect = (duration) => {
+    const durationMap = {
+      "7 Days": 7,
+      "15 Days": 15,
+      "1 Month": 30,
+      "3 Months": 90,
+      "6 Months": 180,
+    };
+    setSelectedDays(durationMap[duration]);
+  };
+
+  //  MemoizedPayment component
+  const MemoizedPayment = useMemo(() => {
+    if (!selectedDays) return null;
+  
+    return (
+      <motion.div
+        className="mb-12"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        onAnimationComplete={() => {
+          // Scroll to payment component after animation completes
+          const paymentElement = document.querySelector('.payment-section');
+          if (paymentElement) {
+            const headerOffset = 80; // Adjust this based on your header height
+            const elementPosition = paymentElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+  
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          }
+        }}
+      >
+        <div className="payment-section"> {/* Added class for targeting */}
+          <Payment
+            key={selectedDays}
+            numberOfDays={selectedDays}
+            planColor={planColor}
+          />
+        </div>
+      </motion.div>
+    );
+  }, [selectedDays, planColor]);
+
+  
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Hero Section */}
@@ -196,7 +247,7 @@ function SilverSubscription() {
                 </div>
                 <div className="flex items-center gap-2">
                   <SupportAgentIcon sx={{ color: planColor, fontSize: 20 }} />
-                  <div>
+    <div>
                     <h3 className="text-sm font-bold">Dedicated Support</h3>
                     <p className="text-xs text-light-text/60">Fast response</p>
                   </div>
@@ -204,23 +255,12 @@ function SilverSubscription() {
               </div>
 
               {/* CTA Button */}
-              <Button
-                variant="contained"
-                size="medium"
-                sx={{
-                  backgroundColor: planColor,
-                  fontSize: "0.875rem",
-                  padding: "6px 16px",
-                  "&:hover": {
-                    backgroundColor: planColor + "dd",
-                    boxShadow: `0 2px 8px ${planColor}40`,
-                  },
-                  minWidth: "140px",
-                  borderRadius: "9999px",
-                }}
+              <span
+                className="text-lg font-semibold"
+                style={{ color: planColor }}
               >
                 Get Started
-              </Button>
+              </span>
             </div>
           </div>
 
@@ -473,6 +513,7 @@ function SilverSubscription() {
                   fullWidth
                   size="small"
                   variant={plan.tag === "Best Value" ? "contained" : "outlined"}
+                  onClick={() => handleDurationSelect(plan.duration)}
                   sx={{
                     borderColor: planColor,
                     backgroundColor:
@@ -498,6 +539,9 @@ function SilverSubscription() {
           ))}
         </div>
       </motion.section>
+
+        {/* Payment Component */}
+        {MemoizedPayment}
 
       {/* Features Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

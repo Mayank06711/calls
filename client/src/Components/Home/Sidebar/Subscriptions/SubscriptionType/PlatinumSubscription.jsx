@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { COLORS } from "../../../../../constants/colorPalettes";
 import { motion } from "framer-motion";
@@ -15,6 +15,7 @@ import StarIcon from "@mui/icons-material/Star";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SpeedIcon from "@mui/icons-material/Speed";
+import Payment from "../Payment/Payment";
 
 function PlatinumSubscription() {
   const location = useLocation();
@@ -24,6 +25,7 @@ function PlatinumSubscription() {
 
   const [customDays, setCustomDays] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
+  const [selectedDays, setSelectedDays] = useState(null);
 
   const subscriptionColors = {
     FREE: COLORS.CASUAL,
@@ -156,6 +158,7 @@ function PlatinumSubscription() {
       monthlyEquivalent,
       days,
     });
+    setSelectedDays(days);
   };
 
   // Add this section after the hero section and before pricing cards
@@ -314,6 +317,38 @@ function PlatinumSubscription() {
     </motion.div>
   );
 
+  const handleDurationSelect = (duration) => {
+    const durationMap = {
+      "7 Days": 7,
+      "15 Days": 15,
+      "1 Month": 30,
+      "3 Months": 90,
+      "6 Months": 180,
+      "1 Year": 365,
+    };
+    setSelectedDays(durationMap[duration]);
+  };
+
+  // The MemoizedPayment component
+const MemoizedPayment = useMemo(() => {
+  if (!selectedDays) return null;
+
+  return (
+    <motion.div
+      className="mb-12"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+    >
+      <Payment
+        key={selectedDays}
+        numberOfDays={selectedDays}
+        planColor={planColor}
+      />
+    </motion.div>
+  );
+}, [selectedDays, planColor]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Hero Section - More Compact */}
@@ -350,11 +385,11 @@ function PlatinumSubscription() {
               }}
             >
               Elevate Your Experience
-            </h1>
+        </h1>
             <p className="text-sm text-light-text/60 dark:text-dark-text/60 mt-1">
               Unlock premium features and priority support
-            </p>
-          </div>
+        </p>
+      </div>
 
           {/* Price and features in a compact card */}
           <div className="w-full max-w-3xl bg-light-secondary/5 dark:bg-dark-secondary/5 rounded-lg p-4 mb-4">
@@ -496,9 +531,9 @@ function PlatinumSubscription() {
                   {plan.savings > 0 && (
                     <p className="text-xs font-medium text-green-500">
                       Save {plan.savings}%
-                    </p>
-                  )}
-                </div>
+                </p>
+              )}
+            </div>
 
                 {/* Compact Features List */}
                 <div className="space-y-1 mb-4 text-xs text-light-text/70 dark:text-dark-text/70">
@@ -521,6 +556,7 @@ function PlatinumSubscription() {
                   fullWidth
                   size="small"
                   variant={plan.tag === "Best Value" ? "contained" : "outlined"}
+                  onClick={() => handleDurationSelect(plan.duration)}
                   sx={{
                     borderColor: planColor,
                     backgroundColor:
@@ -546,6 +582,10 @@ function PlatinumSubscription() {
           ))}
         </div>
       </motion.section>
+
+      {/* Payment Component */}
+      {MemoizedPayment}
+
       {/* Features, Limits, and Support - 4 Column Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Features */}
@@ -556,15 +596,15 @@ function PlatinumSubscription() {
           <div className="flex items-center gap-2 mb-3">
             <CheckCircleIcon sx={{ color: planColor, fontSize: 20 }} />
             <h3 className="text-lg font-semibold">Features</h3>
-          </div>
+      </div>
           <ul className="space-y-2 text-sm">
-            {features?.included?.map((feature, index) => (
+              {features?.included?.map((feature, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-green-500 mt-1">•</span>
                 <span>{feature.name}</span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
         </motion.div>
 
         {/* Limits */}
@@ -577,13 +617,13 @@ function PlatinumSubscription() {
             <h3 className="text-lg font-semibold">Limits</h3>
           </div>
           <ul className="space-y-2 text-sm">
-            {features?.limits?.map((limit, index) => (
+              {features?.limits?.map((limit, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1">•</span>
                 <span>{limit.name}</span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
         </motion.div>
 
         {/* Support */}
@@ -596,16 +636,16 @@ function PlatinumSubscription() {
             <h3 className="text-lg font-semibold">Support</h3>
           </div>
           <ul className="space-y-2 text-sm">
-            {features?.support?.map((item, index) => (
+          {features?.support?.map((item, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-purple-500 mt-1">•</span>
                 <span>{item.name}</span>
-              </li>
-            ))}
-          </ul>
+            </li>
+          ))}
+        </ul>
         </motion.div>
 
-        {/* Payment Methods */}
+      {/* Payment Methods */}
         <motion.div
           className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
           {...fadeIn}
@@ -615,15 +655,15 @@ function PlatinumSubscription() {
             <h3 className="text-lg font-semibold">Payment</h3>
           </div>
           <ul className="space-y-2 text-sm">
-            {paymentMethods?.map((method, index) => (
+          {paymentMethods?.map((method, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-orange-500 mt-1">•</span>
                 <span>{method.type}</span>
               </li>
-            ))}
-          </ul>
+                ))}
+              </ul>
         </motion.div>
-      </div>
+            </div>
       {/* Policies - Compact Grid */}
       <motion.div
         className="bg-light-primary dark:bg-dark-primary p-4 rounded-lg shadow-md"
@@ -635,7 +675,7 @@ function PlatinumSubscription() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           {Object.entries(policies || {}).map(([key, value]) => (
-            <div
+            <div 
               key={key}
               className="p-3 bg-light-secondary/10 dark:bg-dark-secondary/10 rounded-lg"
             >
