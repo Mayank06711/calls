@@ -1,0 +1,70 @@
+name: Server Deployment
+
+on:
+  push:
+    branches:
+      - dev_server
+    paths:
+      - "server/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Run tests
+        working-directory: server
+        run: npm test || true # Remove '|| true' once you have tests
+
+      - name: Build application
+        working-directory: server
+        run: npm run build
+
+      - name: Create deployment package
+        working-directory: server
+        run: |
+          zip -r deploy.zip . -x "node_modules/*" "src/*" ".git*"
+          echo "Created deployment package"
+
+      - name: Deploy to EC2 via AWS Systems Manager
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands=[
+              "cd /home/ec2-user/app",
+              "aws s3 cp s3://${{ secrets.S3_BUCKET }}/deploy.zip .",
+              "unzip -o deploy.zip",
+              "npm ci",
+              "pm2 restart ecosystem.config.js"
+            ] \
+            --comment "Deploying server application"
+
+      - name: Upload deployment package to S3
+        run: |
+          aws s3 cp server/deploy.zip s3://${{ secrets.S3_BUCKET }}/deploy.zip
+
+      - name: Cleanup
+        working-directory: server
+        run: rm deploy.zip

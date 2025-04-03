@@ -216,14 +216,15 @@ class User {
       }
 
       // Combine validation checks
-      if (user.isEmailVerified || !user.email || user.email !== email) {
+      if (user.isEmailVerified) {
         throw new ApiError(
-          400,
-          user.isEmailVerified
-            ? "Email is already verified"
-            : !user.email
-            ? "First update your profile with email id"
-            : "Email does not match"
+          400, "Email is already verified"
+        );
+      }
+
+      if(user.email && user.email !== email){
+        throw new ApiError(
+          400, "Email doesn`t match with registered email, update your email or enter correct email."
         );
       }
 
@@ -244,7 +245,7 @@ class User {
 
       // Run database update and email sending in parallel
       await Promise.all([
-        UserModel.updateOne({ _id: userId }, { emailToken: token }),
+        UserModel.updateOne({ _id: userId }, { emailToken: token , email: email}),
         sendEmails({
           email,
           templateCode: "EMAIL_VERIFICATION",
