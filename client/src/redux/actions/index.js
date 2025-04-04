@@ -8,4 +8,5 @@ export * from "./socket.actions";
 export * from "./subscription.action";
 export * from "./logout.actions";
 export * from "./loader.actions";
+export * from "./Settings.actions";
 

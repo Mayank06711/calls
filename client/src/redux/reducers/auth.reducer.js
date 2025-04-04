@@ -16,6 +16,7 @@ import {
   LOGOUT_SUCCESS,
   LOGOUT_FAILURE,
   SET_PROFILE_DATA_LOADING,
+  SET_DARK_MODE,
 } from "../action_creators/login.action_creaters";
 
 const initialState = {
@@ -30,6 +31,7 @@ const initialState = {
   isLoggingOut: false,
   logoutError: null,
   isProfileDataLoading: false,
+  isDarkMode:null,
 };
 
 const authReducer = (state = initialState, action) => {
@@ -126,6 +128,12 @@ const authReducer = (state = initialState, action) => {
       return {
         ...state,
         isProfileDataLoading: action.payload,
+      };
+
+      case SET_DARK_MODE:
+      return {
+        ...state,
+        isDarkMode: action.payload,
       };
     default:
       return state;

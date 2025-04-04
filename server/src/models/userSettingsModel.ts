@@ -14,7 +14,7 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       mode: {
         type: String,
         enum: ["light", "dark", "system"],
-        default: "dark",
+        default: "system",
       },
       primaryColor: String,
       fontSize: {

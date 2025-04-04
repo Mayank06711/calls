@@ -4,6 +4,7 @@ import { updateUserInfoThunk } from "../../redux/thunks/userInfo.thunks";
 import { useNavigate } from "react-router-dom";
 import { showNotification } from "../../redux/actions";
 import { fetchUserInfoThunk } from "../../redux/thunks/userInfo.thunks";
+import { initializeSettingsThunk } from "../../redux/thunks/settings.thunk";
 
 function UserInfoForm() {
   const dispatch = useDispatch();

@@ -3,33 +3,66 @@ import Headers from "./Hearders/Headers";
 import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
 import AISidebar from "./AISidebar/AISidebar";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
+import { useSelector } from "react-redux";
+import { LocalGasStation } from "@mui/icons-material";
 
 function Home() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem("isDarkMode");
-    return savedTheme ? JSON.parse(savedTheme) : false;
-  });
+  const darkMode = useSelector((state) => state.auth.isDarkMode);
+
+  const [isDarkMode, setIsDarkMode] = useState(
+    localStorage.getItem("isDarkMode") === "true"
+  );
+  console.log(
+    "daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaark moffffffffffffffffffffd",
+    darkMode,
+    isDarkMode
+  );
+  const location = useLocation();
+  const mainContentRef = useRef(null);
+  console.log("laction path name",location.pathname);
+
   const [showTourModal, setShowTourModal] = useState(true);
   const colors = useSubscriptionColors();
   const isAlreadyVerified =
     localStorage.getItem("isAlreadyVerified") === "true";
   const isTourCompleted = localStorage.getItem("isTourCompleted") === "true";
-  console.log("object1", isAlreadyVerified);
-  console.log("object2", isTourCompleted);
 
   useEffect(() => {
-    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
-    // Optionally update document body/html class for global theme
+    try {
+      if (location && location.pathname) {
+        console.log("Current path:", location.pathname);
+        if (mainContentRef.current) {
+          mainContentRef.current.scrollTo({
+            top: 0,
+            behavior: 'instant'
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Scroll error:", error);
+    }
+  }, [location?.pathname]);
+
+  useEffect(() => {
+    if (darkMode !== null) {
+      localStorage.setItem("isDarkMode", darkMode);
+      setIsDarkMode(darkMode);
+    } // Optionally update document body/html class for global theme
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem("isDarkMode", isDarkMode);
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (!isTourCompleted && !isAlreadyVerified &&!showTourModal) {
-        startTour();
+    if (!isTourCompleted && !isAlreadyVerified && !showTourModal) {
+      startTour();
     }
   }, [isAlreadyVerified, isTourCompleted, showTourModal]);
 
@@ -303,7 +336,9 @@ function Home() {
       <Sidebar isDarkMode={isDarkMode} />
 
       {/* Main Content */}
-      <div className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide">
+      <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide"
+        style={{ scrollBehavior: 'instant' }}
+      >
         <Outlet />
       </div>
 

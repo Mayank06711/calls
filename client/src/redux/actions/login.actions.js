@@ -8,6 +8,7 @@ import {
   RESET_TIMER,
   SET_TIMER_ACTIVE,
   VERIFY_OTP,
+  SET_DARK_MODE,
 } from "../action_creators";
 
 export const setToken = (token) => ({
@@ -50,5 +51,10 @@ export const resetTimer = (time) => ({
 
 export const verifyOtp = (data) => ({
   type: VERIFY_OTP,
+  payload: data,
+});
+
+export const setIsDarkMode = (data) => ({
+  type: SET_DARK_MODE,
   payload: data,
 });

@@ -1,7 +1,13 @@
 import { ENDPOINTS, HTTP_METHODS } from "../../constants/apiEndpoints";
 import { makeRequest } from "../../utils/apiHandlers";
+import { SUBSCRIPTION_TYPES } from "../../utils/getSubscriptionColors";
 import { LOADER_TYPES } from "../action_creators";
-import { getSubscriptionPlans, showNotification, startLoader, stopLoader } from "../actions";
+import {
+  getSubscriptionPlans,
+  showNotification,
+  startLoader,
+  stopLoader,
+} from "../actions";
 
 export const createSubscriptionThunk =
   (subscriptionData) => async (dispatch) => {
@@ -59,41 +65,33 @@ export const createSubscriptionThunk =
     }
   };
 
-
-
-export const getSubscriptionPlansThunk = () => async (dispatch) => {
-  const loaderType = LOADER_TYPES.SUBSCRIPTION_GET_PLANS; // Add this to LOADER_TYPES
-
-  try {
-    dispatch(startLoader(loaderType));
-
-
-    const { data, error, statusCode } = await makeRequest(
-      HTTP_METHODS.GET,
-      ENDPOINTS.SUBCRIPTIONS.PLANS_SUBSCRIPTION
-    );
-
-    if (error) {
-      dispatch(showNotification(error.message, error.statusCode));
-      return;
+  export const getSubscriptionPlansThunk = () => async (dispatch) => {
+    const loaderType = LOADER_TYPES.SUBSCRIPTION_GET_PLANS;
+  
+    try {
+      dispatch(startLoader(loaderType));
+  
+      const { data, error, statusCode } = await makeRequest(
+        HTTP_METHODS.GET,
+        ENDPOINTS.SUBCRIPTIONS.PLANS_SUBSCRIPTION
+      );
+  
+      if (error) {
+        dispatch(showNotification(error.message, error.statusCode));
+        return;
+      }
+  
+      if (data.success) {
+        const plans = data.data;
+        console.log("Transformed plans------------->:", plans);
+        dispatch(getSubscriptionPlans(plans));
+      } else {
+        dispatch(showNotification("Failed to fetch subscription plans", statusCode || 500));
+      }
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      dispatch(showNotification(error.message || "Failed to fetch subscription plans", 400));
+    } finally {
+      dispatch(stopLoader(loaderType));
     }
-     console.log("00000000")
-    if (data.success) {
-      const plans = data.data;
-      console.log("subscription plans data", plans);
-      dispatch(getSubscriptionPlans(plans));
-    } else {
-      dispatch(showNotification("Failed to fetch subscription plans", statusCode || 500));
-    }
-  } catch (error) {
-    console.error("Error fetching subscription plans:", error);
-    dispatch(
-      showNotification(
-        error.message || "Failed to fetch subscription plans", 
-        400
-      )
-    );
-  } finally {
-    dispatch(stopLoader(loaderType));
-  }
-};
+  };

@@ -31,6 +31,17 @@ import CasualSubscription from "./Components/Home/Sidebar/Subscriptions/Subscrip
 import SilverSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription";
 import PlatinumSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription";
 import GoldSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
+import { fetchUserInfoThunk } from "./redux/thunks/userInfo.thunks";
+import ThemeSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings";
+import NotificationSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings";
+import PrivacySettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PrivacySettings";
+import PreferenceSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PreferenceSettings";
+import LayoutSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/LayoutSettings";
+import AccessibilitySettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AccessibilitySettings";
+import SessionSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/SessionSettings";
+import UsageSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/UsageSettings";
+import ReelsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings";
+import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings";
 
 const theme = createTheme({
   palette: {
@@ -90,6 +101,9 @@ const App = () => {
     };
   }, [timer, isTimerActive, dispatch]);
 
+  // Add this effect to persist userInfo to localStorage when it changes
+
+
   return (
     <ThemeProvider theme={theme}>
       <div className="relative flex justify-center items-center h-[100vh]">
@@ -139,7 +153,20 @@ const App = () => {
                 <Route path="likes" element={<Likes />} />
                 <Route path="history" element={<UserHistory />} />
                 <Route path="my-style" element={<MyStyle />} />
-                <Route path="settings" element={<UserSettings />} />
+                <Route path="settings" element={<UserSettings />}>
+                  <Route index element={<Navigate to="overview" />} />
+                  <Route path="overview" element={<UserSettings />} />
+                  <Route path="theme" element={<ThemeSettings />} />
+                  <Route path="notifications" element={<NotificationSettings />} />
+                  <Route path="privacy" element={<PrivacySettings />} />
+                  <Route path="preferences" element={<PreferenceSettings />} />
+                  <Route path="layout" element={<LayoutSettings />} />
+                  <Route path="accessibility" element={<AccessibilitySettings />} />
+                  <Route path="sessions" element={<SessionSettings />} />
+                  <Route path="usage" element={<UsageSettings />} />
+                  <Route path="reels" element={<ReelsSettings />} />
+                  <Route path="analytics" element={<AnalyticsSettings />} />
+                </Route>
               </Route>
             </Route>
 
