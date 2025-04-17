@@ -3,11 +3,14 @@ import React, { useEffect, useRef, useState } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
-import { useSelector,useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import "ldrs/ripples";
 import { uploadImage } from "../../../../socket/handleImageUpload";
 import { setUserInfo } from "../../../../redux/actions/userInfo.actions";
-
+import { TextField, Button } from "@mui/material";
+import EmailIcon from "@mui/icons-material/Email";
+import { motion } from "framer-motion";
+import { verifyEmailThunk } from "../../../../redux/thunks/userInfo.thunks";
 
 function UserInfo() {
   const dispatch = useDispatch();
@@ -16,6 +19,9 @@ function UserInfo() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [avatarImage, setAvatarImage] = useState(null);
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const colors = useSubscriptionColors();
   const userInfo = useSelector((state) => state.userInfo);
 
@@ -23,6 +29,7 @@ function UserInfo() {
   // First try to get thumbnail (for faster loading), then fallback to full URL
   const userThumbnailUrl = userData?.photo?.thumbnailUrl || null;
   const userFullImageUrl = userData?.photo?.url || null;
+  const isDarkMode =localStorage.getItem('isDarkMode');
 
   const [currentDisplayUrl, setCurrentDisplayUrl] = useState(userThumbnailUrl);
 
@@ -112,44 +119,42 @@ function UserInfo() {
         }
       });
 
-            // Update Redux store with the new photo URLs
-            if (uploadedResponse && uploadedResponse.status === "success") {
-              const { url, thumbnail_url } = uploadedResponse.data.currentPhoto;
-              
-              // Create a new userData object with updated photo
-              const updatedUserData = {
-                ...userData,
-                photo: {
-                  ...userData.photo,
-                  url: url,
-                  thumbnailUrl: thumbnail_url
-                }
-              };
-              
-              // Update Redux store with new data
-              dispatch(setUserInfo(updatedUserData));
-              
-              // Set the current display URL to the thumbnail for faster display
-              setCurrentDisplayUrl(thumbnail_url);
-              
-              // Start the process to load the full image
-              if (url !== thumbnail_url) {
-                setIsImageLoading(true);
-                const fullImg = new Image();
-                fullImg.onload = () => {
-                  setCurrentDisplayUrl(url);
-                  setIsImageLoading(false);
-                };
-                fullImg.src = url;
-              }
-              
-              // Clear the temporary avatar preview since we're now using the uploaded image
-              setAvatarImage(null);
-              
-              console.log("Avatar updated successfully", uploadedResponse);
-            }
-      
-      
+      // Update Redux store with the new photo URLs
+      if (uploadedResponse && uploadedResponse.status === "success") {
+        const { url, thumbnail_url } = uploadedResponse.data.currentPhoto;
+
+        // Create a new userData object with updated photo
+        const updatedUserData = {
+          ...userData,
+          photo: {
+            ...userData.photo,
+            url: url,
+            thumbnailUrl: thumbnail_url,
+          },
+        };
+
+        // Update Redux store with new data
+        dispatch(setUserInfo(updatedUserData));
+
+        // Set the current display URL to the thumbnail for faster display
+        setCurrentDisplayUrl(thumbnail_url);
+
+        // Start the process to load the full image
+        if (url !== thumbnail_url) {
+          setIsImageLoading(true);
+          const fullImg = new Image();
+          fullImg.onload = () => {
+            setCurrentDisplayUrl(url);
+            setIsImageLoading(false);
+          };
+          fullImg.src = url;
+        }
+
+        // Clear the temporary avatar preview since we're now using the uploaded image
+        setAvatarImage(null);
+
+        console.log("Avatar updated successfully", uploadedResponse);
+      }
     } catch (error) {
       console.error("Upload failed:", error);
       setIsUploading(false);
@@ -173,6 +178,38 @@ function UserInfo() {
       }}
     />
   );
+
+
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setEmailError("Email is required");
+      return false;
+    }
+    if (!regex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
+  
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (emailError) validateEmail(e.target.value);
+  };
+  
+  const handleVerifyEmail = async () => {
+    if (validateEmail(email)) {
+      const result = await dispatch(verifyEmailThunk(email));
+      if (result.success) {
+        setShowEmailVerification(false);
+        setEmail("");
+        setEmailError("");
+      }
+    }
+  };
+  
 
   return (
     <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auro w-[600px] rounded-md">
@@ -334,6 +371,101 @@ function UserInfo() {
         </div>
       </div>
 
+
+      {/* email verificaion section */}
+      {!userData.isEmailVerified && (
+        <div className="mt-2 bg-white/5 backdrop-blur-sm rounded-lg p-2 border border-white/10 shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <EmailIcon sx={{ color: colors.fourth }} />
+              <h3 className="text-sm font-semibold">Email Verification</h3>
+            </div>
+            {!showEmailVerification && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setShowEmailVerification(true)}
+                sx={{
+                  borderColor: colors.fourth,
+                  color: colors.fourth,
+                  "&:hover": {
+                    borderColor: colors.fourth,
+                    backgroundColor: `${colors.fourth}10`,
+                  },
+                }}
+              >
+                Verify Email
+              </Button>
+            )}
+          </div>
+
+          {showEmailVerification && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3"
+            >
+              <TextField
+                fullWidth
+                size="small"
+                variant="outlined"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={handleEmailChange}
+                error={!!emailError}
+                helperText={emailError}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: colors.fourth + "80" },
+                    "&:hover fieldset": { borderColor: colors.fourth },
+                    "&.Mui-focused fieldset": { borderColor: colors.fourth },
+                    "& input": { color: isDarkMode ? "#ffffff" : "#000000" },
+                  },
+                  "& .MuiFormHelperText-root": {
+                    color: "error.main",
+                  },
+                }}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setShowEmailVerification(false);
+                    setEmail("");
+                    setEmailError("");
+                  }}
+                  sx={{
+                    color: "gray",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleVerifyEmail}
+                  disabled={!email || !!emailError}
+                  sx={{
+                    backgroundColor: colors.fourth,
+                    "&:hover": {
+                      backgroundColor: colors.fourth + "dd",
+                    },
+                    "&.Mui-disabled": {
+                      backgroundColor: colors.fourth + "80",
+                    },
+                  }}
+                >
+                  Verify
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
       {/* user Information secrtion */}
       <div className="flex-1 pt-2">
         <div className="grid grid-cols-2 gap-2">
@@ -390,6 +522,7 @@ function UserInfo() {
           </div>
         </div>
       </div>
+ 
     </div>
   );
 }
