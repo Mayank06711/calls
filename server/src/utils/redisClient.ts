@@ -247,7 +247,7 @@ class RedisManager {
 
   public static async getDataFromGroup<T>(
     group: string,
-    key: string
+    key: string 
   ): Promise<T | null> {
     if (!this.redis) {
       console.error("Redis is not initialized");
