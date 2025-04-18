@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { middleware } from "../middlewares/middlewares";
+import { Middleware } from "../middlewares/middlewares";
 
 const router = Router();
 
 // Admin routes
- router.route("/check").post(middleware.IsAdmin)
+ router.route("/").post(Middleware.IsAdmin)
 
 export default router;

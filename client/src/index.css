@@ -2,7 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Login form styling****************************************** */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar {
+  /* For Webkit browsers (Chrome, Safari) */
+  &::-webkit-scrollbar {
+    width: 8px;  /* vertical scrollbar width */
+    height: 8px; /* horizontal scrollbar height */
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(var(--color-primary-500), 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all 0.3s ease;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--color-primary-500), 0.3);
+    border: 1px solid transparent;
+  }
+
+  /* For Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-primary-500), 0.2) transparent;
+
+  /* Hide scrollbar when not hovering (optional) */
+  &:not(:hover) {
+    &::-webkit-scrollbar-thumb {
+      background: rgba(var(--color-primary-500), 0.1);
+    }
+  }
+}
+
+/* Dark mode adjustments */
+.dark .custom-scrollbar {
+  &::-webkit-scrollbar-thumb {
+    background: rgba(var(--color-primary-500), 0.3);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--color-primary-500), 0.4);
+  }
+
+  &:not(:hover) {
+    &::-webkit-scrollbar-thumb {
+      background: rgba(var(--color-primary-500), 0.2);
+    }
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  
+  &::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
+/* Optional: Custom scrollbar for specific elements */
+.thin-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(var(--color-primary-500), 0.15);
+  }
+}
+
 
 /* From Uiverse.io by zanina-yassine */ 
 .modal {
@@ -223,4 +312,131 @@
   text-align: center;
   font-size: 18px;
   margin-bottom: 10px;
+}
+
+/* date range picker style *************/
+
+/* Add this to your global CSS file */
+.rdrDayDisabled {
+  background-color: transparent ;
+  opacity: 0.5;
+  
+}
+
+.rdrDayDisabled .rdrDayNumber span {
+  color: #9CA3AF ;
+ 
+  font-style: italic;
+}
+
+/* Dark mode disabled date styles */
+.dark .rdrDayDisabled {
+  background-color: transparent !important;
+  opacity: 0.5;
+  
+}
+
+.dark .rdrDayDisabled .rdrDayNumber span {
+  color: #4B5563 ;
+  font-style: italic;
+  
+}
+
+.dark .rdrCalendarWrapper {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+.dark .rdrDateDisplayWrapper {
+  background-color: #1f2937;
+}
+
+.dark .rdrDateDisplay input {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+.dark .rdrMonth {
+  background-color: #111827;
+}
+
+.dark .rdrDayNumber span {
+  color: #f9fafb;
+}
+
+.dark .rdrDayToday .rdrDayNumber span:after {
+  background: #60a5fa;
+}
+
+.dark .rdrDateRangeWrapper {
+  background-color: #111827;
+}
+
+.dark .rdrDefinedRangesWrapper {
+  background-color: #1f2937;
+  border-right: 1px solid #374151;
+}
+
+.dark .rdrStaticRange {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+.dark .rdrInputRange input {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+/* Styling for selected range start and end dates */
+.date-range-custom .rdrStartEdge,
+.date-range-custom .rdrEndEdge {
+  background-color: #1d4ed8 !important; /* Darker blue for edges */
+}
+
+.date-range-custom .rdrInRange {
+  background-color: #3b82f6 !important; /* Regular blue for range */
+  opacity: 0.7;
+}
+
+/* Dark mode adjustments */
+.dark .date-range-custom .rdrStartEdge,
+.dark .date-range-custom .rdrEndEdge {
+  background-color: #1e40af !important; /* Even darker blue for dark mode */
+}
+
+.dark .date-range-custom .rdrInRange {
+  background-color: #3b82f6 !important;
+  opacity: 0.5;
+}
+
+/* Hover effects for better interaction */
+.date-range-custom .rdrDay:not(.rdrDayDisabled):hover .rdrDayNumber span {
+  border-color: #1d4ed8;
+}
+
+.dark .date-range-custom .rdrDay:not(.rdrDayDisabled):hover .rdrDayNumber span {
+  border-color: #1e40af;
+}
+
+/* Selected date text color */
+.date-range-custom .rdrStartEdge .rdrDayNumber span,
+.date-range-custom .rdrEndEdge .rdrDayNumber span {
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Day number styling for in-range dates */
+.date-range-custom .rdrInRange .rdrDayNumber span {
+  color: white !important;
+}
+
+/* Additional styles for better visibility */
+.date-range-custom .rdrDayStartPreview,
+.date-range-custom .rdrDayEndPreview {
+  border-color: #1d4ed8 !important;
+}
+
+.dark .date-range-custom .rdrDayStartPreview,
+.dark .date-range-custom .rdrDayEndPreview {
+  border-color: #1e40af !important;
 }

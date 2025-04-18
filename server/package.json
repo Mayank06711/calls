@@ -7,6 +7,8 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "dev": "nodemon --exec ts-node src/index.ts",
+    "start:dev": "ts-node-dev src/index.ts",
+    "test:socket": "ts-node src/socketTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,8 +29,10 @@
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/multer": "^1.4.12",
+    "@types/pg": "^8.11.10",
     "@types/uuid": "^10.0.0",
     "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -37,19 +41,33 @@
     "express-rate-limit": "^7.4.0",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.5.46",
     "mongoose": "^8.7.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.14",
+    "nodemon": "^3.1.9",
+    "pg": "^8.13.1",
+    "plivo": "^4.69.2",
     "socket.io": "^4.8.0",
-    "uuid": "^10.0.0"
+    "socket.io-client": "^4.8.1",
+    "twilio": "^5.4.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^4.17.21",
     "@types/ioredis": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/mongoose": "^5.11.97",
     "@types/node": "^22.5.5",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
     "@types/socket.io": "^3.0.2",
+    "pm2": "^5.4.3",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.6.2"
   }

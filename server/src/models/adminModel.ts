@@ -1,29 +1,13 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Model } from "mongoose";
 import bcrypt from "bcrypt"; // For password hashing
+import { IAdminModel, IAdminDocument } from "../interface/IAdmin";
 
 // Define the Admin interface
-interface IAdmin extends Document {
-  user: mongoose.Types.ObjectId; // Reference to the User model
-  adminName: string;
-  adminPosition: string;
-  adminMasterKey: string;
-  adminPassword: string;
-  adminEmail: string;
-  adminUsername: string;
-  isActive: boolean;
-  // Methods
-  fetchModelData(
-    modelName: string,
-    query: Record<string, any>,
-    limit: number
-  ): Promise<any>;
-  checkPassword(enteredPassword: string): Promise<boolean>;
-}
 
 // Admin Schema
-const AdminSchema: Schema<IAdmin> = new Schema(
+const AdminSchema: Schema<IAdminDocument> = new Schema(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -62,11 +46,11 @@ const AdminSchema: Schema<IAdmin> = new Schema(
 );
 
 // Pre-save hook to hash admin password before saving to DB
-AdminSchema.pre<IAdmin>("save", async function (next) {
-  if (!this.isModified("adminPassword")) return next(); // If password is not modified, skip
+AdminSchema.pre("save", async function (next) {
+  if (!this.isModified("adminPassword")) return next();
 
-  const salt = await bcrypt.genSalt(10); // Generate salt for hashing
-  this.adminPassword = await bcrypt.hash(this.adminPassword, salt); // Hash the password
+  const salt = await bcrypt.genSalt(10);
+  this.adminPassword = await bcrypt.hash(this.adminPassword, salt);
   next();
 });
 
@@ -84,14 +68,13 @@ AdminSchema.methods.fetchModelData = async function (
   limit: number = 10
 ): Promise<any> {
   try {
-    const model: Model<any> = mongoose.model(modelName); // Dynamically reference the model by name
-    const data = await model.find(query).limit(limit).exec(); // Fetch the data with the query and limit
-    return data;
+    const model = mongoose.model(modelName);
+    return await model.find(query).limit(limit).exec();
   } catch (error) {
     throw new Error(`Error fetching data from ${modelName}: ${error}`);
   }
 };
 
 // Create and export the Admin model
-const Admin = mongoose.model<IAdmin>("Admin", AdminSchema);
+const Admin = mongoose.model<IAdminDocument, IAdminModel>("Admin", AdminSchema);
 export default Admin;
