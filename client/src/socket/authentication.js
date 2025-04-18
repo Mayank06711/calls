@@ -51,6 +51,7 @@ const authenticateSocket = async (token) => {
           );
         },
         onTimeout: () => {
+          console.log("Connection timeout, please try again", "error");
           store.dispatch(
             showNotification("Connection timeout, please try again", "error")
           );
