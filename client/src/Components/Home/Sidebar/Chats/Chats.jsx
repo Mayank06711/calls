@@ -294,7 +294,7 @@ function ChatSection() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
+        {/* Chat Header hii*/}
         <div className="px-4 py-2 border-b border-light-secondary dark:border-dark-secondary bg-light-secondary dark:bg-dark-secondary flex items-center  ">
           <div className="w-1/2 flex items-center">
             <Avatar sx={{ bgcolor: colors.third }}>J</Avatar>
