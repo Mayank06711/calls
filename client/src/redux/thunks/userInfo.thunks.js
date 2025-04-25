@@ -27,6 +27,7 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
       dispatch(showNotification(`Welcome ${userInfo.fullName}`, statusCode));
       localStorage.setItem("fullName",userInfo.fullName );
       localStorage.setItem("isEmailVerified", userInfo.isEmailVerified);
+      localStorage.setItem("userInfo",JSON.stringify(userInfo));
       dispatch(fetchUserInfoSuccess(userInfo));
       dispatch(setUserInfo(userInfo));
       dispatch(setProfileDataLoading(false));
@@ -85,3 +86,60 @@ export const updateUserInfoThunk = (userData) => async (dispatch) => {
     return;
   }
 };
+
+
+export const verifyEmailThunk = (email) => async (dispatch) => {
+  try {
+    dispatch(setProfileDataLoading(true));
+    
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.USERS.EMAIL_VERIFICATION,
+      { email }
+    );
+
+    if (error) {
+      dispatch(showNotification(error.message, error.statusCode));
+      dispatch(setProfileDataLoading(false));
+      return { success: false, error: error.message };
+    }
+
+    if (data.success) {
+      dispatch(showNotification(
+        "Verification email sent successfully! Please check your inbox.",
+        statusCode
+      ));
+      
+      // Update local user info to reflect pending verification
+      // const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+      // const updatedUserInfo = {
+      //   ...userInfo,
+      //   email: email,
+      //   isEmailVerified: false
+      // };
+      // localStorage.setItem("userInfo", JSON.stringify(updatedUserInfo));
+      // dispatch(setUserInfo(updatedUserInfo));
+      
+      dispatch(setProfileDataLoading(false));
+      return { success: true };
+    } else {
+      dispatch(showNotification(
+        "Failed to send verification email",
+        statusCode || 500
+      ));
+      dispatch(setProfileDataLoading(false));
+      return { success: false, error: "Failed to send verification email" };
+    }
+
+  } catch (error) {
+    console.error("Error in email verification:", error);
+    dispatch(setProfileDataLoading(false));
+    dispatch(showNotification(
+      error.message || "Failed to process email verification",
+      400
+    ));
+    return { success: false, error: error.message };
+  }
+};
+
+

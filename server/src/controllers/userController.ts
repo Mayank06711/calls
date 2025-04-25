@@ -198,7 +198,7 @@ class User {
   static async _verifyEmail(req: express.Request, res: express.Response) {
     try {
       const userId = req.user?._id;
-      const { email } = req.body;
+      const { email, final_path } = req.body;
 
       // Combine validation checks
       if (!userId || !email) {
@@ -218,21 +218,16 @@ class User {
       // Combine validation checks
       if (user.isEmailVerified) {
         throw new ApiError(
-          400, "Email is already verified"
-        );
-      }
-
-      if(user.email && user.email !== email){
-        throw new ApiError(
-          400, "Email doesn`t match with registered email, update your email or enter correct email."
+          400, `Already exist a verified email, ${user.email.toLocaleLowerCase()}`
         );
       }
 
       // Generate token with minimal data
       const token = generateToken({
         id: userId.toString(),
-        email: user.email,
+        email: user.email || email,
         fullName: user.fullName,
+        final_path: final_path ? final_path : "profile/posts"
       });
 
       if (!token) {
@@ -245,7 +240,7 @@ class User {
 
       // Run database update and email sending in parallel
       await Promise.all([
-        UserModel.updateOne({ _id: userId }, { emailToken: token , email: email}),
+        UserModel.updateOne({ _id: userId }, { emailToken: token, email:email}),
         sendEmails({
           email,
           templateCode: "EMAIL_VERIFICATION",
@@ -263,48 +258,44 @@ class User {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, "Internal Server Error: Unable to create user");
+      throw new ApiError(500, "Internal Server Error: Unable to send email");
     }
   }
 
   static async verifyEmailToken(req: express.Request, res: express.Response) {
-    const clientUrl = process.env.CLIENT_URL;
+    const clientUrl = process.env.CLIENT_URL_DEV;
     try {
       const { token } = req.params;
-
       // Verify token exists
       if (!token) {
         // return res.redirect(
         //   `${clientUrl}/email-verification-error?message=Token is required`
         // );
-
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
+        return res.redirect(`${clientUrl}`)
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
-
       const verificationResult = verifyToken(token);
-
       if (!verificationResult.isValid || !verificationResult.data) {
         // return res.redirect(
         //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
         //     verificationResult.error || "Invalid token"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
+        return res.redirect(`${clientUrl}/error/verification`)
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
-
       // Find user with matching token
       const user = await UserModel.findOne({
         _id: verificationResult.data.id,
         emailToken: token,
       });
-
       if (!user) {
         // return res.redirect(
         //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
         //     "User not found or token already used"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
+        return res.redirect(`${clientUrl}/error/verification`)
       }
 
       // If already verified, redirect to success with a different message
@@ -314,7 +305,8 @@ class User {
         //     "Email already verified"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
+        return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`)
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
 
       // Verify email matches
@@ -324,29 +316,29 @@ class User {
         //     "Email mismatch"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
+        return res.redirect(`${clientUrl}/error/verification`)
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
-
       // Update user verification status
       await UserModel.findByIdAndUpdate(user._id, {
         isEmailVerified: true,
         emailToken: undefined, // Clear the token
       });
-
-      const redirectUrl = `${clientUrl}/hello`;
-
+      // const redirectUrl = `${clientUrl}/hello`;
       // Ensure we have a valid URL to redirect to
-      if (!redirectUrl) {
-        console.log("novalid url");
-        return res.redirect(`${clientUrl}/system/_status/health_check`);
-      }
+      // if (!redirectUrl) {
+      //   console.log("novalid url");
+      //   return res.redirect(`${clientUrl}`)
+      //   // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      // }
       // Redirect to frontend success page
       // res.redirect(redirectUrl);
-      return res.redirect(
-        `${redirectUrl}?message=${encodeURIComponent(
-          "Email verified successfully"
-        )}`
-      );
+      return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`)
+      // return res.redirect(
+      //   `${redirectUrl}?message=${encodeURIComponent(
+      //     "Email verified successfully"
+      //   )}`
+      // );
     } catch (error) {
       console.error("Email verification error:", error);
       return res.redirect(

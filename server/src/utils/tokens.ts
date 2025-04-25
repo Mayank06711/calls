@@ -2,6 +2,7 @@ interface TokenData {
   id: string;
   email: string;
   fullName: string;
+  final_path:string;
 }
 
 export const generateToken = (data: TokenData): string => {
@@ -16,7 +17,7 @@ export const generateToken = (data: TokenData): string => {
     const expiryTime = currentTime + 10 * 60 * 1000; // 10 minutes in milliseconds
 
     // Create token with URL-safe characters
-    const token = `${currentTime}-${firstHalf}-${data.fullName}-verification-${secondHalf}_${data.email}-exp-${expiryTime}`;
+    const token = `${currentTime}-${firstHalf}-${data.fullName}-verification-${secondHalf}_${data.email}-exp-${expiryTime}-${data.final_path.replace(/\//g, '-')}`;
 
     // Encode the token for URL safety
     return token;
@@ -50,7 +51,7 @@ export const verifyToken = (
 
     // Check if token has expired
     const now = Date.now();
-    if (now > parseInt(expiryTime)) {
+    if (now > parseInt(expiryTime.split("-")[0])) {
       return { isValid: false, data: null, error: "Token has expired" };
     }
 
@@ -63,6 +64,7 @@ export const verifyToken = (
         id: userId,
         email: email,
         fullName: fullName,
+        final_path: expiryTime.split("-")[1].replace(/-/g, '/'),
       },
     };
   } catch (error) {
