@@ -1,0 +1,1 @@
+export const IS_OPEN_FEEDBACK="IS_OPEN_FEEDBACK";
