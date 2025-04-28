@@ -42,6 +42,7 @@ import SessionSettings from "./Components/Home/Hearders/UserProfile/UserActivity
 import UsageSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/UsageSettings";
 import ReelsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings";
 import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings";
+import Feedback from "./Components/Feedback/Feedback";
 
 const theme = createTheme({
   palette: {
@@ -188,6 +189,7 @@ const App = () => {
           </Routes>
         </Router>
       </div>
+      <Feedback/>
     </ThemeProvider>
   );
 };
