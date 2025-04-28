@@ -11,6 +11,7 @@ import {
   loaderReducer,
   subscriptionPlansReducer,
   settingsReducer,
+  isOpenFeedbackReducer
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -26,6 +27,7 @@ const store = configureStore({
     loaderState: loaderReducer,
     plans:subscriptionPlansReducer,
     settings:settingsReducer,
+    isOpenFeedback:isOpenFeedbackReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
