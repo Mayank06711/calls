@@ -6,6 +6,10 @@ import OTPInput from "./OTPInput";
 import { generateOtpThunk } from "../../redux/thunks/login.thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { resetTimer, setTimerActive } from "../../redux/actions/login.actions";
+import { Tooltip, IconButton } from "@mui/material";
+import FeedbackIcon from "@mui/icons-material/Feedback";
+import { feedbackClick } from "../../redux/actions";
+
 
 function Login() {
   const [activeTab, setActiveTab] = useState(1);
@@ -55,6 +59,10 @@ function Login() {
     } catch (error) {
       console.log("error in generating otp", error);
     }
+  };
+
+  const handleFeedbackClick = () => {
+    dispatch(feedbackClick(true));
   };
 
   return (
@@ -142,6 +150,24 @@ function Login() {
         ) : (
           <QRGenerator />
         )}
+        
+        {/* Feedback Button */}
+        <div className="absolute top-4 right-4">
+          <Tooltip title="Submit Feedback" arrow>
+            <IconButton
+              onClick={handleFeedbackClick}
+              sx={{
+                color: '#059212',
+                backgroundColor: 'rgba(155, 236, 0, 0.1)',
+                '&:hover': {
+                  backgroundColor: 'rgba(155, 236, 0, 0.2)',
+                }
+              }}
+            >
+              <FeedbackIcon />
+            </IconButton>
+          </Tooltip>
+        </div>
       </form>
     </div>
   );
