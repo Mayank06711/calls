@@ -17,7 +17,7 @@ const mediaItemSchema = {
   createdAt: { type: Date, default: Date.now },
 };
 
-const NewMsgSchema = new Schema<INewMsg>(
+const MsgSchema = new Schema<INewMsg>(
   {
     sender: {
       type: Schema.Types.ObjectId,
@@ -130,16 +130,16 @@ const NewMsgSchema = new Schema<INewMsg>(
 );
 
 // Create indexes
-NewMsgSchema.index({ sender: 1, receiver: 1 }, { unique: true });
-NewMsgSchema.index({ "messages.createdAt": 1 });
-NewMsgSchema.index({ isActive: 1 });
-NewMsgSchema.index({ "participantsInfo.sender.lastSeen": 1 });
-NewMsgSchema.index({ "participantsInfo.receiver.lastSeen": 1 });
-NewMsgSchema.index({ "messages.media.photos.public_id": 1 });
-NewMsgSchema.index({ "messages.media.videos.public_id": 1 });
+MsgSchema.index({ sender: 1, receiver: 1 }, { unique: true });
+MsgSchema.index({ "messages.createdAt": 1 });
+MsgSchema.index({ isActive: 1 });
+MsgSchema.index({ "participantsInfo.sender.lastSeen": 1 });
+MsgSchema.index({ "participantsInfo.receiver.lastSeen": 1 });
+MsgSchema.index({ "messages.media.photos.public_id": 1 });
+MsgSchema.index({ "messages.media.videos.public_id": 1 });
 
 // Methods
-NewMsgSchema.methods.addMessageWithMedia = async function (
+MsgSchema.methods.addMessageWithMedia = async function (
   text: string,
   sender: Types.ObjectId,
   messageType: MessageType = "text",
@@ -186,7 +186,7 @@ NewMsgSchema.methods.addMessageWithMedia = async function (
   await this.save();
 };
 
-NewMsgSchema.methods.addMessage = async function (
+MsgSchema.methods.addMessage = async function (
   text: string,
   sender: Types.ObjectId,
   messageType: MessageType = "text",
@@ -203,7 +203,7 @@ NewMsgSchema.methods.addMessage = async function (
   );
 };
 
-NewMsgSchema.methods.markMessageAsRead = async function (messageId: number) {
+MsgSchema.methods.markMessageAsRead = async function (messageId: number) {
   const message = this.messages.find(
     (m: INewMessage) => m.messageId === messageId
   );
@@ -219,7 +219,7 @@ NewMsgSchema.methods.markMessageAsRead = async function (messageId: number) {
   }
 };
 
-NewMsgSchema.methods.markMessageAsDelivered = async function (
+MsgSchema.methods.markMessageAsDelivered = async function (
   messageId: number
 ) {
   const message = this.messages.find(
@@ -236,7 +236,7 @@ NewMsgSchema.methods.markMessageAsDelivered = async function (
   }
 };
 
-NewMsgSchema.methods.updateParticipantStatus = async function (
+MsgSchema.methods.updateParticipantStatus = async function (
   userId: Types.ObjectId,
   isActive: boolean
 ) {
@@ -246,7 +246,7 @@ NewMsgSchema.methods.updateParticipantStatus = async function (
   await this.save();
 };
 
-NewMsgSchema.methods.deleteMessage = async function (
+MsgSchema.methods.deleteMessage = async function (
   messageId: number,
   userId: Types.ObjectId
 ) {
@@ -263,7 +263,7 @@ NewMsgSchema.methods.deleteMessage = async function (
 };
 
 // Pre-save middleware
-NewMsgSchema.pre("save", function (next) {
+MsgSchema.pre("save", function (next) {
   if (this.messages.length > 0 && !this.lastMessage) {
     const lastMsg = this.messages[this.messages.length - 1] as INewMessage;
     this.lastMessage = {
@@ -279,6 +279,6 @@ NewMsgSchema.pre("save", function (next) {
   next();
 });
 
-const NewMsgModel = model<INewMsg>("NewMsg", NewMsgSchema);
+const MsgModel = model<INewMsg>("NewMsg", MsgSchema);
 
-export { NewMsgModel };
+export { MsgModel };

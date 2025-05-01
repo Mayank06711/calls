@@ -1,240 +1,202 @@
-import { NewMsgModel, INewMsg, INewMessage, IAttachment } from "../models/messageModel";
-import { OldMsgModel, IOldMessage } from "../models/oldMsgModel";
+import { MsgModel } from "../models/messageModel";
 import { SocketManager } from "../socket";
 import { RedisManager } from "../utils/redisClient";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { ApiError } from "../utils/apiError";
+import { successResponse } from "../utils/apiResponse";
+import {
+  INewMessage,
+  IParticipantInfo,
+  IAttachment,
+  IMessageMedia,
+  INewMsg,
+  MessageType,
+  ChatType,
+} from "../interface/IMessage";
+import { Request, Response } from "express";
+import { Socket } from "socket.io";
 
 class ChatController {
-  // Create a new chat
-  // static async createChat(
-  //   sender: Types.ObjectId,
-  //   receiver: Types.ObjectId,
-  //   chatType: "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert"
-  // ): Promise<INewMsg> {
-  //   try {
-  //     const existingChat = await NewMsgModel.findOne({
-  //       sender,
-  //       receiver,
-  //       chatType,
-  //     });
+  private readonly socketManager: SocketManager;
+  private readonly CHAT_EVENTS = {
+    MESSAGE_SENT: "chat:message:sent",
+    MESSAGE_RECEIVED: "chat:message:received",
+    MESSAGE_READ: "chat:message:read",
+    MESSAGE_DELIVERED: "chat:message:delivered",
+    TYPING_START: "chat:typing:start",
+    TYPING_END: "chat:typing:end",
+    USER_ONLINE: "chat:user:online",
+    USER_OFFLINE: "chat:user:offline",
+    SEND_MESSAGE: "chat:send:message",
+    NEW_MESSAGE: "chat:new:message",
+    MESSAGE_ERROR: "chat:message:error",
+  } as const;
 
-  //     if (existingChat) {
-  //       return existingChat;
-  //     }
+  constructor() {
+    this.socketManager = SocketManager.getInstance();
+    this.initializeSocketListeners();
+  }
 
-  //     const newChat = await NewMsgModel.create({
-  //       sender,
-  //       receiver,
-  //       chatType,
-  //       messages: [],
-  //       participantsInfo: {
-  //         sender: { isActive: true, lastSeen: new Date() },
-  //         receiver: { isActive: true, lastSeen: new Date() },
-  //       },
-  //     });
+  private initializeSocketListeners(): void {
+    // Initialize all event listeners
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.TYPING_START,
+      handler: this.handleTypingStart.bind(this),
+    });
 
-  //     return newChat;
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error creating chat");
-  //   }
-  // }
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.TYPING_END,
+      handler: this.handleTypingEnd.bind(this),
+    });
 
-  // // Send a message
-  // static async sendMessage(
-  //   chatId: Types.ObjectId,
-  //   senderId: Types.ObjectId,
-  //   text: string,
-  //   attachments?: IAttachment[]
-  // ): Promise<INewMessage> {
-  //   const session = await mongoose.startSession();
-  //   session.startTransaction();
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.SEND_MESSAGE,
+      handler: this.handleSendMessage.bind(this),
+    });
+  }
 
-  //   try {
-  //     const chat = await NewMsgModel.findById(chatId);
-  //     if (!chat) {
-  //       throw new ApiError(404, "Chat not found");
-  //     }
+  // Handler for typing start event
+  private async handleTypingStart(
+    data: { chatId: string; userId: string },
+    socket: Socket
+  ): Promise<void> {
+    socket.to(`chat:${data.chatId}`).emit(this.CHAT_EVENTS.TYPING_START, {
+      chatId: data.chatId,
+      userId: data.userId,
+    });
+  }
 
-  //     // Add message to NewMsgModel
-  //     await chat.addMessage(text, senderId, attachments);
+  // Handler for typing end event
+  private async handleTypingEnd(
+    data: { chatId: string; userId: string },
+    socket: Socket
+  ): Promise<void> {
+    socket.to(`chat:${data.chatId}`).emit(this.CHAT_EVENTS.TYPING_END, {
+      chatId: data.chatId,
+      userId: data.userId,
+    });
+  }
 
-  //     // Create message in OldMsgModel for archival
-  //     const oldMessage = await OldMsgModel.create({
-  //       chatId,
-  //       text,
-  //       sender: senderId,
-  //       receiver: chat.receiver,
-  //       attachments,
-  //       messageId: chat.messageIdCounter,
-  //     });
+  // Handler for send message event
+  private async handleSendMessage(
+    data: {
+      receiverId: string;
+      text: string;
+      messageType?: MessageType;
+      chatType?: ChatType;
+    },
+    socket: Socket
+  ): Promise<void> {
+    try {
+      const senderId = socket.data.userId;
+      console.log("Received message event:", { senderId, ...data });
 
-  //     await session.commitTransaction();
+      // Validate message data
+      if (!this.validateMessageData(senderId, data)) {
+        throw new Error("Invalid message data");
+      }
 
-  //     // Emit socket event to receiver
-  //     const socketManager = SocketManager.getInstance();
-  //     await socketManager.emitEvent({
-  //       event: "new_message",
-  //       data: {
-  //         chatId,
-  //         message: oldMessage,
-  //       },
-  //       targetSocketIds: await this.getReceiverSocketIds(chat.receiver),
-  //     });
+      // Get or create chat
+      const chat = await this.findOrCreateChat(
+        senderId,
+        data.receiverId,
+        data.chatType
+      );
 
-  //     return chat.messages[chat.messages.length - 1];
-  //   } catch (error) {
-  //     await session.abortTransaction();
-  //     throw new ApiError(500, "Error sending message");
-  //   } finally {
-  //     session.endSession();
-  //   }
-  // }
+      // Add message to chat
+      await chat.addMessage(
+        data.text,
+        new Types.ObjectId(senderId),
+        data.messageType || "text"
+      );
 
-  // Get chat history
-  // static async getChatHistory(
-  //   chatId: Types.ObjectId,
-  //   userId: Types.ObjectId,
-  //   page: number = 1,
-  //   limit: number = 50
-  // ): Promise<IOldMessage[]> {
-  //   try {
-  //     const messages = await OldMsgModel.find({ chatId })
-  //       .visibleTo(userId)
-  //       .sort({ createdAt: -1 })
-  //       .skip((page - 1) * limit)
-  //       .limit(limit)
-  //       .lean();
+      // Send message to receiver
+      await this.sendMessageToReceiver(chat, senderId, data.receiverId);
 
-  //     return messages;
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error fetching chat history");
-  //   }
-  // }
+      // Send confirmation to sender
+      this.sendConfirmationToSender(socket, chat);
 
-  // // Mark messages as read
-  // static async markMessagesAsRead(
-  //   chatId: Types.ObjectId,
-  //   userId: Types.ObjectId,
-  //   messageIds: number[]
-  // ): Promise<void> {
-  //   try {
-  //     const chat = await NewMsgModel.findById(chatId);
-  //     if (!chat) {
-  //       throw new ApiError(404, "Chat not found");
-  //     }
+      console.log("Message processed successfully");
+    } catch (error) {
+      this.handleMessageError(socket, error);
+    }
+  }
 
-  //     for (const messageId of messageIds) {
-  //       await chat.markMessageAsRead(messageId);
-  //     }
+  // Helper methods
+  private validateMessageData(
+    senderId: string | undefined,
+    data: { receiverId: string; text: string }
+  ): boolean {
+    return Boolean(senderId && data.receiverId && data.text.trim());
+  }
 
-  //     // Emit read receipt to sender
-  //     const socketManager = SocketManager.getInstance();
-  //     await socketManager.emitEvent({
-  //       event: "messages_read",
-  //       data: {
-  //         chatId,
-  //         messageIds,
-  //         readBy: userId,
-  //       },
-  //       targetSocketIds: await this.getReceiverSocketIds(chat.sender),
-  //     });
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error marking messages as read");
-  //   }
-  // }
+  private async findOrCreateChat(
+    senderId: string,
+    receiverId: string,
+    chatType?: String | undefined
+  ): Promise<INewMsg> {
+    let chat = await MsgModel.findOne({
+      $or: [
+        { sender: senderId, receiver: receiverId },
+        { sender: receiverId, receiver: senderId },
+      ],
+    });
 
-  // // Delete message (soft delete)
-  // static async deleteMessage(
-  //   chatId: Types.ObjectId,
-  //   messageId: number,
-  //   userId: Types.ObjectId
-  // ): Promise<void> {
-  //   try {
-  //     const message = await OldMsgModel.findOne({ chatId, messageId });
-  //     if (!message) {
-  //       throw new ApiError(404, "Message not found");
-  //     }
+    if (!chat) {
+      chat = new MsgModel({
+        sender: new Types.ObjectId(senderId),
+        receiver: new Types.ObjectId(receiverId),
+        messages: [],
+        chatType: chatType ? chatType : "userToUser",
+        messageIdCounter: 0,
+      });
+    }
 
-  //     await message.softDelete(userId);
+    return chat;
+  }
 
-  //     // Emit delete event to other participant
-  //     const socketManager = SocketManager.getInstance();
-  //     await socketManager.emitEvent({
-  //       event: "message_deleted",
-  //       data: {
-  //         chatId,
-  //         messageId,
-  //         deletedBy: userId,
-  //       },
-  //       targetSocketIds: await this.getReceiverSocketIds(
-  //         userId.equals(message.sender) ? message.receiver : message.sender
-  //       ),
-  //     });
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error deleting message");
-  //   }
-  // }
+  private async sendMessageToReceiver(
+    chat: INewMsg,
+    senderId: string,
+    receiverId: string
+  ): Promise<void> {
+    const socketStatus = await this.socketManager.getSocketStatus();
+    const receiverSockets = socketStatus
+      .filter((socket) => socket.userId === receiverId && socket.isActive)
+      .map((socket) => socket.socketId);
 
-  // // Get user's active chats
-  // static async getUserChats(userId: Types.ObjectId): Promise<INewMsg[]> {
-  //   try {
-  //     const chats = await NewMsgModel.find({
-  //       $or: [{ sender: userId }, { receiver: userId }],
-  //       isActive: true,
-  //     })
-  //       .sort({ "lastMessage.createdAt": -1 })
-  //       .lean();
+    if (receiverSockets.length > 0) {
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.NEW_MESSAGE,
+        data: {
+          chatId: chat._id,
+          message: chat.lastMessage,
+          sender: {
+            id: senderId,
+          },
+        },
+        targetSocketIds: receiverSockets,
+      });
+    }
+  }
 
-  //     return chats;
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error fetching user chats");
-  //   }
-  // }
+  private sendConfirmationToSender(socket: Socket, chat: INewMsg): void {
+    socket.emit(this.CHAT_EVENTS.MESSAGE_SENT, {
+      chatId: chat._id,
+      message: chat.lastMessage,
+      status: "sent",
+    });
+  }
 
-  // // Helper method to get socket IDs for a user
-  // private static async getReceiverSocketIds(
-  //   userId: Types.ObjectId
-  // ): Promise<string[]> {
-  //   const sockets = await RedisManager.getAllFromGroup("socketAuthenticatedUsers");
-  //   return sockets
-  //     .filter((socket) => socket.userId === userId.toString())
-  //     .map((socket) => socket.socketId);
-  // }
-
-  // // Update participant status
-  // static async updateParticipantStatus(
-  //   chatId: Types.ObjectId,
-  //   userId: Types.ObjectId,
-  //   isActive: boolean
-  // ): Promise<void> {
-  //   try {
-  //     const chat = await NewMsgModel.findById(chatId);
-  //     if (!chat) {
-  //       throw new ApiError(404, "Chat not found");
-  //     }
-
-  //     await chat.updateParticipantStatus(userId, isActive);
-
-  //     // Emit status update to other participant
-  //     const socketManager = SocketManager.getInstance();
-  //     const otherParticipantId = userId.equals(chat.sender)
-  //       ? chat.receiver
-  //       : chat.sender;
-
-  //     await socketManager.emitEvent({
-  //       event: "participant_status_changed",
-  //       data: {
-  //         chatId,
-  //         userId,
-  //         isActive,
-  //       },
-  //       targetSocketIds: await this.getReceiverSocketIds(otherParticipantId),
-  //     });
-  //   } catch (error) {
-  //     throw new ApiError(500, "Error updating participant status");
-  //   }
-  // }
+  private handleMessageError(socket: Socket, error: unknown): void {
+    console.error("Message error:", error);
+    socket.emit(this.CHAT_EVENTS.MESSAGE_ERROR, {
+      message: "Failed to send message",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 }
+
+new ChatController()
 
 export { ChatController };
