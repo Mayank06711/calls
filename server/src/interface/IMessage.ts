@@ -1,0 +1,80 @@
+import { Document, Types } from "mongoose";
+import { MediaItem } from './IMedia';
+
+// Define the Message Types
+export type MessageType = "text" | "image" | "video" | "audio" | "document";
+export type ChatType = "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert";
+
+// Define interfaces
+export interface IAttachment extends MediaItem {
+  type: string;
+  name?: string;
+  size?: number;
+}
+
+export interface IMessageMedia {
+  photos?: MediaItem[];
+  videos?: MediaItem[];
+}
+
+export interface INewMessage {
+  messageId: number;
+  text: string;
+  sender: Types.ObjectId;
+  messageType: MessageType;
+  media?: IMessageMedia;
+  attachments?: IAttachment[];
+  status: {
+    isRead: boolean;
+    readAt?: Date;
+    deliveredAt?: Date;
+  };
+  createdAt: Date;
+  replyTo?: {
+    messageId: number;
+    text: string;
+  };
+  deletedFor?: Types.ObjectId[];
+}
+
+export interface IParticipantInfo {
+  isActive: boolean;
+  lastSeen: Date;
+}
+
+export interface INewMsg extends Document {
+  sender: Types.ObjectId;
+  receiver: Types.ObjectId;
+  messages: INewMessage[];
+  chatType: ChatType;
+  messageIdCounter: number;
+  lastMessage?: INewMessage;
+  isActive: boolean;
+  participantsInfo: {
+    sender: IParticipantInfo;
+    receiver: IParticipantInfo;
+  };
+  
+  // Methods
+  addMessage(
+    text: string,
+    sender: Types.ObjectId,
+    messageType?: MessageType,
+    attachments?: IAttachment[],
+    replyTo?: { messageId: number; text: string }
+  ): Promise<void>;
+  
+  addMessageWithMedia(
+    text: string,
+    sender: Types.ObjectId,
+    messageType: MessageType,
+    media?: IMessageMedia,
+    attachments?: IAttachment[],
+    replyTo?: { messageId: number; text: string }
+  ): Promise<void>;
+  
+  markMessageAsRead(messageId: number): Promise<void>;
+  markMessageAsDelivered(messageId: number): Promise<void>;
+  updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
+  deleteMessage(messageId: number, userId: Types.ObjectId): Promise<void>;
+}

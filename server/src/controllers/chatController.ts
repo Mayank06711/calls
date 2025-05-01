@@ -1,4 +1,4 @@
-import { NewMsgModel, INewMsg, INewMessage, IAttachment } from "../models/newMsgModel";
+import { NewMsgModel, INewMsg, INewMessage, IAttachment } from "../models/messageModel";
 import { OldMsgModel, IOldMessage } from "../models/oldMsgModel";
 import { SocketManager } from "../socket";
 import { RedisManager } from "../utils/redisClient";
