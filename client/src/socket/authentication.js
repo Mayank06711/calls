@@ -91,4 +91,19 @@ const ensureSocketAuthenticated = async () => {
   return true;
 };
 
+// Add this to handle page visibility changes
+const setupVisibilityListener = () => {
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible") {
+      const socket = SocketManager.getSocket();
+      if (!socket.connected || !isSocketAuthenticated()) {
+        await ensureSocketAuthenticated();
+      }
+    }
+  });
+};
+
+// Initialize visibility listener
+setupVisibilityListener();
+
 export { ensureSocketAuthenticated, isSocketAuthenticated, authenticateSocket };
