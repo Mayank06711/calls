@@ -1,3 +1,7 @@
+// client/src/utils/globalErrorHandler.js
+import { tokenRefreshManager } from "./TokenRefreshManager";
+import { ENDPOINTS } from "../constants/apiEndpoints";
+
 export class ApiError extends Error {
   constructor(message, status, data) {
     super(message);
@@ -7,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-export const handleApiError = (error) => {
+export const handleApiError = async (error, retryRequest = null) => {
   // If it's already an ApiError instance, return it
   if (error instanceof ApiError) {
     return error;
@@ -17,37 +21,51 @@ export const handleApiError = (error) => {
     let errorMessage;
     let errorData = error.response.data;
 
-    // Handle 401 errors specifically
-    if (error.response.status === 401) {
-      try {
-        const parsedBody = error.response.data?.body
-          ? JSON.parse(error.response.data.body)
-          : error.response.data;
-
-        return new ApiError(
-          parsedBody.message || "Unauthorized access",
-          401,
-          parsedBody
-        );
-      } catch (parseError) {
-        return new ApiError("Unauthorized access", 401, error.response.data);
-      }
-    }
-
-    // Handle stringified JSON in body
+    // Only handle 401 errors for token refresh
     if (
-      error.response.data?.body &&
-      typeof error.response.data.body === "string"
+      error.response.status === 401 &&
+      error.config &&
+      !error.config._retry &&
+      error.config.url !== ENDPOINTS.AUTH.REFRESH_TOKEN
     ) {
+      error.config._retry = true;
+
       try {
-        const parsedBody = JSON.parse(error.response.data.body);
-        errorMessage = parsedBody.message;
-        errorData = parsedBody;
-      } catch (parseError) {
-        console.warn("Failed to parse error body:", parseError);
+        const newToken = await tokenRefreshManager.refreshAccessToken();
+
+        if (newToken && typeof retryRequest === "function") {
+          try {
+            // Retry the request with new token
+            const retryResponse = await retryRequest(error.config);
+            return retryResponse;
+          } catch (retryError) {
+            // If retry fails with non-401 error, return that error without logging out
+            if (retryError.response?.status !== 401) {
+              return new ApiError(
+                retryError.response?.data?.message ||
+                  "Request failed after token refresh",
+                retryError.response?.status || 500,
+                retryError.response?.data
+              );
+            }
+            // Only clear storage if retry fails with 401
+            tokenRefreshManager.clearClientStorage();
+            return new ApiError("Session expired. Please login again.", 401, {
+              errors: ["Authentication failed"],
+            });
+          }
+        }
+      } catch (refreshError) {
+        // Only clear storage on refresh token failure
+        tokenRefreshManager.clearClientStorage();
+        console.log(refreshError, "refreshError");
+        return new ApiError(`Session expired. Please login again.`, 401, {
+          errors: [`Authentication failed ${refreshError}`],
+        });
       }
     }
 
+    // For non-401 errors, just return the error without clearing storage
     errorMessage =
       errorMessage ||
       error.response.data?.message ||
