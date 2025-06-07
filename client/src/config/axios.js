@@ -66,16 +66,39 @@ const createAxiosInstance = (config = {}) => {
       }
       return response;
     },
-    (error) => {
-      const processedError = handleApiError(error);
-      return Promise.reject({
-        data: null,
-        error: {
-          message: processedError.message || "Something went wrong",
-          statusCode: error.response?.status || 500,
-          errors: processedError.errors || [],
-        },
-      });
+    async (error) => {
+      try {
+        const processedError = await handleApiError(error, (failedConfig) => {
+          return instance(failedConfig);
+        });
+
+        // If processedError is actually a successful response only for refreshToken case it would work
+        if (processedError?.status === 200) {
+          return processedError;
+        }
+
+        // Otherwise handle as error, names as normalErro means that its
+        const normalErros = Promise.reject({
+          data: null,
+          error: {
+            message: processedError.message || "Something went wrong",
+            statusCode: processedError.status || 500,
+            errors: processedError.errors || [],
+          },
+        });
+        console.log("i am retry error", normalErros);
+        return normalErros;
+      } catch (handlingError) {
+        // Handle any errors that occurred during error handling
+        return Promise.reject({
+          data: null,
+          error: {
+            message: handlingError.message || "Something went wrong",
+            statusCode: handlingError.status || 500,
+            errors: handlingError.errors || [],
+          },
+        });
+      }
     }
   );
 

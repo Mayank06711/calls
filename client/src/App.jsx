@@ -7,7 +7,6 @@ import {
   Routes,
   Route,
   Navigate,
-  useLocation,
 } from "react-router-dom";
 
 import Login from "./Components/Login/Login";
@@ -43,6 +42,8 @@ import UsageSettings from "./Components/Home/Hearders/UserProfile/UserActivity/U
 import ReelsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings";
 import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings";
 import Feedback from "./Components/Feedback/Feedback";
+import { ensureSocketAuthenticated } from "./socket/authentication";
+import { SocketManager } from "./socket/config";
 
 const theme = createTheme({
   palette: {
@@ -102,7 +103,27 @@ const App = () => {
     };
   }, [timer, isTimerActive, dispatch]);
 
-  // Add this effect to persist userInfo to localStorage when it changes
+ 
+     // Socket initialization effect
+    useEffect(() => {
+      const initializeSocket = async () => {
+        try {
+          // Only initialize socket if user is logged in
+          if (userId) {
+            await ensureSocketAuthenticated();
+          }
+        } catch (error) {
+          console.error('Socket initialization failed:', error);
+        }
+      };
+  
+      initializeSocket();
+  
+      return () => {
+        SocketManager.disconnectSocket();
+      };
+    }, [userId]); // Re-run when userId changes
+
 
 
   return (

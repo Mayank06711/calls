@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
-import Feedback from "../models/feedbackModel";
+import BugFeedback from "../models/bugFeedbackModel";
 import { ApiError } from "../utils/apiError";
 
 class FeedbackController {
@@ -33,7 +33,7 @@ class FeedbackController {
       }
 
       // Create feedback
-      const feedback = await Feedback.create({
+      const feedback = await BugFeedback.create({
         user: userId,
         expert: type === "expert" ? expertId : undefined,
         message,
