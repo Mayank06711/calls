@@ -52,7 +52,7 @@ const MsgSchema = new Schema<INewMsg>(
         attachments: [
           {
             ...mediaItemSchema,
-            type: { type: String, required: true },
+            type: { type: String },
             name: String,
             size: Number,
           },
@@ -109,7 +109,7 @@ const MsgSchema = new Schema<INewMsg>(
         lastSeen: { type: Date, default: Date.now },
       },
       receiver: {
-        isActive: { type: Boolean, default: true },
+        isActive: { type: Boolean, default: false },
         lastSeen: { type: Date, default: Date.now },
       },
     },

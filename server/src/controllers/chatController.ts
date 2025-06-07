@@ -1,35 +1,18 @@
 import { MsgModel } from "../models/messageModel";
 import { SocketManager } from "../socket";
-import { RedisManager } from "../utils/redisClient";
 import { Types } from "mongoose";
-import { ApiError } from "../utils/apiError";
-import { successResponse } from "../utils/apiResponse";
-import {
-  INewMessage,
-  IParticipantInfo,
-  IAttachment,
-  IMessageMedia,
-  INewMsg,
-  MessageType,
-  ChatType,
-} from "../interface/IMessage";
-import { Request, Response } from "express";
+import { INewMsg, MessageType, ChatType } from "../interface/IMessage";
 import { Socket } from "socket.io";
 
 class ChatController {
   private readonly socketManager: SocketManager;
   private readonly CHAT_EVENTS = {
-    MESSAGE_SENT: "chat:message:sent",
-    MESSAGE_RECEIVED: "chat:message:received",
-    MESSAGE_READ: "chat:message:read",
-    MESSAGE_DELIVERED: "chat:message:delivered",
-    TYPING_START: "chat:typing:start",
-    TYPING_END: "chat:typing:end",
-    USER_ONLINE: "chat:user:online",
-    USER_OFFLINE: "chat:user:offline",
-    SEND_MESSAGE: "chat:send:message",
-    NEW_MESSAGE: "chat:new:message",
-    MESSAGE_ERROR: "chat:message:error",
+    TYPING_START: "typing:start",
+    TYPING_END: "typing:end",
+    MESSAGE_SEND: "message:send",
+    MESSAGE_DELIVERED: "message:delivered",
+    MESSAGE_RECEIVED: "message:received",
+    MESSAGE_ERROR: "message:error",
   } as const;
 
   constructor() {
@@ -50,8 +33,13 @@ class ChatController {
     });
 
     this.socketManager.listenToEvent({
-      event: this.CHAT_EVENTS.SEND_MESSAGE,
-      handler: this.handleSendMessage.bind(this),
+      event: this.CHAT_EVENTS.MESSAGE_SEND,
+      handler: this.handleMessageSend.bind(this),
+    });
+
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.MESSAGE_RECEIVED,
+      handler: this.handleMessageReceived.bind(this),
     });
   }
 
@@ -60,9 +48,13 @@ class ChatController {
     data: { chatId: string; userId: string },
     socket: Socket
   ): Promise<void> {
-    socket.to(`chat:${data.chatId}`).emit(this.CHAT_EVENTS.TYPING_START, {
-      chatId: data.chatId,
-      userId: data.userId,
+    await this.socketManager.emitEvent({
+      event: this.CHAT_EVENTS.TYPING_START,
+      data: {
+        chatId: data.chatId,
+        userId: data.userId,
+      },
+      room: `chat:${data.chatId}`,
     });
   }
 
@@ -71,14 +63,18 @@ class ChatController {
     data: { chatId: string; userId: string },
     socket: Socket
   ): Promise<void> {
-    socket.to(`chat:${data.chatId}`).emit(this.CHAT_EVENTS.TYPING_END, {
-      chatId: data.chatId,
-      userId: data.userId,
+    await this.socketManager.emitEvent({
+      event: this.CHAT_EVENTS.TYPING_END,
+      data: {
+        chatId: data.chatId,
+        userId: data.userId,
+      },
+      room: `chat:${data.chatId}`,
     });
   }
 
-  // Handler for send message event
-  private async handleSendMessage(
+  // Handler for message send event
+  private async handleMessageSend(
     data: {
       receiverId: string;
       text: string;
@@ -89,7 +85,7 @@ class ChatController {
   ): Promise<void> {
     try {
       const senderId = socket.data.userId;
-      console.log("Received message event:", { senderId, ...data });
+      console.log("Received message send event:", { senderId, ...data });
 
       // Validate message data
       if (!this.validateMessageData(senderId, data)) {
@@ -110,19 +106,52 @@ class ChatController {
         data.messageType || "text"
       );
 
-      // Send message to receiver
-      await this.sendMessageToReceiver(chat, senderId, data.receiverId);
-
-      // Send confirmation to sender
-      this.sendConfirmationToSender(socket, chat);
-
-      console.log("Message processed successfully");
+      // Emit message delivered event to receiver
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.MESSAGE_DELIVERED,
+        data: {
+          chatId: chat._id,
+          message: chat.lastMessage,
+          sender: {
+            id: senderId,
+          },
+        },
+        targetSocketIds: [data.receiverId], // Send to receiver
+      });
     } catch (error) {
-      this.handleMessageError(socket, error);
+      // Emit error event to sender
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.MESSAGE_ERROR,
+        data: {
+          message: "Failed to send message",
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        targetSocketIds: [socket.id],
+      });
     }
   }
 
-  // Helper methods
+  // Handler for message received confirmation
+  private async handleMessageReceived(
+    data: { chatId: string; messageId: string },
+    socket: Socket
+  ): Promise<void> {
+    const chat = await MsgModel.findById(data.chatId);
+    if (!chat) return;
+
+    // Notify original sender that message was received
+    await this.socketManager.emitEvent({
+      event: this.CHAT_EVENTS.MESSAGE_RECEIVED,
+      data: {
+        chatId: data.chatId,
+        messageId: data.messageId,
+        status: "received",
+      },
+      targetSocketIds: [chat.sender.toString()],
+    });
+  }
+
+  // Helper methods remain the same
   private validateMessageData(
     senderId: string | undefined,
     data: { receiverId: string; text: string }
@@ -154,49 +183,8 @@ class ChatController {
 
     return chat;
   }
-
-  private async sendMessageToReceiver(
-    chat: INewMsg,
-    senderId: string,
-    receiverId: string
-  ): Promise<void> {
-    const socketStatus = await this.socketManager.getSocketStatus();
-    const receiverSockets = socketStatus
-      .filter((socket) => socket.userId === receiverId && socket.isActive)
-      .map((socket) => socket.socketId);
-
-    if (receiverSockets.length > 0) {
-      await this.socketManager.emitEvent({
-        event: this.CHAT_EVENTS.NEW_MESSAGE,
-        data: {
-          chatId: chat._id,
-          message: chat.lastMessage,
-          sender: {
-            id: senderId,
-          },
-        },
-        targetSocketIds: receiverSockets,
-      });
-    }
-  }
-
-  private sendConfirmationToSender(socket: Socket, chat: INewMsg): void {
-    socket.emit(this.CHAT_EVENTS.MESSAGE_SENT, {
-      chatId: chat._id,
-      message: chat.lastMessage,
-      status: "sent",
-    });
-  }
-
-  private handleMessageError(socket: Socket, error: unknown): void {
-    console.error("Message error:", error);
-    socket.emit(this.CHAT_EVENTS.MESSAGE_ERROR, {
-      message: "Failed to send message",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
 }
 
-new ChatController()
+new ChatController();
 
 export { ChatController };
