@@ -29,11 +29,12 @@ const authenticateSocket = async (token) => {
           );
         },
         onSuccess: (response) => {
+           console.log("socket authenticated response", response)
           if (response.status === SOCKET_CONSTANTS.STATUS.AUTHENTICATED) {
             store.dispatch(socketAuthenticated(true));
             console.log("Socket authenticated successfully");
             store.dispatch(
-              showNotification("Socket authenticated successfully", "info")
+              showNotification(response.message ||"Socket authenticated successfully", "info")
             );
           } else {
             store.dispatch(

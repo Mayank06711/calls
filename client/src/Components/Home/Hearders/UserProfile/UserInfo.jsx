@@ -67,7 +67,7 @@ function UserInfo() {
 
   const handleFileUpload = async (file) => {
     if (!file) return;
-
+    let animationInterval;
     try {
       setIsUploading(true);
       setUploadProgress(0);
@@ -80,7 +80,6 @@ function UserInfo() {
       reader.readAsDataURL(file);
 
       // Start the animation to smoothly increase progress
-      let animationInterval;
       let targetProgress = 0;
 
       // Function to smoothly animate progress
