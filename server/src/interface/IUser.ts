@@ -65,3 +65,24 @@ export interface IUser extends Document {
   handleReferral(referrerId: mongoose.Types.ObjectId): Promise<void>;
   updateReferralStats(): Promise<void>;
 }
+
+export interface GetUsersQuery {
+  page?: number;
+  limit?: number;
+  userType?: 'all' | 'user' | 'expert';
+  search?: string;
+}
+
+export interface UserListResponse {
+  _id: string;
+  fullName: string;
+  username: string;
+  isExpert: boolean;
+  profilePhoto: {
+    url: string;
+    thumbnail_url?: string;
+  } | null;
+  city: string;
+  country: string;
+  isActive: boolean;
+}

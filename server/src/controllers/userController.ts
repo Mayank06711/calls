@@ -8,6 +8,8 @@ import { FileHandler } from "../helper/fileHandler";
 import { ISubscription } from "../interface/ISubscription";
 import { sendEmails } from "../utils/email";
 import { generateToken, verifyToken } from "../utils/tokens";
+import { GetUsersQuery, UserListResponse } from "../interface/IUser";
+import { MediaModel } from "../models/mediaModel";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -218,7 +220,8 @@ class User {
       // Combine validation checks
       if (user.isEmailVerified) {
         throw new ApiError(
-          400, `Already exist a verified email, ${user.email.toLocaleLowerCase()}`
+          400,
+          `Already exist a verified email, ${user.email.toLocaleLowerCase()}`
         );
       }
 
@@ -227,7 +230,7 @@ class User {
         id: userId.toString(),
         email: user.email || email,
         fullName: user.fullName,
-        final_path: final_path ? final_path : "profile/posts"
+        final_path: final_path ? final_path : "profile/posts",
       });
 
       if (!token) {
@@ -240,7 +243,10 @@ class User {
 
       // Run database update and email sending in parallel
       await Promise.all([
-        UserModel.updateOne({ _id: userId }, { emailToken: token, email:email}),
+        UserModel.updateOne(
+          { _id: userId },
+          { emailToken: token, email: email }
+        ),
         sendEmails({
           email,
           templateCode: "EMAIL_VERIFICATION",
@@ -271,7 +277,7 @@ class User {
         // return res.redirect(
         //   `${clientUrl}/email-verification-error?message=Token is required`
         // );
-        return res.redirect(`${clientUrl}`)
+        return res.redirect(`${clientUrl}`);
         // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
       const verificationResult = verifyToken(token);
@@ -281,7 +287,7 @@ class User {
         //     verificationResult.error || "Invalid token"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/error/verification`)
+        return res.redirect(`${clientUrl}/error/verification`);
         // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
       // Find user with matching token
@@ -295,7 +301,7 @@ class User {
         //     "User not found or token already used"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/error/verification`)
+        return res.redirect(`${clientUrl}/error/verification`);
       }
 
       // If already verified, redirect to success with a different message
@@ -305,7 +311,9 @@ class User {
         //     "Email already verified"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`)
+        return res.redirect(
+          `${clientUrl}/${verificationResult.data.final_path}`
+        );
         // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
 
@@ -316,7 +324,7 @@ class User {
         //     "Email mismatch"
         //   )}`
         // );
-        return res.redirect(`${clientUrl}/error/verification`)
+        return res.redirect(`${clientUrl}/error/verification`);
         // return res.redirect(`${clientUrl}/system/_status/health_check`);
       }
       // Update user verification status
@@ -333,7 +341,7 @@ class User {
       // }
       // Redirect to frontend success page
       // res.redirect(redirectUrl);
-      return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`)
+      return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`);
       // return res.redirect(
       //   `${redirectUrl}?message=${encodeURIComponent(
       //     "Email verified successfully"
@@ -707,10 +715,124 @@ class User {
     };
   }
 
+  private static async _getAllUsers(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      // Get query parameters with defaults
+      const {
+        page = 1,
+        limit = 20,
+        userType = "all",
+        search = "",
+      } = req.query as GetUsersQuery;
+
+      // Build query filters
+      const filters: any = {
+        isActive: true,
+      };
+
+      // Add user type filter
+      if (userType === "expert") {
+        filters.isExpert = true;
+      } else if (userType === "user") {
+        filters.isExpert = false;
+      }
+
+      // Add search filter if provided
+      if (search) {
+        filters.$or = [
+          { fullName: { $regex: search, $options: "i" } },
+          { username: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      // Calculate skip value for pagination
+      const skip = (Number(page) - 1) * Number(limit);
+
+      // Execute queries in parallel
+      const [users, totalCount] = await Promise.all([
+        UserModel.find(filters)
+          .select(
+            "fullName username isExpert mediaId profilePhotoId city country isActive"
+          )
+          .skip(skip)
+          .limit(Number(limit))
+          .lean(),
+        UserModel.countDocuments(filters),
+      ]);
+
+      // Get profile photos for all users
+      const usersWithPhotos: UserListResponse[] = await Promise.all(
+        users.map(async (user) => {
+          let profilePhoto = null;
+
+          if (user.mediaId && user.profilePhotoId) {
+            const media = await MediaModel.findById(user.mediaId)
+              .select("photos")
+              .lean();
+
+            if (media) {
+              const photo = media.photos.find(
+                (p) => p.public_id === user.profilePhotoId
+              );
+              if (photo) {
+                profilePhoto = {
+                  url: photo.url,
+                  thumbnail_url: photo.thumbnail_url,
+                };
+              }
+            }
+          }
+
+          return {
+            _id: user._id.toString(), // Convert ObjectId to string
+            fullName: user.fullName,
+            username: user.username,
+            isExpert: user.isExpert,
+            profilePhoto,
+            city: user.city,
+            country: user.country || "", // Provide default value
+            isActive: user.isActive,
+          };
+        })
+      );
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / Number(limit));
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      return res.status(200).json(
+        successResponse(
+          {
+            users: usersWithPhotos,
+            pagination: {
+              currentPage: Number(page),
+              totalPages,
+              totalUsers: totalCount,
+              hasNextPage,
+              hasPrevPage,
+              limit: Number(limit),
+            },
+          },
+          "Users fetched successfully"
+        )
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to fetch users");
+    }
+  }
+
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
   public static logout = AsyncHandler.wrap(User._logout);
   public static verifyEmail = AsyncHandler.wrap(User._verifyEmail);
+  public static getAllUsers = AsyncHandler.wrap(User._getAllUsers);
 }
 
 export default User;
