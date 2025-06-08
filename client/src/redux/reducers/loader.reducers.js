@@ -1,8 +1,10 @@
-import { START_LOADER, STOP_LOADER } from '../action_creators/loader.action_creators';
+import { START_LOADER, STOP_LOADER,LOADER_TYPES } from '../action_creators/loader.action_creators';
 
 const initialState = {
-  loaders: {
-  }
+  loaders: Object.values(LOADER_TYPES).reduce((acc, type) => {
+    acc[type] = false;
+    return acc;
+  }, {})
 };
 
 export const loaderReducer = (state = initialState, action) => {

@@ -9,3 +9,7 @@ export const stopLoader = (loaderType) => ({
   type: STOP_LOADER,
   payload: loaderType
 });
+
+// Add type checking helper
+export const isLoading = (state, loaderType) => 
+  state.loaderState.loaders[loaderType] || false;

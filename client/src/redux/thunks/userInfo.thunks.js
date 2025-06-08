@@ -8,6 +8,8 @@ import {
 } from "../actions/userInfo.actions";
 import { showNotification } from "../actions/notification.actions";
 import { setAlreadyVerified, setProfileDataLoading } from "../actions/auth.actions";
+import { LOADER_TYPES } from "../action_creators";
+import { startLoader, stopLoader } from "../actions";
 
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
@@ -142,4 +144,55 @@ export const verifyEmailThunk = (email) => async (dispatch) => {
   }
 };
 
+
+
+export const getAllUsersThunk = (params = {}) => async (dispatch) => {
+  const loaderId = params.page === 1 ? 
+    LOADER_TYPES.GET_ALL_USERS : 
+    LOADER_TYPES.GET_MORE_USERS;
+    console.log("11111111")
+
+  try {
+    dispatch(startLoader(loaderId));
+    
+    const queryParams = new URLSearchParams({
+      page: params.page || 1,
+      limit: params.limit || 20,
+      userType: params.userType || 'all',
+      search: params.search || ''
+    }).toString();
+
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.GET,
+      `${ENDPOINTS.USERS.ALL_USERS}?${queryParams}`
+    );
+
+    if (error) {
+      dispatch(showNotification(error.message, error.statusCode));
+      return { success: false, error: error.message };
+    }
+
+    if (data.success) {
+      // Add isLastPage flag for better infinite scroll handling
+      return {
+        success: true,
+        data: data.data.users,
+        pagination: {
+          ...data.data.pagination,
+          isLastPage: data.data.pagination.currentPage >= data.data.pagination.totalPages
+        }
+      };
+    } else {
+      dispatch(showNotification("Failed to fetch users", statusCode || 500));
+      return { success: false, error: "Failed to fetch users" };
+    }
+
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    dispatch(showNotification(error.message || "Failed to fetch users", 400));
+    return { success: false, error: error.message };
+  } finally {
+    dispatch(stopLoader(loaderId));
+  }
+};
 

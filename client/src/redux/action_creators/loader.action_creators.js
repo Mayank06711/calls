@@ -15,5 +15,7 @@ export const LOADER_TYPES = {
     SUBSCRIPTION_HISTORY: 'subscriptionHistory',
     SUBSCRIPTION_DETAILS: 'subscriptionDetails',
     SUBSCRIPTION_CONFIG: 'subscriptionConfig',
+    GET_ALL_USERS: 'getAllUsers',
+    GET_MORE_USERS: 'getMoreUsers',
     // ... add more loader types as needed
   };
