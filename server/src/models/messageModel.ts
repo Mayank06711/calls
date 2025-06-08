@@ -146,7 +146,7 @@ MsgSchema.methods.addMessageWithMedia = async function (
   media?: IMessageMedia,
   attachments?: IAttachment[],
   replyTo?: { messageId: number; text: string }
-) {
+): Promise<INewMessage> {
   this.messageIdCounter += 1;
   const newMessage = {
     messageId: this.messageIdCounter,
@@ -184,6 +184,7 @@ MsgSchema.methods.addMessageWithMedia = async function (
     createdAt: newMessage.createdAt,
   };
   await this.save();
+  return this.messages[this.messages.length - 1] as INewMessage;  //return this.messages[this.messages.length - 1]; // Return the newly added message
 };
 
 MsgSchema.methods.addMessage = async function (
@@ -192,7 +193,7 @@ MsgSchema.methods.addMessage = async function (
   messageType: MessageType = "text",
   attachments?: IAttachment[],
   replyTo?: { messageId: number; text: string }
-) {
+): Promise<INewMessage> {
   return this.addMessageWithMedia(
     text,
     sender,
