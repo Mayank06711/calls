@@ -9,6 +9,7 @@ import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
 import { RedisManager } from "./utils/redisClient";
+import { ChatController } from "./controllers/chatController";
 import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
@@ -211,6 +212,8 @@ class ServerManager {
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
+          // Initialize ChatController after socket setup
+          ChatController.getInstance();
           console.log(`Server is running on http://localhost:${Port}`);
           resolve();
         });

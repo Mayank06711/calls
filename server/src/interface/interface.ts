@@ -96,6 +96,19 @@ export interface SocketData {
   status: "authenticated" | "refreshed";
 }
 
+// Add these new interfaces
+export interface UserSocket {
+  socketId: string;
+  connectedAt: number;
+  lastActive: number;
+}
+
+export interface UserSocketMapping {
+  userId: string;
+  sockets: UserSocket[];
+}
+
+
 export interface PendingAuthData {
   startTime: number;
   serverId: string;
