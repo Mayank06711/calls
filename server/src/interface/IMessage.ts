@@ -62,7 +62,7 @@ export interface INewMsg extends Document {
     messageType?: MessageType,
     attachments?: IAttachment[],
     replyTo?: { messageId: number; text: string }
-  ): Promise<void>;
+  ): Promise<INewMessage>;
   
   addMessageWithMedia(
     text: string,
@@ -71,7 +71,7 @@ export interface INewMsg extends Document {
     media?: IMessageMedia,
     attachments?: IAttachment[],
     replyTo?: { messageId: number; text: string }
-  ): Promise<void>;
+  ): Promise<INewMessage>;
   
   markMessageAsRead(messageId: number): Promise<void>;
   markMessageAsDelivered(messageId: number): Promise<void>;
