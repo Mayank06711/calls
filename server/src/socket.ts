@@ -8,9 +8,12 @@ import {
   PendingAuthData,
   SocketUserData,
   SocketData,
+  UserSocket,
+  UserSocketMapping,
 } from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
+import { A } from "@novu/framework/dist/cjs/health-check.types-IFtMS6Yy.cjs";
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections
@@ -46,7 +49,6 @@ class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
-  private authenticatedSocket: Socket | null = null;
 
   private readonly SOCKET_CONSTANTS = {
     REDIS: {
@@ -70,7 +72,7 @@ class SocketManager {
       INTERVAL: 2 * 60 * 60,
     },
     AUTH: {
-      TIMEOUT: 60000, // 60 seconds
+      TIMEOUT: 90000, // 60 seconds
       MAX_TOKEN_AGE: {
         REFRESHED: 360, // 15 days in hours
         AUTHENTICATED: 24, // 1 day in hours
@@ -81,6 +83,22 @@ class SocketManager {
       },
       GROUP: "auth:pending",
       STATUS: "pending",
+    },
+    USER_SOCKET_MAPPING: {
+      GROUP: "userSocketMapping",
+      SET_OPERATIONS: {
+        ADD_TO_SET: true,
+        REMOVE_FROM_SET: true,
+        USE_SET: true,
+      },
+      TTL: {
+        MAPPING_DATA: 25 * 60 * 60, // 25 hours in seconds
+        SET_DATA: 25 * 60 * 60, // 25 hours in seconds
+      },
+      SORT_BY: {
+        LAST_ACTIVE: "lastActive",
+        CONNECTED_AT: "connectedAt",
+      },
     },
   } as const;
 
@@ -411,19 +429,39 @@ class SocketManager {
   }
 
   private async handleSocketConnection(socket: Socket, userData: any) {
-    const isExisting = await RedisManager.isKeyInGroup(
-      this.SOCKET_CONSTANTS.REDIS.GROUP,
-      socket.id
-    );
-    console.log(isExisting, "IsExisting");
-    if (isExisting) {
-      if (userData.status === "refreshed") {
-        await this.handleRefreshedSocket(socket, userData);
+    try {
+      // 1. First handle existing socket connection logic
+      const isExisting = await RedisManager.isKeyInGroup(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socket.id
+      );
+      console.log(isExisting, "IsExisting");
+      // 2. Handle user-socket mapping
+      await this.updateUserSocketMapping(socket.id, userData.userId, true);
+      if (isExisting) {
+        if (userData.status === "refreshed") {
+          // For refreshed sockets, update the mapping with new timestamp
+          await this.updateUserSocketMapping(
+            socket.id,
+            userData.userId,
+            true,
+            true
+          ); // Added isRefresh parameter
+          await this.handleRefreshedSocket(socket, userData);
+        } else {
+          // For replacement, remove old mapping first
+          await this.updateUserSocketMapping(socket.id, userData.userId, false);
+          // Then create new mapping
+          await this.updateUserSocketMapping(socket.id, userData.userId, true);
+          await this.handleReplacementSocket(socket, userData);
+        }
       } else {
-        await this.handleReplacementSocket(socket, userData);
+        // Only create new mapping for new sockets
+        await this.updateUserSocketMapping(socket.id, userData.userId, true);
+        await this.handleNewSocket(socket, userData);
       }
-    } else {
-      await this.handleNewSocket(socket, userData);
+    } catch (error) {
+      console.error("Error in handleSocketConnection:", error);
     }
   }
 
@@ -495,6 +533,112 @@ class SocketManager {
           this.removeSocket(socketData.key, "Too many connections")
         )
       );
+    }
+  }
+
+  private async updateUserSocketMapping(
+    socketId: string,
+    userId: string,
+    isConnecting: boolean,
+    isRefresh: boolean = false
+  ): Promise<void> {
+    try {
+      if (isConnecting) {
+        // Get existing mapping first
+        const existingMapping =
+          await RedisManager.getDataFromGroup<UserSocketMapping>(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId
+          );
+
+        if (isRefresh && existingMapping?.sockets) {
+          // For refresh, just update the lastActive timestamp
+          const updatedSockets = existingMapping.sockets.map((socket) =>
+            socket.socketId === socketId
+              ? { ...socket, lastActive: Date.now() }
+              : socket
+          );
+
+          await RedisManager.cacheDataInGroup(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId,
+            { userId, sockets: updatedSockets },
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA
+          );
+          console.log(`Refreshed socket ${socketId} for user ${userId}`);
+        } else {
+          // For new connection or replacement
+          const newSocket: UserSocket = {
+            socketId,
+            connectedAt: Date.now(),
+            lastActive: Date.now(),
+          };
+
+          const mapping: UserSocketMapping = {
+            userId,
+            sockets: existingMapping?.sockets
+              ? [...existingMapping.sockets, newSocket]
+              : [newSocket],
+          };
+
+          await RedisManager.cacheDataInGroup(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId,
+            mapping,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS.ADD_TO_SET,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.SET_DATA
+          );
+          console.log(`Added socket ${socketId} to user ${userId} mapping`);
+        }
+      } else {
+        // Handle disconnection/removal
+        const existingMapping =
+          await RedisManager.getDataFromGroup<UserSocketMapping>(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId
+          );
+
+        if (existingMapping?.sockets) {
+          // Remove the specific socket from the user's socket list
+          const updatedSockets = existingMapping.sockets.filter(
+            (socket) => socket.socketId !== socketId
+          );
+
+          if (updatedSockets.length === 0) {
+            // If no sockets left, remove the entire user mapping
+            await RedisManager.removeDataFromGroup(
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+              userId,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS
+                .REMOVE_FROM_SET
+            );
+            console.log(`Removed all mappings for user ${userId}`);
+          } else {
+            // Update with remaining sockets
+            const updatedMapping: UserSocketMapping = {
+              userId,
+              sockets: updatedSockets,
+            };
+
+            await RedisManager.cacheDataInGroup(
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+              userId,
+              updatedMapping,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS
+                .ADD_TO_SET,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.SET_DATA
+            );
+            console.log(
+              `Updated socket list for user ${userId}, removed socket ${socketId}`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating user-socket mapping:", error);
+      throw error;
     }
   }
 
@@ -667,6 +811,12 @@ class SocketManager {
     emit: boolean = false
   ): Promise<void> {
     try {
+      // Get user ID before removing socket
+      const socketData = await RedisManager.getDataFromGroup<SocketData>(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socketId
+      );
+
       const socket = this.io.sockets.sockets.get(socketId);
       if (socket) {
         if (reason && emit) {
@@ -679,6 +829,10 @@ class SocketManager {
         socketId,
         this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.REMOVE_FROM_SET
       );
+      // Remove from user-socket mapping if we have the user ID
+      if (socketData?.userId) {
+        await this.updateUserSocketMapping(socketId, socketData.userId, false);
+      }
     } catch (error) {
       console.error(`Error removing socket ${socketId}:`, error);
     }
@@ -913,6 +1067,54 @@ class SocketManager {
     }
   }
 
+  // Add method to get sorted connected users
+  public async getSortedConnectedUsers(
+    sortBy: keyof typeof this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SORT_BY = "LAST_ACTIVE"
+  ): Promise<UserSocketMapping[]> {
+    try {
+      const allMappings = await RedisManager.getAllFromGroup(
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS.USE_SET
+      );
+
+      return allMappings
+        .filter((mapping) => mapping.sockets && mapping.sockets.length > 0)
+        .sort((a, b) => {
+          const aValue = Math.max(
+            ...a.sockets.map((s: any) => s[sortBy.toLowerCase()])
+          );
+          const bValue = Math.max(
+            ...b.sockets.map((s: any) => s[sortBy.toLowerCase()])
+          );
+          return bValue - aValue; // descending order
+        });
+    } catch (error) {
+      console.error("Error getting sorted connected users:", error);
+      return [];
+    }
+  }
+
+  public async getSocketIdUsingUserId(
+    userId: string = ""
+  ): Promise<UserSocket | null> {
+    if (!userId) {
+      return null;
+    }
+    try {
+      const userData = await RedisManager.getDataFromGroup<UserSocket>(
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+        userId
+      );
+      if (!userData || !userData.socketId) {
+        return null;
+      }
+      return userData;
+    } catch (error) {
+      console.log("Error finding Connected user with his id=>\n", error);
+      return null;
+    }
+  }
+
   public async disconnectUser(userId: string): Promise<number> {
     try {
       const sockets = await this.getAuthenticatedSockets();
@@ -1046,12 +1248,6 @@ class SocketManager {
       console.error("Error during socket cleanup:", error);
       throw error;
     }
-  }
-
-  public getAuthenticatedSocket(): Socket | null {
-    return this.authenticatedSocket?.connected
-      ? this.authenticatedSocket
-      : null;
   }
 }
 
