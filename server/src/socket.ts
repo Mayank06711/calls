@@ -13,7 +13,22 @@ import {
 } from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
-import { A } from "@novu/framework/dist/cjs/health-check.types-IFtMS6Yy.cjs";
+// Each socket connection has its own unique socket.data object.
+/*
+// When User1 connects
+socket1.data = {
+    userId: "user1_id",
+    authenticated: true
+    // other data...
+}
+
+// When User2 connects
+socket2.data = {
+    userId: "user2_id",
+    authenticated: true
+    // other data...
+}
+ */
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections
@@ -44,7 +59,6 @@ import { A } from "@novu/framework/dist/cjs/health-check.types-IFtMS6Yy.cjs";
  *          ├─ Setup Event Listeners
  *          └─ Store Socket Data
  */
-
 class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
@@ -436,8 +450,6 @@ class SocketManager {
         socket.id
       );
       console.log(isExisting, "IsExisting");
-      // 2. Handle user-socket mapping
-      await this.updateUserSocketMapping(socket.id, userData.userId, true);
       if (isExisting) {
         if (userData.status === "refreshed") {
           // For refreshed sockets, update the mapping with new timestamp
@@ -450,9 +462,8 @@ class SocketManager {
           await this.handleRefreshedSocket(socket, userData);
         } else {
           // For replacement, remove old mapping first
-          await this.updateUserSocketMapping(socket.id, userData.userId, false);
-          // Then create new mapping
           await this.updateUserSocketMapping(socket.id, userData.userId, true);
+          // Then create new mapping;
           await this.handleReplacementSocket(socket, userData);
         }
       } else {
@@ -551,13 +562,31 @@ class SocketManager {
             userId
           );
 
-        if (isRefresh && existingMapping?.sockets) {
-          // For refresh, just update the lastActive timestamp
-          const updatedSockets = existingMapping.sockets.map((socket) =>
-            socket.socketId === socketId
-              ? { ...socket, lastActive: Date.now() }
-              : socket
+        // Check for duplicates
+        if (
+          existingMapping?.sockets?.some(
+            (socket) => socket.socketId === socketId
+          )
+        ) {
+          console.log(
+            `Socket ${socketId} already exists in mapping for user ${userId}, skipping duplicate add`
           );
+          return;
+        }
+
+        // Get currently connected sockets from Socket.IO
+        const connectedSockets = await this.io.sockets.sockets.keys();
+        const connectedSocketsSet = new Set(connectedSockets);
+
+        if (isRefresh && existingMapping?.sockets) {
+          // For refresh, update lastActive and remove disconnected sockets
+          const updatedSockets = existingMapping.sockets
+            .filter((socket) => connectedSocketsSet.has(socket.socketId)) // Remove disconnected sockets
+            .map((socket) =>
+              socket.socketId === socketId
+                ? { ...socket, lastActive: Date.now() }
+                : socket
+            );
 
           await RedisManager.cacheDataInGroup(
             this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
@@ -574,11 +603,16 @@ class SocketManager {
             lastActive: Date.now(),
           };
 
+          // Filter out disconnected sockets from existing mapping
+          const existingSockets = existingMapping?.sockets
+            ? existingMapping.sockets.filter((socket) =>
+                connectedSocketsSet.has(socket.socketId)
+              )
+            : [];
+
           const mapping: UserSocketMapping = {
             userId,
-            sockets: existingMapping?.sockets
-              ? [...existingMapping.sockets, newSocket]
-              : [newSocket],
+            sockets: [...existingSockets, newSocket],
           };
 
           await RedisManager.cacheDataInGroup(
@@ -600,9 +634,15 @@ class SocketManager {
           );
 
         if (existingMapping?.sockets) {
-          // Remove the specific socket from the user's socket list
+          // Get currently connected sockets
+          const connectedSockets = await this.io.sockets.sockets.keys();
+          const connectedSocketsSet = new Set(connectedSockets);
+
+          // Remove the specific socket and any other disconnected sockets
           const updatedSockets = existingMapping.sockets.filter(
-            (socket) => socket.socketId !== socketId
+            (socket) =>
+              socket.socketId !== socketId &&
+              connectedSocketsSet.has(socket.socketId)
           );
 
           if (updatedSockets.length === 0) {
@@ -677,6 +717,12 @@ class SocketManager {
           this.SOCKET_CONSTANTS.AUTH.GROUP,
           socket.id
         );
+
+        await RedisManager.removeDataFromGroup(
+          this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+          socket.data.userId.toString()
+        );
+
         await this.removeSocket(
           socket.id,
           "User disconnected",
