@@ -85,7 +85,7 @@ class SocketManager {
       INTERVAL: 2 * 60 * 60,
     },
     AUTH: {
-      TIMEOUT: 90000, // 60 seconds
+      TIMEOUT: 120000, // 2 minutes
       MAX_TOKEN_AGE: {
         REFRESHED: 360, // 15 days in hours
         AUTHENTICATED: 24, // 1 day in hours

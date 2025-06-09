@@ -30,9 +30,10 @@ class ChatController {
     MESSAGE_ERROR: "message:error", // server-any_client
 
     // Add these new events to match client capabilities
-    CHAT_CHECK: "chat:check",
+    CHAT_CHECK: "chat:initialization",
     TYPING_STATUS: "typing:status",
     SYSTEM_MESSAGE: "message:system",
+
   } as const;
 
   constructor() {
