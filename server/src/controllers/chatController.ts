@@ -28,6 +28,11 @@ class ChatController {
 
     // Error events for any failures
     MESSAGE_ERROR: "message:error", // server-any_client
+
+    // Add these new events to match client capabilities
+    CHAT_CHECK: "chat:check",
+    TYPING_STATUS: "typing:status",
+    SYSTEM_MESSAGE: "message:system",
   } as const;
 
   constructor() {
@@ -61,6 +66,12 @@ class ChatController {
     this.socketManager.listenToEvent({
       event: this.CHAT_EVENTS.SEEN_ACK,
       handler: this.handleSeenAck.bind(this),
+    });
+
+    //  listener for chat:check
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.CHAT_CHECK,
+      handler: this.handleChatCheck.bind(this),
     });
   }
 
@@ -154,6 +165,67 @@ class ChatController {
         data: {
           message: "Failed to send message",
           error: error instanceof Error ? error.message : "Unknown error",
+        },
+        targetSocketIds: [socket.id],
+      });
+    }
+  }
+
+  // find existing chats or previus chat
+  private async handleChatCheck(
+    data: { senderId: string; receiverId: string },
+    socket: any
+  ): Promise<void> {
+    try {
+      console.log("hey got the data for intiaite", data);
+      const chat = await MsgModel.findOne({
+        $or: [
+          { sender: data.senderId, receiver: data.receiverId },
+          { sender: data.receiverId, receiver: data.senderId },
+        ],
+      })
+        .populate("sender", "name avatar") // Add fields you need from sender
+        .populate("receiver", "name avatar") // Add fields you need from receiver
+        .populate("messages.sender", "name avatar"); // Add fields you need from message senders
+
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.CHAT_CHECK,
+        data: {
+          status: "success",
+          exsits: !!chat,
+          chat: chat
+            ? {
+                chatId: chat._id,
+                participants: {
+                  sender: chat.sender,
+                  receiver: chat.receiver,
+                },
+                messages: chat.messages.map((msg) => ({
+                  messageId: msg.messageId,
+                  text: msg.text,
+                  sender: msg.sender,
+                  messageType: msg.messageType,
+                  status: msg.status,
+                  createdAt: msg.createdAt,
+                  // Add other fields you need
+                })),
+                lastMessage: chat.lastMessage,
+                chatType: chat.chatType,
+                participantsInfo: chat.participantsInfo,
+              }
+            : null,
+          timestamp: new Date(),
+        },
+        targetSocketIds: [socket.id],
+      });
+    } catch (error) {
+      console.log("error while handling chat check.", error);
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.MESSAGE_ERROR,
+        data: {
+          status: "failed",
+          error: "Failed to check chat",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
         targetSocketIds: [socket.id],
       });
