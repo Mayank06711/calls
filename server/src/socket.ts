@@ -13,10 +13,9 @@ import {
 } from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
-// Each socket connection has its own unique socket.data object.
-/*
+
 // When User1 connects
-socket1.data = {
+/*socket1.data = {
     userId: "user1_id",
     authenticated: true
     // other data...

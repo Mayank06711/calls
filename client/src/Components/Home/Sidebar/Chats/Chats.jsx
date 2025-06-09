@@ -2,16 +2,24 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Search } from "@mui/icons-material";
-import { IconButton, Tabs, Tab, Avatar, Chip, CircularProgress } from "@mui/material";
+import {
+  IconButton,
+  Tabs,
+  Tab,
+  Avatar,
+  Chip,
+  CircularProgress,
+} from "@mui/material";
 import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import ChatArea from "./ChatArea";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import { getAllUsersThunk } from "../../../../redux/thunks/userInfo.thunks";
+import { isSocketAuthenticated } from "../../../../socket/authentication";
 
 function ChatSection() {
   const dispatch = useDispatch();
   const colors = useSubscriptionColors();
-  
+
   // State management
   const [users, setUsers] = useState([]);
   const [selectedTab, setSelectedTab] = useState("all");
@@ -19,43 +27,82 @@ function ChatSection() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
+  // Add state for socket readiness
+  const [isSocketReady, setIsSocketReady] = useState(false);
 
   // Refs
   const observerRef = useRef();
 
   // Selectors
-  const loadingInitial = useSelector(state => state.loaderState.loaders[LOADER_TYPES.GET_ALL_USERS]);
-  const loadingMore = useSelector(state => state.loaderState.loaders[LOADER_TYPES.GET_MORE_USERS]);
+  const loadingInitial = useSelector(
+    (state) => state.loaderState.loaders[LOADER_TYPES.GET_ALL_USERS]
+  );
+  const loadingMore = useSelector(
+    (state) => state.loaderState.loaders[LOADER_TYPES.GET_MORE_USERS]
+  );
+
+  // Add socket status selectors
+  const socketStatus = useSelector((state) => state.socketMetrics);
+  const { connected, authenticated } = socketStatus;
+
+  // Check socket status and ensure authentication
+  useEffect(() => {
+    const checkSocketStatus = async () => {
+      try {
+        if (!connected || !authenticated) {
+          await ensureSocketAuthenticated();
+        }
+        setIsSocketReady(true);
+      } catch (error) {
+        console.error("Socket connection/authentication failed:", error);
+        setIsSocketReady(false);
+      }
+    };
+
+    checkSocketStatus();
+  }, [connected, authenticated]);
 
   const fetchUsers = async (pageNum = 1, isLoadMore = false) => {
     if (!hasMore && isLoadMore) return;
 
-    const result = await dispatch(getAllUsersThunk({
-      page: pageNum,
-      limit: 20,
-      userType: selectedTab === 'all' ? 'all' : selectedTab === 'experts' ? 'expert' : 'user',
-      search: searchQuery
-    }));
+    const result = await dispatch(
+      getAllUsersThunk({
+        page: pageNum,
+        limit: 20,
+        userType:
+          selectedTab === "all"
+            ? "all"
+            : selectedTab === "experts"
+            ? "expert"
+            : "user",
+        search: searchQuery,
+      })
+    );
 
     if (result.success) {
-      setUsers(prev => isLoadMore ? [...prev, ...result.data] : result.data);
+      setUsers((prev) =>
+        isLoadMore ? [...prev, ...result.data] : result.data
+      );
       setHasMore(!result.pagination.isLastPage);
       setPage(pageNum);
     }
   };
 
-  const lastUserElementRef = useCallback(node => {
-    if (loadingMore || !hasMore) return;
-    if (observerRef.current) observerRef.current.disconnect();
+  const lastUserElementRef = useCallback(
+    (node) => {
+      if (loadingMore || !hasMore) return;
+      if (observerRef.current) observerRef.current.disconnect();
 
-    observerRef.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        fetchUsers(page + 1, true);
-      }
-    });
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          fetchUsers(page + 1, true);
+        }
+      });
 
-    if (node) observerRef.current.observe(node);
-  }, [loadingMore, hasMore, page]);
+      if (node) observerRef.current.observe(node);
+    },
+    [loadingMore, hasMore, page]
+  );
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -63,6 +110,10 @@ function ChatSection() {
     setHasMore(true);
     fetchUsers(1, false);
   }, [selectedTab, searchQuery]);
+
+  useEffect(() => {
+    console.log("test socket authentication", isSocketAuthenticated());
+  }, [isSocketAuthenticated()]);
 
   // Cleanup observer
   useEffect(() => {
@@ -73,13 +124,43 @@ function ChatSection() {
     };
   }, []);
 
-  const handleUserSelect = (user) => {
-    setSelectedUser(user);
+  // Modify handleUserSelect to check socket status
+  const handleUserSelect = async (user) => {
+    try {
+      if (!isSocketAuthenticated()) {
+        await ensureSocketAuthenticated();
+      }
+      setSelectedUser(user);
+    } catch (error) {
+      console.error("Socket authentication failed when selecting user:", error);
+    }
   };
 
+  // Add socket status indicator in the UI
+  const renderSocketStatus = () => {
+    if (!connected) {
+      return (
+        <div className="text-red-500 text-xs p-2 bg-red-100 rounded">
+          Socket disconnected. Trying to reconnect...
+        </div>
+      );
+    }
+    if (!authenticated) {
+      return (
+        <div className="text-yellow-500 text-xs p-2 bg-yellow-100 rounded">
+          Authenticating socket connection...
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // console.log("users", users);
   return (
     <div className="flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text">
       <div className="w-96 border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary">
+        {/* Add socket status indicator */}
+        {renderSocketStatus()}
         {/* Search Bar */}
         <div className="p-2 border-b border-light-secondary dark:border-dark-secondary">
           <div className="flex items-center bg-light-primary dark:bg-dark-primary rounded-full px-3 py-1">
@@ -141,7 +222,7 @@ function ChatSection() {
                   key={user._id}
                   ref={index === users.length - 1 ? lastUserElementRef : null}
                   className={`flex items-center p-2 cursor-pointer hover:bg-light-accent/5 ${
-                    selectedUser?._id === user._id ? 'bg-light-accent/10' : ''
+                    selectedUser?._id === user._id ? "bg-light-accent/10" : ""
                   }`}
                   onClick={() => handleUserSelect(user)}
                 >
@@ -172,14 +253,16 @@ function ChatSection() {
                     </div>
                     <div className="flex items-center text-xs opacity-70">
                       <span>@{user.username}</span>
-                      <span className={`ml-2 w-2 h-2 rounded-full ${
-                        user.isActive ? 'bg-green-500' : 'bg-gray-400'
-                      }`} />
+                      <span
+                        className={`ml-2 w-2 h-2 rounded-full ${
+                          user.isActive ? "bg-green-500" : "bg-gray-400"
+                        }`}
+                      />
                     </div>
                   </div>
                 </div>
               ))}
-              
+
               {loadingMore && (
                 <div className="flex justify-center p-4">
                   <CircularProgress size={24} />
@@ -203,12 +286,14 @@ function ChatSection() {
       </div>
 
       {/* Chat Area */}
-      {selectedUser ? (
+      {selectedUser && isSocketReady ? (
         <ChatArea selectedUser={selectedUser} />
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-light-text/50">
-            Select a chat to start messaging
+            {!isSocketReady
+              ? "Connecting to chat services..."
+              : "Select a chat to start messaging"}
           </p>
         </div>
       )}

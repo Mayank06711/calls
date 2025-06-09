@@ -311,7 +311,130 @@ class ChatService {
         this.events.set('chat:firstTime', callback);
     }
 
-
+    async initializeChatWithRetry(initData, maxRetries = 3) {
+      let retryCount = 0;
+      let lastError = null;
+  
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+      while (retryCount < maxRetries) {
+        try {
+          // Emit chat initialization event
+          const response = await emitWithTimeout(
+            this.socket, 
+            'chat:initialization', 
+            {
+              ...initData,
+              retryAttempt: retryCount,
+              clientTimestamp: Date.now()
+            },
+            10000 // 10 second timeout
+          );
+  
+          if (response.status === 'success') {
+            // Validate response data
+            if (!response.chatId) {
+              throw new Error('Invalid response: missing chatId');
+            }
+  
+            // Join the chat room
+            await this.joinChat(response.chatId);
+  
+            // Send initialization success message
+            await this.sendSystemMessage(response.chatId, 'CHAT_INITIALIZED', {
+              timestamp: Date.now(),
+              metadata: {
+                isFirstTime: true,
+                initializationData: initData
+              }
+            });
+  
+            return response.chatId;
+          }
+  
+          throw new Error(response.message || 'Chat initialization failed');
+  
+        } catch (error) {
+          lastError = error;
+          console.error(`Chat initialization attempt ${retryCount + 1} failed:`, error);
+  
+          // Check for specific errors that shouldn't retry
+          if (
+            error.message.includes('authentication') ||
+            error.message.includes('unauthorized') ||
+            error.message.includes('invalid token')
+          ) {
+            throw new Error('Authentication required');
+          }
+  
+          // Exponential backoff
+          await delay(Math.min(1000 * Math.pow(2, retryCount), 5000));
+          retryCount++;
+        }
+      }
+  
+      // If we've exhausted all retries, throw the last error
+      throw new Error(`Chat initialization failed after ${maxRetries} attempts: ${lastError?.message}`);
+    }
+  
+    // Enhanced error handling for socket events
+    handleSocketError(error, context = '') {
+      const errorTypes = {
+        NETWORK: 'network',
+        AUTH: 'authentication',
+        TIMEOUT: 'timeout',
+        SERVER: 'server',
+        UNKNOWN: 'unknown'
+      };
+  
+      let errorType = errorTypes.UNKNOWN;
+      let errorMessage = error.message || 'An unknown error occurred';
+  
+      // Categorize error
+      if (error.message.includes('timeout')) {
+        errorType = errorTypes.TIMEOUT;
+        errorMessage = 'Request timed out. Please check your connection.';
+      } else if (error.message.includes('authentication') || error.message.includes('unauthorized')) {
+        errorType = errorTypes.AUTH;
+        errorMessage = 'Authentication required. Please login again.';
+      } else if (error.message.includes('network') || error.message.includes('connection')) {
+        errorType = errorTypes.NETWORK;
+        errorMessage = 'Network connection issue. Please check your internet connection.';
+      } else if (error.message.includes('server')) {
+        errorType = errorTypes.SERVER;
+        errorMessage = 'Server error. Please try again later.';
+      }
+  
+      // Log error with context
+      console.error(`Socket Error [${errorType}] ${context}:`, {
+        type: errorType,
+        message: errorMessage,
+        originalError: error,
+        timestamp: new Date().toISOString()
+      });
+  
+      return {
+        type: errorType,
+        message: errorMessage
+      };
+    }
+  
+    // Add validation methods
+    validateInitData(initData) {
+      const required = ['senderId', 'receiverId', 'timestamp'];
+      const missing = required.filter(field => !initData[field]);
+      
+      if (missing.length > 0) {
+        throw new Error(`Missing required fields: ${missing.join(', ')}`);
+      }
+  
+      if (typeof initData.timestamp !== 'number') {
+        throw new Error('Invalid timestamp format');
+      }
+  
+      return true;
+    }
+  
 
 }
 
