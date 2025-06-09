@@ -13,4 +13,5 @@ router.route("/email_verification").post(User.verifyEmail);
 router.route("/profile").get(User.getProfile).patch(User.updateProfile); // Combined profile routes
 router.route("/password").post(User.forgotPassword).patch(User.changePassword); // Combined password routes
 router.route("/logout").post(User.logout);
+router.route("/all-users").get(User.getAllUsers);
 export default router;

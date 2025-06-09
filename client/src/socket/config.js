@@ -3,6 +3,25 @@ import env from "../config/env.config";
 import store from "../redux/store";
 import { socketAuthenticated, socketConnected } from "../redux/actions";
 import { authenticateSocket } from "./authentication";
+import { useEffect, useState } from 'react';
+
+
+export const useSocket = () => {
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    const socketInstance = SocketManager.getSocket(false, true);
+    setSocket(socketInstance);
+
+    return () => {
+      if (socketInstance) {
+        SocketManager.disconnectSocket();
+      }
+    };
+  }, []);
+
+  return socket;
+};
 
 class SocketManager {
   static socket = null;
