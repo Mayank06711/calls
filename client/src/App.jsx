@@ -109,7 +109,7 @@ const App = () => {
       const initializeSocket = async () => {
         try {
           // Only initialize socket if user is logged in
-          if (userId) {
+          if (userId && !SocketManager.isSocketConnected() && !SocketManager.isAuthenticating) {
             await ensureSocketAuthenticated();
           }
         } catch (error) {
@@ -117,10 +117,15 @@ const App = () => {
         }
       };
   
-      initializeSocket();
+      if (userId) {
+        initializeSocket();
+      }
   
       return () => {
+        // Only disconnect if we're changing users
+      if (!userId) {
         SocketManager.disconnectSocket();
+      }
       };
     }, [userId]); // Re-run when userId changes
 

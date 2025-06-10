@@ -14,7 +14,10 @@ import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import ChatArea from "./ChatArea";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import { getAllUsersThunk } from "../../../../redux/thunks/userInfo.thunks";
-import { ensureSocketAuthenticated, isSocketAuthenticated } from "../../../../socket/authentication";
+import {
+  ensureSocketAuthenticated,
+  isSocketAuthenticated,
+} from "../../../../socket/authentication";
 
 function ChatSection() {
   const dispatch = useDispatch();
@@ -130,7 +133,11 @@ function ChatSection() {
       if (!isSocketAuthenticated()) {
         await ensureSocketAuthenticated();
       }
-      setSelectedUser(user);
+      if (isSocketAuthenticated()) {
+        setSelectedUser(user);
+      } else {
+        throw new Error("socket authentication needed.");
+      }
     } catch (error) {
       console.error("Socket authentication failed when selecting user:", error);
     }
@@ -140,14 +147,14 @@ function ChatSection() {
   const renderSocketStatus = () => {
     if (!connected) {
       return (
-        <div className="text-red-500 text-xs p-2 bg-red-100 rounded">
+        <div className='text-red-500 text-xs p-2 bg-red-100 rounded'>
           Socket disconnected. Trying to reconnect...
         </div>
       );
     }
     if (!authenticated) {
       return (
-        <div className="text-yellow-500 text-xs p-2 bg-yellow-100 rounded">
+        <div className='text-yellow-500 text-xs p-2 bg-yellow-100 rounded'>
           Authenticating socket connection...
         </div>
       );
@@ -157,20 +164,20 @@ function ChatSection() {
 
   // console.log("users", users);
   return (
-    <div className="flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text">
-      <div className="w-96 border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary">
+    <div className='flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text'>
+      <div className='w-96 border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary'>
         {/* Add socket status indicator */}
         {renderSocketStatus()}
         {/* Search Bar */}
-        <div className="p-2 border-b border-light-secondary dark:border-dark-secondary">
-          <div className="flex items-center bg-light-primary dark:bg-dark-primary rounded-full px-3 py-1">
-            <IconButton size="small">
-              <Search className="text-light-text dark:text-dark-text opacity-50" />
+        <div className='p-2 border-b border-light-secondary dark:border-dark-secondary'>
+          <div className='flex items-center bg-light-primary dark:bg-dark-primary rounded-full px-3 py-1'>
+            <IconButton size='small'>
+              <Search className='text-light-text dark:text-dark-text opacity-50' />
             </IconButton>
             <input
-              type="text"
-              placeholder="Search by name or username..."
-              className="ml-1 bg-transparent border-none outline-none w-full"
+              type='text'
+              placeholder='Search by name or username...'
+              className='ml-1 bg-transparent border-none outline-none w-full'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -178,11 +185,11 @@ function ChatSection() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-light-secondary/10">
+        <div className='border-b border-light-secondary/10'>
           <Tabs
             value={selectedTab}
             onChange={(e, newValue) => setSelectedTab(newValue)}
-            variant="fullWidth"
+            variant='fullWidth'
             sx={{
               minHeight: "32px",
               "& .MuiTab-root": {
@@ -203,16 +210,16 @@ function ChatSection() {
               },
             }}
           >
-            <Tab label="All" value="all" disableRipple />
-            <Tab label="Users" value="users" disableRipple />
-            <Tab label="Experts" value="experts" disableRipple />
+            <Tab label='All' value='all' disableRipple />
+            <Tab label='Users' value='users' disableRipple />
+            <Tab label='Experts' value='experts' disableRipple />
           </Tabs>
         </div>
 
         {/* Users List */}
-        <div className="overflow-y-auto h-[calc(100vh-160px)] p-2 scrollbar-hide">
+        <div className='overflow-y-auto h-[calc(100vh-160px)] p-2 scrollbar-hide'>
           {loadingInitial ? (
-            <div className="flex justify-center p-4">
+            <div className='flex justify-center p-4'>
               <CircularProgress size={24} />
             </div>
           ) : (
@@ -237,12 +244,12 @@ function ChatSection() {
                   >
                     {user.fullName[0]}
                   </Avatar>
-                  <div className="ml-2 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{user.fullName}</p>
+                  <div className='ml-2 flex-1'>
+                    <div className='flex items-center justify-between'>
+                      <p className='font-medium text-sm'>{user.fullName}</p>
                       <Chip
                         label={user.isExpert ? "Expert" : "User"}
-                        size="small"
+                        size='small'
                         sx={{
                           backgroundColor: colors.second,
                           color: "white",
@@ -251,7 +258,7 @@ function ChatSection() {
                         }}
                       />
                     </div>
-                    <div className="flex items-center text-xs opacity-70">
+                    <div className='flex items-center text-xs opacity-70'>
                       <span>@{user.username}</span>
                       <span
                         className={`ml-2 w-2 h-2 rounded-full ${
@@ -264,19 +271,19 @@ function ChatSection() {
               ))}
 
               {loadingMore && (
-                <div className="flex justify-center p-4">
+                <div className='flex justify-center p-4'>
                   <CircularProgress size={24} />
                 </div>
               )}
 
               {!hasMore && users.length > 0 && (
-                <div className="text-center text-gray-500 p-4">
+                <div className='text-center text-gray-500 p-4'>
                   No more users to load
                 </div>
               )}
 
               {!loadingInitial && users.length === 0 && (
-                <div className="text-center text-gray-500 p-4">
+                <div className='text-center text-gray-500 p-4'>
                   No users found
                 </div>
               )}
@@ -289,8 +296,8 @@ function ChatSection() {
       {selectedUser && isSocketReady ? (
         <ChatArea selectedUser={selectedUser} />
       ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-light-text/50">
+        <div className='flex-1 flex items-center justify-center'>
+          <p className='text-light-text/50'>
             {!isSocketReady
               ? "Connecting to chat services..."
               : "Select a chat to start messaging"}
