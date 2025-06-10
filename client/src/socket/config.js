@@ -2,9 +2,8 @@ import { io } from "socket.io-client";
 import env from "../config/env.config";
 import store from "../redux/store";
 import { socketAuthenticated, socketConnected } from "../redux/actions";
-import { authenticateSocket } from "./authentication";
-import { useEffect, useState } from 'react';
-
+import { ensureSocketAuthenticated } from "./authentication";
+import { useEffect, useState } from "react";
 
 export const useSocket = () => {
   const [socket, setSocket] = useState(null);
@@ -27,10 +26,16 @@ class SocketManager {
   static socket = null;
   static reconnectAttempts = 0;
   static maxReconnectAttempts = 5;
+  static isAuthenticating = false; // Add this line
 
   static #createSocket(testSocket = false, connectSocket = false) {
     if (SocketManager.socket) {
-      if (connectSocket && !SocketManager.socket.connected) {
+      // Only connect if not already connected or authenticating
+      if (
+        connectSocket &&
+        !SocketManager.socket.connected &&
+        !SocketManager.isAuthenticating
+      ) {
         SocketManager.socket.connect();
         store.dispatch(socketConnected(true));
       }
@@ -79,10 +84,14 @@ class SocketManager {
     SocketManager.socket.on("disconnect", (reason) => {
       store.dispatch(socketConnected(false));
       store.dispatch(socketAuthenticated(false));
-
+      SocketManager.isAuthenticating = false;
       // Attempt to reconnect if disconnected by server
       if (reason === "io server disconnect") {
+        // Only reset authentication flag if we're not going to reconnect
         SocketManager.handleReconnection();
+      } else {
+        // Reset authentication flag only if we're not attempting reconnection
+        SocketManager.isAuthenticating = false;
       }
 
       // Handle reconnect
@@ -101,6 +110,7 @@ class SocketManager {
       // Handle connect error
       SocketManager.socket.on("connect_error", (error) => {
         console.error("Connection error:", error);
+        SocketManager.isAuthenticating = false;
         SocketManager.handleReconnection();
       });
     });
@@ -124,9 +134,9 @@ class SocketManager {
 
   static async handleAuthentication() {
     const token = localStorage.getItem("token");
-    if (token) {
+    if (token && !SocketManager.isAuthenticating) {
       try {
-        await authenticateSocket(token);
+        await ensureSocketAuthenticated(token);
       } catch (error) {
         console.error("Authentication failed during reconnection:", error);
       }
@@ -139,13 +149,15 @@ class SocketManager {
 
   static isSocketConnected() {
     const isConnected = SocketManager.socket?.connected || false;
-    store.dispatch(socketConnected(isConnected));
-    return isConnected;
+    const isAuthenticated = store.getState().socketMetrics.authenticated;
+    store.dispatch(socketConnected(isConnected && isAuthenticated));
+    return isConnected && isAuthenticated;
   }
 
   static disconnectSocket() {
     if (SocketManager.socket?.connected) {
       SocketManager.socket.disconnect();
+      SocketManager.isAuthenticating = false;
       store.dispatch(socketConnected(false));
       store.dispatch(socketAuthenticated(false));
     }
