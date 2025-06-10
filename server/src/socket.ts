@@ -13,6 +13,8 @@ import {
 } from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
+import { throws } from "assert";
+import { ChatController } from "./controllers/chatController";
 
 // When User1 connects
 /*socket1.data = {
@@ -349,7 +351,8 @@ class SocketManager {
               });
               return this.handleConnectionError(
                 socket,
-                "Invalid authentication"
+                "Invalid authentication, try refreshing token",
+                "Invalid:authentication"
               );
             }
             const lockKey = `user:${userData.userId}`;
@@ -374,6 +377,10 @@ class SocketManager {
 
             socket.data.authenticated = true;
             socket.data.userId = userData.userId;
+
+            // setting up the chat controller listerns
+            const chatController = new ChatController();
+            chatController.setupAuthenticatedSocketListeners(socket);
 
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
@@ -681,9 +688,18 @@ class SocketManager {
     }
   }
 
-  private handleConnectionError(socket: Socket, error: unknown) {
+  private handleConnectionError(
+    socket: Socket,
+    error: unknown,
+    errorName?: string
+  ) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    this.removeSocket(socket.id, errorMessage, "connection_error", true);
+    this.removeSocket(
+      socket.id,
+      errorMessage,
+      errorName ? errorName : "connection_error",
+      true
+    );
   }
 
   private async cleanupLock(lockId: string | null, userData: any) {
@@ -1185,7 +1201,8 @@ class SocketManager {
     auth = false,
     headers = {},
     targetSocketIds,
-  }: EmitOptions): Promise<boolean> {
+    callback, //
+  }: EmitOptions & { callback?: (response: any) => void }): Promise<boolean> {
     try {
       const payload = {
         data,
@@ -1204,8 +1221,10 @@ class SocketManager {
         await Promise.all(
           filteredSocketIds.map((socketId) => {
             const socket = this.io.sockets.sockets.get(socketId);
-            if (socket) {
-              socket.emit(event, payload);
+            if (socket && callback) {
+              socket.emit(event, payload, callback);
+            } else {
+              socket?.emit(event, payload);
             }
           })
         );
@@ -1214,10 +1233,18 @@ class SocketManager {
           filteredSocketIds
         );
       } else if (room) {
-        this.io.to(room).emit(event, payload);
+        if (callback) {
+          this.io.to(room).emit(event, payload, callback);
+        } else {
+          this.io.to(room).emit(event, payload);
+        }
         console.log(`Event ${event} emitted to room: ${room}`);
       } else {
-        this.io.emit(event, payload);
+        if (callback) {
+          this.io.emit(event, payload, callback);
+        } else {
+          this.io.emit(event, payload);
+        }
         console.log(`Event ${event} broadcasted to all clients`);
       }
 
@@ -1230,12 +1257,17 @@ class SocketManager {
 
   public async listenToEvent<T>({
     event,
+    // handler function gets data, socket, and callback function
     handler,
     room,
     socketIds,
   }: {
     event: string;
-    handler: (data: T, socket: Socket) => Promise<void> | void;
+    handler: (
+      data: T,
+      socket: Socket,
+      callback?: Function
+    ) => Promise<void> | void;
     room?: string;
     socketIds?: string[];
   }): Promise<boolean> {
@@ -1259,12 +1291,16 @@ class SocketManager {
       }
 
       targetSockets.forEach((socket) => {
-        socket.on(event, async (data: T) => {
+        // When event is received, socket.io provides data and callback
+        socket.on(event, async (data: T, callback?: Function) => {
           try {
-            await handler(data, socket);
+            await handler(data, socket, callback); // pass callback to handler
           } catch (error) {
             console.error(`Error handling event ${event}:`, error);
             socket.emit("error", { event, message: "Error processing event" });
+            if (callback) {
+              callback({ status: "error", message: "Error processing event" });
+            }
           }
         });
       });
