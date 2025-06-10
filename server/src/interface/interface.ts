@@ -79,6 +79,7 @@ export type EmitOptions = {
   auth?: boolean;
   headers?: Record<string, any>;
   targetSocketIds?: string[];
+  callback?: (response: any) => void;  // Add this new field
 };
 
 export interface SocketUserData {
