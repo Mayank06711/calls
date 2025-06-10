@@ -9,7 +9,6 @@ import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
 import { RedisManager } from "./utils/redisClient";
-import { ChatController } from "./controllers/chatController";
 import { Middleware } from "./middlewares/middlewares";
 // importing Routes
 import userRouter from "./routes/userRoutes";
@@ -38,7 +37,7 @@ class ServerManager {
       "http://localhost:3000",
       "https://localhost:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
-      "https://staging.d15sv24wr1qszx.amplifyapp.com"
+      "https://staging.d15sv24wr1qszx.amplifyapp.com",
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -212,12 +211,10 @@ class ServerManager {
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
-          // Initialize ChatController after socket setup
-          ChatController.getInstance();
           console.log(`Server is running on http://localhost:${Port}`);
           resolve();
         });
-      }); 
+      });
     } catch (error) {
       console.error("Error during server initialization:", error);
       process.exit(1);
