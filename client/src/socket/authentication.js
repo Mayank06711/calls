@@ -1,15 +1,29 @@
 import { SocketManager } from "../socket/config";
 import { emitEvent } from "../socket/socketUtils";
 import { SOCKET_CONSTANTS } from "../constants/socketContanst";
-import { socketAuthenticated } from "../redux/actions/socket.actions";
+import {
+  socketAuthenticated,
+  socketConnected,
+} from "../redux/actions/socket.actions";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
 
 const authenticateSocket = async (token) => {
+  // Prevent multiple simultaneous authentication attempts
+  if (SocketManager.isAuthenticating) {
+    console.log("Authentication already in progress");
+    return;
+  }
   try {
     // Get a connected socket using the SocketManager
     const socket = SocketManager.getSocket(false, true);
-
+    // Check if already authenticated
+    if (store.getState().socketMetrics.authenticated) {
+      console.log("Socket already authenticated");
+      return { status: SOCKET_CONSTANTS.STATUS.AUTHENTICATED };
+    }
+    // make the flag true;
+    SocketManager.isAuthenticating = true;
     const response = await emitEvent(socket, {
       event: SOCKET_CONSTANTS.AUTH.AUTHENTICATE,
       data: { accessToken: token },
@@ -29,12 +43,15 @@ const authenticateSocket = async (token) => {
           );
         },
         onSuccess: (response) => {
-           console.log("socket authenticated response", response)
+          console.log("socket authenticated response", response);
           if (response.status === SOCKET_CONSTANTS.STATUS.AUTHENTICATED) {
             store.dispatch(socketAuthenticated(true));
             console.log("Socket authenticated successfully");
             store.dispatch(
-              showNotification(response.message ||"Socket authenticated successfully", "info")
+              showNotification(
+                response.message || "Socket authenticated successfully",
+                "info"
+              )
             );
           } else {
             store.dispatch(
@@ -66,6 +83,14 @@ const authenticateSocket = async (token) => {
   } catch (error) {
     console.error("Socket authentication failed:", error);
     return null;
+  } finally {
+    // CRITICAL: Reset authentication flag here because:
+    // 1. Ensures flag is reset whether authentication succeeds or fails
+    // 2. Prevents flag getting stuck in 'true' state if errors occur
+    // 3. Runs after both try and catch blocks complete
+    // 4. Guarantees cleanup even if promises are rejected
+    // 5. Prevents deadlocks in future authentication attempts
+    SocketManager.isAuthenticating = false;
   }
 };
 
@@ -76,30 +101,77 @@ const isSocketAuthenticated = () => {
 
 // Helper to ensure socket is authenticated
 const ensureSocketAuthenticated = async () => {
-  if (!isSocketAuthenticated()) {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("No authentication token found");
+  // If already authenticated, return early
+  if (isSocketAuthenticated()) {
+    return true;
+  }
+
+  // If authentication is in progress, wait for it
+  if (SocketManager.isAuthenticating) {
+    console.log("Authentication already in progress, waiting...");
+    // Wait for a reasonable time for authentication to complete
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (isSocketAuthenticated()) {
+        return true;
+      }
     }
+    throw new Error("Timed out waiting for authentication to complete");
+  }
+
+  // Start new authentication process
+  const token = localStorage.getItem("token");
+  if (!token) {
+    SocketManager.isAuthenticating = false;
+    throw new Error("No authentication token found");
+  }
+
+  try {
     const response = await authenticateSocket(token);
+
     if (
       !response ||
       response.status !== SOCKET_CONSTANTS.STATUS.AUTHENTICATED
     ) {
       throw new Error("Socket authentication failed");
     }
+
+    return true;
+  } catch (error) {
+    console.error("Socket authentication ensure failed:", error);
+    // Cleanup on failure
+    store.dispatch(socketAuthenticated(false));
+    store.dispatch(socketConnected(false));
+    throw error;
+  } finally {
+    SocketManager.isAuthenticating = false;
   }
-  return true;
 };
 
 // Add this to handle page visibility changes
 const setupVisibilityListener = () => {
+  let reconnectionTimeout;
+
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
-      const socket = SocketManager.getSocket();
-      if (!socket.connected || !isSocketAuthenticated()) {
-        await ensureSocketAuthenticated();
+      // Clear any existing timeout
+      if (reconnectionTimeout) {
+        clearTimeout(reconnectionTimeout);
       }
+
+      // Add a small delay and check if reconnection is really needed
+      reconnectionTimeout = setTimeout(async () => {
+        const socket = SocketManager.getSocket();
+        const isAuthenticated = store.getState().socketMetrics.authenticated;
+
+        if (
+          !socket.connected &&
+          !isAuthenticated &&
+          !SocketManager.isAuthenticating
+        ) {
+          await ensureSocketAuthenticated();
+        }
+      }, 1000);
     }
   });
 };
