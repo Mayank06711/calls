@@ -14,7 +14,7 @@ import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import ChatArea from "./ChatArea";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import { getAllUsersThunk } from "../../../../redux/thunks/userInfo.thunks";
-import { isSocketAuthenticated } from "../../../../socket/authentication";
+import { ensureSocketAuthenticated, isSocketAuthenticated } from "../../../../socket/authentication";
 
 function ChatSection() {
   const dispatch = useDispatch();
