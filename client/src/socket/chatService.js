@@ -151,8 +151,11 @@ class ChatService {
   // Create new chat
   async createChat(receiverId) {
     try {
-      const response = await emitWithTimeout(this.socket, "chat:create", {
+      const response = await emitWithTimeout(this.socket, "message", {
         receiverId,
+        text: "Chat Initialized", // Required for message
+        messageType: "text",
+        chatType: "userToUser",
         timestamp: Date.now(),
       });
 
@@ -161,7 +164,12 @@ class ChatService {
       );
 
       if (response.status === "success") {
-        return response?.chatId;
+        console.log("response frm lone 167 of chatService", response);
+        return {
+          chatId: response.chatId,
+          messages: [],
+          exists: false,
+        };
       }
       throw new Error(response.message || "Failed to create chat");
     } catch (error) {
@@ -322,6 +330,9 @@ class ChatService {
     try {
       const response = await emitWithTimeout(this.socket, "message", {
         receiverId,
+        text: "Chat Initialized", // Add required text field
+        messageType: "text",
+        chatType: "userToUser",
         timestamp: Date.now(),
         metadata: {
           isFirstTime: true,
@@ -330,22 +341,23 @@ class ChatService {
         },
       });
 
-      if (response.status === "success") {
-        // Join the chat room
-        await this.joinChat(response.chatId);
 
-        // Send welcome message if it's first time
-        await this.sendSystemMessage(response.chatId, "CHAT_CREATED");
+      if (response.status === "success") {
+        console.log("response 1 create chat", response)
+        // Join the chat room if needed
+        if (response.chatId) {
+          await this.joinChat(response.chatId);
+        }
 
         return {
           chatId: response.chatId,
-          isNew: true,
-          metadata: response.metadata,
+          messages: [],
+          exists: false,
         };
       }
       throw new Error(response.message || "Failed to create chat");
     } catch (error) {
-      handleSocketError(error);
+      console.error("Create chat error:", error);
       throw error;
     }
   }
@@ -418,51 +430,63 @@ class ChatService {
           30000
         );
 
-        console.log(`Response of chat:check`, response, response.chat);
+        console.log(`Response of chat:check`, response);
 
         if (response.status === "success") {
+          console.log("landddddddddddd  1");
           // If chat exists, return existing chat data
           if (response.exists && response.chat) {
+            console.log("teri ma ki chut 2");
             return {
               chatId: response.chat.chatId,
               messages: response.chat.messages || [],
-              exists: true,
+              exists: response.exists,
             };
           }
 
           // If chat doesn't exist, create a new one
-          const newChat = await this.createNewChat(initData.receiverId);
-          return {
-            chatId: newChat.chatId,
-            messages: [],
-            exists: false,
-          };
+          try {
+            const newChat = await this.createNewChat(initData.receiverId);
+            console.log("New chat created:", newChat);
+            const res = {
+              chatId: newChat.chatId,
+              messages: [],
+              exists: false,
+            };
+            console.log("results 3", res);
+            return res;
+          } catch (error) {
+            console.log("4\n", error);
+          }
         }
-
+        console.log("maderchod5");
         throw new Error(response.message || "Chat initialization failed");
       } catch (error) {
         lastError = error;
-        console.error(
-          `Chat initialization attempt ${retryCount + 1} failed:`,
-          error
-        );
+        console.error(`Attempt ${retryCount + 1} failed:`, error);
 
-        if (
-          error.message.includes("authentication") ||
-          error.message.includes("unauthorized") ||
-          error.message.includes("invalid token")
-        ) {
-          throw new Error("Authentication required");
+        if (error.message.includes("authentication")) {
+          throw error; // Don't retry auth errors
         }
 
-        await delay(Math.min(1000 * Math.pow(2, retryCount), 5000));
-        retryCount++;
+        // if ( // Better
+        //   error.message.includes("authentication") ||
+        //   error.message.includes("unauthorized") ||
+        //   error.message.includes("invalid token")
+        // ) {
+        //   throw new Error("Authentication required");
+        // }
+
+        if (retryCount < maxRetries - 1) {
+          await delay(Math.min(1000 * Math.pow(2, retryCount), 5000));
+          retryCount++;
+        } else {
+          throw new Error(
+            `Chat initialization failed after ${maxRetries} attempts: ${lastError?.message}`
+          );
+        }
       }
     }
-
-    throw new Error(
-      `Chat initialization failed after ${maxRetries} attempts: ${lastError?.message}`
-    );
   }
 
   // Enhanced error handling for socket events

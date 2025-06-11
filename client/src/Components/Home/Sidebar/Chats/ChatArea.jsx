@@ -52,7 +52,7 @@ const ChatArea = ({ selectedUser }) => {
       // Get sender ID from localStorage
       const senderId = localStorage.getItem("userId");
       if (!senderId) {
-        throw new Error("User authentication required");
+        throw new Error("User authentication required"); // Redirect to login page
       }
 
       // Prepare initialization data matching server expectations
@@ -68,7 +68,7 @@ const ChatArea = ({ selectedUser }) => {
 
       // Handle both existing and new chats
       setChatId(response.chatId);
-      if (response.exists) {
+      if (response.exists) { 
         // Initialize messages from existing chat
         const formattedMessages = response.messages.map((msg) => ({
           id: msg.messageId,
@@ -80,7 +80,7 @@ const ChatArea = ({ selectedUser }) => {
         }));
         setMessages(formattedMessages);
       } else {
-        // New chat initialized
+        // New chat initialized, "message"
         console.log("New chat created:", response.chatId);
         setMessages([]);
       }

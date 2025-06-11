@@ -20,6 +20,7 @@ const authenticateSocket = async (token) => {
     // Check if already authenticated
     if (store.getState().socketMetrics.authenticated) {
       console.log("Socket already authenticated");
+      store.dispatch(socketAuthenticated(true));
       return { status: SOCKET_CONSTANTS.STATUS.AUTHENTICATED };
     }
     // make the flag true;
@@ -110,7 +111,7 @@ const ensureSocketAuthenticated = async () => {
   if (SocketManager.isAuthenticating) {
     console.log("Authentication already in progress, waiting...");
     // Wait for a reasonable time for authentication to complete
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 30; i++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (isSocketAuthenticated()) {
         return true;

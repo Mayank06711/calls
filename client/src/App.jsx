@@ -117,7 +117,7 @@ const App = () => {
         }
       };
   
-      if (userId) {
+      if (userId) { // check with token also
         initializeSocket();
       }
   
