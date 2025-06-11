@@ -122,7 +122,7 @@ class ChatController {
   private async handleMessage(
     data: {
       receiverId: string;
-      text: string;
+      text: string;  // file ka case
       messageType?: MessageType;
       chatType?: ChatType;
     },
@@ -178,7 +178,7 @@ class ChatController {
           event: this.CHAT_EVENTS.SENT_ACK,
           data: {
             messageId: newMessage.messageId,
-            chatId: chat._id,
+            chatId: chat._id, 
             status: "sent",
             timestamp: new Date(),
           },
@@ -351,7 +351,7 @@ class ChatController {
       ],
     });
 
-    if (!chat) {
+    if (!chat) {  // if text is present add to msg.
       chat = new MsgModel({
         sender: new Types.ObjectId(senderId),
         receiver: new Types.ObjectId(receiverId),
