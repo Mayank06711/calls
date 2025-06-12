@@ -10,6 +10,7 @@ declare global {
         isExpert:boolean;
         isMFAEnabled: boolean;
         isActive: boolean;
+        isBlockedByAdmin:boolean;
       };
       isMobileApp: boolean;
       aiAgent:string;
