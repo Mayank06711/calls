@@ -4,6 +4,11 @@ import { ObjectId } from "mongoose";
 declare global {
   namespace Express {
     interface Request {
+      admin?: {
+        _id: ObjectId;
+        position: string;
+        isActive: boolean;
+      };
       user?: {
         _id: ObjectId;
         isAdmin: boolean;

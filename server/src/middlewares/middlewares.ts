@@ -145,9 +145,9 @@ class Middleware {
           "Authentication failed",
         ]);
       }
-     
-      if(user.isBlockedByAdmin){
-        throw new ApiError(403, "User is blocked by admin", [
+
+      if (user.isBlockedByAdmin) {
+        throw new ApiError(403, "User is blocked by admin, contact support", [
           "Access denied",
         ]);
       }
@@ -158,7 +158,7 @@ class Middleware {
         isExpert: user.isExpert,
         isActive: user.isActive,
         isMFAEnabled: user.isMFAEnabled,
-        isBlockedByAdmin: user.isBlockedByAdmin
+        isBlockedByAdmin: user.isBlockedByAdmin,
       };
 
       return next();
@@ -169,6 +169,115 @@ class Middleware {
 
       // For any other errors
       throw new ApiError(401, "Token verification failed", [
+        "Authentication failed",
+        error as Error,
+      ]);
+    }
+  }
+
+  private static async _isAdmin(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      // Extract the admin access token from cookies or headers
+      const adminAccessToken =
+        req.cookies?.adminAccessToken ||
+        req.header("Authorization")?.replace("Bearer ", "");
+
+      if (!adminAccessToken || adminAccessToken.length === 0) {
+        throw new ApiError(401, "No admin token provided", [
+          "Authentication failed",
+        ]);
+      }
+
+      // First verify JWT signature for admin token
+      let wrappedToken: JwtPayload = JWT.verify(
+        adminAccessToken,
+        process.env.ADMIN_ACCESS_TOKEN_SECRET!,
+        {
+          algorithms: ["HS512"],
+          complete: true,
+        }
+      ) as JwtPayload;
+
+      // Decrypt the payload
+      const decryptedPayloadStr = AuthServices.decrypt(
+        wrappedToken.payload.data
+      );
+      const decodedToken = JSON.parse(decryptedPayloadStr);
+
+      // Verify token expiration
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.exp && decodedToken.exp < now) {
+        throw new ApiError(401, "Admin token has expired", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Verify admin-specific claims
+      if (decodedToken.iss !== "KYF-ADMIN") {
+        throw new ApiError(401, "Invalid admin token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (decodedToken.aud !== "kyf-admin-api") {
+        throw new ApiError(401, "Invalid admin token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Find admin based on decoded token
+      const admin = await Admin.findById(decodedToken._id);
+      if (!admin) {
+        throw new ApiError(401, "Invalid admin token", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (!admin.isActive) {
+        throw new ApiError(401, "Admin account is deactivated", [
+          "Access denied",
+        ]);
+      }
+
+      // Verify the associated user exists and is active
+      const user = await UserModel.findById(admin.userId).select(
+        "isActive isAdmin"
+      );
+      if (!user || !user.isActive || !user.isAdmin) {
+        throw new ApiError(
+          401,
+          "Associated user account is invalid or inactive",
+          ["Access denied"]
+        );
+      }
+
+      // Attach admin info to the request
+      req.admin = {
+        _id: admin._id as ObjectId,
+        position: admin.position,
+        isActive: admin.isActive,
+      };
+
+      // Also attach user info for backward compatibility
+      req.user = {
+        _id: user._id as ObjectId,
+        isAdmin: user.isAdmin,
+        isExpert: user.isExpert,
+        isActive: user.isActive,
+        isMFAEnabled: user.isMFAEnabled,
+        isBlockedByAdmin: user.isBlockedByAdmin,
+      };
+
+      next();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(401, "Admin token verification failed", [
         "Authentication failed",
         error as Error,
       ]);
@@ -223,43 +332,6 @@ class Middleware {
         throw error;
       }
       throw new ApiError(500, "MFA verification failed", [error as Error]);
-    }
-  }
-
-  private static async _isAdmin(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      const id = req.user?._id;
-      const originalUrl = req.originalUrl;
-
-      if (!id) {
-        throw new ApiError(
-          401,
-          "User ID is missing. Authentication is required"
-        );
-      }
-
-      if (!req.originalUrl.startsWith("/admin")) {
-        throw new ApiError(403, "Access restricted to admin users only", [
-          "Unauthorized Access",
-        ]);
-      }
-
-      const admin = await Admin.findById(id);
-      if (!admin) {
-        throw new ApiError(403, "Access denied - Admin privileges required", [
-          "Unauthorized Access",
-        ]);
-      }
-      next();
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Admin verification failed", [error as Error]);
     }
   }
 

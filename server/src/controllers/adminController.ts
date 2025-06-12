@@ -232,7 +232,7 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const isAdmin = req.user?.isAdmin;
+      const isAdmin = req.admin?.isActive;
       if (!isAdmin) {
         throw new ApiError(401, "Unauthorized access");
       }
@@ -353,9 +353,8 @@ class AdminController {
 
       // Block the user
       user.isBlockedByAdmin = true;
-      await user.save(); 
+      await user.save();
       await admin.blockUser(userId);
-      
 
       return res.status(200).json(
         successResponse(
@@ -380,7 +379,7 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const adminId = req.admin?._id;
+      const adminId = req.user?._id;
       const { userId } = req.params;
 
       if (!adminId) {

@@ -65,7 +65,7 @@ const UserSchema: Schema<IUser> = new Schema(
         return this.isMFAEnabled; // MFASecretKey is required if MFA is enabled
       },
     },
-    isActive: { type: Boolean, default: false }, // user's active status. Default is true.
+    isActive: { type: Boolean, default: true }, // user's active status. Default is true., false when deleted.
     isAdmin: { type: Boolean, default: false }, // Whether or not the user is an admin
     isBlockedByAdmin: {type:Boolean, default:false},
     isExpert: { type: Boolean, default: false }, // Whether or not the user is an expert
