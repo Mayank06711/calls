@@ -30,6 +30,7 @@ export interface IUser extends Document {
   isMFAEnabled: boolean;
   MFASecretKey?: string; // Optional MFA key
   isActive: boolean;
+  isBlockedByAdmin:boolean; // blocked by admin
   isAdmin: boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
 

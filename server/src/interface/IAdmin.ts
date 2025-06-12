@@ -1,25 +1,48 @@
 import { Document, Model, Types } from "mongoose";
 
+// Define permission types
+export type AdminPermission = 
+  | 'canBlockUsers' 
+  | 'canDeleteUsers' 
+  | 'canManageAdmins' 
+  | 'canViewAnalytics' 
+  | 'canManageContent' 
+  | 'canAccessReports';
+
+
+// Admin Position Enum
+export enum AdminPosition {
+  SUPER_ADMIN = "superadmin",
+  OPERATIONS_HEAD = "operationshead",
+  AGENT = "agent",
+}
+
 // Interface for methods
 interface IAdminMethods {
-  checkPassword(enteredPassword: string): Promise<boolean>;
+  verifyAdminKey(enteredKey: string): Promise<boolean>;
+  blockUser(userId: string): Promise<IAdminDocument>;
+  unblockUser(userId: string): Promise<IAdminDocument>;
+  isUserBlocked(userId: string): boolean;
+  getBlockedUsersCount(): number;
+  updateLoginActivity(): Promise<void>;
+  hasPermission(permission: string): boolean;
   fetchModelData(
     modelName: string,
-    query: Record<string, any>,
-    limit: number
+    query?: Record<string, any>,
+    limit?: number,
+    sort?: Record<string, any>
   ): Promise<any>;
 }
 
 // Main interface
 export interface IAdmin extends Document {
-  userId: Types.ObjectId | string; // Reference to the User model
-  adminName: string;
-  adminPosition: string;
-  adminMasterKey: string;
-  adminPassword: string;
-  adminEmail: string;
-  adminUsername: string;
+  userId: Types.ObjectId; // Reference to the User model
+  adminKey: string;
+  position: AdminPosition;
+  blockedUsers: Types.ObjectId[];
   isActive: boolean;
+  lastLoginAt?: Date;
+  loginCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,5 +52,9 @@ export interface IAdminDocument extends IAdmin, IAdminMethods {}
 
 // Model interface
 export interface IAdminModel extends Model<IAdminDocument> {
-  // Add any static methods here if needed
+  upgradeUserToAdmin(
+    userId: string,
+    adminKey: string,
+    position?: AdminPosition
+  ): Promise<IAdminDocument>;
 }

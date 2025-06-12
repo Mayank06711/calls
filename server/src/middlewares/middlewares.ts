@@ -145,7 +145,12 @@ class Middleware {
           "Authentication failed",
         ]);
       }
-
+     
+      if(user.isBlockedByAdmin){
+        throw new ApiError(403, "User is blocked by admin", [
+          "Access denied",
+        ]);
+      }
       // Attach admin info to the request
       req.user = {
         _id: user._id as ObjectId,
@@ -153,6 +158,7 @@ class Middleware {
         isExpert: user.isExpert,
         isActive: user.isActive,
         isMFAEnabled: user.isMFAEnabled,
+        isBlockedByAdmin: user.isBlockedByAdmin
       };
 
       return next();
@@ -248,7 +254,6 @@ class Middleware {
           "Unauthorized Access",
         ]);
       }
-
       next();
     } catch (error) {
       if (error instanceof ApiError) {
