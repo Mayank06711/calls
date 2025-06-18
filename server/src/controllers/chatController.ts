@@ -36,7 +36,7 @@ class ChatController {
     // for typing status of sender to reciver only if both are on same chatbox (i will make one more event names as message:samechatbox)
     TYPING_STATUS: "typing:status",
     // when server need to broadcast some information.
-    SYSTEM_MESSAGE: "message:system",
+    SYSTEM_MESSAGE: "system:message",
   } as const;
 
   constructor() {
