@@ -11,6 +11,17 @@ export interface Template {
   };
   contentType?: ContentType;
 }
+export interface NotificationPayload {
+  eventType: string;
+  text: string;
+  extLink?: string | null;
+  stickyTime?: number;
+  sentBy: {
+    adminId: string ;
+    position: string;
+  };
+  timestamp: Date;
+}
 
 export interface Templates {
   [key: string]: Template;
@@ -79,7 +90,7 @@ export type EmitOptions = {
   auth?: boolean;
   headers?: Record<string, any>;
   targetSocketIds?: string[];
-  callback?: (response: any) => void;  // Add this new field
+  callback?: (response: any) => void; // Add this new field
 };
 
 export interface SocketUserData {
@@ -108,7 +119,6 @@ export interface UserSocketMapping {
   userId: string;
   sockets: UserSocket[];
 }
-
 
 export interface PendingAuthData {
   startTime: number;
