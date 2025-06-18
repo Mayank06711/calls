@@ -1,6 +1,6 @@
 import crons from "node-cron";
 import { checkHealth } from "../db/index";
-import Notification from "../notifications/notifications";
+import Notification from "../services/notifications";
 // Run health check every 5 minutes
 
 

@@ -7,7 +7,8 @@ export type AdminPermission =
   | 'canManageAdmins' 
   | 'canViewAnalytics' 
   | 'canManageContent' 
-  | 'canAccessReports';
+  | 'canAccessReports'
+  | 'canSendNotifications'
 
 
 // Admin Position Enum

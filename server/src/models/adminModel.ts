@@ -150,6 +150,11 @@ AdminSchema.methods.hasPermission = function (
       AdminPosition.OPERATIONS_HEAD,
       AdminPosition.SUPER_ADMIN,
     ],
+    canSendNotifications: [
+      AdminPosition.AGENT,
+      AdminPosition.OPERATIONS_HEAD,
+      AdminPosition.SUPER_ADMIN,
+    ],
   };
 
   return permissions[permission]?.includes(this.position) || false;
@@ -178,10 +183,6 @@ AdminSchema.statics.upgradeUserToAdmin = async function (
 ) {
   // Validate that the user exists
   const User = mongoose.model("User");
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
 
   // Check if admin already exists for this user
   const existingAdmin = await this.findOne({ userId });

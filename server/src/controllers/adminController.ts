@@ -7,6 +7,7 @@ import { successResponse } from "../utils/apiResponse";
 import crypto from "crypto";
 import JWT from "jsonwebtoken";
 import { AuthServices } from "../helper/auth";
+import NotificationService from "../services/notifications";
 
 class AdminController {
   private static options: express.CookieOptions = {
@@ -89,7 +90,6 @@ class AdminController {
   ) {
     try {
       const { userId, adminKey, position = AdminPosition.AGENT } = req.body;
-
       // Validate required fields
       if (!userId || !adminKey) {
         throw new ApiError(400, "userId and adminKey are required");
@@ -147,13 +147,7 @@ class AdminController {
           )
         );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        500,
-        "Internal Server Error: Unable to upgrade user to admin"
-      );
+      throw error;
     }
   }
 
@@ -163,14 +157,16 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const { userId, adminKey } = req.body;
+      const { adminKey } = req.body;
 
-      if (!userId || !adminKey) {
-        throw new ApiError(400, "userId and adminKey are required");
+      if (!adminKey) {
+        throw new ApiError(400, "adminKey are required");
       }
 
       // Find admin by userId
-      const admin = await Admin.findOne({ userId }).populate("userId");
+      const admin = await Admin.findOne({ _id: req.admin?._id }).populate(
+        "userId"
+      );
       if (!admin) {
         throw new ApiError(404, "Admin not found");
       }
@@ -219,10 +215,7 @@ class AdminController {
           )
         );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to login");
+      throw error;
     }
   }
 
@@ -251,10 +244,7 @@ class AdminController {
         .clearCookie("adminRefreshToken", AdminController.refreshOptions)
         .json(successResponse({}, "Admin logged out successfully"));
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to logout");
+      throw error;
     }
   }
 
@@ -298,13 +288,7 @@ class AdminController {
           successResponse(responseData, "Admin profile fetched successfully")
         );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        500,
-        "Internal Server Error: Unable to fetch admin profile"
-      );
+      throw error;
     }
   }
 
@@ -366,10 +350,7 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to block user");
+      throw error;
     }
   }
 
@@ -417,10 +398,7 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to unblock user");
+      throw error;
     }
   }
 
@@ -463,13 +441,7 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        500,
-        "Internal Server Error: Unable to fetch blocked users"
-      );
+      throw error;
     }
   }
 
@@ -522,10 +494,7 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to fetch admins");
+      throw error;
     }
   }
 
@@ -585,13 +554,7 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(
-        500,
-        "Internal Server Error: Unable to deactivate admin"
-      );
+      throw error;
     }
   }
 
@@ -648,10 +611,67 @@ class AdminController {
         )
       );
     } catch (error: any) {
-      if (error instanceof ApiError) {
-        throw error;
+      throw error;
+    }
+  }
+
+  private static async _sendnotification(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const { eventType, text, extLink, stickyTime } = req.body;
+      // Validate required fields
+      if (!eventType || !text) {
+        throw new ApiError(400, "eventtype and text are required");
       }
-      throw new ApiError(500, "Internal Server Error: Unable to fetch data");
+
+      // Validate admin permissions
+      const adminId = req.admin?._id;
+      if (!adminId) {
+        throw new ApiError(401, "Unauthorized access");
+      }
+
+      const admin = await Admin.findById(adminId);
+      if (!admin || !admin.isActive) {
+        throw new ApiError(401, "Admin account not found or deactivated");
+      }
+
+      // Check if admin has permission to send notifications
+      if (!admin.hasPermission("canSendNotifications")) {
+        throw new ApiError(
+          403,
+          "Insufficient permissions to send notifications"
+        );
+      }
+
+      const notificationPayload = {
+        eventType,
+        text,
+        extLink: extLink || null,
+        stickyTime: stickyTime || 1000,
+        sentBy: {
+          adminId: adminId.toString(),
+          position: admin.position,
+        },
+        timestamp: new Date(),
+      };
+
+      // Use the notification service
+      console.log("about to emit notifiaion")
+      const notificationService = NotificationService.getInstance();
+      notificationService.emitNotification(notificationPayload);
+      console.log("emotted")
+      return res.status(200).json(
+        successResponse(
+          {
+            notification: notificationPayload,
+          },
+          "Notification sent successfully"
+        )
+      );
+    } catch (error: any) {
+      throw error;
     }
   }
 
@@ -659,6 +679,7 @@ class AdminController {
   public static upgradeUserToAdmin = AsyncHandler.wrap(
     AdminController._upgradeUserToAdmin
   );
+
   public static adminLogin = AsyncHandler.wrap(AdminController._adminLogin);
   public static adminLogout = AsyncHandler.wrap(AdminController._adminLogout);
   public static getAdminProfile = AsyncHandler.wrap(
@@ -675,6 +696,9 @@ class AdminController {
   );
   public static fetchModelData = AsyncHandler.wrap(
     AdminController._fetchModelData
+  );
+  public static sendNotification = AsyncHandler.wrap(
+    AdminController._sendnotification
   );
 }
 
