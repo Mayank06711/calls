@@ -187,10 +187,12 @@ class Authentication {
 
   private static async _generateOtp(req: Request, res: Response) {
     const { mobNum, isTesting } = req.body;
+
     if (typeof isTesting !== "boolean") {
-      return res
-        .status(400)
-        .json(errorResponse(400, "isTesting must be a boolean"));
+      throw new ApiError(400, "isTesting must be a boolean");
+    }
+    if (!mobNum) {
+      throw new ApiError(400, "mobile number is required.");
     }
     const formattedRecipientNumber = toE164Format(mobNum, "+91");
     if (!formattedRecipientNumber) {
@@ -270,11 +272,15 @@ class Authentication {
       // Send OTP message via Twilio
       let smsRes;
       if (!isTesting) {
-        console.log(otp)
-        smsRes = await SmsService.sendSMS(formattedRecipientNumber, "PHONE_VERIFICATION", {
-          otp_code: otp,
-          expiryAt: "10",
-        });
+        console.log(otp);
+        smsRes = await SmsService.sendSMS(
+          formattedRecipientNumber,
+          "PHONE_VERIFICATION",
+          {
+            otp_code: otp,
+            expiryAt: "10",
+          }
+        );
       } else {
         smsRes = { uuid: "1234", status: "success", message: "nothing" };
       }
@@ -507,7 +513,7 @@ class Authentication {
       if (!user) {
         user = await UserModel.create({
           phoneNumber: formattedRecipientNumber,
-          username: `user_${uuidv4().split('-')[0]}`,
+          username: `user_${uuidv4().split("-")[0]}`,
           password: formattedRecipientNumber,
           isPhoneVerified: true,
           refreshToken: "",
