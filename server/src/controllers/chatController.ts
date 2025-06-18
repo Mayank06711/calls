@@ -4,6 +4,7 @@ import { RedisManager } from "../utils/redisClient";
 import { Types } from "mongoose";
 import { INewMsg, MessageType, ChatType } from "../interface/IMessage";
 import { Socket } from "socket.io";
+import NotificationService from "../services/notifications";
 
 class ChatController {
   private static instance: ChatController | null = null;
@@ -41,6 +42,8 @@ class ChatController {
   constructor() {
     console.log("i have been called by chatcontroller.");
     this.socketManager = SocketManager.getInstance();
+    // Set up notification listener
+    this.setupNotificationListener();
   }
 
   public static getInstance(): ChatController {
@@ -48,6 +51,29 @@ class ChatController {
       ChatController.instance = new ChatController();
     }
     return ChatController.instance;
+  }
+  
+  private setupNotificationListener(): void {
+    const notificationService = NotificationService.getInstance();
+    console.log("Setting up notification listener in ChatController");
+    notificationService.onNotification(async (notificationData) => {
+      try {
+        console.log("Received admin notification:", notificationData);
+        
+        // Broadcast notification to all connected sockets
+        await this.socketManager.emitEvent({
+          event: this.CHAT_EVENTS.SYSTEM_MESSAGE,
+          data: {
+            ...notificationData,
+            id: Date.now(), // Generate unique ID for the notification
+          },
+        });
+        
+        console.log("Admin notification broadcasted to all clients");
+      } catch (error) {
+        console.error("Error broadcasting admin notification:", error);
+      }
+    });
   }
 
   public setupAuthenticatedSocketListeners(socket: Socket): void {
@@ -122,7 +148,7 @@ class ChatController {
   private async handleMessage(
     data: {
       receiverId: string;
-      text: string;  // file ka case
+      text: string; // file ka case
       messageType?: MessageType;
       chatType?: ChatType;
     },
@@ -178,7 +204,7 @@ class ChatController {
           event: this.CHAT_EVENTS.SENT_ACK,
           data: {
             messageId: newMessage.messageId,
-            chatId: chat._id, 
+            chatId: chat._id,
             status: "sent",
             timestamp: new Date(),
           },
@@ -351,7 +377,8 @@ class ChatController {
       ],
     });
 
-    if (!chat) {  // if text is present add to msg.
+    if (!chat) {
+      // if text is present add to msg.
       chat = new MsgModel({
         sender: new Types.ObjectId(senderId),
         receiver: new Types.ObjectId(receiverId),
