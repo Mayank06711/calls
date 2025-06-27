@@ -4,6 +4,9 @@ import { Middleware } from "../middlewares/middlewares";
 
 const router = express.Router();
 
+
+router.post("/upgrade", AdminController.upgradeUserToAdmin)
+
 router.post("/login", AdminController.adminLogin);
 
 // Protected routes (authentication required)
@@ -23,5 +26,8 @@ router.post("/:targetAdminId/deactivate", AdminController.deactivateAdmin);
 
 // Data fetching routes
 router.get("/data/:modelName", AdminController.fetchModelData);
+
+// Notification routes
+router.post("/notifications/send", AdminController.sendNotification);
 
 export default router;

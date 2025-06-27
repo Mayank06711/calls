@@ -362,7 +362,7 @@ class Middleware {
           success: false,
           message: err.message || "Internal Server Error",
           data: err.data,
-          errors: err.errors.filter((e) => !(e instanceof ApiError)),
+          errors: Array.isArray(err.errors) ? err.errors : err.errors ? [err.errors] : [],
         });
       }
 
@@ -370,8 +370,8 @@ class Middleware {
       if (err.name === "ValidationError") {
         return res.status(400).json({
           success: false,
-          message: "Validation Error",
-          errors: err.message,
+          message: err.message || "Validation Error",
+          errors: [],
         });
       }
 

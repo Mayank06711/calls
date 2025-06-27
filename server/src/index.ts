@@ -16,6 +16,7 @@ import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
 import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
+import adminRouter from "./routes/adminRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -79,7 +80,7 @@ class ServerManager {
     this.app.use("/api/v1/auth", authRouter);
     this.app.use("/api/v1/users", userRouter);
     this.app.use("/api/v1/settings", settingRoute);
-    // this.app.use("/api/v1/admins", adminRouter);
+    this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
     this.app.get(
