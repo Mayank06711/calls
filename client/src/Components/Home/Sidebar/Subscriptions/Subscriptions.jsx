@@ -15,6 +15,7 @@ import { useSelector } from "react-redux";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import SubscriptionSkeleton from "./SubscriptionSkeleton";
 import { useNavigate } from "react-router-dom";
+import ErrorMessage from "./ErrorMessage";
 
 function Subscriptions() {
   const currentColors = useSubscriptionColors();
@@ -101,6 +102,7 @@ function Subscriptions() {
   };
 
   const dynamicFeatures = getAllFeatures();
+  console.log("dynamic feature",dynamicFeatures)
 
   // Update the handleSubscriptionSelect function
   const handleSubscriptionSelect = (planType) => {
@@ -220,9 +222,11 @@ function Subscriptions() {
         </p>
       </div>
       {/* table content */}
-      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] || !planHeader ? (
-        <SubscriptionSkeleton />
-      ) : (
+      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] ? (
+            <SubscriptionSkeleton/>
+      ) : !dynamicFeatures.length > 0? (
+        <ErrorMessage/>
+      ):(
         <table
           className="w-full rounded-2xl overflow-hidden shadow-2xl 
         border-separate border-spacing-[3px]
@@ -598,7 +602,9 @@ function Subscriptions() {
             </tr>
           </tbody>
         </table>
-      )}
+      )
+      
+      }
 
       <div className="mt-12 grid grid-cols-3 gap-8">
         <div className="text-center p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
