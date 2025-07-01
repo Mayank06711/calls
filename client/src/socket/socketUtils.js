@@ -9,7 +9,7 @@ export const withRetry = (handler, options = {}) => {
     maxRetries = 3,
     delay = 1000,
     exponential = true,
-    onRetry = (attempt) => console.log(`Retry attempt ${attempt}`),
+    onRetry = (attempt) => console.log(`[withRetry] Retry attempt ${attempt}`),
     shouldRetry = () => true, // Default retry on all errors
   } = options;
 
@@ -63,7 +63,8 @@ export const emitEvent = (
         const { onBefore, onSuccess, onError, onTimeout } = handlers;
 
         onBefore?.();
-        console.log(`[emitEvent] Emitting event '${event}' with acknowledgment: ${acknowledgment}`);
+        const payload = typeof data === 'function' ? data() : data;
+        console.log(`[emitEvent] Emitting event '${event}' with data:`, payload, 'acknowledgment:', acknowledgment);
 
         const emitFunction = () => {
           if (acknowledgment) {

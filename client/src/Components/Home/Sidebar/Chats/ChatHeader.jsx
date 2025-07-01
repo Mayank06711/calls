@@ -1,5 +1,4 @@
-
-import React from 'react';
+import PropTypes from 'prop-types';
 import { 
   VideoCall, 
   Call, 
@@ -7,6 +6,7 @@ import {
   ArrowBack 
 } from '@mui/icons-material';
 import { format } from 'date-fns';
+import MessageStatus from './MessageStatus';
 
 const ChatHeader = ({ 
   receiverData, 
@@ -14,7 +14,9 @@ const ChatHeader = ({
   onBack,
   onVideoCall,
   onVoiceCall,
-  onMenuClick 
+  onMenuClick,
+  lastMessage,
+  currentUserId
 }) => {
   const getStatusText = () => {
     if (isTyping) return 'typing...';
@@ -23,6 +25,9 @@ const ChatHeader = ({
     }
     return receiverData.status || 'offline';
   };
+
+  // Show message status for last message if sent by current user
+  const showMessageStatus = lastMessage && lastMessage.senderId === currentUserId;
 
   return (
     <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center">
@@ -49,6 +54,9 @@ const ChatHeader = ({
           <h3 className="font-medium text-gray-900">
             {receiverData.name}
           </h3>
+          {receiverData.username && (
+            <p className="text-xs text-gray-400">@{receiverData.username}</p>
+          )}
           <p className="text-sm text-gray-500">
             {getStatusText()}
           </p>
@@ -56,6 +64,9 @@ const ChatHeader = ({
       </div>
 
       <div className="flex items-center space-x-3">
+        {showMessageStatus && (
+          <MessageStatus status={lastMessage.status} />
+        )}
         <button 
           onClick={onVoiceCall}
           className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
@@ -79,6 +90,23 @@ const ChatHeader = ({
       </div>
     </div>
   );
+};
+
+ChatHeader.propTypes = {
+  receiverData: PropTypes.shape({
+    name: PropTypes.string,
+    username: PropTypes.string,
+    status: PropTypes.string,
+    avatar: PropTypes.string,
+    lastSeen: PropTypes.string,
+  }).isRequired,
+  isTyping: PropTypes.bool,
+  onBack: PropTypes.func,
+  onVideoCall: PropTypes.func,
+  onVoiceCall: PropTypes.func,
+  onMenuClick: PropTypes.func,
+  lastMessage: PropTypes.object,
+  currentUserId: PropTypes.string,
 };
 
 export default ChatHeader;

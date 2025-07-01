@@ -1,4 +1,3 @@
-
 const emitWithTimeout = (socket, event, data, timeout = 5000) => {
   return new Promise((resolve, reject) => {
     if (!socket) {
@@ -39,10 +38,13 @@ initializeChatListeners(callbacks) {
   }
 
   const events = {
-    'message:received': callbacks.onMessageReceived,
+    'message': callbacks.onMessageReceived, // unified event for both send/receive
+    'sent-ack': callbacks.onSentAck,
+    'delivered': callbacks.onDelivered,
+    'seen': callbacks.onSeen,
     'typing:status': callbacks.onTypingStatus,
-    'message:status': callbacks.onMessageStatus,
-    'chat:error': callbacks.onError || this.handleChatError,
+    'message:error': callbacks.onError || this.handleChatError,
+    'system:message': callbacks.onSystemMessage,
   };
 
   // Setup listeners
@@ -104,25 +106,27 @@ async joinChat(chatId) {
 }
 
 // Send message
-async sendMessage(chatId, receiverId, text) {
+// If chatId is null, server will create the chat and return chatId in sent-ack
+async sendMessage(chatId, receiverId, messageData) {
   try {
-    const messageData = {
-      chatId,
+    const messagePayload = {
+      ...(chatId ? { chatId } : {}),
       receiverId,
-      text,
+      text: messageData.content || messageData.text,
+      messageType: messageData.type || 'text',
+      chatType: messageData.chatType || 'userToUser',
       timestamp: Date.now(),
-      type: 'text' // Can be extended for different message types
     };
-
-    const response = await emitWithTimeout(this.socket, 'message:send', messageData);
-
-    if (response.status === 'success') {
+    const response = await emitWithTimeout(this.socket, 'message', messagePayload);
+    // Fix: treat as success if messageId is present, even if status is missing
+    if ((response && response.status === 'success') || (response && response.messageId)) {
       return {
         messageId: response.messageId,
-        timestamp: response.timestamp
+        timestamp: response.timestamp,
+        chatId: response.chatId, // server should return chatId in sent-ack
       };
     }
-    throw new Error(response.message || 'Failed to send message');
+    throw new Error((response && response.message) || 'Failed to send message');
   } catch (error) {
     handleSocketError(error);
     throw error;
@@ -154,7 +158,7 @@ handleTyping(chatId, isTyping) {
 // Mark message as delivered
 async markMessageAsDelivered(chatId, messageId) {
   try {
-    await emitWithTimeout(this.socket, 'message:delivered', {
+    await emitWithTimeout(this.socket, 'delivered-ack', {
       chatId,
       messageId,
       timestamp: Date.now()
@@ -167,7 +171,7 @@ async markMessageAsDelivered(chatId, messageId) {
 // Mark message as seen
 async markMessageAsSeen(chatId, messageId) {
   try {
-    await emitWithTimeout(this.socket, 'message:seen', {
+    await emitWithTimeout(this.socket, 'seen-ack', {
       chatId,
       messageId,
       timestamp: Date.now()
@@ -275,37 +279,28 @@ destroy() {
 
     while (retryCount < maxRetries) {
       try {
-        // Emit chat initialization event
+        // Emit chat initialization event (should be 'chat:check')
         const response = await emitWithTimeout(
           this.socket, 
-          'chat:initialization', 
+          'chat:check',
           {
-            ...initData,
+            senderId: initData.senderId,
+            receiverId: initData.receiverId,
+            timestamp: Date.now(),
             retryAttempt: retryCount,
-            clientTimestamp: Date.now()
+            clientTimestamp: Date.now(),
           },
           10000 // 10 second timeout
         );
 
         if (response.status === 'success') {
           // Validate response data
-          if (!response.chatId) {
+          if (!response.chat || !response.chat.chatId) {
             throw new Error('Invalid response: missing chatId');
           }
-
-          // Join the chat room, need to see it
-          await this.joinChat(response.chatId);
-
-          // Send initialization success message
-          await this.sendSystemMessage(response.chatId, 'CHAT_INITIALIZED', {
-            timestamp: Date.now(),
-            metadata: {
-              isFirstTime: true,
-              initializationData: initData
-            }
-          });
-
-          return response.chatId;
+          // Join the chat room
+          await this.joinChat(response.chat.chatId);
+          return response.chat.chatId;
         }
 
         throw new Error(response.message || 'Chat initialization failed');
@@ -391,7 +386,55 @@ destroy() {
     return true;
   }
 
+  // Add event listener for sent-ack, delivered, seen, message:error, system:message
+  addSentAckListener(callback) {
+    if (this.socket) {
+      this.socket.on('sent-ack', callback);
+      this.events.set('sent-ack', callback);
+    }
+  }
+  addDeliveredListener(callback) {
+    if (this.socket) {
+      this.socket.on('delivered', callback);
+      this.events.set('delivered', callback);
+    }
+  }
+  addSeenListener(callback) {
+    if (this.socket) {
+      this.socket.on('seen', callback);
+      this.events.set('seen', callback);
+    }
+  }
+  addMessageErrorListener(callback) {
+    if (this.socket) {
+      this.socket.on('message:error', callback);
+      this.events.set('message:error', callback);
+    }
+  }
+  addSystemMessageListener(callback) {
+    if (this.socket) {
+      this.socket.on('system:message', callback);
+      this.events.set('system:message', callback);
+    }
+  }
 
+  async checkChatHistory(senderId, receiverId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:check', {
+        senderId,
+        receiverId,
+        timestamp: Date.now(),
+      });
+      console.log('Chat history response:', response);
+      if (response.status === 'success' && response.exists && response.chat) {
+        return response.chat;
+      }
+      return null;
+    } catch (error) {
+      handleSocketError(error);
+      return null;
+    }
+  }
 }
 
 export default ChatService;
