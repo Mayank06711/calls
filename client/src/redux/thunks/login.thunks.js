@@ -18,7 +18,7 @@ import {
   resetTimer,
   setTimerActive,
 } from "../actions/auth.actions";
-import { authenticateSocket } from "../../socket/authentication";
+import { ensureSocketAuthenticated } from "../../socket/authentication";
 import { fetchUserInfoThunk } from "./userInfo.thunks";
 import { initializeSettingsThunk } from "./settings.thunk";
 
@@ -86,7 +86,7 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       return;
     }
     if (data.success) {
-      const { userId, isAlreadyVerified, token,fullName } = data.data;
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
       dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
@@ -110,7 +110,7 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
 
       // Authenticate socket connection
       try {
-        await authenticateSocket(token);
+        await ensureSocketAuthenticated();
       } catch (socketError) {
         console.error("Socket authentication failed:", socketError);
         // Optionally show a notification but don't fail the login

@@ -163,18 +163,9 @@ class Middleware {
 
       return next();
     } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-
-      // For any other errors
-      throw new ApiError(401, "Token verification failed", [
-        "Authentication failed",
-        error as Error,
-      ]);
+      throw error;
     }
   }
-
   private static async _isAdmin(
     req: Request,
     res: Response,
@@ -362,7 +353,11 @@ class Middleware {
           success: false,
           message: err.message || "Internal Server Error",
           data: err.data,
-          errors: Array.isArray(err.errors) ? err.errors : err.errors ? [err.errors] : [],
+          errors: Array.isArray(err.errors)
+            ? err.errors
+            : err.errors
+            ? [err.errors]
+            : [],
         });
       }
 
@@ -389,6 +384,16 @@ class Middleware {
           message: "Database Error",
           errors: [err.message],
         });
+      }
+      if (err.name === "TokenExpiredError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Token expired" });
+      }
+      if (err.name === "JsonWebTokenError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid token" });
       }
       // Default error response
       return res.status(500).json({

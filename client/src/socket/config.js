@@ -5,13 +5,23 @@ import { socketAuthenticated, socketConnected } from "../redux/actions";
 import { ensureSocketAuthenticated } from "./authentication";
 import { useEffect, useState } from "react";
 
+/**
+ * This hook initializes and manages the socket connection.
+ * It returns the socket instance.
+ *
+ * When a component that uses this hook is removed from the DOM (unmounts), it disconnects the socket to prevent memory leaks. This ensures that the socket connection is not left open unnecessarily, which can cause performance issues or other problems. However, if another component (like component B) is still using the socket, this disconnection might cause issues for that component. To avoid this, it's essential to ensure that all components that use the socket are properly managing their socket connections, and ideally, there should be a single source of truth for socket management in the application.
+ * @returns The socket instance.
+ */
+// I feel it problamatic.. as if one componen unmounts and socket disconnect and other dependent on soceket will face roblem isn1t
 export const useSocket = () => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
+    // Initialize the socket instance with default parameters.
     const socketInstance = SocketManager.getSocket(false, true);
     setSocket(socketInstance);
 
+    // Cleanup function to disconnect the socket when the component unmounts.
     return () => {
       if (socketInstance) {
         SocketManager.disconnectSocket();
@@ -26,7 +36,7 @@ class SocketManager {
   static socket = null;
   static reconnectAttempts = 0;
   static maxReconnectAttempts = 5;
-  static isAuthenticating = false; // Add this line
+  static isAuthenticating = false;
 
   static #createSocket(testSocket = false, connectSocket = false) {
     if (SocketManager.socket) {
@@ -36,6 +46,7 @@ class SocketManager {
         !SocketManager.socket.connected &&
         !SocketManager.isAuthenticating
       ) {
+        console.log("[SocketManager] Connecting existing socket...");
         SocketManager.socket.connect();
         store.dispatch(socketConnected(true));
       }
@@ -63,14 +74,18 @@ class SocketManager {
       };
     }
 
+    console.log("[SocketManager] Creating new socket instance...");
     SocketManager.socket = io(SERVER_URL, socketOptions);
     // Handle disconnect - reset both connection and authentication status
     SocketManager.socket.on("disconnect", () => {
+      console.log("[SocketManager] Socket disconnected");
       store.dispatch(socketConnected(false));
       store.dispatch(socketAuthenticated(false));
+      SocketManager.isAuthenticating = false;
     });
 
     if (connectSocket) {
+      console.log("[SocketManager] Connecting new socket...");
       SocketManager.socket.connect();
       store.dispatch(socketConnected(true));
     }
@@ -118,32 +133,34 @@ class SocketManager {
 
   static async handleReconnection() {
     if (SocketManager.reconnectAttempts > SocketManager.maxReconnectAttempts) {
-      console.error("Max reconnection attempts reached. Giving up.");
+      console.error("[SocketManager] Max reconnection attempts reached. Giving up.");
       return;
     }
 
     SocketManager.reconnectAttempts++;
     try {
       if (!SocketManager.socket.connected) {
+        console.log("[SocketManager] Attempting to reconnect socket...");
         SocketManager.socket.connect();
       }
     } catch (error) {
-      console.error("Reconnection failed:", error);
+      console.error("[SocketManager] Reconnection failed:", error);
     }
   }
 
   static async handleAuthentication() {
-    const token = localStorage.getItem("token");
-    if (token && !SocketManager.isAuthenticating) {
+    if (localStorage.getItem("token") && !SocketManager.isAuthenticating) {
       try {
-        await ensureSocketAuthenticated(token);
+        console.log("[SocketManager] handleAuthentication called");
+        await ensureSocketAuthenticated();
       } catch (error) {
-        console.error("Authentication failed during reconnection:", error);
+        console.error("[SocketManager] Authentication failed during reconnection:", error);
       }
     }
   }
 
   static getSocket(testSocket = false, connectSocket = false) {
+    console.log(`[SocketManager] getSocket called. testSocket: ${testSocket}, connectSocket: ${connectSocket}`);
     return SocketManager.#createSocket(testSocket, connectSocket);
   }
 
@@ -156,6 +173,7 @@ class SocketManager {
 
   static disconnectSocket() {
     if (SocketManager.socket?.connected) {
+      console.log("[SocketManager] disconnectSocket called");
       SocketManager.socket.disconnect();
       SocketManager.isAuthenticating = false;
       store.dispatch(socketConnected(false));

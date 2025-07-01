@@ -6,11 +6,7 @@ import ChatService from "../../../../socket/chatService";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
-import {
-  MESSAGE_TYPES,
-  MESSAGE_STATUS,
-  formatMessage,
-} from "../../../../utils/MessageUtils";
+import { MESSAGE_STATUS, formatMessage } from "../../../../utils/MessageUtils";
 import {
   ensureSocketAuthenticated,
   isSocketAuthenticated,
@@ -22,6 +18,7 @@ const ChatArea = ({ selectedUser }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const [socketId, setSocketId] = useState(null);
+  
   // Add new state for initialization status
   const [isInitializing, setIsInitializing] = useState(false);
   const [initializationError, setInitializationError] = useState(null);
@@ -30,68 +27,6 @@ const ChatArea = ({ selectedUser }) => {
   console.log("selected user", selectedUser);
   const socket = useSocket();
   const chatServiceRef = useRef(null);
-
-  const initializeChat = async () => {
-    if (!isSocketReady || !chatServiceRef.current || !selectedUser?._id) {
-      console.log("Missing dependencies:", {
-        isSocketReady,
-        chatService: !!chatServiceRef.current,
-        selectedUserId: selectedUser?._id,
-      });
-      return;
-    }
-    setIsInitializing(true);
-    setInitializationError(null);
-
-    try {
-      // First check socket authentication
-      if (!isSocketAuthenticated()) {
-        await ensureSocketAuthenticated();
-      }
-
-      // Get sender ID from localStorage
-      const senderId = localStorage.getItem("userId");
-      if (!senderId) {
-        throw new Error("User authentication required"); // Redirect to login page
-      }
-
-      // Prepare initialization data matching server expectations
-      const initData = {
-        senderId,
-        receiverId: selectedUser._id,
-      };
-
-      // Initialize chat with retries
-      const response = await chatServiceRef.current.initializeChatWithRetry(
-        initData
-      );
-
-      // Handle both existing and new chats
-      setChatId(response.chatId);
-      if (response.exists) { 
-        // Initialize messages from existing chat
-        const formattedMessages = response.messages.map((msg) => ({
-          id: msg.messageId,
-          text: msg.text,
-          sender: msg.sender,
-          messageType: msg.messageType,
-          status: msg.status,
-          timestamp: new Date(msg.createdAt).getTime(),
-        }));
-        setMessages(formattedMessages);
-      } else {
-        // New chat initialized, "message"
-        console.log("New chat created:", response.chatId);
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error("Chat initialization error:", err);
-      setInitializationError(err.message);
-      setError(err.message);
-    } finally {
-      setIsInitializing(false);
-    }
-  };
 
   // First useEffect to handle socket authentication and ChatService initialization
   useEffect(() => {
@@ -133,8 +68,93 @@ const ChatArea = ({ selectedUser }) => {
 
   //chat initialization
   useEffect(() => {
+    const initializeChat = async () => {
+      // Only proceed if all required dependencies are available
+      if (!isSocketReady || !chatServiceRef.current || !selectedUser?._id) {
+        console.log("Missing dependencies:", {
+          isSocketReady,
+          chatService: !!chatServiceRef.current,
+          selectedUserId: selectedUser?._id,
+        });
+        return;
+      }
+      setIsInitializing(true);
+      setInitializationError(null);
+
+      try {
+        // First check socket authentication
+        if (!isSocketAuthenticated()) {
+          await ensureSocketAuthenticated();
+        }
+
+        // Get sender ID from localStorage
+        const senderId = localStorage.getItem("userId");
+        if (!senderId) {
+          throw new Error("User authentication required");
+        }
+
+        // Prepare initialization data
+        const initData = {
+          senderId,
+          receiverId: selectedUser._id,
+          timestamp: Date.now(),
+          metadata: {
+            initializationTime: new Date().toISOString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            platform: navigator.platform,
+            isFirstTime: true,
+          },
+        };
+
+        // Listen for first-time chat events
+        chatServiceRef.current.listenToFirstTimeChat((data) => {
+          console.log("First time chat created:", data);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: "welcome",
+              type: "system",
+              content: "Welcome to your new chat!",
+              timestamp: Date.now(),
+              metadata: {
+                isFirstTimeChat: true,
+                initializationData: data,
+              },
+            },
+          ]);
+        });
+
+        // Initialize chat with error handling and retries
+        const newChatId = await chatServiceRef.current.initializeChatWithRetry(
+          initData
+        );
+
+        if (!newChatId) {
+          throw new Error("Failed to get chat ID");
+        }
+
+        setChatId(newChatId);
+        setIsInitializing(false);
+      } catch (err) {
+        console.error("Chat initialization error:", err);
+
+        let errorMessage = "Failed to initialize chat";
+        if (err.message.includes("authentication")) {
+          errorMessage = "Please login again to continue";
+        } else if (err.message.includes("network")) {
+          errorMessage =
+            "Network connection issue. Please check your connection";
+        }
+
+        setInitializationError(errorMessage);
+        setError(errorMessage);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
     initializeChat();
-  }, [selectedUser, socket, isSocketReady]);
+  }, [selectedUser, socket]);
 
   // Add a debug effect to monitor important states
   useEffect(() => {

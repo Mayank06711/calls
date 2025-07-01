@@ -7,8 +7,19 @@ import {
 } from "../redux/actions/socket.actions";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
+import { makeRequest } from "../utils/apiHandlers";
+import { ENDPOINTS, HTTP_METHODS } from "../constants/apiEndpoints";
 
-const authenticateSocket = async (token) => {
+const waitForSocketDisconnect = (socket) => {
+  return new Promise((resolve) => {
+    console.log("im about to disconnect socket", socket.id);
+    if (!socket.connected) return resolve();
+    console.log("hey from line 17");
+    socket.once("disconnect", resolve);
+  });
+};
+
+const authenticateSocket = async () => {
   // Prevent multiple simultaneous authentication attempts
   if (SocketManager.isAuthenticating) {
     console.log("Authentication already in progress");
@@ -23,18 +34,30 @@ const authenticateSocket = async (token) => {
       store.dispatch(socketAuthenticated(true));
       return { status: SOCKET_CONSTANTS.STATUS.AUTHENTICATED };
     }
-    // make the flag true;
     SocketManager.isAuthenticating = true;
+    console.log("[authenticateSocket] Starting emitEvent with retry logic");
     const response = await emitEvent(socket, {
       event: SOCKET_CONSTANTS.AUTH.AUTHENTICATE,
-      data: { accessToken: token },
+      data: () => ({ accessToken: localStorage.getItem("token") }),
       timeout: 30000,
       retryOptions: {
         maxRetries: 3,
         delay: 1000,
         exponential: true,
-        shouldRetry: (error) =>
-          error.message !== SOCKET_CONSTANTS.ERROR_TYPES.INVALID_TOKEN,
+        shouldRetry: (error) => {
+          // Only retry for network/unexpected errors, not for token_expired or unexpected_error
+          const should =
+            error.message !== SOCKET_CONSTANTS.ERROR_TYPES.TOKEN_EXPIRED &&
+            error.message !== SOCKET_CONSTANTS.ERROR_TYPES.UNEXPECTED_ERROR &&
+            error.code !== "SOCKET_REAUTHENTICATE";
+          console.log(
+            `[emitEvent:shouldRetry] error.message: ${error.message}, shouldRetry: ${should}`
+          );
+          return should;
+        },
+        onRetry: (attempt, error) => {
+          console.log(`[emitEvent:retry] Attempt ${attempt}, error:`, error);
+        },
       },
       handlers: {
         onBefore: () => {
@@ -63,11 +86,50 @@ const authenticateSocket = async (token) => {
             );
           }
         },
-        onError: (error) => {
-          console.error("Socket authentication error:", error);
-          store.dispatch(
-            showNotification("Real-time services limited", "error")
-          );
+        onError: async (error) => {
+          console.log("onError called!", error);
+          console.log("error.response:", error.response);
+          if (
+            error &&
+            error.response &&
+            error.response.errorType === "token_expired"
+          ) {
+            console.log("Token expired detected, calling makeRequest...");
+            const {
+              data,
+              error: apiError,
+              statusCode,
+            } = await makeRequest(
+              HTTP_METHODS.POST,
+              ENDPOINTS.AUTH.REFRESH_TOKEN
+            );
+            console.log("makeRequest result:", data, apiError, statusCode);
+
+            // FIX: Extract token from correct place
+            const newToken = data?.data?.token || data?.token;
+            if (statusCode === 200 && newToken) {
+              localStorage.setItem("token", newToken);
+              console.log("[onError] New token set in localStorage:", newToken);
+              // Throw a special error to break the retry loop and signal the need to disconnect and re-authenticate
+              throw Object.assign(new Error("SOCKET_REAUTHENTICATE"), {
+                code: "SOCKET_REAUTHENTICATE",
+              });
+            } else {
+              console.log("[onError] Refresh failed, clearing session");
+              localStorage.removeItem("token");
+              localStorage.removeItem("userId");
+              store.dispatch(
+                showNotification(
+                  "Session expired. Please log in again.",
+                  "error"
+                )
+              );
+            }
+          } else {
+            store.dispatch(
+              showNotification("Real-time services limited", "error")
+            );
+          }
         },
         onTimeout: () => {
           console.log("Connection timeout, please try again", "error");
@@ -82,6 +144,19 @@ const authenticateSocket = async (token) => {
     });
     return response;
   } catch (error) {
+    if (
+      error.code === "SOCKET_REAUTHENTICATE" ||
+      error.message === "SOCKET_REAUTHENTICATE"
+    ) {
+      console.log(
+        "[authenticateSocket] Caught SOCKET_REAUTHENTICATE, disconnecting and re-authenticating"
+      );
+      const socket = SocketManager.getSocket();
+      SocketManager.disconnectSocket();
+      await waitForSocketDisconnect(socket);
+      // Let the caller handle re-authentication after disconnect
+      return { status: "reauthenticate" };
+    }
     console.error("Socket authentication failed:", error);
     return null;
   } finally {
@@ -110,7 +185,6 @@ const ensureSocketAuthenticated = async () => {
   // If authentication is in progress, wait for it
   if (SocketManager.isAuthenticating) {
     console.log("Authentication already in progress, waiting...");
-    // Wait for a reasonable time for authentication to complete
     for (let i = 0; i < 30; i++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (isSocketAuthenticated()) {
@@ -126,17 +200,20 @@ const ensureSocketAuthenticated = async () => {
     SocketManager.isAuthenticating = false;
     throw new Error("No authentication token found");
   }
-
   try {
-    const response = await authenticateSocket(token);
-
+    let response = await authenticateSocket();
+    // If reauthenticate is needed, do it once
+    if (response && response.status === "reauthenticate") {
+      // Wait a moment for socket to fully disconnect
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      response = await authenticateSocket();
+    }
     if (
       !response ||
       response.status !== SOCKET_CONSTANTS.STATUS.AUTHENTICATED
     ) {
       throw new Error("Socket authentication failed");
     }
-
     return true;
   } catch (error) {
     console.error("Socket authentication ensure failed:", error);
@@ -180,4 +257,22 @@ const setupVisibilityListener = () => {
 // Initialize visibility listener
 setupVisibilityListener();
 
-export { ensureSocketAuthenticated, isSocketAuthenticated, authenticateSocket };
+/*
+========================================
+Socket Authentication Retry Behavior
+========================================
+| Condition                                 | Will it retry? | Why?                                         |
+|--------------------------------------------|:--------------:|----------------------------------------------|
+| Timeout/network error                      |      Yes       | shouldRetry returns true for timeouts/errors  |
+| Token expired (errorType: 'token_expired') |      No        | shouldRetry returns false, triggers refresh   |
+| Unexpected error                          |      Yes       | shouldRetry returns true                     |
+| Page refresh, valid token, network OK      |      N/A       | Socket authenticates normally                |
+| Page refresh, valid token, network slow    |      Yes       | Retries up to max retries                    |
+| Page refresh, no token                     |      No        | No authentication attempted                  |
+
+- Timeouts and network errors: Will be retried up to the configured max retries.
+- Token expired: Will NOT be retried; instead, triggers token refresh and socket disconnect/re-auth.
+- Page refresh with valid token: Socket authenticates as normal; if network issues, will retry.
+*/
+
+export { ensureSocketAuthenticated, isSocketAuthenticated };

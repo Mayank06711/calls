@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { CookieOptions } from "express";
-import JWT, { JwtPayload } from "jsonwebtoken";
+import JWT, { JsonWebTokenError, JwtPayload } from "jsonwebtoken";
 import crypto from "crypto";
 import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
@@ -285,7 +285,12 @@ class AuthServices {
       // Verify token expiration
       const now = Math.floor(Date.now() / 1000);
       if (decodedToken.exp && decodedToken.exp < now) {
-        return null;
+        return {
+          isExpire: true,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null,
+        };
       }
 
       // Verify standard claims
@@ -294,7 +299,12 @@ class AuthServices {
         decodedToken.aud !== "kyf-api" ||
         (decodedToken.iat && decodedToken.iat > now)
       ) {
-        return null;
+        return {
+          isExpire: false,
+          stdClaimsNotValid: true,
+          unExpectedError: false,
+          data: null,
+        };
       }
 
       const query =
@@ -303,19 +313,51 @@ class AuthServices {
           : { _id: decodedToken._id, isActive: true };
 
       const user = await UserModel.findOne(query);
-      if (!user) return null;
+      if (!user)
+        return {
+          isExpire: false,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null, //  no user found
+        };
       return {
-        userId: user._id,
-        phoneNumber: user.phoneNumber,
-        username: user.username,
-        status: type === "access" ? "authenticated" : "refreshed",
-        tokenExpiry: decodedToken.exp,
+        isExpire: false,
+        stdClaimsNotValid: false,
+        unExpectedError: false,
+        data: {
+          userId: user._id,
+          username: user.username,
+          status: type === "access" ? "authenticated" : "refreshed",
+          tokenExpiry: decodedToken.exp,
+        }, //  no user found
       };
-    } catch (error) {
-      return null;
+    } catch (error: any) {
+      // Handle JWT errors specifically
+      if (error.name === "TokenExpiredError") {
+        return {
+          isExpire: true,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null, // token expired
+        };
+      } else if (error.name === "JsonWebTokenError") {
+        return {
+          isExpire: false,
+          stdClaimsNotValid: false,
+          unExpectedError: true,
+          data: null, // invalid token
+        };
+      }
+      // Other unexpected errors
+      return {
+        isExpire: false,
+        stdClaimsNotValid: false,
+        unExpectedError: true,
+        data: null, //  no user found
+      };
     }
   }
-  
+
   public static async verifyAndForwardToAI(req: Request, res: Response) {
     try {
       const userId = req.user?._id;

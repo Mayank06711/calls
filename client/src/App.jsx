@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { decrementTimer } from "./redux/actions/login.actions";
-import { setUserId, setUserInfo } from "./redux/actions/auth.actions";
+import {
+  clearUserId,
+  setUserId,
+  setUserInfo,
+} from "./redux/actions/auth.actions";
 import {
   BrowserRouter as Router,
   Routes,
@@ -44,6 +48,7 @@ import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivi
 import Feedback from "./Components/Feedback/Feedback";
 import { ensureSocketAuthenticated } from "./socket/authentication";
 import { SocketManager } from "./socket/config";
+import { showNotification } from "./redux/actions";
 
 const theme = createTheme({
   palette: {
@@ -103,37 +108,60 @@ const App = () => {
     };
   }, [timer, isTimerActive, dispatch]);
 
- 
-     // Socket initialization effect
-    useEffect(() => {
-      const initializeSocket = async () => {
-        try {
-          // Only initialize socket if user is logged in
-          if (userId && !SocketManager.isSocketConnected() && !SocketManager.isAuthenticating) {
-            await ensureSocketAuthenticated();
-          }
-        } catch (error) {
-          console.error('Socket initialization failed:', error);
+  // Socket initialization effect
+  useEffect(() => {
+    const initializeSocket = async () => {
+      try {
+        // Only initialize socket if user is logged in
+        if (
+          userId &&
+          !SocketManager.isSocketConnected() &&
+          !SocketManager.isAuthenticating
+        ) {
+          await ensureSocketAuthenticated();
         }
-      };
-  
-      if (userId) { // check with token also
-        initializeSocket();
+      } catch (error) {
+        console.error("Socket initialization failed:", error);
       }
-  
-      return () => {
-        // Only disconnect if we're changing users
+    };
+
+    if (userId) {
+      // check with token also
+      initializeSocket();
+    }
+
+    return () => {
+      // Only disconnect if we're changing users
       if (!userId) {
         SocketManager.disconnectSocket();
       }
-      };
-    }, [userId]); // Re-run when userId changes
+    };
+  }, [userId]); // Re-run when userId changes
 
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === "token" && event.oldValue && !event.newValue) {
+        // Token was removed user logout in another tab.
+        SocketManager.disconnectSocket();
+        dispatch(clearUserId());
+        dispatch(showNotification("Logged out in another tab", "info"));
+      } else {
+        if (event.key === "token" && !event.oldValue && event.newValue) {
+          // token was added in anoter tab ,login
+          dispatch(setUserId(localStorage.getItem("userId")));
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [dispatch]);
 
-
+  
   return (
     <ThemeProvider theme={theme}>
-      <div className="relative flex justify-center items-center h-[100vh]">
+      <div className='relative flex justify-center items-center h-[100vh]'>
         <Toast />
         {/* <div
           className="absolute inset-0"
@@ -148,74 +176,80 @@ const App = () => {
         <Router>
           <Routes>
             <Route
-              path="/"
+              path='/'
               element={
                 userId ? (
                   !isAlreadyVerified && otpVerified ? (
-                    <Navigate to="/complete-profile" />
+                    <Navigate to='/complete-profile' />
                   ) : (
                     <Home />
                   )
                 ) : (
-                  <Navigate to="/login" />
+                  <Navigate to='/login' />
                 )
               }
             >
               {/* Nested routes for main content area */}
-              <Route path="/chats" element={<Chats />} />
-              <Route path="/reels" element={<Reels />} />
-              
-              <Route path="subscriptions">
+              <Route path='/chats' element={<Chats />} />
+              <Route path='/reels' element={<Reels />} />
+
+              <Route path='subscriptions'>
                 <Route index element={<Subscriptions />} />
-                <Route path="gold" element={<GoldSubscription />} />
-                <Route path="silver" element={<SilverSubscription />} />
-                <Route path="platinum" element={<PlatinumSubscription />} />
+                <Route path='gold' element={<GoldSubscription />} />
+                <Route path='silver' element={<SilverSubscription />} />
+                <Route path='platinum' element={<PlatinumSubscription />} />
               </Route>
 
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/notifications" element={<NotificationPanel />} />
-              <Route path="/profile" element={<UserProfile />}>
-                <Route index element={<Navigate to="posts" />} />
-                <Route path="posts" element={<Posts />} />
-                <Route path="likes" element={<Likes />} />
-                <Route path="history" element={<UserHistory />} />
-                <Route path="my-style" element={<MyStyle />} />
-                <Route path="settings" element={<UserSettings />}>
-                  <Route index element={<Navigate to="overview" />} />
-                  <Route path="overview" element={<UserSettings />} />
-                  <Route path="theme" element={<ThemeSettings />} />
-                  <Route path="notifications" element={<NotificationSettings />} />
-                  <Route path="privacy" element={<PrivacySettings />} />
-                  <Route path="preferences" element={<PreferenceSettings />} />
-                  <Route path="layout" element={<LayoutSettings />} />
-                  <Route path="accessibility" element={<AccessibilitySettings />} />
-                  <Route path="sessions" element={<SessionSettings />} />
-                  <Route path="usage" element={<UsageSettings />} />
-                  <Route path="reels" element={<ReelsSettings />} />
-                  <Route path="analytics" element={<AnalyticsSettings />} />
+              <Route path='/settings' element={<Settings />} />
+              <Route path='/notifications' element={<NotificationPanel />} />
+              <Route path='/profile' element={<UserProfile />}>
+                <Route index element={<Navigate to='posts' />} />
+                <Route path='posts' element={<Posts />} />
+                <Route path='likes' element={<Likes />} />
+                <Route path='history' element={<UserHistory />} />
+                <Route path='my-style' element={<MyStyle />} />
+                <Route path='settings' element={<UserSettings />}>
+                  <Route index element={<Navigate to='overview' />} />
+                  <Route path='overview' element={<UserSettings />} />
+                  <Route path='theme' element={<ThemeSettings />} />
+                  <Route
+                    path='notifications'
+                    element={<NotificationSettings />}
+                  />
+                  <Route path='privacy' element={<PrivacySettings />} />
+                  <Route path='preferences' element={<PreferenceSettings />} />
+                  <Route path='layout' element={<LayoutSettings />} />
+                  <Route
+                    path='accessibility'
+                    element={<AccessibilitySettings />}
+                  />
+                  <Route path='sessions' element={<SessionSettings />} />
+                  <Route path='usage' element={<UsageSettings />} />
+                  <Route path='reels' element={<ReelsSettings />} />
+                  <Route path='analytics' element={<AnalyticsSettings />} />
                 </Route>
               </Route>
             </Route>
 
             <Route
-              path="/login"
-              element={!userId ? <Login /> : <Navigate to="/" />}
+              path='/login'
+              element={!userId ? <Login /> : <Navigate to='/' />}
             />
             <Route
-              path="/complete-profile"
+              path='/complete-profile'
               element={
                 userId && isAlreadyVerified === false ? (
                   <UserInfoForm />
                 ) : (
-                  <Navigate to="/" />
+                  <Navigate to='/' />
                 )
               }
             />
-            <Route path="*" element={<Missing />} />
+            <Route path='*' element={<Missing />} />
           </Routes>
         </Router>
       </div>
-      <Feedback/>
+      <Feedback />
     </ThemeProvider>
   );
 };

@@ -52,7 +52,7 @@ function ChatSection() {
   useEffect(() => {
     const checkSocketStatus = async () => {
       try {
-        if (!connected || !authenticated) {
+        if ((!connected || !authenticated) && localStorage.getItem("token")) {
           await ensureSocketAuthenticated();
         }
         setIsSocketReady(true);
@@ -65,6 +65,7 @@ function ChatSection() {
     checkSocketStatus();
   }, [connected, authenticated]);
 
+  // api calling no relationship with socket.
   const fetchUsers = async (pageNum = 1, isLoadMore = false) => {
     if (!hasMore && isLoadMore) return;
 
@@ -91,20 +92,27 @@ function ChatSection() {
     }
   };
 
+  // Define a memoized function to handle the last user element reference
   const lastUserElementRef = useCallback(
     (node) => {
+      // Check if loading more users or if there are no more users to load
       if (loadingMore || !hasMore) return;
+      // Disconnect the current observer if it exists
       if (observerRef.current) observerRef.current.disconnect();
 
+      // Create a new IntersectionObserver to monitor the last user element
       observerRef.current = new IntersectionObserver((entries) => {
+        // If the last user element is visible and there are more users to load
         if (entries[0].isIntersecting && hasMore) {
+          // Fetch the next page of users
           fetchUsers(page + 1, true);
         }
       });
 
+      // If a node is provided, start observing it
       if (node) observerRef.current.observe(node);
     },
-    [loadingMore, hasMore, page]
+    [loadingMore, hasMore, page] // Dependencies for the memoization
   );
 
   // Reset and fetch when filters change
@@ -133,17 +141,13 @@ function ChatSection() {
       if (!isSocketAuthenticated()) {
         await ensureSocketAuthenticated();
       }
-      if (isSocketAuthenticated()) {
-        setSelectedUser(user);
-      } else {
-        throw new Error("socket authentication needed.");
-      }
+      setSelectedUser(user);
     } catch (error) {
       console.error("Socket authentication failed when selecting user:", error);
     }
   };
 
-  // Add socket status indicator in the UI
+  // Add socket status indicator in the UI, page ke uper wala
   const renderSocketStatus = () => {
     if (!connected) {
       return (
