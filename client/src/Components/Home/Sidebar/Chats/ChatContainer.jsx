@@ -1,10 +1,11 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useSocket } from '../../socket/socketUtils'; // Use your existing socket hook
 import ChatService from '../../socket/chatService';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ChatHeader from './ChatHeader';
+import { v4 as uuidv4 } from 'uuid';
 
 const ChatContainer = ({ receiverId, receiverData }) => {
   const [messages, setMessages] = useState([]);
@@ -80,25 +81,36 @@ const ChatContainer = ({ receiverId, receiverData }) => {
   };
 
   const handleSendMessage = async (text) => {
-    if (!chatId || !chatServiceRef.current) return;
-
+    if (!chatServiceRef.current) return;
+    // Generate a temporary ID for optimistic UI
+    const tempId = uuidv4();
+    const optimisticMessage = {
+      id: tempId,
+      text,
+      senderId: socket.id,
+      timestamp: Date.now(),
+      status: 'pending',
+    };
+    setMessages(prev => [...prev, optimisticMessage]);
     try {
       const { messageId, timestamp } = await chatServiceRef.current.sendMessage(
         chatId,
         receiverId,
-        text
+        { type: 'text', content: text }
       );
-
-      const newMessage = {
-        id: messageId,
-        text,
-        senderId: socket.id,
-        timestamp,
-        status: 'sent'
-      };
-
-      setMessages(prev => [...prev, newMessage]);
+      setMessages(prev =>
+        prev.map((m) =>
+          m.id === tempId
+            ? { ...m, id: messageId, timestamp, status: 'sent' }
+            : m
+        )
+      );
     } catch (err) {
+      setMessages(prev =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, status: 'failed' } : m
+        )
+      );
       setError('Failed to send message');
       console.error(err);
     }
@@ -137,6 +149,11 @@ const ChatContainer = ({ receiverId, receiverData }) => {
       />
     </div>
   );
+};
+
+ChatContainer.propTypes = {
+  receiverId: PropTypes.string.isRequired,
+  receiverData: PropTypes.object.isRequired,
 };
 
 export default ChatContainer;

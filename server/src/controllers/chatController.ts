@@ -36,7 +36,7 @@ class ChatController {
     // for typing status of sender to reciver only if both are on same chatbox (i will make one more event names as message:samechatbox)
     TYPING_STATUS: "typing:status",
     // when server need to broadcast some information.
-    SYSTEM_MESSAGE: "message:system",
+    SYSTEM_MESSAGE: "system:message",
   } as const;
 
   constructor() {
@@ -52,14 +52,14 @@ class ChatController {
     }
     return ChatController.instance;
   }
-  
+
   private setupNotificationListener(): void {
     const notificationService = NotificationService.getInstance();
     console.log("Setting up notification listener in ChatController");
     notificationService.onNotification(async (notificationData) => {
       try {
         console.log("Received admin notification:", notificationData);
-        
+
         // Broadcast notification to all connected sockets
         await this.socketManager.emitEvent({
           event: this.CHAT_EVENTS.SYSTEM_MESSAGE,
@@ -68,7 +68,7 @@ class ChatController {
             id: Date.now(), // Generate unique ID for the notification
           },
         });
-        
+
         console.log("Admin notification broadcasted to all clients");
       } catch (error) {
         console.error("Error broadcasting admin notification:", error);
@@ -132,12 +132,17 @@ class ChatController {
       console.log(
         `Setting up listener for event: ${event} on socket ${socket.id}`
       );
-      socket.on(event, async (data: any) => {
+      socket.on(event, async (data: any, callback?: Function) => {
         try {
           console.log(`Received event ${event} with data:`, data);
-          await handler(data, socket);
+          await handler(data, socket, callback);
         } catch (error) {
           console.error(`Error handling ${event}:`, error);
+          if (callback)
+            callback({
+              status: "error",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
         }
       });
       console.log(`Event listener '${event}' attached to socket ${socket.id}`);
@@ -152,7 +157,8 @@ class ChatController {
       messageType?: MessageType;
       chatType?: ChatType;
     },
-    socket: Socket
+    socket: Socket,
+    callback?: Function
   ): Promise<void> {
     try {
       const senderId = socket.data.userId;
@@ -198,6 +204,15 @@ class ChatController {
         (s) => s.userId === data.receiverId && s.isActive
       );
 
+      if (callback) {
+        callback({
+          status: "success",
+          messageId: newMessage.messageId,
+          chatId: chat._id,
+          timestamp: newMessage.createdAt,
+        });
+      }
+
       // 1. Send sent-ack to sender (c-1)
       if (senderSocket) {
         await this.socketManager.emitEvent({
@@ -237,6 +252,11 @@ class ChatController {
         },
         targetSocketIds: [socket.id],
       });
+      if (callback)
+        callback({
+          status: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
     }
   }
 
@@ -256,6 +276,8 @@ class ChatController {
         .populate("receiver", "name avatar")
         .populate("messages.sender", "name avatar");
 
+      console.log('Chat history found:', chat ? chat.messages : 'No chat');
+
       const result = {
         status: "success",
         exists: !!chat,
@@ -266,14 +288,20 @@ class ChatController {
                 sender: chat.sender,
                 receiver: chat.receiver,
               },
-              messages: chat.messages.map((msg) => ({
-                messageId: msg.messageId,
-                text: msg.text,
-                sender: msg.sender,
-                messageType: msg.messageType,
-                status: msg.status,
-                createdAt: msg.createdAt,
-              })),
+              messages: chat.messages.map((msg) => {
+                let status = 'sent';
+                if (msg.status?.isRead) status = 'seen';
+                else if (msg.status?.deliveredAt) status = 'delivered';
+                return {
+                  id: msg.messageId,
+                  content: msg.text,
+                  senderId: msg.sender?._id?.toString() || msg.sender?.toString(),
+                  status,
+                  type: msg.messageType,
+                  timestamp: msg.createdAt,
+                  chatId: chat._id,
+                };
+              }),
               lastMessage: chat.lastMessage,
               chatType: chat.chatType,
               participantsInfo: chat.participantsInfo,
@@ -287,7 +315,6 @@ class ChatController {
       throw error;
     }
   }
-
   // Handler for delivery acknowledgment (c-2 → Server → c-1)
   private async handleDeliveredAck(
     data: { messageId: number; chatId: string },

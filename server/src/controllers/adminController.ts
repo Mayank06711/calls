@@ -157,14 +157,14 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const { adminKey } = req.body;
+      const {adminId, adminKey } = req.body;
 
-      if (!adminKey) {
-        throw new ApiError(400, "adminKey are required");
+      if (!adminKey || !adminId) {
+        throw new ApiError(400, "adminKey and Id are required");
       }
 
       // Find admin by userId
-      const admin = await Admin.findOne({ _id: req.admin?._id }).populate(
+      const admin = await Admin.findOne({ _id: adminId }).populate(
         "userId"
       );
       if (!admin) {

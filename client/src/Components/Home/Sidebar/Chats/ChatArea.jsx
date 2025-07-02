@@ -1,127 +1,48 @@
 // src/Components/Home/Sidebar/Chats/ChatArea.jsx
-
-import React, { useState, useEffect, useRef } from "react";
-import { useSocket } from "../../../../socket/config";
+import { useState, useEffect, useRef } from "react";
+import PropTypes from "prop-types";
+import { useSocketContext } from "../../../../socket/SocketContext";
 import ChatService from "../../../../socket/chatService";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
-import {
-  MESSAGE_TYPES,
-  MESSAGE_STATUS,
-  formatMessage,
-} from "../../../../utils/MessageUtils";
+import { MESSAGE_STATUS, formatMessage } from "../../../../utils/MessageUtils";
 import {
   ensureSocketAuthenticated,
   isSocketAuthenticated,
 } from "../../../../socket/authentication";
+import { v4 as uuidv4 } from 'uuid';
+import { useSelector } from "react-redux";
 
 const ChatArea = ({ selectedUser }) => {
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping] = useState(false);
   const [error, setError] = useState(null);
-  const [socketId, setSocketId] = useState(null);
-  // Add new state for initialization status
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [initializationError, setInitializationError] = useState(null);
-  // Add socket ready state
   const [isSocketReady, setIsSocketReady] = useState(false);
-  console.log("selected user", selectedUser);
-  const socket = useSocket();
+  const { socket } = useSocketContext();
   const chatServiceRef = useRef(null);
-
-  const initializeChat = async () => {
-    if (!isSocketReady || !chatServiceRef.current || !selectedUser?._id) {
-      console.log("Missing dependencies:", {
-        isSocketReady,
-        chatService: !!chatServiceRef.current,
-        selectedUserId: selectedUser?._id,
-      });
-      return;
-    }
-    setIsInitializing(true);
-    setInitializationError(null);
-
-    try {
-      // First check socket authentication
-      if (!isSocketAuthenticated()) {
-        await ensureSocketAuthenticated();
-      }
-
-      // Get sender ID from localStorage
-      const senderId = localStorage.getItem("userId");
-      if (!senderId) {
-        throw new Error("User authentication required"); // Redirect to login page
-      }
-
-      // Prepare initialization data matching server expectations
-      const initData = {
-        senderId,
-        receiverId: selectedUser._id,
-      };
-
-      // Initialize chat with retries
-      const response = await chatServiceRef.current.initializeChatWithRetry(
-        initData
-      );
-
-      // Handle both existing and new chats
-      setChatId(response.chatId);
-      if (response.exists) { 
-        // Initialize messages from existing chat
-        const formattedMessages = response.messages.map((msg) => ({
-          id: msg.messageId,
-          text: msg.text,
-          sender: msg.sender,
-          messageType: msg.messageType,
-          status: msg.status,
-          timestamp: new Date(msg.createdAt).getTime(),
-        }));
-        setMessages(formattedMessages);
-      } else {
-        // New chat initialized, "message"
-        console.log("New chat created:", response.chatId);
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error("Chat initialization error:", err);
-      setInitializationError(err.message);
-      setError(err.message);
-    } finally {
-      setIsInitializing(false);
-    }
-  };
+  const currentUserId = useSelector(state => state.userInfo?.data?._id);
 
   // First useEffect to handle socket authentication and ChatService initialization
   useEffect(() => {
     const initializeSocketAndService = async () => {
       try {
-        // First ensure socket is authenticated
         if (!isSocketAuthenticated()) {
           await ensureSocketAuthenticated();
         }
-
-        // Only initialize ChatService if socket is available and authenticated
         if (socket && !chatServiceRef.current) {
           chatServiceRef.current = new ChatService(socket);
           setIsSocketReady(true);
-          console.log("ChatService initialized:", chatServiceRef.current);
         } else if (socket && chatServiceRef.current) {
-          // Update socket if service exists but socket changed
           chatServiceRef.current.updateSocket(socket);
           setIsSocketReady(true);
-          console.log("ChatService socket updated");
         }
-      } catch (error) {
-        console.error("Failed to initialize socket/chat service:", error);
+      } catch {
         setIsSocketReady(false);
       }
     };
-
     initializeSocketAndService();
-
-    // Cleanup function
     return () => {
       if (chatServiceRef.current) {
         chatServiceRef.current.destroy();
@@ -129,113 +50,176 @@ const ChatArea = ({ selectedUser }) => {
         setIsSocketReady(false);
       }
     };
-  }, [socket]); // Depend only on socket changes
+  }, [socket]);
 
-  //chat initialization
+  // Listen for chat events and update message status
   useEffect(() => {
-    initializeChat();
-  }, [selectedUser, socket, isSocketReady]);
-
-  // Add a debug effect to monitor important states
-  useEffect(() => {
-    console.log("Current state:", {
-      isSocketReady,
-      chatService: !!chatServiceRef.current,
-      socket: !!socket,
-      selectedUser: !!selectedUser,
-    });
-  }, [isSocketReady, socket, selectedUser]);
-
-  // Separate useEffect for chat initialization when user is selected
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!socket || !selectedUser?.id || !chatServiceRef.current) return;
-
-      try {
-        // Listen for first-time chat events
-        chatServiceRef.current.listenToFirstTimeChat((data) => {
-          // Handle first-time chat creation
-          console.log("First time chat created:", data);
-          // You can show a welcome message or tutorial
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: "welcome",
-              type: "system",
-              content: "Welcome to your new chat!",
-              timestamp: Date.now(),
-            },
-          ]);
-        });
-
-        const newChatId = await chatServiceRef.current.createChat(
-          selectedUser.id
+    if (!chatServiceRef.current) return;
+    const cleanup = chatServiceRef.current.initializeChatListeners({
+      onMessageReceived: (msg) => {
+        const formattedMsg = formatMessage(msg.data || msg);
+        setMessages((prev) => [...prev, formattedMsg]);
+        // Emit delivered-ack if the message is from the other user
+        if (
+          formattedMsg.senderId !== socket.id &&
+          chatServiceRef.current &&
+          formattedMsg.id // messageId
+        ) {
+          // Use chatId from state or from the message if available
+          const currentChatId = chatId || formattedMsg.chatId;
+          if (currentChatId) {
+            chatServiceRef.current.markMessageAsDelivered(currentChatId, formattedMsg.id);
+          }
+        }
+      },
+      onSentAck: (ack) => {
+        // If chatId is not set, set it from ack if available
+        if (!chatId && ack.data?.chatId) {
+          setChatId(ack.data.chatId);
+        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === ack.data?.messageId ? { ...m, status: MESSAGE_STATUS.SENT } : m
+          )
         );
-        setChatId(newChatId);
-      } catch (err) {
-        setError("Failed to initialize chat");
-        console.error(err);
-      }
-    };
+      },
+      onDelivered: (ack) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === ack.data?.messageId ? { ...m, status: MESSAGE_STATUS.DELIVERED } : m
+          )
+        );
+      },
+      onSeen: (ack) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === ack.data?.messageId ? { ...m, status: MESSAGE_STATUS.SEEN } : m
+          )
+        );
+      },
+      onTypingStatus: () => {},
+      onError: (err) => {
+        setError(err.data?.message || err.message || 'Message error');
+      },
+      onSystemMessage: (msg) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `system-${Date.now()}`,
+            type: 'system',
+            content: msg.data?.content || 'System message',
+            timestamp: Date.now(),
+            metadata: msg.data,
+          },
+        ]);
+      },
+    });
+    return cleanup;
+  }, [isSocketReady, chatId]);
 
-    initializeChat();
-  }, [selectedUser, socket]);
+  // Reset chatId and messages when selectedUser changes
+  useEffect(() => {
+    setChatId(null);
+    setMessages([]);
+  }, [selectedUser]);
 
-  const handleNewMessage = (message) => {
-    const formattedMessage = formatMessage(message);
-    setMessages((prev) => [...prev, formattedMessage]);
-
-    // Mark message as delivered if we're the receiver
-    if (formattedMessage.senderId !== socket.id && chatServiceRef.current) {
-      chatServiceRef.current.markMessageAsDelivered(
-        chatId,
-        formattedMessage.id
+  // Add error display component
+  const renderError = () => {
+    // Only show error if all messages are failed or pending
+    const allFailedOrPending = messages.length > 0 && messages.every(m => m.status === MESSAGE_STATUS.FAILED || m.status === MESSAGE_STATUS.PENDING);
+    if (error && allFailedOrPending) {
+      return (
+        <div className='flex flex-col items-center justify-center p-4 bg-red-50 rounded-md'>
+          <p className='text-red-600'>{error}</p>
+          <button
+            className='mt-2 px-4 py-2 bg-red-100 text-red-700 rounded-md'
+            onClick={() => {
+              setError(null);
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
       );
     }
+    return null;
   };
 
-  const handleTypingStatus = ({ userId, isTyping }) => {
-    if (userId === selectedUser?.id) {
-      setIsTyping(isTyping);
-    }
-  };
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      setChatId(null);
+      setMessages([]);
+      if (!selectedUser || !chatServiceRef.current || !currentUserId) return;
+      try {
+        const chat = await chatServiceRef.current.checkChatHistory(currentUserId, selectedUser._id);
+        if (chat) {
+          setChatId(chat.chatId);
+          console.log('Chat history received from server:', chat.messages);
+          setMessages((chat.messages || []).map(formatMessage));
+        }
+      } catch {
+        setMessages([]);
+      }
+    };
+    fetchChatHistory();
+  }, [selectedUser, isSocketReady, currentUserId]);
 
-  const handleMessageStatus = ({ messageId, status }) => {
-    setMessages((prev) =>
-      prev.map((msg) => (msg.id === messageId ? { ...msg, status } : msg))
+  if (!selectedUser) {
+    return (
+      <div className='flex items-center justify-center h-full'>
+        <p className='text-gray-500'>Select a chat to start messaging</p>
+      </div>
     );
-  };
+  }
 
-  const handleError = (error) => {
-    setError(error.message || "An error occurred");
-    console.error("Chat error:", error);
-  };
+  if (!isSocketReady) {
+    return (
+      <div className='flex items-center justify-center h-full'>
+        <div className='flex flex-col items-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
+          <p className='mt-2 text-gray-600'>Initializing chat service...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Handlers for sending messages, typing, etc.
   const handleSendMessage = async (messageData) => {
-    if (!chatId || !chatServiceRef.current) return;
-
+    if (!chatServiceRef.current) return;
+    // Generate a temporary ID for optimistic UI
+    const tempId = uuidv4();
+    const optimisticMessage = formatMessage({
+      id: tempId,
+      type: messageData.type,
+      content: messageData.content,
+      senderId: currentUserId,
+      receiverId: selectedUser._id,
+      timestamp: Date.now(),
+      status: MESSAGE_STATUS.PENDING,
+      metadata: messageData.metadata,
+    });
+    setMessages((prev) => [...prev, optimisticMessage]);
     try {
       const { messageId, timestamp } = await chatServiceRef.current.sendMessage(
         chatId,
-        selectedUser.id,
+        selectedUser._id,
         messageData
       );
-
-      const newMessage = formatMessage({
-        id: messageId,
-        type: messageData.type,
-        content: messageData.content,
-        senderId: socket.id,
-        receiverId: selectedUser.id,
-        timestamp,
-        status: MESSAGE_STATUS.SENT,
-        metadata: messageData.metadata,
-      });
-
-      setMessages((prev) => [...prev, newMessage]);
-    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId
+            ? { ...m, id: messageId, timestamp, status: MESSAGE_STATUS.SENT }
+            : m
+        )
+      );
+      // If chatId was null, it will be set on sent-ack
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, status: MESSAGE_STATUS.FAILED } : m
+        )
+      );
       setError("Failed to send message");
-      console.error(err);
     }
   };
 
@@ -251,122 +235,54 @@ const ChatArea = ({ selectedUser }) => {
     }
   };
 
-  const handleVideoCall = () => {
-    // Implement video call functionality
-    console.log("Video call with:", selectedUser?.id);
-  };
-
-  const handleVoiceCall = () => {
-    // Implement voice call functionality
-    console.log("Voice call with:", selectedUser?.id);
-  };
-
-  const handleMenuClick = () => {
-    // Implement menu functionality
-    console.log("Open chat menu");
-  };
-
-  if (error) {
-    return (
-      <div className='flex items-center justify-center h-full'>
-        <p className='text-red-500'>{error}</p>
-      </div>
-    );
-  }
-
-  if (!selectedUser) {
-    return (
-      <div className='flex items-center justify-center h-full'>
-        <p className='text-gray-500'>Select a chat to start messaging</p>
-      </div>
-    );
-  }
-
-  //   // Add this effect to update socketId when socket is available
-  // useEffect(() => {
-  //     if (socket) {
-  //       if (!chatServiceRef.current) {
-  //         chatServiceRef.current = new ChatService(socket);
-  //       } else {
-  //         chatServiceRef.current.updateSocket(socket);
-  //       }
-
-  //       const callbacks = {
-  //         onMessageReceived: handleNewMessage,
-  //         onTypingStatus: handleTypingStatus,
-  //         onMessageStatus: handleMessageStatus,
-  //         onError: handleError
-  //       };
-
-  //       const cleanup = chatServiceRef.current.initializeChatListeners(callbacks);
-
-  //       return () => {
-  //         cleanup();
-  //         if (chatServiceRef.current) {
-  //           chatServiceRef.current.destroy();
-  //         }
-  //       };
-  //     }
-  //   }, [socket]);
-
-  // Add error display component
-  const renderError = () => {
-    if (initializationError) {
-      return (
-        <div className='flex flex-col items-center justify-center p-4 bg-red-50 rounded-md'>
-          <p className='text-red-600'>{initializationError}</p>
-          <button
-            className='mt-2 px-4 py-2 bg-red-100 text-red-700 rounded-md'
-            onClick={() => {
-              setInitializationError(null);
-              setError(null);
-            }}
-          >
-            Dismiss
-          </button>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  if (!isSocketReady) {
-    return (
-      <div className='flex items-center justify-center h-full'>
-        <div className='flex flex-col items-center'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
-          <p className='mt-2 text-gray-600'>Initializing chat service...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleVideoCall = () => {};
+  const handleVoiceCall = () => {};
+  const handleMenuClick = () => {};
 
   return (
     <div className='flex-1 flex flex-col'>
       {renderError()}
       <ChatHeader
         receiverData={{
-          name: selectedUser.name,
-          status: selectedUser.status,
-          avatar: selectedUser.avatar,
-          lastSeen: selectedUser.lastSeen,
+          name: selectedUser?.fullName || selectedUser?.name || selectedUser?.username || 'User',
+          username: selectedUser?.username || '',
+          avatar: selectedUser?.profilePhoto?.url || '',
+          status: selectedUser?.isActive ? 'online' : 'offline',
+          lastSeen: selectedUser?.lastSeen || '',
         }}
         isTyping={isTyping}
-        onBack={() => {}} // Implement if needed
+        onBack={() => {}}
         onVideoCall={handleVideoCall}
         onVoiceCall={handleVoiceCall}
         onMenuClick={handleMenuClick}
+        lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
+        currentUserId={currentUserId}
       />
-
       <MessageList
         messages={messages}
-        currentUserId={socketId}
+        currentUserId={currentUserId}
         onMessageSeen={handleMessageSeen}
       />
-
       <MessageInput onSendMessage={handleSendMessage} onTyping={handleTyping} />
     </div>
   );
+};
+
+ChatArea.propTypes = {
+  selectedUser: PropTypes.shape({
+    _id: PropTypes.string,
+    id: PropTypes.string,
+    name: PropTypes.string,
+    fullName: PropTypes.string,
+    username: PropTypes.string,
+    status: PropTypes.string,
+    avatar: PropTypes.string,
+    lastSeen: PropTypes.string,
+    profilePhoto: PropTypes.shape({
+      url: PropTypes.string,
+    }),
+    isActive: PropTypes.bool,
+  }),
 };
 
 export default ChatArea;

@@ -341,20 +341,21 @@ class SocketManager {
             }
 
             // Verify tokens and get user data
-            userData = await this.verifyUserAuthentication(authData);
-
-            if (!userData) {
+            const authResult  = await this.verifyUserAuthentication(authData);
+            if (!authResult.success) {
               callback({
                 status: "error",
-                message: "Invalid authentication",
+                message: authResult.message || "Invalid authentication",
+                errorType: authResult.errorType,
                 socketId: socket.id,
               });
               return this.handleConnectionError(
                 socket,
-                "Invalid authentication, try refreshing token",
-                "Invalid:authentication"
+                authResult.message||"Invalid authentication, try refreshing token",
+                authResult.errorType
               );
             }
+            userData = authResult.data;
             const lockKey = `user:${userData.userId}`;
             lockId = await RedisManager.acquireLock(lockKey, 5000);
 
@@ -362,6 +363,7 @@ class SocketManager {
               callback({
                 status: "error",
                 message: "Connection blocked - concurrent connection attempt",
+                errorType: "lockId",
                 socketId: socket.id,
               });
               return this.handleConnectionError(
@@ -416,35 +418,53 @@ class SocketManager {
   private async verifyUserAuthentication(authData: {
     refreshToken?: string;
     accessToken?: string;
-  }) {
+  }):Promise<{ success: boolean; data?: any; errorType?: string; message?: string }> {
     try {
-      let userData;
+      let result;
 
       if (authData.accessToken) {
         // First try with access token
-        userData = await AuthServices.verifyJWT_Token(
+        result = await AuthServices.verifyJWT_Token(
           authData.accessToken,
           this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.ACCESS
         );
-        if (userData) {
-          return userData;
+        if (result) {
+          if (result.data) {
+            return { success: true, data: result.data };
+          } else if (result.isExpire) {
+            return { success: false, errorType: "token_expired", message: "Access token expired" };
+          } else if (result.stdClaimsNotValid) {
+            return { success: false, errorType: "invalid_claims", message: "Invalid token claims" };
+          } else if (result.unExpectedError) {
+            return { success: false, errorType: "unexpected_error", message: "Unexpected error during token verification" };
+          } else {
+            return { success: false, errorType: "invalid_token", message: "Invalid access token" };
+          }
         }
       }
 
       if (authData.refreshToken) {
-        // If access token fails or isn't present, try refresh token
-        userData = await AuthServices.verifyJWT_Token(
+        result = await AuthServices.verifyJWT_Token(
           authData.refreshToken,
           this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.REFRESH
         );
-        if (userData) {
-          return userData;
+        if (result && result.data) {
+          return { success: true, data: result.data };
+        } else if (result && result.isExpire) {
+          return { success: false, errorType: "token_expired", message: "Refresh token expired" };
+        } else if (result && result.stdClaimsNotValid) {
+          return { success: false, errorType: "invalid_claims", message: "Invalid refresh token claims" };
+        } else if (result && result.unExpectedError) {
+          return { success: false, errorType: "unexpected_error", message: "Unexpected error during refresh token verification" };
+        } else {
+          return { success: false, errorType: "invalid_token", message: "Invalid refresh token" };
         }
       }
-      return null;
+  
+      return { success: false, errorType: "no_token", message: "No token provided" };
     } catch (error) {
       console.error("Token verification error:", error);
-      return null;
+      return { success: false, errorType: "exception", message: "Exception during token verification" };
     }
   }
 

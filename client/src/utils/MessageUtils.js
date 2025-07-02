@@ -13,21 +13,23 @@ export const MESSAGE_TYPES = {
     SENT: 'sent',
     DELIVERED: 'delivered',
     SEEN: 'seen',
-    FAILED: 'failed'
+    FAILED: 'failed',
+    PENDING: 'pending'
   };
   
-  export const formatMessage = (message) => {
+  export function formatMessage(msg) {
     return {
-      id: message.id,
-      type: message.type || MESSAGE_TYPES.TEXT,
-      content: message.content,
-      senderId: message.senderId,
-      receiverId: message.receiverId,
-      timestamp: message.timestamp || Date.now(),
-      status: message.status || MESSAGE_STATUS.SENDING,
-      metadata: message.metadata || {}
+      id: msg.id || msg.messageId,
+      content: msg.content || msg.text,
+      senderId: msg.senderId || (msg.sender && msg.sender._id) || msg.sender,
+      receiverId: msg.receiverId,
+      status: msg.status || MESSAGE_STATUS.SENT,
+      type: msg.type || msg.messageType || 'text',
+      timestamp: msg.timestamp || msg.createdAt || Date.now(),
+      chatId: msg.chatId,
+      metadata: msg.metadata,
     };
-  };
+  }
   
   export const isImageFile = (file) => {
     return file.type.startsWith('image/');

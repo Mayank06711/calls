@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { decrementTimer } from "./redux/actions/login.actions";
-import { setUserId, setUserInfo } from "./redux/actions/auth.actions";
+import {
+  clearUserId,
+  setUserId,
+  setUserInfo,
+} from "./redux/actions/auth.actions";
 import {
   BrowserRouter as Router,
   Routes,
@@ -26,11 +30,9 @@ import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle
 import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
 import Likes from "./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes";
 import Posts from "./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts";
-import CasualSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
 import SilverSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription";
 import PlatinumSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription";
 import GoldSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
-import { fetchUserInfoThunk } from "./redux/thunks/userInfo.thunks";
 import ThemeSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings";
 import NotificationSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings";
 import PrivacySettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PrivacySettings";
@@ -42,8 +44,11 @@ import UsageSettings from "./Components/Home/Hearders/UserProfile/UserActivity/U
 import ReelsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings";
 import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings";
 import Feedback from "./Components/Feedback/Feedback";
-import { ensureSocketAuthenticated } from "./socket/authentication";
-import { SocketManager } from "./socket/config";
+// import { ensureSocketAuthenticated } from "./socket/authentication";
+// import { SocketManager } from "./socket/config";
+import { showNotification } from "./redux/actions";
+// Import the SocketProvider for context-based socket management
+import { SocketProvider } from "./socket/SocketContext";
 
 const theme = createTheme({
   palette: {
@@ -66,13 +71,14 @@ const theme = createTheme({
 });
 
 const App = () => {
+  console.log("[App] Mounting App component");
   const userId = useSelector((state) => state.auth.userId);
   const dispatch = useDispatch();
   const {
-    otpGenerated,
+    // otpGenerated, // removed unused
     otpVerified,
     isAlreadyVerified,
-    otpVerificationInProgress,
+    // otpVerificationInProgress, // removed unused
     timer,
     isTimerActive,
   } = useSelector((state) => state.auth);
@@ -103,119 +109,122 @@ const App = () => {
     };
   }, [timer, isTimerActive, dispatch]);
 
- 
-     // Socket initialization effect
-    useEffect(() => {
-      const initializeSocket = async () => {
-        try {
-          // Only initialize socket if user is logged in
-          if (userId && !SocketManager.isSocketConnected() && !SocketManager.isAuthenticating) {
-            await ensureSocketAuthenticated();
-          }
-        } catch (error) {
-          console.error('Socket initialization failed:', error);
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === "token" && event.oldValue && !event.newValue) {
+        // Token was removed user logout in another tab.
+        // SocketManager.disconnectSocket();
+        dispatch(clearUserId());
+        dispatch(showNotification("Logged out in another tab", "info"));
+      } else {
+        if (event.key === "token" && !event.oldValue && event.newValue) {
+          // token was added in anoter tab ,login
+          dispatch(setUserId(localStorage.getItem("userId")));
         }
-      };
-  
-      if (userId) { // check with token also
-        initializeSocket();
       }
-  
-      return () => {
-        // Only disconnect if we're changing users
-      if (!userId) {
-        SocketManager.disconnectSocket();
-      }
-      };
-    }, [userId]); // Re-run when userId changes
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [dispatch]);
 
-
-
+  // The entire app is now wrapped in SocketProvider for socket context
   return (
     <ThemeProvider theme={theme}>
-      <div className="relative flex justify-center items-center h-[100vh]">
-        <Toast />
-        {/* <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${backgroundImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.05,
-            zIndex: 0,
-          }}
-        /> */}
-        <Router>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                userId ? (
-                  !isAlreadyVerified && otpVerified ? (
-                    <Navigate to="/complete-profile" />
+      {console.log("[App] Rendering with SocketProvider")}
+      <SocketProvider>
+        {/* SocketProvider manages socket connection, authentication, and exposes context */}
+        <div className='relative flex justify-center items-center h-[100vh]'>
+          <Toast />
+          {/* <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.05,
+              zIndex: 0,
+            }}
+          /> */}
+          <Router>
+            <Routes>
+              <Route
+                path='/'
+                element={
+                  userId ? (
+                    !isAlreadyVerified && otpVerified ? (
+                      <Navigate to='/complete-profile' />
+                    ) : (
+                      <Home />
+                    )
                   ) : (
-                    <Home />
+                    <Navigate to='/login' />
                   )
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            >
-              {/* Nested routes for main content area */}
-              <Route path="/chats" element={<Chats />} />
-              <Route path="/reels" element={<Reels />} />
-              
-              <Route path="subscriptions">
-                <Route index element={<Subscriptions />} />
-                <Route path="gold" element={<GoldSubscription />} />
-                <Route path="silver" element={<SilverSubscription />} />
-                <Route path="platinum" element={<PlatinumSubscription />} />
-              </Route>
+                }
+              >
+                {/* Nested routes for main content area */}
+                <Route path='/chats' element={<Chats />} />
+                <Route path='/reels' element={<Reels />} />
 
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/notifications" element={<NotificationPanel />} />
-              <Route path="/profile" element={<UserProfile />}>
-                <Route index element={<Navigate to="posts" />} />
-                <Route path="posts" element={<Posts />} />
-                <Route path="likes" element={<Likes />} />
-                <Route path="history" element={<UserHistory />} />
-                <Route path="my-style" element={<MyStyle />} />
-                <Route path="settings" element={<UserSettings />}>
-                  <Route index element={<Navigate to="overview" />} />
-                  <Route path="overview" element={<UserSettings />} />
-                  <Route path="theme" element={<ThemeSettings />} />
-                  <Route path="notifications" element={<NotificationSettings />} />
-                  <Route path="privacy" element={<PrivacySettings />} />
-                  <Route path="preferences" element={<PreferenceSettings />} />
-                  <Route path="layout" element={<LayoutSettings />} />
-                  <Route path="accessibility" element={<AccessibilitySettings />} />
-                  <Route path="sessions" element={<SessionSettings />} />
-                  <Route path="usage" element={<UsageSettings />} />
-                  <Route path="reels" element={<ReelsSettings />} />
-                  <Route path="analytics" element={<AnalyticsSettings />} />
+                <Route path='subscriptions'>
+                  <Route index element={<Subscriptions />} />
+                  <Route path='gold' element={<GoldSubscription />} />
+                  <Route path='silver' element={<SilverSubscription />} />
+                  <Route path='platinum' element={<PlatinumSubscription />} />
+                </Route>
+
+                <Route path='/settings' element={<Settings />} />
+                <Route path='/notifications' element={<NotificationPanel />} />
+                <Route path='/profile' element={<UserProfile />}>
+                  <Route index element={<Navigate to='posts' />} />
+                  <Route path='posts' element={<Posts />} />
+                  <Route path='likes' element={<Likes />} />
+                  <Route path='history' element={<UserHistory />} />
+                  <Route path='my-style' element={<MyStyle />} />
+                  <Route path='settings' element={<UserSettings />}>
+                    <Route index element={<Navigate to='overview' />} />
+                    <Route path='overview' element={<UserSettings />} />
+                    <Route path='theme' element={<ThemeSettings />} />
+                    <Route
+                      path='notifications'
+                      element={<NotificationSettings />}
+                    />
+                    <Route path='privacy' element={<PrivacySettings />} />
+                    <Route path='preferences' element={<PreferenceSettings />} />
+                    <Route path='layout' element={<LayoutSettings />} />
+                    <Route
+                      path='accessibility'
+                      element={<AccessibilitySettings />}
+                    />
+                    <Route path='sessions' element={<SessionSettings />} />
+                    <Route path='usage' element={<UsageSettings />} />
+                    <Route path='reels' element={<ReelsSettings />} />
+                    <Route path='analytics' element={<AnalyticsSettings />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            <Route
-              path="/login"
-              element={!userId ? <Login /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/complete-profile"
-              element={
-                userId && isAlreadyVerified === false ? (
-                  <UserInfoForm />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-            <Route path="*" element={<Missing />} />
-          </Routes>
-        </Router>
-      </div>
-      <Feedback/>
+              <Route
+                path='/login'
+                element={!userId ? <Login /> : <Navigate to='/' />}
+              />
+              <Route
+                path='/complete-profile'
+                element={
+                  userId && isAlreadyVerified === false ? (
+                    <UserInfoForm />
+                  ) : (
+                    <Navigate to='/' />
+                  )
+                }
+              />
+              <Route path='*' element={<Missing />} />
+            </Routes>
+          </Router>
+        </div>
+        <Feedback />
+      </SocketProvider>
     </ThemeProvider>
   );
 };

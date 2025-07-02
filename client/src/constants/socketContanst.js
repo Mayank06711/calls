@@ -65,6 +65,8 @@ export const SOCKET_CONSTANTS = {
     TIMEOUT: "Request timeout",
     SERVER_ERROR: "Server error",
     INVALID_TOKEN: "Invalid token",
+    TOKEN_EXPIRED: "Access token expired",
+    UNEXPECTED_ERROR:"Unexpected error during token verification",
     TOO_MANY_CONNECTIONS: "Too many connections",
     UPLOAD_FAILED: "File upload failed",
   },

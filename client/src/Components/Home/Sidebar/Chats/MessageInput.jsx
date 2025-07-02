@@ -1,6 +1,7 @@
-
-import React, { useState, useRef } from 'react';
-import { AttachFile, Send, Image, Close } from '@mui/icons-material';
+import { useState, useRef } from 'react';
+import { Send, Image, Close } from '@mui/icons-material';
+import PropTypes from 'prop-types';
+import {uploadImage} from '../../../../socket/handleImageUpload';
 
 const MessageInput = ({ onSendMessage, onTyping }) => {
   const [message, setMessage] = useState('');
@@ -47,20 +48,25 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
 
     if (selectedFile) {
       try {
-        const uploadedFile = await handleImageUpload({
+        // c1-s event: client triggers image upload to server
+        console.log('[c1-s] Image send button clicked, uploading image to server...');
+        const uploadedFile = await uploadImage({
           file: selectedFile,
           type: 'chat',
           onProgress: (progress) => {
             console.log('Upload progress:', progress);
-          }
+          },
+          metadata: {
+            uploadType: 'cloudinary',
+            folder: 'chat_images',
+          },
         });
-
+        // After upload, send image message event
         await onSendMessage({
           type: 'image',
           content: uploadedFile.url,
           fileName: selectedFile.name
         });
-
         clearFileSelection();
       } catch (error) {
         console.error('Failed to upload file:', error);
@@ -125,7 +131,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
           value={message}
           onChange={handleChange}
           placeholder="Type a message..."
-          className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-blue-500"
+          className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-blue-500 bg-white text-black"
         />
 
         <button
@@ -138,6 +144,11 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
       </form>
     </div>
   );
+};
+
+MessageInput.propTypes = {
+  onSendMessage: PropTypes.func.isRequired,
+  onTyping: PropTypes.func.isRequired,
 };
 
 export default MessageInput;

@@ -1,9 +1,8 @@
 import { SocketManager } from "./config";
-import { emitEvent } from "./socketUtils";
 import { SOCKET_CONSTANTS } from "../constants/socketContanst";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
-import { ensureSocketAuthenticated } from "./authentication";
+import { ensureSocketAuthenticated, isSocketAuthenticated } from "./authentication";
 
 const validateFile = (file) => {
   console.log("Validating file:", {
@@ -64,12 +63,13 @@ export const uploadImage = async (file, onProgress = () => {}) => {
 
   try {
     // Ensure socket is connected and authenticated
-    // Ensure socket is connected
     if (!SocketManager.isSocketConnected()) {
       socket.connect();
     }
-    // Check and ensure authentication before proceeding
-    await ensureSocketAuthenticated();
+    // Only authenticate if not already authenticated
+    if (!isSocketAuthenticated()) {
+      await ensureSocketAuthenticated();
+    }
 
     validateFile(file);
     const fileBuffer = await convertToBuffer(file);
