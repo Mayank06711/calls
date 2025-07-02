@@ -10,6 +10,7 @@ import { sendEmails } from "../utils/email";
 import { generateToken, verifyToken } from "../utils/tokens";
 import { GetUsersQuery, UserListResponse } from "../interface/IUser";
 import { MediaModel } from "../models/mediaModel";
+import { cacheUserList, getAllUsersFromCache } from "../redis/user.redis";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -715,12 +716,13 @@ class User {
     };
   }
 
-  private static async _getAllUsers(
-    req: express.Request,
-    res: express.Response
-  ) {
-    try {
-      // Get query parameters with defaults
+private static async _getAllUsers(req: express.Request, res: express.Response) {
+  try {
+    // First try to get users from cache
+    const cachedUsers = await getAllUsersFromCache();
+    
+    if (cachedUsers) {
+      // If found in cache, return with pagination
       const {
         page = 1,
         limit = 20,
@@ -728,105 +730,148 @@ class User {
         search = "",
       } = req.query as GetUsersQuery;
 
-      // Build query filters
-      const filters: any = {
-        isActive: true,
-      };
+      let filteredUsers = [...cachedUsers];
 
-      // Add user type filter
+      // Apply filters on cached data
       if (userType === "expert") {
-        filters.isExpert = true;
+        filteredUsers = filteredUsers.filter(user => user.isExpert);
       } else if (userType === "user") {
-        filters.isExpert = false;
+        filteredUsers = filteredUsers.filter(user => !user.isExpert);
       }
 
-      // Add search filter if provided
+      // Apply search filter if provided
       if (search) {
-        filters.$or = [
-          { fullName: { $regex: search, $options: "i" } },
-          { username: { $regex: search, $options: "i" } },
-        ];
+        filteredUsers = filteredUsers.filter(user => 
+          user.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+          user.username?.toLowerCase().includes(search.toLowerCase())
+        );
       }
 
-      // Calculate skip value for pagination
-      const skip = (Number(page) - 1) * Number(limit);
-
-      // Execute queries in parallel
-      const [users, totalCount] = await Promise.all([
-        UserModel.find(filters)
-          .select(
-            "fullName username isExpert mediaId profilePhotoId city country isActive"
-          )
-          .skip(skip)
-          .limit(Number(limit))
-          .lean(),
-        UserModel.countDocuments(filters),
-      ]);
-
-      // Get profile photos for all users
-      const usersWithPhotos: UserListResponse[] = await Promise.all(
-        users.map(async (user) => {
-          let profilePhoto = null;
-
-          if (user.mediaId && user.profilePhotoId) {
-            const media = await MediaModel.findById(user.mediaId)
-              .select("photos")
-              .lean();
-
-            if (media) {
-              const photo = media.photos.find(
-                (p) => p.public_id === user.profilePhotoId
-              );
-              if (photo) {
-                profilePhoto = {
-                  url: photo.url,
-                  thumbnail_url: photo.thumbnail_url,
-                };
-              }
-            }
-          }
-
-          return {
-            _id: user._id.toString(), // Convert ObjectId to string
-            fullName: user.fullName,
-            username: user.username,
-            isExpert: user.isExpert,
-            profilePhoto,
-            city: user.city,
-            country: user.country || "", // Provide default value
-            isActive: user.isActive,
-          };
-        })
-      );
-
-      // Calculate pagination metadata
+      // Apply pagination
+      const totalCount = filteredUsers.length;
       const totalPages = Math.ceil(totalCount / Number(limit));
-      const hasNextPage = page < totalPages;
-      const hasPrevPage = page > 1;
+      const skip = (Number(page) - 1) * Number(limit);
+      
+      const paginatedUsers = filteredUsers.slice(skip, skip + Number(limit));
 
       return res.status(200).json(
         successResponse(
           {
-            users: usersWithPhotos,
+            users: paginatedUsers,
             pagination: {
               currentPage: Number(page),
               totalPages,
               totalUsers: totalCount,
-              hasNextPage,
-              hasPrevPage,
+              hasNextPage: page < totalPages,
+              hasPrevPage: page > 1,
               limit: Number(limit),
             },
           },
           "Users fetched successfully"
         )
       );
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Internal Server Error: Unable to fetch users");
     }
+
+    // If not in cache, fetch from database
+    const {
+      page = 1,
+      limit = 20,
+      userType = "all",
+      search = "",
+    } = req.query as GetUsersQuery;
+
+    const filters: any = {
+      isActive: true,
+    };
+
+    if (userType === "expert") {
+      filters.isExpert = true;
+    } else if (userType === "user") {
+      filters.isExpert = false;
+    }
+
+    if (search) {
+      filters.$or = [
+        { fullName: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [users, totalCount] = await Promise.all([
+      UserModel.find(filters)
+        .select("fullName username isExpert mediaId profilePhotoId city country isActive")
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      UserModel.countDocuments(filters),
+    ]);
+
+    const usersWithPhotos = await Promise.all(
+      users.map(async (user) => {
+        let profilePhoto = null;
+
+        if (user.mediaId && user.profilePhotoId) {
+          const media = await MediaModel.findById(user.mediaId)
+            .select("photos")
+            .lean();
+
+          if (media) {
+            const photo = media.photos.find(
+              (p) => p.public_id === user.profilePhotoId
+            );
+            if (photo) {
+              profilePhoto = {
+                url: photo.url,
+                thumbnail_url: photo.thumbnail_url,
+              };
+            }
+          }
+        }
+
+        return {
+          _id: user._id.toString(),
+          fullName: user.fullName,
+          username: user.username,
+          isExpert: user.isExpert,
+          profilePhoto,
+          city: user.city,
+          country: user.country || "",
+          isActive: user.isActive,
+        };
+      })
+    );
+
+    // Cache the results for future use
+    await cacheUserList(usersWithPhotos);
+
+    const totalPages = Math.ceil(totalCount / Number(limit));
+    
+    return res.status(200).json(
+      successResponse(
+        {
+          users: usersWithPhotos,
+          pagination: {
+            currentPage: Number(page),
+            totalPages,
+            totalUsers: totalCount,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+            limit: Number(limit),
+          },
+        },
+        "Users fetched successfully"
+      )
+    );
+
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Internal Server Error: Unable to fetch users");
   }
+}
 
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
