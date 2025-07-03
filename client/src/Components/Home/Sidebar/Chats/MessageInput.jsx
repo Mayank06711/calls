@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { Send, Image, Close } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import {uploadImage} from '../../../../socket/handleImageUpload';
+import { uploadImage } from '../../../../socket/handleImageUpload';
+import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 
 const MessageInput = ({ onSendMessage, onTyping }) => {
   const [message, setMessage] = useState('');
@@ -9,6 +10,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const [filePreview, setFilePreview] = useState('');
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const colors = useSubscriptionColors();
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -31,7 +33,6 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
 
     if (file.type.startsWith('image/')) {
       setSelectedFile(file);
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setFilePreview(reader.result);
@@ -48,7 +49,6 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
 
     if (selectedFile) {
       try {
-        // c1-s event: client triggers image upload to server
         console.log('[c1-s] Image send button clicked, uploading image to server...');
         const uploadedFile = await uploadImage({
           file: selectedFile,
@@ -61,7 +61,6 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
             folder: 'chat_images',
           },
         });
-        // After upload, send image message event
         await onSendMessage({
           type: 'image',
           content: uploadedFile.url,
@@ -92,24 +91,35 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   };
 
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
+    <div className="border-t border-light-secondary/10 dark:border-dark-secondary/10 bg-light-primary dark:bg-dark-primary p-3">
       {filePreview && (
-        <div className="relative mb-2 inline-block">
+        <div className="relative mb-3 inline-block group">
           <img 
             src={filePreview} 
             alt="Preview" 
-            className="h-20 w-20 object-cover rounded"
+            className="h-24 w-24 object-cover rounded-lg ring-2 ring-opacity-50"
+            style={{ ringColor: colors.third }}
           />
           <button
             onClick={clearFileSelection}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+            className="absolute -top-2 -right-2 p-1 rounded-full transition-transform hover:scale-110 shadow-lg"
+            style={{
+              background: `linear-gradient(135deg, ${colors.third}, ${colors.fourth})`,
+              color: 'white'
+            }}
           >
-            <Close fontSize="small" />
+            <Close sx={{ fontSize: 16 }} />
           </button>
+          <div 
+            className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background: `linear-gradient(0deg, ${colors.fourth}80, transparent)`
+            }}
+          />
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="flex items-center gap-3">
         <input
           type="file"
           ref={fileInputRef}
@@ -121,25 +131,51 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-gray-500 hover:text-gray-700"
+          className="p-2 rounded-full transition-all duration-200 hover:scale-110"
+          style={{
+            color: colors.third,
+            '&:hover': {
+              color: colors.fourth
+            }
+          }}
         >
           <Image />
         </button>
 
-        <input
-          type="text"
-          value={message}
-          onChange={handleChange}
-          placeholder="Type a message..."
-          className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-blue-500 bg-white text-black"
-        />
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            value={message}
+            onChange={handleChange}
+            placeholder="Type a message..."
+            className="w-full px-4 py-2.5 rounded-full transition-all duration-200 
+                     bg-light-secondary/5 dark:bg-dark-secondary/5
+                     text-light-text dark:text-dark-text
+                     placeholder-light-text/50 dark:placeholder-dark-text/50
+                     focus:outline-none"
+            style={{
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: `${colors.third}40`,
+              '&:focus': {
+                borderColor: colors.fourth,
+                boxShadow: `0 0 0 2px ${colors.fourth}20`
+              }
+            }}
+          />
+        </div>
 
         <button
           type="submit"
           disabled={!message.trim() && !selectedFile}
-          className="p-2 bg-blue-500 text-white rounded-full disabled:opacity-50"
+          className="p-2.5 rounded-full transition-all duration-200 disabled:opacity-50 
+                   hover:scale-110 disabled:hover:scale-100 shadow-lg disabled:shadow-none"
+          style={{
+            background: `linear-gradient(135deg, ${colors.third}, ${colors.fourth})`,
+            color: 'white'
+          }}
         >
-          <Send />
+          <Send sx={{ fontSize: 20 }} />
         </button>
       </form>
     </div>

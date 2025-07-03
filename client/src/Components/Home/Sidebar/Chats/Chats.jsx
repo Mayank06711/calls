@@ -169,7 +169,7 @@ function ChatSection() {
   // console.log("users", users);
   return (
     <div className='flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text'>
-      <div className='w-96 border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary'>
+      <div className='min-w-96  border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary'>
         {/* Add socket status indicator */}
         {renderSocketStatus()}
         {/* Search Bar */}

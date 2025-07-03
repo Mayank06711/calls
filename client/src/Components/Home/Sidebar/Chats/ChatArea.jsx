@@ -240,7 +240,7 @@ const ChatArea = ({ selectedUser }) => {
   const handleMenuClick = () => {};
 
   return (
-    <div className='flex-1 flex flex-col'>
+    <div className='f-full w-full flex-1 flex flex-col'>
       {renderError()}
       <ChatHeader
         receiverData={{

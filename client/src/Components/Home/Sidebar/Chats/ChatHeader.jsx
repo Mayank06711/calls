@@ -7,6 +7,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import MessageStatus from './MessageStatus';
+import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 
 const ChatHeader = ({ 
   receiverData, 
@@ -18,6 +19,8 @@ const ChatHeader = ({
   lastMessage,
   currentUserId
 }) => {
+  const colors = useSubscriptionColors();
+
   const getStatusText = () => {
     if (isTyping) return 'typing...';
     if (receiverData.lastSeen) {
@@ -30,10 +33,10 @@ const ChatHeader = ({
   const showMessageStatus = lastMessage && lastMessage.senderId === currentUserId;
 
   return (
-    <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center">
+    <div className="px-4 py-3 bg-light-primary dark:bg-dark-primary border-b border-light-secondary/20 dark:border-dark-secondary/20 flex items-center">
       <button 
         onClick={onBack}
-        className="md:hidden mr-2 text-gray-600"
+        className="md:hidden mr-2 text-light-text/70 dark:text-dark-text/70 hover:text-light-text dark:hover:text-dark-text"
       >
         <ArrowBack />
       </button>
@@ -43,21 +46,36 @@ const ChatHeader = ({
           <img 
             src={receiverData.avatar || '/default-avatar.png'} 
             alt={receiverData.name}
-            className="w-10 h-10 rounded-full object-cover"
+            className="w-10 h-10 rounded-full object-cover ring-2"
+            style={{ 
+              ringColor: colors.third 
+            }}
           />
           {receiverData.status === 'online' && (
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            <span 
+              className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-light-primary dark:border-dark-primary"
+              style={{ 
+                backgroundColor: colors.fourth 
+              }}
+            />
           )}
         </div>
 
         <div className="ml-3">
-          <h3 className="font-medium text-gray-900">
+          <h3 className="font-medium text-light-text dark:text-dark-text">
             {receiverData.name}
           </h3>
           {receiverData.username && (
-            <p className="text-xs text-gray-400">@{receiverData.username}</p>
+            <p 
+              className="text-xs"
+              style={{ 
+                color: colors.fourth 
+              }}
+            >
+              @{receiverData.username}
+            </p>
           )}
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-light-text/60 dark:text-dark-text/60">
             {getStatusText()}
           </p>
         </div>
@@ -69,21 +87,42 @@ const ChatHeader = ({
         )}
         <button 
           onClick={onVoiceCall}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+          className="p-2 rounded-full transition-colors duration-200"
+          style={{ 
+            color: colors.third,
+            backgroundColor: 'transparent',
+            '&:hover': {
+              backgroundColor: `${colors.first}20` // 20 is for 20% opacity
+            }
+          }}
         >
           <Call />
         </button>
         
         <button 
           onClick={onVideoCall}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+          className="p-2 rounded-full transition-colors duration-200"
+          style={{ 
+            color: colors.third,
+            backgroundColor: 'transparent',
+            '&:hover': {
+              backgroundColor: `${colors.first}20`
+            }
+          }}
         >
           <VideoCall />
         </button>
         
         <button 
           onClick={onMenuClick}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+          className="p-2 rounded-full transition-colors duration-200"
+          style={{ 
+            color: colors.third,
+            backgroundColor: 'transparent',
+            '&:hover': {
+              backgroundColor: `${colors.first}20`
+            }
+          }}
         >
           <MoreVert />
         </button>
