@@ -1,67 +1,93 @@
 import { RedisManager } from "../utils/redisClient";
 import { IUser as User, UserListResponse } from '../interface/IUser';
 
+interface PaginatedUserResponse {
+  users: UserListResponse[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalUsers: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    limit: number;
+  };
+}
 
-// In your userController or service layer
-async function cacheUserList(users: UserListResponse[]) {
-    try { 
-      // Cache the entire user list with a group name 'chatUsers'
-      await RedisManager.cacheDataInGroup(
-        'users',           // group name
-        'all',           // key
-        users,                // user data
-        3600,                 // TTL: 1 hour (adjust as needed)
-        true                  // add to set for easy lookup
-      );
-  
-      // abhi ke liye not necessary in future it may be used
-      // for (const user of users) {
-      //   await RedisManager.cacheDataInGroup(
-      //     'users',
-      //     `user:${user.id}`,  // individual user key
-      //     user,
-      //     3600,               // TTL: 1 hour
-      //     true
-      //   );
-      // }
-    } catch (error) {
-      console.error('Error caching user list:', error);
-    }
+// Cache key generator helper
+function generateCacheKey(page: number, userType: string, search: string): string {
+  return `users:${page}:${userType}:${search || 'none'}`;
+}
+
+// Cache paginated user data
+async function cacheUserList(cacheKey: string, data: PaginatedUserResponse) {
+  try {
+    // Cache the paginated data with the specific cache key
+    await RedisManager.cacheDataInGroup(
+      'users_paginated',  // group name
+      cacheKey,           // unique key for this page + filters combination
+      data,               // paginated user data with metadata
+      3600,              // TTL: 1 hour (adjust as needed)
+      true               // add to set for easy lookup
+    );
+
+    // Also cache the total count separately for quick access
+    await RedisManager.cacheDataInGroup(
+      'users_metadata',
+      'total_count',
+      data.pagination.totalUsers,
+      3600,
+      true
+    );
+  } catch (error) {
+    console.error('Error caching paginated user list:', error);
   }
+}
 
-
-async function getAllUsersFromCache() {
-    try {
-      // Try to get all users from cache
-      const cachedUsers = await RedisManager.getDataFromGroup<User[]>('users', 'all'); 
-      if (cachedUsers) {
-        return cachedUsers;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting users from cache:', error);
-      return null;
-    }
+// Get paginated users from cache
+async function getAllUsersFromCache(cacheKey: string): Promise<PaginatedUserResponse | null> {
+  try {
+    const cachedData = await RedisManager.getDataFromGroup<PaginatedUserResponse>(
+      'users_paginated',
+      cacheKey
+    );
+    return cachedData;
+  } catch (error) {
+    console.error('Error getting paginated users from cache:', error);
+    return null;
   }
+}
 
-// for future use
-// async function getSingleUserFromCache(userId: string) {
+// Invalidate cache for specific filters
+// async function invalidateUserCache(page?: number, limit?: number, userType?: string, search?: string) {
 //   try {
-//     // Try to get user from cache using the same group and key pattern
-//     const cachedUser = await RedisManager.getDataFromGroup<User>(
-//       'users',           // same group name as used in cacheUserList
-//       `user:${userId}`   // same key pattern as used in cacheUserList
-//     );
-
-//     if (cachedUser) {
-//       return cachedUser;
+//     if (page && limit && userType) {
+//       // Invalidate specific page
+//       const cacheKey = generateCacheKey(page, limit, userType, search || '');
+//       await RedisManager.deleteFromGroup('users_paginated', cacheKey);
+//     } else {
+//       // Invalidate all cached user data
+//       await RedisManager.deleteGroup('users_paginated');
+//       await RedisManager.deleteGroup('users_metadata');
 //     }
-//     return null;
 //   } catch (error) {
-//     console.error(`Error getting user ${userId} from cache:`, error);
-//     return null;
+//     console.error('Error invalidating user cache:', error);
 //   }
 // }
 
-export { cacheUserList, getAllUsersFromCache }
+// Get total users count from cache
+async function getTotalUsersCount(): Promise<number | null> {
+  try {
+    return await RedisManager.getDataFromGroup<number>('users_metadata', 'total_count');
+  } catch (error) {
+    console.error('Error getting total users count from cache:', error);
+    return null;
+  }
+}
 
+export { 
+  cacheUserList, 
+  getAllUsersFromCache, 
+  // invalidateUserCache,
+  getTotalUsersCount,
+  generateCacheKey 
+};

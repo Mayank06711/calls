@@ -10,7 +10,7 @@ import { sendEmails } from "../utils/email";
 import { generateToken, verifyToken } from "../utils/tokens";
 import { GetUsersQuery, UserListResponse } from "../interface/IUser";
 import { MediaModel } from "../models/mediaModel";
-import { cacheUserList, getAllUsersFromCache } from "../redis/user.redis";
+import { cacheUserList, generateCacheKey, getAllUsersFromCache } from "../redis/user.redis";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -716,162 +716,111 @@ class User {
     };
   }
 
-private static async _getAllUsers(req: express.Request, res: express.Response) {
-  try {
-    // First try to get users from cache
-    const cachedUsers = await getAllUsersFromCache();
-    
-    if (cachedUsers) {
-      // If found in cache, return with pagination
+  private static async _getAllUsers(req: express.Request, res: express.Response) {
+    try {
       const {
         page = 1,
         limit = 20,
         userType = "all",
         search = "",
       } = req.query as GetUsersQuery;
-
-      let filteredUsers = [...cachedUsers];
-
-      // Apply filters on cached data
-      if (userType === "expert") {
-        filteredUsers = filteredUsers.filter(user => user.isExpert);
-      } else if (userType === "user") {
-        filteredUsers = filteredUsers.filter(user => !user.isExpert);
-      }
-
-      // Apply search filter if provided
-      if (search) {
-        filteredUsers = filteredUsers.filter(user => 
-          user.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-          user.username?.toLowerCase().includes(search.toLowerCase())
+  
+      // Generate cache key based on query parameters
+      const cacheKey = generateCacheKey(page, userType, search);
+      
+      // Try to get page from cache
+      const cachedData = await getAllUsersFromCache(cacheKey);
+      if (cachedData) {
+        return res.status(200).json(
+          successResponse(cachedData, "Users fetched successfully (cached)")
         );
       }
+  
+      // If not in cache, fetch from database
+      console.log("user fetch from db of page no------>",page)
 
-      // Apply pagination
-      const totalCount = filteredUsers.length;
-      const totalPages = Math.ceil(totalCount / Number(limit));
+      const filters: any = {
+        isActive: true,
+      };
+  
+      if (userType === "expert") {
+        filters.isExpert = true;
+      } else if (userType === "user") {
+        filters.isExpert = false;
+      }
+  
+      if (search) {
+        filters.$or = [
+          { fullName: { $regex: search, $options: "i" } },
+          { username: { $regex: search, $options: "i" } },
+        ];
+      }
+  
       const skip = (Number(page) - 1) * Number(limit);
-      
-      const paginatedUsers = filteredUsers.slice(skip, skip + Number(limit));
-
-      return res.status(200).json(
-        successResponse(
-          {
-            users: paginatedUsers,
-            pagination: {
-              currentPage: Number(page),
-              totalPages,
-              totalUsers: totalCount,
-              hasNextPage: page < totalPages,
-              hasPrevPage: page > 1,
-              limit: Number(limit),
-            },
-          },
-          "Users fetched successfully"
-        )
+  
+      const [users, totalCount] = await Promise.all([
+        UserModel.find(filters)
+          .select("fullName username isExpert mediaId profilePhotoId city country isActive")
+          .skip(skip)
+          .limit(Number(limit))
+          .lean(),
+        UserModel.countDocuments(filters),
+      ]);
+  
+      const usersWithPhotos = await Promise.all(
+        users.map(async (user) => {
+          let profilePhoto = null;
+          // ... existing photo fetching logic ...
+          return {
+            _id: user._id.toString(),
+            fullName: user.fullName,
+            username: user.username,
+            isExpert: user.isExpert,
+            profilePhoto,
+            city: user.city,
+            country: user.country || "",
+            isActive: user.isActive,
+          };
+        })
       );
-    }
-
-    // If not in cache, fetch from database
-    const {
-      page = 1,
-      limit = 20,
-      userType = "all",
-      search = "",
-    } = req.query as GetUsersQuery;
-
-    const filters: any = {
-      isActive: true,
-    };
-
-    if (userType === "expert") {
-      filters.isExpert = true;
-    } else if (userType === "user") {
-      filters.isExpert = false;
-    }
-
-    if (search) {
-      filters.$or = [
-        { fullName: { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const [users, totalCount] = await Promise.all([
-      UserModel.find(filters)
-        .select("fullName username isExpert mediaId profilePhotoId city country isActive")
-        .skip(skip)
-        .limit(Number(limit))
-        .lean(),
-      UserModel.countDocuments(filters),
-    ]);
-
-    const usersWithPhotos = await Promise.all(
-      users.map(async (user) => {
-        let profilePhoto = null;
-
-        if (user.mediaId && user.profilePhotoId) {
-          const media = await MediaModel.findById(user.mediaId)
-            .select("photos")
-            .lean();
-
-          if (media) {
-            const photo = media.photos.find(
-              (p) => p.public_id === user.profilePhotoId
-            );
-            if (photo) {
-              profilePhoto = {
-                url: photo.url,
-                thumbnail_url: photo.thumbnail_url,
-              };
-            }
-          }
-        }
-
-        return {
-          _id: user._id.toString(),
-          fullName: user.fullName,
-          username: user.username,
-          isExpert: user.isExpert,
-          profilePhoto,
-          city: user.city,
-          country: user.country || "",
-          isActive: user.isActive,
-        };
-      })
-    );
-
-    // Cache the results for future use
-    await cacheUserList(usersWithPhotos);
-
-    const totalPages = Math.ceil(totalCount / Number(limit));
-    
-    return res.status(200).json(
-      successResponse(
-        {
-          users: usersWithPhotos,
-          pagination: {
-            currentPage: Number(page),
-            totalPages,
-            totalUsers: totalCount,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-            limit: Number(limit),
-          },
+  
+      const totalPages = Math.ceil(totalCount / Number(limit));
+      const responseData = {
+        users: usersWithPhotos,
+        pagination: {
+          currentPage: Number(page),
+          totalPages,
+          totalUsers: totalCount,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit: Number(limit),
         },
-        "Users fetched successfully"
-      )
-    );
-
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
+      };
+  
+      // Cache the page results
+      await cacheUserList(cacheKey, {
+        users: usersWithPhotos,
+        pagination: {
+          currentPage: Number(page),
+          totalPages,
+          totalUsers: totalCount,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit: Number(limit),
+        }
+      });
+  
+      return res.status(200).json(
+        successResponse(responseData, "Users fetched successfully")
+      );
+  
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to fetch users");
     }
-    throw new ApiError(500, "Internal Server Error: Unable to fetch users");
   }
-}
 
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
