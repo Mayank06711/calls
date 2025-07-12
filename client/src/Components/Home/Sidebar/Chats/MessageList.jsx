@@ -3,6 +3,7 @@ import MessageStatus from "./MessageStatus";
 import { format } from "date-fns";
 import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import { Avatar } from "@mui/material";
+import "./MessageList.css";
 
 const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
   const messagesEndRef = useRef(null);
@@ -45,17 +46,26 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
   };
 
   // Helper function to convert hex to rgb for background opacity
+  // Helper function to convert hex to rgb numbers
   const hexToRgb = (hex) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
-      ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(
-          result[3],
-          16
-        )}`
-      : "255, 255, 255";
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : { r: 255, g: 255, b: 255 };
+  };
+
+  // Helper to create rgba string
+  const createRgba = (hex, alpha = 1) => {
+    const rgb = hexToRgb(hex);
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
   };
 
   const renderMessageContent = (message) => {
+    console.log("message from chat render", message);
     switch (message.type) {
       case "image":
         return (
@@ -79,23 +89,27 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
     }
   };
 
+  console.log("Colors:", colors);
+  console.log("hexToRgb first:", hexToRgb(colors.first));
+  console.log("hexToRgb third:", hexToRgb(colors.third));
+
   return (
     <div
-      className="flex-1 overflow-y-auto px-4 pt-2 space-y-2 bg-red-500"
+      className="flex-1 w-full  overflow-y-scroll px-4 pt-2 space-y-2 scrollbar-hide"
       style={{
         scrollbarColor: `${colors.third} transparent`,
         scrollbarWidth: "thin",
       }}
     >
-      {messages.map((message) => {
+      {messages.map((message, idx) => {
         const isSender = message.senderId === currentUserId;
 
         return (
           <div
             key={message.id}
-            className={`flex items-end  bg-green-700 ${
+            className={`flex items-end ${
               isSender ? "justify-end" : "justify-start"
-            } message-item`}
+            } `}
             data-message-id={message.id}
             data-unread={!isSender && message.status !== "seen"}
           >
@@ -104,8 +118,8 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
                 src={message.senderAvatar}
                 alt={message.senderName}
                 sx={{
-                  width: 32,
-                  height: 32,
+                  width: 24,
+                  height: 24,
                   bgcolor: colors.third,
                   border: `2px solid ${colors.fourth}`,
                 }}
@@ -113,22 +127,27 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
             )}
 
             <div
-              className={`max-w-[70%] flex text-wrap overflow-hidden bg-yellow-500 flex-col ${
+              className={`max-w-[70%] flex  flex-col ${
                 isSender ? "items-end" : "items-start"
               }`}
             >
               <div
-                className={`rounded-2xl px-4 py-2  shadow-sm ${
-                  isSender ? "rounded-br-sm" : "rounded-bl-sm"
+                className={`rounded-2xl px-4 py-2 shadow-sm break-all ${
+                  isSender && message.id ? "" : "pop-bubble"
+                } ${
+                  isSender ? "rounded-br-[0] sender" : "rounded-bl-[0] receiver"
+                } ${
+                  !isSender
+                    ? "bg-gradient-to-br from-slate-100/50 to-slate-200/50 dark:from-slate-700/50 dark:to-slate-600/50 border-l-2 border-slate-300 dark:border-slate-600"
+                    : ""
                 }`}
                 style={{
                   background: isSender
                     ? `linear-gradient(135deg, ${colors.third}, ${colors.fourth})`
-                    : `linear-gradient(135deg, rgba(${hexToRgb(
-                        colors.first
-                      )}, 0.1), rgba(${hexToRgb(colors.third)}, 0.1))`,
-                  borderLeft: !isSender ? `2px solid ${colors.third}` : "none",
-                  borderRight: isSender ? `2px solid ${colors.fourth}` : "none",
+                    : undefined,
+                  borderRight: isSender
+                    ? `2px solid ${colors.fourth}`
+                    : undefined,
                 }}
               >
                 <div
@@ -143,13 +162,11 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
               </div>
 
               <div
-                className={`flex items-center gap-1 mt-1 text-xs ${
-                  isSender ? "flex-row" : "flex-row-reverse"
+                className={`flex items-center gap-1  text-light-text/50 dark:text-dark-text/50 text-[10px] ${
+                  isSender ? "flex-row" : "ml-2"
                 }`}
               >
-                <span className="text-light-text/50 dark:text-dark-text/50">
-                  {format(new Date(message.timestamp), "HH:mm")}
-                </span>
+                <span>{format(new Date(message.timestamp), "HH:mm")}</span>
                 {isSender && (
                   <MessageStatus
                     status={message.status}

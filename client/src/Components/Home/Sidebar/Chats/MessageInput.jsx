@@ -64,7 +64,25 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
         await onSendMessage({
           type: 'image',
           content: uploadedFile.url,
-          fileName: selectedFile.name
+          fileName: selectedFile.name,
+          metadata: {
+            fileSize: null,
+            fileType: '',
+            uploadedAt: null,
+            width: null,
+            height: null,
+            duration: null,
+            thumbnailUrl: '',
+            originalName: '',
+            uploaderId: '',
+            description: '',
+            tags: [],
+            isEdited: false,
+            isCompressed: false,
+            resolution: '',
+            exifData: {},
+            customData: {}
+          }
         });
         clearFileSelection();
       } catch (error) {
@@ -76,8 +94,27 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
     if (message.trim()) {
       await onSendMessage({
         type: 'text',
-        content: message.trim()
+        content: message.trim(),
+        metadata: {
+          fileSize: null,
+          fileType: '',
+          uploadedAt: null,
+          width: null,
+          height: null,
+          duration: null,
+          thumbnailUrl: '',
+          originalName: '',
+          uploaderId: '',
+          description: '',
+          tags: [],
+          isEdited: false,
+          isCompressed: false,
+          resolution: '',
+          exifData: {},
+          customData: {}
+        }
       });
+    
       setMessage('');
     }
   };
@@ -162,6 +199,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
                 boxShadow: `0 0 0 2px ${colors.fourth}20`
               }
             }}
+            spellCheck={true} 
           />
         </div>
 

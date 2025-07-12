@@ -300,7 +300,7 @@ function ChatSection() {
       {selectedUser && isSocketReady ? (
         <ChatArea selectedUser={selectedUser} />
       ) : (
-        <div className='flex-1 flex items-center justify-center'>
+        <div className='flex-1 flex items-center justify-center '>
           <p className='text-light-text/50'>
             {!isSocketReady
               ? "Connecting to chat services..."
