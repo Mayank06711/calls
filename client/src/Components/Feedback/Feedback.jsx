@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Bowser from "bowser";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { Close, CloudUpload } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { feedbackClick } from "../../redux/actions";
 import { fetchUserLocation } from "../../helper/locatonPicker";
+import { submitBugFeedbackThunk } from "../../redux/thunks/feedback.thunks";
 
 const Feedback = () => {
   const [category, setCategory] = useState("");
@@ -26,10 +27,12 @@ const Feedback = () => {
   const [customCategory, setCustomCategory] = useState("");
   const [file, setFile] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  
   const isOpen = useSelector((state) => state.isOpenFeedback);
   const dispatch = useDispatch();
   const storedDarkMode = localStorage.getItem("isDarkMode");
-  const [previewUrl, setPreviewUrl] = useState(null);
 
   const onClose = () => {
     dispatch(feedbackClick(false));
@@ -53,55 +56,180 @@ const Feedback = () => {
     }
   }, [storedDarkMode]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  // Memoized function to get system information
+  const getSystemInfo = useCallback(() => {
     const browser = Bowser.getParser(window.navigator.userAgent);
-    const browserInfo =
-      browser.getBrowserName() + " " + browser.getBrowserVersion();
-    const osInfo = browser.getOSName() + " " + browser.getOSVersion();
-    const screenResolution = `${window.screen.width}x${window.screen.height}`;
-
-    // Step 1: Fetch user's location info
-    const locationData = await fetchUserLocation();
-
-    // Create a JSON object instead of FormData
-    const feedbackData = {
-      category,
-      customCategory: category === "Other" ? customCategory : "",
-      feedbackText,
-      browserInfo,
-      osInfo,
-      screenResolution,
-      location: locationData, // add location info here
+    return {
+      browserInfo: `${browser.getBrowserName()} ${browser.getBrowserVersion()}`,
+      osInfo: `${browser.getOSName()} ${browser.getOSVersion()}`,
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+      appVersion: '1.0.0' // You can get this from your app config
     };
+  }, []);
 
-    if (file) {
+  // Memoized function to process file attachment
+  const processFileAttachment = useCallback((file) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result.split(",")[1];
-
-        feedbackData.attachment = {
-          filename: file.name,
-          contentType: file.type,
-          data: base64String,
-        };
-
-        console.log("Feedback data in JSON format:", feedbackData);
-        // await sendFeedbackData(feedbackData);
+      reader.onloadend = () => {
+        try {
+          const base64String = reader.result.split(',')[1];
+          resolve({
+            filename: file.name,
+            contentType: file.type,
+            data: base64String
+          });
+        } catch (error) {
+          reject(error);
+        }
       };
+      reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
-    } else {
-      console.log("Feedback data in JSON format:", feedbackData);
-      //   await sendFeedbackData(feedbackData);
-    }
-  };
+    });
+  }, []);
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!feedbackText.trim() || feedbackText.trim().length < 10) {
+      alert('Please enter at least 10 characters for feedback');
+      return;
     }
-  };
+
+    if (!category) {
+      alert('Please select a category');
+      return;
+    }
+
+    if (category === 'Other' && !customCategory.trim()) {
+      alert('Please specify custom category');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Get system information
+      const systemInfo = getSystemInfo();
+      
+      // Fetch user location
+      const locationData = await fetchUserLocation();
+
+      // Prepare base feedback data
+      const feedbackData = {
+        message: feedbackText.trim(),
+        bugType: category,
+        customBugType: category === 'Other' ? customCategory.trim() : undefined,
+        severity: 'Medium', // Default severity, can be made configurable
+        browserInfo: systemInfo.browserInfo,
+        osInfo: systemInfo.osInfo,
+        screenResolution: systemInfo.screenResolution,
+        appVersion: systemInfo.appVersion,
+        location: locationData,
+        stepsToReproduce: `Category: ${category}${category === 'Other' ? ` (${customCategory})` : ''}`,
+      };
+
+      // Process file attachment if present
+      if (file) {
+        try {
+          const attachment = await processFileAttachment(file);
+          feedbackData.attachmentUrls = [attachment.data]; // Store base64 data
+        } catch (error) {
+          console.error('Failed to process file:', error);
+          alert('Failed to process file attachment. Please try again.');
+          return;
+        }
+      }
+
+      console.log('Submitting feedback data:', feedbackData);
+
+      // Submit feedback using thunk
+      const result =await dispatch(submitBugFeedbackThunk(feedbackData));
+      if (result.success) {
+        // Reset form on success
+        setFeedbackText('');
+        setCategory('');
+        setCustomCategory('');
+        setFile(null);
+        setPreviewUrl(null);
+        
+        // Close dialog on success
+        dispatch(feedbackClick(false));
+        
+        // Optional: Show success message or redirect
+        console.log('Feedback submitted successfully:', result.data);
+      } else {
+        console.error('Failed to submit feedback:', result.error);
+      }
+
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    feedbackText,
+    category,
+    customCategory,
+    file,
+    dispatch,
+    getSystemInfo,
+    processFileAttachment
+  ]);
+
+  // Handle file change
+  const handleFileChange = useCallback((e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      // Validate file size (e.g., max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (selectedFile.size > maxSize) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      // Validate file type (optional)
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        alert('Please select a valid file type (JPEG, PNG, GIF, PDF, or TXT)');
+        return;
+      }
+      
+      setFile(selectedFile);
+      
+      // Create preview for images
+      if (selectedFile.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviewUrl(reader.result);
+        };
+        reader.readAsDataURL(selectedFile);
+      } else {
+        setPreviewUrl(null);
+      }
+    }
+  }, []);
+
+  // Handle category change
+  const handleCategoryChange = useCallback((e) => {
+    setCategory(e.target.value);
+    if (e.target.value !== 'Other') {
+      setCustomCategory(''); // Clear custom category when not "Other"
+    }
+  }, []);
+
+  // Handle file removal
+  const handleFileRemove = useCallback(() => {
+    setFile(null);
+    setPreviewUrl(null);
+    // Reset the file input value to allow re-uploading the same file
+    const fileInput = document.getElementById('raised-button-file');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }, []);
 
   return (
     <Dialog
@@ -110,7 +238,6 @@ const Feedback = () => {
       maxWidth="sm"
       fullWidth
       scroll="body"
-
       PaperProps={{
         sx: {
           backgroundColor: isDarkMode
@@ -122,12 +249,7 @@ const Feedback = () => {
           borderRadius: 2,
           overflow: "hidden",
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-          
         },
-      }}
-      sx={{
-        backdropFilter: "blur(8px)",
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
       }}
       className={`${isDarkMode ? "dark" : ""}`}
     >
@@ -173,8 +295,9 @@ const Feedback = () => {
               id="category"
               value={category}
               label="Category"
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={handleCategoryChange}
               required
+              disabled={isSubmitting}
               className="dark:bg-dark-secondary dark:text-dark-text bg-light-secondary text-light-text"
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": {
@@ -194,6 +317,8 @@ const Feedback = () => {
               <MenuItem value="Crash">Crash</MenuItem>
               <MenuItem value="Performance">Performance</MenuItem>
               <MenuItem value="Suggestion">Suggestion</MenuItem>
+              <MenuItem value="Security">Security</MenuItem>
+              <MenuItem value="Functionality">Functionality</MenuItem>
               <MenuItem value="Other">Other</MenuItem>
             </Select>
           </FormControl>
@@ -205,6 +330,7 @@ const Feedback = () => {
               value={customCategory}
               onChange={(e) => setCustomCategory(e.target.value)}
               required
+              disabled={isSubmitting}
               margin="normal"
               variant="outlined"
               className="dark:bg-dark-secondary dark:text-dark-text bg-light-secondary text-light-text"
@@ -245,6 +371,7 @@ const Feedback = () => {
             value={feedbackText}
             onChange={(e) => setFeedbackText(e.target.value)}
             required
+            disabled={isSubmitting}
             multiline
             rows={4}
             margin="normal"
@@ -291,21 +418,9 @@ const Feedback = () => {
               style={{ display: "none" }}
               id="raised-button-file"
               type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const selectedFile = e.target.files?.[0] ?? null;
-                setFile(selectedFile);
-
-                if (selectedFile) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setPreviewUrl(reader.result);
-                  };
-                  reader.readAsDataURL(selectedFile);
-                } else {
-                  setPreviewUrl(null);
-                }
-              }}
+              accept="image/*,.pdf,.txt"
+              onChange={handleFileChange}
+              disabled={isSubmitting}
             />
 
             <label htmlFor="raised-button-file">
@@ -313,13 +428,14 @@ const Feedback = () => {
                 variant="outlined"
                 component="span"
                 startIcon={<CloudUpload />}
+                disabled={isSubmitting}
                 className={`
-        ${
-          isDarkMode
-            ? "dark:border-dark-text/30 dark:text-dark-text"
-            : "border-light-text/20 text-light-text"
-        }
-      `}
+                  ${
+                    isDarkMode
+                      ? "dark:border-dark-text/30 dark:text-dark-text"
+                      : "border-light-text/20 text-light-text"
+                  }
+                `}
                 sx={{
                   "&:hover": {
                     backgroundColor: isDarkMode
@@ -328,7 +444,7 @@ const Feedback = () => {
                   },
                 }}
               >
-                Upload Image
+                Upload File
               </Button>
             </label>
 
@@ -372,12 +488,10 @@ const Feedback = () => {
                       }}
                     />
                     <IconButton
-                      onClick={() => {
-                        setFile(null);
-                        setPreviewUrl(null);
-                      }}
+                      onClick={handleFileRemove}
                       size="small"
                       className="remove-btn"
+                      disabled={isSubmitting}
                       sx={{
                         position: "absolute",
                         top: -8,
@@ -410,6 +524,7 @@ const Feedback = () => {
         >
           <Button
             onClick={onClose}
+            disabled={isSubmitting}
             className="dark:text-dark-text/70 text-light-text/70 hover:dark:bg-dark-secondary hover:bg-light-secondary/20"
           >
             Cancel
@@ -417,6 +532,7 @@ const Feedback = () => {
           <Button
             type="submit"
             variant="contained"
+            disabled={isSubmitting || !feedbackText.trim() || !category}
             className="dark:bg-dark-accent bg-light-accent dark:text-dark-text text-white"
             sx={{
               "&:hover": {
@@ -427,7 +543,7 @@ const Feedback = () => {
               },
             }}
           >
-            Submit
+            {isSubmitting ? 'Submitting...' : 'Submit'}
           </Button>
         </DialogActions>
       </form>
