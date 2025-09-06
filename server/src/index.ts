@@ -25,6 +25,7 @@ import {
 } from "./db";
 import cronSchuduler from "./auto/cronJob";
 
+
 class ServerManager {
   private app = express();
   private server!: HTTPServer; // Use the HTTPSServer type //! (definite assignment) operator to tell TypeScript that server will be assigned before it is used as it will not be assigned until start method is called
@@ -62,8 +63,8 @@ class ServerManager {
   private initializeMiddlewares() {
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     // this.app.set("trust proxy", 1);
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
+    this.app.use(express.json({ limit: '10mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use(cookieParser());
     this.app.use(
       rateLimit({
