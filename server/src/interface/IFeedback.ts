@@ -25,6 +25,9 @@ export interface IBugFeedback extends Document {
   createdAt: Date;
   updatedAt: Date;
   responseTime?: number; // virtual
+   // Add instance methods
+   assignToDeveloper(developerId: mongoose.Types.ObjectId): Promise<IBugFeedback>;
+   markAsFixed(response: string): Promise<IBugFeedback>;
 }
 
 export interface IBugFeedbackModel extends mongoose.Model<IBugFeedback> {
