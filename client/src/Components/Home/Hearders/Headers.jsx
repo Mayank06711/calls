@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import { useDispatch } from "react-redux";
 import { feedbackClick } from "../../../redux/actions";
+import KYFLogo from "../../../assets/KYF_Logo1.png";
 
 function Headers({ isDarkMode, setIsDarkMode }) {
   const colors = useSubscriptionColors();
@@ -29,13 +30,22 @@ function Headers({ isDarkMode, setIsDarkMode }) {
         isDarkMode ? "bg-gray-800" : "bg-white"
       } shadow-md z-50 px-4 flex items-center justify-between`}
     >
-      <h1 
-        className="text-xl font-bold cursor-pointer" 
-        style={{ color: colors.third }}
+       <div 
+        className="flex items-center cursor-pointer" 
         onClick={() => handleClick("/")}
       >
-        Know Your Style
-      </h1>
+        <img 
+          src={KYFLogo} 
+          alt="KYF Logo" 
+          className="h-14 w-auto"
+        />
+        <h1 
+          className="text-xl font-bold" 
+          style={{ color: colors.third }}
+        >
+          Know Your Style
+        </h1>
+      </div>
       <Searchbar isDarkMode={isDarkMode} />
       <div className="flex items-center gap-2 step1 tour9">
         {/* Feedback Button */}
