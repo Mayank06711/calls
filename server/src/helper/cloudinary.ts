@@ -1,7 +1,5 @@
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 import { ApiError } from "../utils/apiError";
-import streamifier from "streamifier";
-
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -17,62 +15,10 @@ interface CloudinaryUploadResult {
 
 class CLOUDINARY_SERVICES {
   // Upload single file to Cloudinary
-  private static async uploadToCloudinary(
-    file: Express.Multer.File,
-    folder: string = "uploads"
-  ): Promise<string> {
-    try {
-      return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: folder,
-            resource_type: "auto", // Automatically detect file type
-            use_filename: true,
-            unique_filename: true,
-          },
-          (error, result) => {
-            if (error) {
-              reject(
-                new ApiError(500, error.message || "Cloudinary upload failed")
-              );
-            } else {
-              resolve(result!.secure_url);
-            }
-          }
-        );
-
-        // Convert buffer to stream and pipe to Cloudinary
-        streamifier.createReadStream(file.buffer).pipe(uploadStream);
-      });
-    } catch (error: any) {
-      console.error("Error uploading to Cloudinary:", error);
-      throw new ApiError(
-        500,
-        error?.message || "Failed to upload to Cloudinary",
-        [error]
-      );
-    }
-  }
+  
 
   // Upload multiple files to Cloudinary
-  private static async uploadMultipleToCloudinary(
-    files: Express.Multer.File[],
-    folder: string = "uploads"
-  ): Promise<string[]> {
-    try {
-      const uploadPromises = files.map((file) =>
-        CLOUDINARY_SERVICES.uploadToCloudinary(file, folder)
-      );
-      return await Promise.all(uploadPromises);
-    } catch (error: any) {
-      console.error("Error uploading multiple files to Cloudinary:", error);
-      throw new ApiError(
-        500,
-        error?.message || "Failed to upload files to Cloudinary",
-        [error]
-      );
-    }
-  }
+
 
   // Generate presigned upload URL for Cloudinary (using unsigned upload)
   private static async generateCloudinaryUploadUrl(
@@ -119,8 +65,7 @@ class CLOUDINARY_SERVICES {
     }
   }
 
-  static uploadSingle = CLOUDINARY_SERVICES.uploadToCloudinary;
-  static uploadMultiple = CLOUDINARY_SERVICES.uploadMultipleToCloudinary;
+  
   static generateUploadUrl = CLOUDINARY_SERVICES.generateCloudinaryUploadUrl;
 }
 

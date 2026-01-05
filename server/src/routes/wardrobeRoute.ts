@@ -1,4 +1,5 @@
 import Wardrobe from "../controllers/wardrobeController";
+import {UploadController} from "../controllers/upload-controller";
 import { Middleware } from "../middlewares/middlewares";
 import { Router } from "express";
 
@@ -13,5 +14,6 @@ router.post("/make-pair", Wardrobe.makePair);
 router.get("/pairs", Wardrobe.getYourPairs);
 router.get("/pairs/:id", Wardrobe.getYourPairById);
 router.put("/pairs/:id", Wardrobe.updatePair);
+router.post("/generate-upload-url", UploadController.generateUploadUrl);
 
 export default router;

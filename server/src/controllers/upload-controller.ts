@@ -79,46 +79,7 @@ class UploadController {
   }
 
   // Server-side upload (alternative method)
-  static async uploadFiles(req: Request, res: Response) {
-    try {
-      const files = req.files as Express.Multer.File[];
 
-      if (!files || files.length === 0) {
-        throw new ApiError(400, "No files uploaded");
-      }
-
-      let fileUrls: string[];
-
-      if (UPLOAD_PROVIDER === "CLOUDINARY") {
-        // Upload to Cloudinary
-        fileUrls = await CLOUDINARY_SERVICES.uploadMultiple(files, "uploads");
-      } else {
-        // Upload to S3
-        const uploadPromises = files.map((file) =>
-          AWS_SERVICES.multipartUpload(
-            process.env.AWS_BUCKET_NAME!,
-            file.originalname,
-            file
-          )
-        );
-        fileUrls = await Promise.all(uploadPromises);
-      }
-
-      res.status(200).json({
-        success: true,
-        provider: UPLOAD_PROVIDER.toLowerCase(),
-        message: "Files uploaded successfully",
-        fileUrls: fileUrls,
-      });
-    } catch (error: any) {
-      console.error("Error uploading files:", error);
-      const statusCode = error.statusCode || 500;
-      res.status(statusCode).json({
-        success: false,
-        error: error.message || "Failed to upload files",
-      });
-    }
-  }
 
   // Get current provider
   static async getProvider(req: Request, res: Response) {
