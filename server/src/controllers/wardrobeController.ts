@@ -19,10 +19,10 @@ class Wardrobe {
         photoUrl,
         color,
         brand,
-        season: season || 'All'
+        season: season || 'All',
+        
       });
 
-      //photo upload logic
 
       const savedCloth = await newCloth.save();
       res.status(201).json({
@@ -32,7 +32,8 @@ class Wardrobe {
     } catch (error) {
       res.status(400).json({
         success: false,
-        // error: error.message
+        message: "Failed to add cloth",
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
