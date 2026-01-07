@@ -15,10 +15,9 @@ class RedisManager {
     const config = {
       host: process.env.REDIS_HOST!,
       port: parseInt(process.env.REDIS_PORT! || "6379"),
-      username: this.isDockerCompose
-        ? process.env.REDIS_USERNAME || "default"
-        : undefined,
-      password: this.isDockerCompose ? process.env.REDIS_PASSWORD : undefined,
+      // Use authentication if credentials are provided (works for both local and Docker)
+      username: process.env.REDIS_USERNAME || undefined,
+      password: process.env.REDIS_PASSWORD || undefined,
       connectTimeout: 10000,
       retryStrategy(times: number) {
         const delay = Math.min(times * 200, 2000);
@@ -41,46 +40,25 @@ class RedisManager {
         console.log("Redis connection Already Exist");
         return;
       }
-      // Only validate environment variables when running in Docker Compose
-      if (this.isDockerCompose) {
-        if (
-          !process.env.REDIS_HOST ||
-          !process.env.REDIS_PORT ||
-          !process.env.REDIS_PASSWORD ||
-          !process.env.REDIS_USERNAME
-        ) {
-          throw new Error("Missing required Redis environment variables");
-        }
-      }
 
       const redisConfig = RedisManager.getRedisConfig();
+      
+      console.log("Connecting to Redis at:", process.env.REDIS_HOST, "with authentication:", !!process.env.REDIS_PASSWORD);
 
-      // Initialize main Redis client
+      // Initialize main Redis client (authentication is handled by config)
       this.redis = new Redis(redisConfig);
 
       // Wait for main Redis to be ready
       await new Promise<void>((resolve, reject) => {
         this.redis!.once("ready", () => {
-          console.log("Redis Main Client Ready");
+          console.log("✅ Redis Main Client Ready");
           resolve();
         });
         this.redis!.once("error", reject);
       });
 
       const pong = await this.redis.ping();
-      console.log("Redis PING response:", pong);
-      // Only authenticate if running in Docker Compose
-      if (this.isDockerCompose) {
-        try {
-          await this.redis.auth(
-            process.env.REDIS_USERNAME!,
-            process.env.REDIS_PASSWORD!
-          );
-        } catch (authError) {
-          console.error("Redis authentication failed:", authError);
-          throw authError;
-        }
-      }
+      console.log("✅ Redis PING response:", pong);
 
       // Initialize subscriber client
       this.subscriber = this.redis.duplicate({
