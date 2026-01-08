@@ -2,9 +2,9 @@ import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 import { ApiError } from "../utils/apiError";
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  api_secret: process.env.CLOUDINARY_API_SECRET_KEY,
 });
 
 interface CloudinaryUploadResult {
