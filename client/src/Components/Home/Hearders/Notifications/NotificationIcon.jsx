@@ -1,6 +1,6 @@
 import React from 'react'
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import { IconButton } from '@mui/material';
+import { IconButton, Badge } from '@mui/material';
 import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,7 +14,22 @@ function Notification() {
   return (
     <div >
      <IconButton onClick={() => handleClick("/notifications")}>
-     <NotificationsIcon sx={{color:colors.fourth}} />
+      <Badge 
+        badgeContent={0} 
+        max={99}
+        sx={{
+          '& .MuiBadge-badge': {
+            backgroundColor: colors.fourth,
+            color: '#fff',
+            fontSize: '0.65rem',
+            minWidth: '18px',
+            height: '18px',
+            padding: '0 4px'
+          }
+        }}
+      >
+        <NotificationsIcon sx={{color:colors.fourth}} />
+      </Badge>
      </IconButton>
     </div>
   )

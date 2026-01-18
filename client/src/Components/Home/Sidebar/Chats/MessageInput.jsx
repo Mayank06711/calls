@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, Image, Close } from '@mui/icons-material';
 import PropTypes from 'prop-types';
 import { uploadImage } from '../../../../socket/handleImageUpload';
@@ -9,8 +9,19 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState('');
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const colors = useSubscriptionColors();
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto'; // Reset height
+      const newHeight = Math.min(textarea.scrollHeight, 120); // Max 120px (~5 lines)
+      textarea.style.height = `${newHeight}px`;
+    }
+  }, [message]);
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -156,7 +167,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="flex items-center gap-3">
+      <form onSubmit={handleSubmit} className="flex items-end gap-3">
         <input
           type="file"
           ref={fileInputRef}
@@ -168,7 +179,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-full transition-all duration-200 hover:scale-110"
+          className="p-2 mb-0.5 rounded-full transition-all duration-200 hover:scale-110"
           style={{
             color: colors.third,
             '&:hover': {
@@ -180,12 +191,20 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
         </button>
 
         <div className="flex-1 relative">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={message}
             onChange={handleChange}
+            onKeyDown={(e) => {
+              // Submit on Enter (without Shift), allow Shift+Enter for new line
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
             placeholder="Type a message..."
-            className="w-full px-4 py-2.5 rounded-full transition-all duration-200 
+            rows={1}
+            className="message-textarea w-full px-4 py-2.5 rounded-2xl transition-all duration-200 resize-none
                      bg-light-secondary/5 dark:bg-dark-secondary/5
                      text-light-text dark:text-dark-text
                      placeholder-light-text/50 dark:placeholder-dark-text/50
@@ -193,20 +212,39 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
             style={{
               borderWidth: '1px',
               borderStyle: 'solid',
-              borderColor: `${colors.third}40`,
-              '&:focus': {
-                borderColor: colors.fourth,
-                boxShadow: `0 0 0 2px ${colors.fourth}20`
-              }
+              borderColor: colors.fourth, // Full subscription color for border
+              minHeight: '42px',
+              maxHeight: '120px',
+              lineHeight: '1.4',
+              overflowY: message.includes('\n') || (textareaRef.current?.scrollHeight > 50) ? 'auto' : 'hidden',
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${colors.fourth} transparent`, // Match border color
             }}
             spellCheck={true} 
           />
+          {/* Custom scrollbar - only visible when content overflows */}
+          <style>{`
+            .message-textarea::-webkit-scrollbar {
+              width: 4px;
+            }
+            .message-textarea::-webkit-scrollbar-track {
+              background: transparent;
+              margin: 8px 0;
+            }
+            .message-textarea::-webkit-scrollbar-thumb {
+              background: ${colors.fourth};
+              border-radius: 4px;
+            }
+            .message-textarea::-webkit-scrollbar-thumb:hover {
+              background: ${colors.third};
+            }
+          `}</style>
         </div>
 
         <button
           type="submit"
           disabled={!message.trim() && !selectedFile}
-          className="p-2.5 rounded-full transition-all duration-200 disabled:opacity-50 
+          className="p-2.5 mb-0.5 rounded-full transition-all duration-200 disabled:opacity-50 
                    hover:scale-110 disabled:hover:scale-100 shadow-lg disabled:shadow-none"
           style={{
             background: `linear-gradient(135deg, ${colors.third}, ${colors.fourth})`,

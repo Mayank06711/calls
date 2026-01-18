@@ -78,3 +78,12 @@ export interface INewMsg extends Document {
   updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
   deleteMessage(messageId: number, userId: Types.ObjectId): Promise<void>;
 }
+
+// Read Receipt Interface for Redis Queue
+export interface IReadReceipt {
+  messageId: number;
+  chatId: string;
+  senderId: string;
+  readAt: Date;
+  readBy: string;
+}

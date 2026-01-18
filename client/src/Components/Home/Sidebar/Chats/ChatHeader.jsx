@@ -68,7 +68,7 @@ const ChatHeader = ({
             <span 
               className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-light-primary dark:border-dark-primary"
               style={{ 
-                backgroundColor: colors.fourth 
+                backgroundColor: '#22c55e' // Green color for online status
               }}
             />
           )}

@@ -381,11 +381,22 @@ class SocketManager {
             socket.data.userId = userData.userId;
 
             // setting up the chat controller listerns
-            const chatController = new ChatController();
+            const chatController = ChatController.getInstance();
             chatController.setupAuthenticatedSocketListeners(socket);
+
+            // Flush pending read receipts for this user
+            await chatController.flushPendingReadReceipts(socket.id, userData.userId);
 
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
+            
+            // 🟢 Broadcast to ALL clients that this user is now ONLINE
+            this.io.emit('user:online', { 
+              userId: userData.userId,
+              timestamp: new Date()
+            });
+            console.log(`🟢 Broadcasted user:online for ${userData.userId}`);
+            
             callback({
               status: userData.status,
               message: "Authentication successful",
@@ -748,6 +759,17 @@ class SocketManager {
         console.log(
           `User disconnected - Socket: ${socket.id}, User: ${userData.userId}`
         );
+        
+        // Check if user has any other active sockets before broadcasting offline
+        const userMapping = await RedisManager.getDataFromGroup(
+          this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+          userData.userId.toString()
+        ) as UserSocketMapping | null;
+        
+        const remainingSockets = (userMapping?.sockets || []).filter(
+          (s: UserSocket) => s.socketId !== socket.id
+        );
+        
         await RedisManager.removeDataFromGroup(
           this.SOCKET_CONSTANTS.AUTH.GROUP,
           socket.id
@@ -764,6 +786,17 @@ class SocketManager {
           "disconnect",
           false // Don't emit on disconnect as it's already disconnected
         );
+        
+        // 🔴 ONLY broadcast user:offline if this was their LAST socket
+        if (remainingSockets.length === 0) {
+          this.io.emit('user:offline', { 
+            userId: userData.userId,
+            timestamp: new Date()
+          });
+          console.log(`🔴 Broadcasted user:offline for ${userData.userId} (last socket)`);
+        } else {
+          console.log(`🟡 User ${userData.userId} still has ${remainingSockets.length} active socket(s)`);
+        }
       } catch (error) {
         console.error("Error handling disconnect:", error);
       }
@@ -1179,17 +1212,27 @@ class SocketManager {
     userId: string = ""
   ): Promise<UserSocket | null> {
     if (!userId) {
+      console.log(`[getSocketIdUsingUserId] No userId provided`);
       return null;
     }
     try {
-      const userData = await RedisManager.getDataFromGroup<UserSocket>(
+      console.log(`[getSocketIdUsingUserId] Looking up userId: ${userId}`);
+      const userMapping = await RedisManager.getDataFromGroup<UserSocketMapping>(
         this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
         userId
       );
-      if (!userData || !userData.socketId) {
+      console.log(`[getSocketIdUsingUserId] Redis result for ${userId}:`, userMapping);
+      
+      // FIX: Redis stores UserSocketMapping with sockets array, not UserSocket
+      if (!userMapping || !userMapping.sockets || userMapping.sockets.length === 0) {
+        console.log(`[getSocketIdUsingUserId] No sockets found for user ${userId}`);
         return null;
       }
-      return userData;
+      
+      // Return the first active socket (most recent connection)
+      const activeSocket = userMapping.sockets[0];
+      console.log(`[getSocketIdUsingUserId] Found socket ${activeSocket.socketId} for user ${userId}`);
+      return activeSocket;
     } catch (error) {
       console.log("Error finding Connected user with his id=>\n", error);
       return null;

@@ -37,8 +37,10 @@ initializeChatListeners(callbacks) {
     return () => {}; // Return empty cleanup function
   }
 
+  // ⚠️ CRITICAL: Do NOT set up 'message' listener here - it's handled globally by Chats.jsx
+  // Only set up the other event listeners here
   const events = {
-    'message': callbacks.onMessageReceived, // unified event for both send/receive
+    // 'message' is handled by addMessageListener in Chats.jsx - DON'T add here!
     'sent-ack': callbacks.onSentAck,
     'delivered': callbacks.onDelivered,
     'seen': callbacks.onSeen,
@@ -47,21 +49,40 @@ initializeChatListeners(callbacks) {
     'system:message': callbacks.onSystemMessage,
   };
 
-  // Setup listeners
+  // Store the onMessageReceived callback separately for ChatArea to use
+  // This will be called by the global listener in Chats.jsx (not a duplicate listener)
+  if (callbacks.onMessageReceived) {
+    this.chatAreaMessageCallback = callbacks.onMessageReceived;
+  }
+
+  // Setup listeners (excluding 'message')
   Object.entries(events).forEach(([event, handler]) => {
     if (this.socket && typeof handler === 'function') {
+      // Remove existing listener first to prevent duplicates
+      const existingHandler = this.events.get(event);
+      if (existingHandler) {
+        this.socket.off(event, existingHandler);
+      }
       this.socket.on(event, handler);
       this.events.set(event, handler); // Store for cleanup
     }
   });
 
   return () => {
-    // Cleanup listeners
+    // Cleanup listeners (but NOT the global 'message' listener)
     if (this.socket) {
       this.events.forEach((handler, event) => {
-        this.socket.off(event, handler);
+        if (event !== 'message') { // Don't remove global message listener
+          this.socket.off(event, handler);
+        }
       });
+      // Clear stored callbacks except 'message'
+      const messageHandler = this.events.get('message');
       this.events.clear();
+      if (messageHandler) {
+        this.events.set('message', messageHandler);
+      }
+      this.chatAreaMessageCallback = null;
     }
   };
 }
@@ -171,12 +192,15 @@ async markMessageAsDelivered(chatId, messageId) {
 // Mark message as seen
 async markMessageAsSeen(chatId, messageId) {
   try {
+    console.log('🔵 Emitting seen-ack to server:', { chatId, messageId });
     await emitWithTimeout(this.socket, 'seen-ack', {
       chatId,
       messageId,
       timestamp: Date.now()
     });
+    console.log('✅ seen-ack emitted successfully');
   } catch (error) {
+    console.error('❌ Error emitting seen-ack:', error);
     handleSocketError(error);
   }
 }
@@ -418,6 +442,53 @@ destroy() {
     }
   }
 
+  addMessageListener(callback) {
+    if (this.socket) {
+      // Remove any existing listener first to prevent duplicates
+      const existingCallback = this.events.get('message');
+      if (existingCallback) {
+        this.socket.off('message', existingCallback);
+      }
+      
+      // Create a wrapper that calls both the global callback AND the ChatArea callback
+      const wrappedCallback = (msg) => {
+        callback(msg); // Global handler (Chats.jsx)
+        
+        // Also call ChatArea's callback if registered
+        if (this.chatAreaMessageCallback) {
+          this.chatAreaMessageCallback(msg);
+        }
+      };
+      
+      this.socket.on('message', wrappedCallback);
+      this.events.set('message', wrappedCallback);
+      this._globalMessageCallback = callback; // Store original for reference
+    }
+  }
+
+  removeMessageListener() {
+    if (this.socket) {
+      // Remove the stored callback reference (not the passed-in one)
+      const existingCallback = this.events.get('message');
+      if (existingCallback) {
+        this.socket.off('message', existingCallback);
+        this.events.delete('message');
+        this._globalMessageCallback = null;
+        console.log('🧹 Removed message listener');
+      }
+    }
+  }
+  
+  // Method for ChatArea to register its callback (called by the global listener wrapper)
+  setChatAreaMessageCallback(callback) {
+    this.chatAreaMessageCallback = callback;
+  }
+  
+  // Method to clear ChatArea callback when ChatArea unmounts
+  clearChatAreaMessageCallback() {
+    this.chatAreaMessageCallback = null;
+  }
+
   async checkChatHistory(senderId, receiverId) {
     try {
       const response = await emitWithTimeout(this.socket, 'chat:check', {
@@ -433,6 +504,90 @@ destroy() {
     } catch (error) {
       handleSocketError(error);
       return null;
+    }
+  }
+
+  // ============ NEW METHODS FOR UNREAD SYSTEM ============
+
+  /**
+   * Get all chats with unread counts
+   */
+  async getChatList() {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:list', {}, 10000);
+      console.log('Chat list response:', response);
+      if (response.status === 'success') {
+        return {
+          chats: response.chats || [],
+          totalChats: response.totalChats || 0,
+          totalUnread: response.totalUnread || 0
+        };
+      }
+      return { chats: [], totalChats: 0, totalUnread: 0 };
+    } catch (error) {
+      console.error('Error fetching chat list:', error);
+      handleSocketError(error);
+      return { chats: [], totalChats: 0, totalUnread: 0 };
+    }
+  }
+
+  /**
+   * Mark all messages as read when opening chat
+   */
+  async openChat(chatId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:open', { chatId }, 10000);
+      console.log('Chat open response:', response);
+      if (response.status === 'success') {
+        return {
+          success: true,
+          markedCount: response.markedCount || 0,
+          messageIds: response.messageIds || []
+        };
+      }
+      return { success: false, markedCount: 0, messageIds: [] };
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      handleSocketError(error);
+      return { success: false, markedCount: 0, messageIds: [] };
+    }
+  }
+
+  /**
+   * Check if a specific user is currently online
+   */
+  async checkUserOnline(userId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'user:check-online', { userId }, 5000);
+      console.log('🔍 User online check response:', response);
+      return response.isOnline || false;
+    } catch (error) {
+      console.error('Error checking user online status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get list of all currently online user IDs
+   */
+  async getOnlineUsers() {
+    try {
+      const response = await emitWithTimeout(this.socket, 'users:get-online', {}, 5000);
+      console.log('🟢 Online users response:', response);
+      return response.onlineUserIds || [];
+    } catch (error) {
+      console.error('Error getting online users:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Listen for batch receipts (when user comes online)
+   */
+  addBatchReceiptsListener(callback) {
+    if (this.socket) {
+      this.socket.on('receipts:batch', callback);
+      this.events.set('receipts:batch', callback);
     }
   }
 }

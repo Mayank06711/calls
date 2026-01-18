@@ -454,6 +454,105 @@ class RedisManager {
       return false;
     }
   }
+
+  // ============ LIST OPERATIONS FOR READ RECEIPT QUEUE ============
+
+  /**
+   * Push value to the left (head) of a list
+   * Used for queuing read receipts
+   */
+  static async lpush(key: string, value: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      return await this.redis.lpush(key, value);
+    } catch (error) {
+      console.error(`Error pushing to list ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove elements from a list
+   * count > 0: Remove elements equal to value moving from head to tail
+   * count < 0: Remove elements equal to value moving from tail to head
+   * count = 0: Remove all elements equal to value
+   */
+  static async lrem(key: string, count: number, value: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      return await this.redis.lrem(key, count, value);
+    } catch (error) {
+      console.error(`Error removing from list ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a range of elements from a list
+   * start and stop are zero-based indexes
+   * -1 means the last element, -2 means the second to last, etc.
+   */
+  static async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      return await this.redis.lrange(key, start, stop);
+    } catch (error) {
+      console.error(`Error getting range from list ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set expiration time on a key
+   */
+  static async expire(key: string, seconds: number): Promise<boolean> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      const result = await this.redis.expire(key, seconds);
+      return result === 1;
+    } catch (error) {
+      console.error(`Error setting expiration on ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the length of a list
+   */
+  static async llen(key: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      return await this.redis.llen(key);
+    } catch (error) {
+      console.error(`Error getting list length ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a key from Redis
+   */
+  static async del(key: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized. Call `initRedisConnection()` first.");
+    }
+    try {
+      return await this.redis.del(key);
+    } catch (error) {
+      console.error(`Error deleting key ${key}:`, error);
+      throw error;
+    }
+  }
 }
 
 export { RedisManager };

@@ -770,7 +770,25 @@ class User {
       const usersWithPhotos = await Promise.all(
         users.map(async (user) => {
           let profilePhoto = null;
-          // ... existing photo fetching logic ...
+          
+          // Fetch profile photo if user has mediaId and profilePhotoId
+          if (user.mediaId && user.profilePhotoId) {
+            try {
+              const media = await MediaModel.findById(user.mediaId);
+              if (media) {
+                const photo = media.getPhotoById(user.profilePhotoId);
+                if (photo) {
+                  profilePhoto = {
+                    url: photo.url,
+                    thumbnail_url: photo.thumbnail_url,
+                  };
+                }
+              }
+            } catch (err) {
+              console.error('Error fetching profile photo for user:', user._id, err);
+            }
+          }
+          
           return {
             _id: user._id.toString(),
             fullName: user.fullName,
@@ -827,6 +845,55 @@ class User {
   public static logout = AsyncHandler.wrap(User._logout);
   public static verifyEmail = AsyncHandler.wrap(User._verifyEmail);
   public static getAllUsers = AsyncHandler.wrap(User._getAllUsers);
+  
+  // Get a single user by ID - for deep linking chat URLs
+  private static async _getUserById(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const { id } = req.body;
+      
+      if (!id) {
+        throw new ApiError(400, "User ID is required");
+      }
+
+      const user = await UserModel.findById(id)
+        .select("fullName username isExpert mediaId profilePhotoId city country isActive");
+
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      // Get profile photo using the model's method
+      const profileMedia = await user.getProfileMedia();
+      
+      const userResponse = {
+        _id: (user._id as string).toString(),
+        fullName: user.fullName,
+        username: user.username,
+        isExpert: user.isExpert,
+        profilePhoto: profileMedia?.photo ? {
+          url: profileMedia.photo.url,
+          thumbnail_url: profileMedia.photo.thumbnail_url,
+        } : null,
+        city: user.city,
+        country: user.country || "",
+        isActive: user.isActive,
+      };
+
+      return res.status(200).json(
+        successResponse(userResponse, "User fetched successfully")
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to fetch user");
+    }
+  }
+  
+  public static getUserById = AsyncHandler.wrap(User._getUserById);
 }
 
 export default User;

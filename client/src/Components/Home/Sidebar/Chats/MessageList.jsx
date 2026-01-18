@@ -103,10 +103,12 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
     >
       {messages.map((message, idx) => {
         const isSender = message.senderId === currentUserId;
+        // Use unique key combining chatId, messageId and index as fallback
+        const uniqueKey = `${message.chatId || 'chat'}-${message.id || idx}-${idx}`;
 
         return (
           <div
-            key={message.id}
+            key={uniqueKey}
             className={`flex items-end ${
               isSender ? "justify-end" : "justify-start"
             } `}
@@ -170,7 +172,7 @@ const MessageList = ({ messages, currentUserId, onMessageSeen }) => {
                 {isSender && (
                   <MessageStatus
                     status={message.status}
-                    color={colors.fourth}
+                    seenColor={colors.fourth}
                   />
                 )}
               </div>

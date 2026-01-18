@@ -205,18 +205,44 @@ MsgSchema.methods.addMessage = async function (
 };
 
 MsgSchema.methods.markMessageAsRead = async function (messageId: number) {
-  const message = this.messages.find(
-    (m: INewMessage) => m.messageId === messageId
-  );
-  if (message && !message.status.isRead) {
-    message.status.isRead = true;
-    message.status.readAt = new Date();
+  const maxRetries = 3;
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      // Fetch fresh document to avoid version conflicts
+      const freshDoc = await MsgModel.findById(this._id);
+      if (!freshDoc) throw new Error('Chat not found');
+      
+      const message = freshDoc.messages.find(
+        (m: INewMessage) => m.messageId === messageId
+      );
+      
+      if (message && !message.status.isRead) {
+        message.status.isRead = true;
+        message.status.readAt = new Date();
 
-    if (this.lastMessage?.messageId === messageId) {
-      this.lastMessage.status.isRead = true;
+        if (freshDoc.lastMessage?.messageId === messageId) {
+          freshDoc.lastMessage.status.isRead = true;
+        }
+
+        await freshDoc.save();
+        console.log(`✅ Successfully marked message ${messageId} as read (attempt ${attempt + 1})`);
+        return;
+      } else {
+        // Message already read, no need to retry
+        return;
+      }
+    } catch (error: any) {
+      attempt++;
+      if (error.name === 'VersionError' && attempt < maxRetries) {
+        console.log(`⚠️ Version conflict marking message ${messageId} as read, retrying (${attempt}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 50 * attempt)); // Exponential backoff
+      } else {
+        console.error(`❌ Failed to mark message ${messageId} as read after ${attempt} attempts:`, error);
+        throw error;
+      }
     }
-
-    await this.save();
   }
 };
 

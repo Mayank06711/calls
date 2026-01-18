@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { decrementTimer } from "./redux/actions/login.actions";
 import {
@@ -74,6 +74,7 @@ const App = () => {
   console.log("[App] Mounting App component");
   const userId = useSelector((state) => state.auth.userId);
   const dispatch = useDispatch();
+  const [isAuthInitializing, setIsAuthInitializing] = useState(true); // 🔐 Prevent redirect during initial load
   const {
     // otpGenerated, // removed unused
     otpVerified,
@@ -83,6 +84,7 @@ const App = () => {
     isTimerActive,
   } = useSelector((state) => state.auth);
 
+  // 🔐 Load userId from localStorage BEFORE allowing route redirects
   useEffect(() => {
     const savedUserId = localStorage.getItem("userId");
     const savedUserInfo = localStorage.getItem("userInfo");
@@ -93,6 +95,9 @@ const App = () => {
     if (savedUserInfo) {
       dispatch(setUserInfo(JSON.parse(savedUserInfo)));
     }
+    
+    // ✅ Mark auth initialization as complete (regardless of whether user was found)
+    setIsAuthInitializing(false);
   }, [dispatch]);
 
   useEffect(() => {
@@ -135,24 +140,29 @@ const App = () => {
       {console.log("[App] Rendering with SocketProvider")}
       <SocketProvider>
         {/* SocketProvider manages socket connection, authentication, and exposes context */}
-        <div className='relative flex justify-center items-center h-[100vh]'>
-          <Toast />
-          {/* <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url(${backgroundImage})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              opacity: 0.05,
-              zIndex: 0,
-            }}
-          /> */}
-          <Router>
+        <Router>
+          <div className='relative flex justify-center items-center h-[100vh]'>
+            <Toast />
+            {/* <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${backgroundImage})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                opacity: 0.05,
+                zIndex: 0,
+              }}
+            /> */}
             <Routes>
               <Route
                 path='/'
                 element={
-                  userId ? (
+                  // 🔐 Show loading while checking localStorage for auth
+                  isAuthInitializing ? (
+                    <div className="flex items-center justify-center h-screen">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                    </div>
+                  ) : userId ? (
                     !isAlreadyVerified && otpVerified ? (
                       <Navigate to='/complete-profile' />
                     ) : (
@@ -163,9 +173,11 @@ const App = () => {
                   )
                 }
               >
-                {/* Nested routes for main content area */}
-                <Route path='/chats' element={<Chats />} />
-                <Route path='/reels' element={<Reels />} />
+                {/* Nested routes for main content area - NO leading slash! */}
+                <Route index element={<Chats />} />
+                <Route path='chats' element={<Chats />} />
+                <Route path='chats/:userId' element={<Chats />} />
+                <Route path='reels' element={<Reels />} />
 
                 <Route path='subscriptions'>
                   <Route index element={<Subscriptions />} />
@@ -221,9 +233,9 @@ const App = () => {
               />
               <Route path='*' element={<Missing />} />
             </Routes>
-          </Router>
-        </div>
-        <Feedback />
+          </div>
+          <Feedback />
+        </Router>
       </SocketProvider>
     </ThemeProvider>
   );

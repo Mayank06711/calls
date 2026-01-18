@@ -2,13 +2,14 @@ import { MsgModel } from "../models/messageModel";
 import { SocketManager } from "../socket";
 import { RedisManager } from "../utils/redisClient";
 import { Types } from "mongoose";
-import { INewMsg, MessageType, ChatType } from "../interface/IMessage";
+import { INewMsg, MessageType, ChatType, IReadReceipt } from "../interface/IMessage";
 import { Socket } from "socket.io";
 import NotificationService from "../services/notifications";
 
 class ChatController {
   private static instance: ChatController | null = null;
   private readonly socketManager: SocketManager;
+  private readonly READ_RECEIPT_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
   private readonly CHAT_EVENTS = {
     // Client 1 sends message to server
     MESSAGE: "message", // c1-server
@@ -147,6 +148,97 @@ class ChatController {
       });
       console.log(`Event listener '${event}' attached to socket ${socket.id}`);
     });
+
+    // NEW EVENT: chat:list - Get all chats with unread counts
+    this.socketManager.listenToEvent({
+      event: 'chat:list',
+      socketIds: [socket.id],
+      handler: async (data: any, socket: Socket, callback?: Function) => {
+        try {
+          const result = await this.handleChatList(socket);
+          if (callback) {
+            callback(result);
+          }
+        } catch (error) {
+          console.error("Error in chat:list handler:", error);
+          if (callback) {
+            callback({
+              status: "error",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+      },
+    });
+
+    // NEW EVENT: chat:open - Mark all messages as read when chat is opened
+    this.socketManager.listenToEvent({
+      event: 'chat:open',
+      socketIds: [socket.id],
+      handler: async (data: any, socket: Socket, callback?: Function) => {
+        try {
+          const result = await this.handleChatOpen(data, socket);
+          if (callback) {
+            callback(result);
+          }
+        } catch (error) {
+          console.error("Error in chat:open handler:", error);
+          if (callback) {
+            callback({
+              status: "error",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+      },
+    });
+
+    // NEW EVENT: user:check-online - Check if a specific user is currently online
+    this.socketManager.listenToEvent({
+      event: 'user:check-online',
+      socketIds: [socket.id],
+      handler: async (data: { userId: string }, socket: Socket, callback?: Function) => {
+        try {
+          const socketStatus = await this.socketManager.getSocketStatus();
+          const isOnline = socketStatus.some(
+            s => s.userId === data.userId && s.isActive
+          );
+          console.log(`[user:check-online] User ${data.userId} is ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+          if (callback) {
+            callback({ status: 'success', userId: data.userId, isOnline });
+          }
+        } catch (error) {
+          console.error("Error in user:check-online handler:", error);
+          if (callback) {
+            callback({ status: 'error', isOnline: false });
+          }
+        }
+      },
+    });
+
+    // NEW EVENT: users:get-online - Get list of all currently online user IDs
+    this.socketManager.listenToEvent({
+      event: 'users:get-online',
+      socketIds: [socket.id],
+      handler: async (data: any, socket: Socket, callback?: Function) => {
+        try {
+          const socketStatus = await this.socketManager.getSocketStatus();
+          const onlineUserIds = [...new Set(socketStatus
+            .filter(s => s.isActive)
+            .map(s => s.userId)
+          )];
+          console.log(`[users:get-online] Found ${onlineUserIds.length} online users`);
+          if (callback) {
+            callback({ status: 'success', onlineUserIds });
+          }
+        } catch (error) {
+          console.error("Error in users:get-online handler:", error);
+          if (callback) {
+            callback({ status: 'error', onlineUserIds: [] });
+          }
+        }
+      },
+    });
   }
 
   // Handler for incoming messages (c-1 → Server)
@@ -266,6 +358,11 @@ class ChatController {
   ) {
     try {
       console.log("Handling chat check:", data, "\n");
+      
+      // Get socket status to check if OTHER user is currently online
+      const socketStatus = await this.socketManager.getSocketStatus();
+      const requestingUser = data.senderId; // The person requesting chat history
+      
       const chat = await MsgModel.findOne({
         $or: [
           { sender: data.senderId, receiver: data.receiverId },
@@ -289,13 +386,48 @@ class ChatController {
                 receiver: chat.receiver,
               },
               messages: chat.messages.map((msg) => {
+                const messageSenderId = msg.sender?._id?.toString() || msg.sender?.toString();
+                
+                // ✅ CRITICAL FIX: Only show 'delivered' if:
+                // 1. Message has been read (isRead) → show 'seen'
+                // 2. Message has deliveredAt AND the receiver is CURRENTLY online → show 'delivered'
+                // 3. Otherwise → show 'sent'
                 let status = 'sent';
-                if (msg.status?.isRead) status = 'seen';
-                else if (msg.status?.deliveredAt) status = 'delivered';
+                
+                if (msg.status?.isRead) {
+                  status = 'seen';
+                } else if (msg.status?.deliveredAt) {
+                  // ⚠️ CRITICAL: Determine who is the RECEIVER of this message
+                  // If message sender is chat.sender, then receiver is chat.receiver (and vice versa)
+                  const messageReceiverId = messageSenderId === chat.sender._id.toString() 
+                    ? chat.receiver._id.toString() 
+                    : chat.sender._id.toString();
+                  
+                  // ❗ CRITICAL FIX: ONLY mark as 'delivered' if the MESSAGE RECEIVER is online
+                  // DO NOT consider the requesting user! They might be the SENDER checking status!
+                  const isReceiverOnline = socketStatus.some(
+                    s => s.userId === messageReceiverId && s.isActive
+                  );
+                  
+                  console.log(`[handleChatCheck] Message ${msg.messageId} status check:`, {
+                    messageSender: messageSenderId,
+                    messageReceiver: messageReceiverId,
+                    requestingUser,
+                    hasDeliveredAt: !!msg.status?.deliveredAt,
+                    isReceiverOnline,
+                    finalStatus: isReceiverOnline ? 'delivered' : 'sent'
+                  });
+                  
+                  if (isReceiverOnline) {
+                    status = 'delivered';
+                  }
+                  // If receiver is offline, keep status as 'sent' even if deliveredAt exists from old session
+                }
+                
                 return {
                   id: msg.messageId,
                   content: msg.text,
-                  senderId: msg.sender?._id?.toString() || msg.sender?.toString(),
+                  senderId: messageSenderId,
                   status,
                   type: msg.messageType,
                   timestamp: msg.createdAt,
@@ -323,6 +455,18 @@ class ChatController {
     try {
       const chat = await MsgModel.findById(data.chatId);
       if (!chat) return;
+
+      // ⚠️ CRITICAL: Check if message is already delivered to prevent duplicate processing
+      const message = chat.messages.find(m => m.messageId === data.messageId);
+      if (!message) {
+        console.log(`[handleDeliveredAck] Message ${data.messageId} not found in chat ${data.chatId}`);
+        return;
+      }
+      
+      if (message.status.deliveredAt) {
+        console.log(`[handleDeliveredAck] Message ${data.messageId} already delivered, skipping`);
+        return; // Already delivered, don't process again
+      }
 
       // Get socket status
       const socketStatus = await this.socketManager.getSocketStatus();
@@ -353,35 +497,74 @@ class ChatController {
   // Handler for seen acknowledgment (c-2 → Server → c-1)
   private async handleSeenAck(
     data: { messageId: number; chatId: string },
-    socket: any
+    socket: any,
+    callback?: Function
   ): Promise<void> {
     try {
+      console.log(`[handleSeenAck] Received from user ${socket.data.userId}:`, data);
+      
+      const userId = socket.data.userId;
       const chat = await MsgModel.findById(data.chatId);
-      if (!chat) return;
+      if (!chat) {
+        console.error(`[handleSeenAck] Chat not found: ${data.chatId}`);
+        if (callback) callback({ status: 'error', message: 'Chat not found' });
+        return;
+      }
 
-      // Get socket status
-      const socketStatus = await this.socketManager.getSocketStatus();
-      const senderSocket = socketStatus.find(
-        (s) => s.userId === chat.sender.toString() && s.isActive
-      );
+      // Find the message to get the sender
+      const message = chat.messages.find(msg => msg.messageId === data.messageId);
+      if (!message) {
+        console.error(`[handleSeenAck] Message not found: ${data.messageId}`);
+        if (callback) callback({ status: 'error', message: 'Message not found' });
+        return;
+      }
 
+      const senderId = message.sender.toString();
+      
+      // ❗ CRITICAL VALIDATION: The person sending seen-ack MUST be the RECEIVER, not the SENDER!
+      // If sender tries to mark their own message as read, reject it
+      if (userId === senderId) {
+        console.error(`[handleSeenAck] REJECTED: User ${userId} tried to mark their OWN message as seen!`, {
+          messageId: data.messageId,
+          messageSender: senderId,
+          requestingUser: userId
+        });
+        if (callback) callback({ status: 'error', message: 'Cannot mark own message as seen' });
+        return;
+      }
+      
+      console.log(`[handleSeenAck] Valid seen-ack: receiver ${userId} marking sender ${senderId}'s message ${data.messageId} as read`);
+      
+      // Mark as read
       await chat.markMessageAsRead(data.messageId);
 
-      // Notify original sender if they're online
-      if (senderSocket) {
-        await this.socketManager.emitEvent({
-          event: this.CHAT_EVENTS.SEEN,
-          data: {
-            messageId: data.messageId,
-            chatId: data.chatId,
-            status: "seen",
-            timestamp: new Date(),
-          },
-          targetSocketIds: [senderSocket.socketId],
+      // Queue the read receipt (will deliver immediately if sender is online)
+      await this.queueReadReceipt({
+        messageId: data.messageId,
+        chatId: data.chatId,
+        senderId,
+        readAt: new Date(),
+        readBy: userId,
+      });
+
+      console.log(`[handleSeenAck] Successfully processed seen-ack for message ${data.messageId}`);
+      
+      // Send success callback
+      if (callback) {
+        callback({ 
+          status: 'success', 
+          messageId: data.messageId,
+          chatId: data.chatId 
         });
       }
     } catch (error) {
-      console.error("Error handling seen acknowledgment:", error);
+      console.error("[handleSeenAck] Error handling seen acknowledgment:", error);
+      if (callback) {
+        callback({ 
+          status: 'error', 
+          message: error instanceof Error ? error.message : 'Unknown error' 
+        });
+      }
     }
   }
 
@@ -417,6 +600,290 @@ class ChatController {
     }
 
     return chat;
+  }
+
+  // ============ NEW METHODS FOR UNREAD SYSTEM ============
+
+  /**
+   * Get all chats for a user with unread counts
+   */
+  private async handleChatList(socket: Socket) {
+    const userId = socket.data.userId;
+
+    if (!userId) {
+      return { status: "error", message: "User not authenticated" };
+    }
+
+    try {
+      const chats = await MsgModel.aggregate([
+        {
+          $match: {
+            $or: [
+              { sender: new Types.ObjectId(userId) },
+              { receiver: new Types.ObjectId(userId) },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            // Determine the other participant
+            otherParticipant: {
+              $cond: [
+                { $eq: ["$sender", new Types.ObjectId(userId)] },
+                "$receiver",
+                "$sender",
+              ],
+            },
+            // Calculate unread count for messages where:
+            // 1. I'm the receiver (other person sent it)
+            // 2. Message is not read
+            unreadCount: {
+              $size: {
+                $filter: {
+                  input: "$messages",
+                  as: "msg",
+                  cond: {
+                    $and: [
+                      {
+                        $ne: [
+                          "$$msg.sender",
+                          new Types.ObjectId(userId),
+                        ],
+                      },
+                      { $eq: ["$$msg.status.isRead", false] },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "otherParticipant",
+            foreignField: "_id",
+            as: "participantInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$participantInfo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            chatId: "$_id",
+            otherUser: {
+              _id: "$participantInfo._id",
+              fullName: "$participantInfo.fullName",
+              username: "$participantInfo.username",
+              profilePhoto: "$participantInfo.profilePhoto",
+              isActive: "$participantInfo.isActive",
+            },
+            lastMessage: 1,
+            unreadCount: 1,
+            updatedAt: 1,
+          },
+        },
+        { $sort: { updatedAt: -1 } },
+      ]);
+
+      return {
+        status: "success",
+        chats,
+        totalChats: chats.length,
+        totalUnread: chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0),
+      };
+    } catch (error) {
+      console.error("Error in handleChatList:", error);
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Failed to fetch chats",
+      };
+    }
+  }
+
+  /**
+   * Handle chat:open event - Mark all unread messages as read
+   */
+  private async handleChatOpen(
+    data: { chatId: string },
+    socket: Socket
+  ) {
+    const userId = socket.data.userId?.toString();
+
+    if (!userId || !data.chatId) {
+      return { status: "error", message: "Invalid request" };
+    }
+
+    try {
+      const chat = await MsgModel.findById(data.chatId);
+
+      if (!chat) {
+        return { status: "error", message: "Chat not found" };
+      }
+
+      // Find all unread messages where I'm the RECEIVER (not sender)
+      // ⚠️ CRITICAL: Handle both populated and unpopulated sender field
+      const unreadMessages = chat.messages.filter((msg) => {
+        // Get sender ID - handle both populated object and ObjectId
+        const senderId = msg.sender?._id?.toString() || msg.sender?.toString();
+        const isMyMessage = senderId === userId;
+        const isUnread = !msg.status.isRead;
+        
+        // Only mark OTHER people's messages as read, not my own!
+        return !isMyMessage && isUnread;
+      });
+      
+      console.log(`[handleChatOpen] User ${userId} opening chat ${data.chatId}:`, {
+        totalMessages: chat.messages.length,
+        unreadFromOthers: unreadMessages.length,
+        myMessages: chat.messages.filter(m => (m.sender?._id?.toString() || m.sender?.toString()) === userId).length
+      });
+
+      if (unreadMessages.length === 0) {
+        return { status: "success", markedCount: 0 };
+      }
+
+      const readAt = new Date();
+
+      // Batch mark as read
+      for (const msg of unreadMessages) {
+        await chat.markMessageAsRead(msg.messageId);
+      }
+
+      // Queue read receipts for each message
+      for (const msg of unreadMessages) {
+        // ⚠️ Handle both populated and unpopulated sender field
+        const senderId = msg.sender?._id?.toString() || msg.sender?.toString();
+        await this.queueReadReceipt({
+          messageId: msg.messageId,
+          chatId: data.chatId,
+          senderId,
+          readAt,
+          readBy: userId,
+        });
+      }
+
+      console.log(
+        `Marked ${unreadMessages.length} messages as read in chat ${data.chatId}`
+      );
+
+      return {
+        status: "success",
+        markedCount: unreadMessages.length,
+        messageIds: unreadMessages.map(m => m.messageId),
+      };
+    } catch (error) {
+      console.error("Error in handleChatOpen:", error);
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Failed to mark messages as read",
+      };
+    }
+  }
+
+  /**
+   * Queue a read receipt in Redis for later delivery
+   */
+  private async queueReadReceipt(receipt: IReadReceipt): Promise<void> {
+    try {
+      const queueKey = `read_receipts:${receipt.senderId}`;
+      const receiptData = JSON.stringify(receipt);
+
+      // Add to queue
+      await RedisManager.lpush(queueKey, receiptData);
+
+      // Set TTL (7 days)
+      await RedisManager.expire(queueKey, this.READ_RECEIPT_TTL);
+
+      // Try immediate delivery if sender is online
+      console.log(`[queueReadReceipt] Looking for sender socket: ${receipt.senderId}`);
+      const senderSocket = await this.socketManager.getSocketIdUsingUserId(
+        receipt.senderId
+      );
+      console.log(`[queueReadReceipt] Sender socket result:`, senderSocket);
+
+      if (senderSocket && senderSocket.socketId) {
+        console.log(`[queueReadReceipt] Sender IS online, delivering immediately to socket ${senderSocket.socketId}`);
+        await this.deliverReadReceipt(senderSocket.socketId, receipt);
+
+        // Remove from queue after successful delivery
+        await RedisManager.lrem(queueKey, 1, receiptData);
+        console.log(`✅ Delivered receipt immediately for message ${receipt.messageId}`);
+      } else {
+        console.log(
+          `❌ Queued receipt for offline user ${receipt.senderId}, message ${receipt.messageId}`
+        );
+      }
+    } catch (error) {
+      console.error("Error queuing read receipt:", error);
+      // Don't throw - we don't want to fail the chat:open operation
+    }
+  }
+
+  /**
+   * Deliver a single read receipt to a socket
+   */
+  private async deliverReadReceipt(
+    socketId: string,
+    receipt: IReadReceipt
+  ): Promise<void> {
+    try {
+      await this.socketManager.emitEvent({
+        event: this.CHAT_EVENTS.SEEN,
+        data: {
+          messageId: receipt.messageId,
+          chatId: receipt.chatId,
+          status: "seen",
+          readAt: receipt.readAt,
+          timestamp: new Date(),
+        },
+        targetSocketIds: [socketId],
+      });
+    } catch (error) {
+      console.error("Error delivering read receipt:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Flush pending read receipts for a user (called on authentication)
+   * This is called from socket.ts when a user authenticates
+   */
+  public async flushPendingReadReceipts(
+    socketId: string,
+    userId: string
+  ): Promise<void> {
+    try {
+      const queueKey = `read_receipts:${userId}`;
+      const receipts = await RedisManager.lrange(queueKey, 0, -1);
+
+      if (receipts.length === 0) {
+        console.log(`No pending receipts for user ${userId}`);
+        return;
+      }
+
+      // Parse receipts
+      const parsedReceipts = receipts.map((r) => JSON.parse(r) as IReadReceipt);
+
+      // Batch deliver all receipts
+      await this.socketManager.emitEvent({
+        event: "receipts:batch",
+        data: { receipts: parsedReceipts },
+        targetSocketIds: [socketId],
+      });
+
+      // Clear delivered receipts
+      await RedisManager.del(queueKey);
+
+      console.log(`Flushed ${receipts.length} pending receipts for user ${userId}`);
+    } catch (error) {
+      console.error("Error flushing pending receipts:", error);
+      // Don't throw - we don't want to fail authentication
+    }
   }
 }
 

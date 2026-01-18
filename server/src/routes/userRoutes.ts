@@ -14,4 +14,5 @@ router.route("/profile").get(User.getProfile).patch(User.updateProfile); // Comb
 router.route("/password").post(User.forgotPassword).patch(User.changePassword); // Combined password routes
 router.route("/logout").post(User.logout);
 router.route("/all-users").get(User.getAllUsers);
+router.route("/get_user_by_id").post(User.getUserById); // Get single user by ID for deep linking
 export default router;
