@@ -102,6 +102,11 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       reducedMotion: { type: Boolean, default: false },
       screenReader: { type: Boolean, default: false },
       fontSize: Number,
+      fontFamily: {
+        type: String,
+        enum: ["inter", "roboto", "poppins", "montserrat", "playfair", "dancing-script", "pacifico", "caveat", "great-vibes", "lobster", "comfortaa", "quicksand"],
+        default: "inter"
+      },
       textSpacing: Number,
       cursorSize: {
         type: String,

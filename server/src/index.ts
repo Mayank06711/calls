@@ -17,6 +17,7 @@ import authRouter from "./routes/authRoutes";
 import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import adminRouter from "./routes/adminRoutes";
+import sessionRouter from "./routes/sessionRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -84,6 +85,7 @@ class ServerManager {
     this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
+    this.app.use("/api/v1/sessions", sessionRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {

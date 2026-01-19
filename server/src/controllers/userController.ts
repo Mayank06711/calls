@@ -11,6 +11,7 @@ import { generateToken, verifyToken } from "../utils/tokens";
 import { GetUsersQuery, UserListResponse } from "../interface/IUser";
 import { MediaModel } from "../models/mediaModel";
 import { cacheUserList, generateCacheKey, getAllUsersFromCache } from "../redis/user.redis";
+import { SessionController } from "./sessionController";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -142,6 +143,9 @@ class User {
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
+
+      // Invalidate all sessions for this user (logout from all devices)
+      await SessionController.invalidateSession(userId.toString());
 
       // Find user and clear refresh token
       const user = await UserModel.findByIdAndUpdate(

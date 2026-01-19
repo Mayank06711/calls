@@ -66,6 +66,7 @@ export interface IUserSettings extends Document {
     reducedMotion: boolean;
     screenReader: boolean;
     fontSize?: number; // Custom font size multiplier
+    fontFamily?: string; // Custom font family (premium feature)
     textSpacing?: number; // Custom text spacing
     cursorSize?: "default" | "large";
   };

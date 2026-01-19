@@ -11,6 +11,8 @@ import { CookieOptions } from "express";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
+import { SessionController } from "./sessionController";
+import { generateTokenId } from "../helper/sessionHelper";
 const otpLogPossibleKeys = [
   "mob_num",
   "reference_id",
@@ -484,6 +486,16 @@ class Authentication {
         user.refreshToken = refreshToken;
         await user.save();
 
+        // Create session record for this login
+        const tokenId = generateTokenId();
+        await SessionController.createSession(
+          (user._id as any).toString(),
+          req,
+          tokenId,
+          undefined,
+          "otp"
+        );
+
         const response = {
           referenceId: referenceId,
           mobNum: formattedRecipientNumber,
@@ -537,6 +549,16 @@ class Authentication {
 
       user.refreshToken = refreshToken;
       await user.save();
+
+      // Create session record for this login
+      const tokenId = generateTokenId();
+      await SessionController.createSession(
+        (user._id as any).toString(),
+        req,
+        tokenId,
+        undefined,
+        "otp"
+      );
 
       const response = {
         referenceId: referenceId,

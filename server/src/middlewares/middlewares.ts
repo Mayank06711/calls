@@ -36,6 +36,7 @@ class Middleware {
 
   public static getBase64 = (file: any) =>
     `data:${file[0].mimetype};base64,${file[0].buffer.toString("base64")}`;
+  
   private static async uploadFilesToCloudinary(files: any[] = []) {
     if (!files || files.length === 0) {
       throw new Error("No files provided for upload");
@@ -166,6 +167,7 @@ class Middleware {
       throw error;
     }
   }
+
   private static async _isAdmin(
     req: Request,
     res: Response,

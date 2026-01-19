@@ -10,6 +10,9 @@ router.use(Middleware.VerifyJWT);
 router.post("/initialize", UserSettings.initializeSettings);
 router.get("/fetch", UserSettings.getSettings);
 
+// Style options (returns available options based on subscription)
+router.get("/style-options", UserSettings.getStyleOptions);
+
 // Specific settings update routes
 router.patch("/theme", UserSettings.updateThemeSettings);
 router.patch("/notifications", UserSettings.updateNotificationSettings);
