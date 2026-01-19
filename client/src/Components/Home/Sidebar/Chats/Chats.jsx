@@ -554,6 +554,12 @@ function ChatSection() {
     }
   };
 
+  // Handle back button (mobile) - deselect user and go back to list
+  const handleBackToList = () => {
+    setSelectedUser(null);
+    navigate('/chats', { replace: true });
+  };
+
   // Add socket status indicator in the UI, page ke uper wala
   const renderSocketStatus = () => {
     if (!connected) {
@@ -575,8 +581,9 @@ function ChatSection() {
 
   // console.log("users", users);
   return (
-    <div className='flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text'>
-      <div className='min-w-96  border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary'>
+    <div className='flex h-full w-full bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text overflow-hidden'>
+      {/* Sidebar - hidden on mobile when chat is selected */}
+      <div className={`${selectedUser ? 'hidden md:flex' : 'flex w-full'} md:w-96 md:min-w-96 flex-col h-full overflow-hidden border-r border-light-primary dark:border-dark-primary bg-light-secondary dark:bg-dark-secondary`}>
         {/* Add socket status indicator */}
         {renderSocketStatus()}
         {/* Search Bar */}
@@ -748,11 +755,17 @@ function ChatSection() {
         </div>
       </div>
 
-      {/* Chat Area */}
+      {/* Chat Area - full width on mobile, hidden when no user selected on mobile */}
       {selectedUser && isSocketReady ? (
-        <ChatArea selectedUser={selectedUser} chatServiceRef={chatServiceRef} />
+        <div className='flex-1 h-full overflow-hidden'>
+          <ChatArea 
+            selectedUser={selectedUser} 
+            chatServiceRef={chatServiceRef} 
+            onBack={handleBackToList}
+          />
+        </div>
       ) : (
-        <div className='flex-1 flex items-center justify-center '>
+        <div className='hidden md:flex flex-1 h-full items-center justify-center'>
           <p className='text-light-text/50'>
             {!isSocketReady
               ? "Connecting to chat services..."

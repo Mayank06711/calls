@@ -211,11 +211,11 @@ function UserInfo() {
   
 
   return (
-    <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auro w-[600px] rounded-md">
+    <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auto w-full lg:w-[600px] lg:min-w-[400px] rounded-md">
       {/* avatar section */}
 
       <div className="w-full flex flex-col justify-center items-start p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20">
-        <div className="flex justify-start items-center p-2 gap-4 ">
+        <div className="flex flex-col sm:flex-row justify-start items-center w-full sm:w-auto p-2 gap-4 ">
           <div className="relative w-fit h-fit group">
             {/* Add active status indicator */}
             {userData.isActive && (
@@ -297,9 +297,9 @@ function UserInfo() {
               </div>
             )}
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center sm:items-start">
             <h2
-              className="text-2xl font-semibold bg-gradient-to-r from-[colors.fourth] to-[colors.third] bg-clip-text text-transparent"
+              className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-[colors.fourth] to-[colors.third] bg-clip-text text-transparent"
               style={{ color: colors.fourth }}
             >
               {userData.fullName || "No Name"}

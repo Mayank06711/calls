@@ -58,6 +58,7 @@ export const ENDPOINTS = {
   SETTINGS: {
     INITIALIZE: `/api/${API_CONFIG.VERSION}/settings/initialize`, //POST
     FETCH: `/api/${API_CONFIG.VERSION}/settings/fetch`, //GET
+    STYLE_OPTIONS: `/api/${API_CONFIG.VERSION}/settings/style-options`, //GET - returns available style options based on subscription
 
     // Category-specific endpoints, ALL Patch-specific endpoints
     THEME: `/api/${API_CONFIG.VERSION}/settings/theme`,
@@ -66,6 +67,13 @@ export const ENDPOINTS = {
     PREFERENCES: `/api/${API_CONFIG.VERSION}/settings/preferences`,
     LAYOUT: `/api/${API_CONFIG.VERSION}/settings/layout`,
     ACCESSIBILITY: `/api/${API_CONFIG.VERSION}/settings/accessibility`,
+  },
+
+  SESSIONS: {
+    GET_ALL: `/api/${API_CONFIG.VERSION}/sessions`, // GET - get all active sessions
+    STATS: `/api/${API_CONFIG.VERSION}/sessions/stats`, // GET - get session statistics
+    REVOKE: `/api/${API_CONFIG.VERSION}/sessions`, // DELETE /:sessionId - revoke specific session
+    REVOKE_ALL: `/api/${API_CONFIG.VERSION}/sessions/revoke-all`, // POST - revoke all sessions
   },
 
   FEEDBACK: {

@@ -10,6 +10,7 @@ import { showNotification } from "../actions/notification.actions";
 import { setAlreadyVerified, setProfileDataLoading } from "../actions/auth.actions";
 import { LOADER_TYPES } from "../action_creators";
 import { startLoader, stopLoader } from "../actions";
+import { setSubscriptionType } from "../actions/subscription.action";
 
 export const fetchUserInfoThunk = () => async (dispatch) => {
   try {
@@ -33,6 +34,12 @@ export const fetchUserInfoThunk = () => async (dispatch) => {
       dispatch(fetchUserInfoSuccess(userInfo));
       dispatch(setUserInfo(userInfo));
       dispatch(setProfileDataLoading(false));
+      
+      // Set subscription type in Redux for colors
+      if (userInfo.subscription?.type) {
+        dispatch(setSubscriptionType(userInfo.subscription.type.toUpperCase()));
+        console.log("Subscription type set:", userInfo.subscription.type.toUpperCase());
+      }
     } else {
       dispatch(
         showNotification("Profile cannot be fetched", statusCode || 500)

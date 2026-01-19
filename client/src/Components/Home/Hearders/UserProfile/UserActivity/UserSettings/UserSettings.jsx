@@ -12,9 +12,10 @@ import {
   BarChartOutlined
 } from "@mui/icons-material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useSubscriptionColors } from "../../../../../../utils/getSubscriptionColors";
 
 function UserSettings() {
-
+  const colors = useSubscriptionColors();
   const navigate = useNavigate();
   const location = useLocation();
    // Check if we're at the overview page
@@ -93,16 +94,20 @@ function UserSettings() {
     <>
       {isOverview ? (
         // Settings overview grid
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-2 sm:p-4 w-full">
           {settingsCards.map((card, index) => (
             <div
               key={index}
               className="group relative overflow-hidden rounded-xl backdrop-blur-md 
                 dark:bg-dark-primary bg-light-secondary
-                border dark:border-dark-primary/20 border-light-primary/20 
-                dark:hover:border-dark-primary/40 hover:border-light-primary/40
+                border 
                 ease-in-out
                 cursor-pointer hover:shadow-lg"
+              style={{
+                borderColor: `${colors.fourth}30`,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.fourth}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = `${colors.fourth}30`}
               onClick={() => handleSettingClick(card.path)}
             >
               {/* Background gradient overlay */}
@@ -115,17 +120,15 @@ function UserSettings() {
               {/* Card content */}
               <div className="relative p-4 flex flex-col gap-2">
                 {/* Icon container */}
-                <div className="w-10 h-10 rounded-full 
-                  dark:bg-dark-primary/20 bg-light-primary/20
-                  dark:group-hover:bg-dark-primary/30 group-hover:bg-light-primary/30 
-                  flex items-center justify-center mb-2 transition-all duration-300"
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all duration-300"
+                  style={{ 
+                    backgroundColor: `${colors.fourth}20`,
+                  }}
                 >
                   {React.cloneElement(card.icon, { 
-                    className: `
-                      dark:text-dark-text/70 text-light-text/70 
-                      dark:group-hover:text-dark-text group-hover:text-light-text 
-                      transition-colors duration-300
-                    `
+                    style: { color: colors.fourth },
+                    className: 'transition-colors duration-300'
                   })}
                 </div>
                 

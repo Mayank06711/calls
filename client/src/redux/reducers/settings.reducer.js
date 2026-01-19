@@ -3,6 +3,9 @@ import {
   FETCH_SETTINGS_FAILURE,
   FETCH_SETTINGS_REQUEST,
   FETCH_SETTINGS_SUCCESS,
+  FETCH_STYLE_OPTIONS_REQUEST,
+  FETCH_STYLE_OPTIONS_SUCCESS,
+  FETCH_STYLE_OPTIONS_FAILURE,
   REMOVE_CUSTOM_FONT,
   SET_FONT_SIZE,
   SET_PRIMARY_COLOR,
@@ -74,6 +77,16 @@ const initialState = {
   // Store unsaved changes separately
   pendingChanges: {
     theme: null,
+  },
+  // Style options for premium users
+  styleOptions: {
+    loading: false,
+    error: null,
+    hasAccess: false,
+    subscriptionType: null,
+    requiredSubscriptions: ['Gold', 'Platinum'],
+    options: null,
+    message: null,
   },
 };
 
@@ -178,26 +191,85 @@ const settingsReducer = (state = initialState, action) => {
         saveError: null
       };
 
-    case UPDATE_SETTINGS_SUCCESS:
+    case UPDATE_SETTINGS_SUCCESS: {
+      const { type, data } = action.payload;
+      
+      // Handle different setting types
+      if (type === 'theme') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            theme: data?.theme || state.data.theme
+          },
+          pendingChanges: {
+            ...state.pendingChanges,
+            theme: null
+          },
+          dirtyFields: (state.dirtyFields || []).filter(field => field !== 'theme')
+        };
+      }
+      
+      if (type === 'accessibility') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            accessibility: data?.accessibility || state.data.accessibility
+          }
+        };
+      }
+      
+      // Generic fallback - update the entire data from response
       return {
         ...state,
         saveInProgress: false,
-        data: {
-          ...state.data,
-          theme: action.payload.theme
-        },
-        pendingChanges: {
-          ...state.pendingChanges,
-          theme: null
-        },
-        dirtyFields: state.dirtyFields.filter(field => field !== 'theme')
+        data: data || state.data
       };
+    }
 
     case UPDATE_SETTINGS_FAILURE:
       return {
         ...state,
         saveInProgress: false,
         saveError: action.payload
+      };
+
+    // Style Options cases (premium features)
+    case FETCH_STYLE_OPTIONS_REQUEST:
+      return {
+        ...state,
+        styleOptions: {
+          ...state.styleOptions,
+          loading: true,
+          error: null
+        }
+      };
+
+    case FETCH_STYLE_OPTIONS_SUCCESS:
+      return {
+        ...state,
+        styleOptions: {
+          ...state.styleOptions,
+          loading: false,
+          hasAccess: action.payload.hasAccess,
+          subscriptionType: action.payload.subscriptionType,
+          requiredSubscriptions: action.payload.requiredSubscriptions,
+          options: action.payload.options,
+          message: action.payload.message
+        }
+      };
+
+    case FETCH_STYLE_OPTIONS_FAILURE:
+      return {
+        ...state,
+        styleOptions: {
+          ...state.styleOptions,
+          loading: false,
+          error: action.payload
+        }
       };
 
     default:

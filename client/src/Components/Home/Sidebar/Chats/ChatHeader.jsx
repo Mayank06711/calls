@@ -37,8 +37,20 @@ const ChatHeader = ({
   return receiverData.name ? receiverData.name.charAt(0).toUpperCase() : '?';
 };
   return (
-    <div className="px-4 py-3 bg-light-primary dark:bg-dark-primary    flex items-center">
-      
+    <div className="px-4 py-3 bg-light-primary dark:bg-dark-primary flex items-center">
+      {/* Back button - only visible on mobile */}
+      {onBack && (
+        <IconButton 
+          onClick={onBack}
+          className="md:hidden mr-2"
+          sx={{ 
+            display: { xs: 'flex', md: 'none' },
+            color: colors.fourth 
+          }}
+        >
+          <ArrowBack />
+        </IconButton>
+      )}
 
       <div className="flex-1 flex items-center">
         <div className="relative">

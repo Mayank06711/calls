@@ -3,27 +3,34 @@ import React, { useState } from "react";
 import CycloneIcon from "@mui/icons-material/Cyclone";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import AIAssistant from "./AIAssistant/AIAssistant";
-import { RiAddBoxFill } from "react-icons/ri";
-import { FaShareAltSquare } from "react-icons/fa";
 import "ldrs/ping";
-import zIndex from "@mui/material/styles/zIndex";
 
 function AISidebar({ isDarkMode }) {
   const [isAIOpen, setIsAIOpen] = useState(false);
   const colors = useSubscriptionColors();
   return (
-    <aside
-      className={`fixed right-0 top-16 h-[calc(100vh-4rem)] ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      } shadow-lg 
-        ${
-          isAIOpen ? "w-96" : "w-0"
-        } transition-[width] duration-200 ease-in-out`}
-    >
-      <div className="flex flex-col ">
+    <>
+      {/* Mobile overlay backdrop - blurred to show content behind */}
+      {isAIOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40 sm:hidden"
+          onClick={() => setIsAIOpen(false)}
+        />
+      )}
+      
+      <aside
+        className={`fixed right-0 top-16 h-[calc(100vh-4rem)] shadow-lg z-50
+          ${
+            isAIOpen ? "w-full sm:w-96" : "w-0"
+          } transition-[width] duration-200 ease-in-out
+          ${isAIOpen ? "bg-gray-800/80 backdrop-blur-md" : ""}
+          `}
+      >
+      <div className="flex flex-col h-full">
         {/* First section with button and header */}
         <div className="relative h-12 ">
-          <div className="absolute top-1/2 transform -translate-y-1/2 z-40 ">
+          {/* Toggle button - same spiral icon for open/close */}
+          <div className="absolute top-1/2 transform -translate-y-1/2 z-40">
             <div
               className={`tour2 relative cursor-pointer ${
                 !isAIOpen ? "-left-10" : "left-1"
@@ -77,7 +84,7 @@ function AISidebar({ isDarkMode }) {
 
         {/* Second section with AIAssistant */}
         <div
-          className={`flex-1 ${
+          className={`flex-1 overflow-hidden ${
             isAIOpen ? "opacity-100" : "opacity-0"
           } transition-opacity duration-300`}
         >
@@ -85,6 +92,7 @@ function AISidebar({ isDarkMode }) {
         </div>
       </div>
     </aside>
+    </>
   );
 }
 

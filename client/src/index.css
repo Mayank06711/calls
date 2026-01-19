@@ -440,3 +440,45 @@
 .dark .date-range-custom .rdrDayEndPreview {
   border-color: #1e40af !important;
 }
+
+/* Responsive date range picker for tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .date-range-custom {
+    transform: scale(0.9);
+    transform-origin: top left;
+    margin-right: -10%;
+  }
+  
+  .date-range-custom .rdrMonth {
+    width: 100% !important;
+  }
+  
+  .date-range-custom .rdrCalendarWrapper {
+    font-size: 13px;
+  }
+}
+
+/* Responsive date range picker for mobile */
+@media (max-width: 640px) {
+  .date-range-custom {
+    transform: scale(0.85);
+    transform-origin: top left;
+    margin-right: -15%;
+  }
+  
+  .date-range-custom .rdrMonth {
+    width: 100% !important;
+  }
+  
+  .date-range-custom .rdrCalendarWrapper {
+    font-size: 12px;
+  }
+  
+  .date-range-custom .rdrDateDisplayWrapper {
+    flex-direction: row;
+  }
+  
+  .date-range-custom .rdrDateDisplayItem input {
+    font-size: 14px;
+  }
+}

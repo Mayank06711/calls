@@ -31,13 +31,21 @@ const colorOptions = [
 function ThemeSettings() {
   const dispatch = useDispatch();
   const { 
-    theme, 
+    data,
     loading, 
     error, 
-    saveInProgress, 
-    saveError,
-    dirtyFields 
+    saveInProgress = false, 
+    saveError = null,
+    dirtyFields = [] 
   } = useSelector(state => state.settings);
+  
+  // Get theme from data or use defaults
+  const theme = data?.theme || {
+    mode: 'system',
+    primaryColor: '#059212',
+    fontSize: 'medium',
+    customFonts: []
+  };
   
   const [customColor, setCustomColor] = useState('');
   const [newFont, setNewFont] = useState('');
@@ -45,7 +53,7 @@ function ThemeSettings() {
   
   // Fetch theme settings when component mounts
   useEffect(() => {
-    dispatch(fetchThemeSettingsThunk());
+    // dispatch(fetchThemeSettingsThunk());
   }, [dispatch]);
   
   // Apply theme mode to document for preview
@@ -124,10 +132,10 @@ function ThemeSettings() {
   };
   
   const handleSaveChanges = () => {
-    dispatch(updateThemeSettingsThunk(theme));
+    // dispatch(updateThemeSettingsThunk(theme));
   };
   
-  const hasChanges = dirtyFields.length > 0;
+  const hasChanges = dirtyFields?.length > 0;
   
   if (loading) {
     return (

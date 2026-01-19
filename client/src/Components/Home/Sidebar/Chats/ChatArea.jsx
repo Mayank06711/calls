@@ -14,7 +14,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { useSelector } from "react-redux";
 
-const ChatArea = ({ selectedUser, chatServiceRef }) => {
+const ChatArea = ({ selectedUser, chatServiceRef, onBack }) => {
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
   const [isTyping] = useState(false);
@@ -380,7 +380,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
   const handleMenuClick = () => {};
 
   return (
-    <div className='f-full w-full flex-1 flex flex-col bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text '>
+    <div className='h-full w-full flex-1 flex flex-col overflow-hidden bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text'>
       {renderError()}
       <ChatHeader
         receiverData={{
@@ -391,7 +391,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
           lastSeen: selectedUser?.lastSeen || '',
         }}
         isTyping={isTyping}
-        onBack={() => {}}
+        onBack={onBack}
         onVideoCall={handleVideoCall}
         onVoiceCall={handleVoiceCall}
         onMenuClick={handleMenuClick}
@@ -426,6 +426,7 @@ ChatArea.propTypes = {
   chatServiceRef: PropTypes.shape({
     current: PropTypes.object,
   }),
+  onBack: PropTypes.func, // Back button handler for mobile
 };
 
 export default ChatArea;

@@ -8,3 +8,4 @@ export * from "./subscription.reducer";
 export * from "./loader.reducers";
 export * from "./settings.reducer";
 export * from "./feedback.reducer";
+export * from "./session.reducer";

@@ -6,6 +6,9 @@ import {
   setUserId,
   setUserInfo,
 } from "./redux/actions/auth.actions";
+import { setSubscriptionType } from "./redux/actions/subscription.action";
+import { fetchSettingsThunk } from "./redux/thunks/settings.thunk";
+import { applyFontSize, applyFontFamily, dbValueToFontSize } from "./constants/styleOptions";
 import {
   BrowserRouter as Router,
   Routes,
@@ -91,9 +94,30 @@ const App = () => {
 
     if (savedUserId) {
       dispatch(setUserId(savedUserId));
+      
+      // Fetch settings from backend when user is logged in (this will apply font size and family too)
+      dispatch(fetchSettingsThunk()).then((result) => {
+        // Apply font size from fetched settings (always apply, even for medium/default)
+        if (result?.data?.accessibility?.fontSize !== undefined) {
+          const fontSizeString = dbValueToFontSize(result.data.accessibility.fontSize);
+          applyFontSize(fontSizeString);
+          console.log("Applied font size on app load:", fontSizeString, "from DB value:", result.data.accessibility.fontSize);
+        }
+        // Apply font family from fetched settings
+        if (result?.data?.accessibility?.fontFamily) {
+          applyFontFamily(result.data.accessibility.fontFamily);
+          console.log("Applied font family on app load:", result.data.accessibility.fontFamily);
+        }
+      });
     }
     if (savedUserInfo) {
-      dispatch(setUserInfo(JSON.parse(savedUserInfo)));
+      const userInfo = JSON.parse(savedUserInfo);
+      dispatch(setUserInfo(userInfo));
+      
+      // Also set subscription type for colors
+      if (userInfo?.subscription?.type) {
+        dispatch(setSubscriptionType(userInfo.subscription.type.toUpperCase()));
+      }
     }
     
     // ✅ Mark auth initialization as complete (regardless of whether user was found)
