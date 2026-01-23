@@ -3,21 +3,70 @@ import FeedbackController from "../controllers/feedbackController";
 import { Middleware } from "../middlewares/middlewares";
 const router = express.Router();
 
-// Create Feedback
-// router.post(
-//   "/new",
-//   Middleware.VerifyJWT,
-//   FeedbackController.createFeedback
-// );
+// PUBLIC ROUTES 
 
-// Get Feedbacks (filtered by criteria)
-// router.get("/find", Middleware.VerifyJWT, FeedbackController.getFeedback);
+// Submit Bug Feedback - Anyone can submit (anonymous or logged-in)
+router.post("/bug", FeedbackController.submitBugFeedback);
 
-// // Update Feedback (by feedbackId)
-// router.put(
-//   "/:feedbackId",
-//   Middleware.VerifyJWT,
-//   FeedbackController.updateFeedback
-// );
+// PROTECTED ROUTES 
+router.use(Middleware.VerifyJWT); 
+// Submit Expert Feedback - Only logged-in users
+router.post(
+  "/expert",
+  FeedbackController.submitExpertFeedback
+);
+
+// Get User's Own Feedback History
+router.get(
+  "/my-feedback/:userId",
+  FeedbackController.getUserFeedback
+);
+
+//ADMIN/DEVELOPER ROUTES (Authentication + Authorization Required) 
+
+// Get All Feedback with filters and pagination
+router.get(
+  "/all",
+  FeedbackController.getAllFeedback
+);
+
+// Get Feedback Statistics
+router.get(
+  "/stats",
+  FeedbackController.getFeedbackStats
+);
+
+// Update Feedback Status/Response
+router.put(
+  "/:feedbackId",
+  FeedbackController.updateFeedback
+);
+
+// Assign Feedback to Developer
+router.put(
+  "/:feedbackId/assign",
+  FeedbackController.assignFeedback
+);
+
+// Mark Feedback as Fixed
+router.put(
+  "/:feedbackId/fixed",
+  FeedbackController.markAsFixed
+);
+
+// Delete Feedback
+router.delete(
+  "/:feedbackId",
+  FeedbackController.deleteFeedback
+);
+
+//DEVELOPER ROUTES 
+
+// Get Feedback Assigned to Developer
+router.get(
+  "/assigned/:developerId",
+  FeedbackController.getAssignedFeedback
+);
+
 
 export default router;

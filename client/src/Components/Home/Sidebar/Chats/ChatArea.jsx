@@ -22,7 +22,7 @@ const ChatArea = ({ selectedUser }) => {
   const [isSocketReady, setIsSocketReady] = useState(false);
   const { socket } = useSocketContext();
   const chatServiceRef = useRef(null);
-  const currentUserId = useSelector(state => state.userInfo?.data?._id);
+  const currentUserId = useSelector(state => state.auth?.userId);
 
   // First useEffect to handle socket authentication and ChatService initialization
   useEffect(() => {
@@ -154,7 +154,7 @@ const ChatArea = ({ selectedUser }) => {
         const chat = await chatServiceRef.current.checkChatHistory(currentUserId, selectedUser._id);
         if (chat) {
           setChatId(chat.chatId);
-          console.log('Chat history received from server:', chat.messages);
+          console.log('Chat history received from server:', chat);
           setMessages((chat.messages || []).map(formatMessage));
         }
       } catch {
@@ -183,45 +183,65 @@ const ChatArea = ({ selectedUser }) => {
     );
   }
 
+  
+// Helper to update a message by content and timestamp (for optimistic messages)
+const updateOptimisticMessage = (content, timestamp, updater) => {
+  setMessages(prev =>
+    prev.map(msg => 
+      (msg.content === content && msg.timestamp === timestamp && !msg.id) 
+        ? updater(msg) 
+        : msg
+    )
+  );
+};
+
   // Handlers for sending messages, typing, etc.
   const handleSendMessage = async (messageData) => {
     if (!chatServiceRef.current) return;
-    // Generate a temporary ID for optimistic UI
-    const tempId = uuidv4();
+  
+    const currentTimestamp = Date.now();
+    
     const optimisticMessage = formatMessage({
-      id: tempId,
+      id: null, // Direct null ID
+      chatId,
       type: messageData.type,
       content: messageData.content,
       senderId: currentUserId,
       receiverId: selectedUser._id,
-      timestamp: Date.now(),
+      timestamp: currentTimestamp,
       status: MESSAGE_STATUS.PENDING,
       metadata: messageData.metadata,
     });
-    setMessages((prev) => [...prev, optimisticMessage]);
+  
+    // Add optimistic message to the end
+    setMessages(prev => [...prev, optimisticMessage]);
+  
     try {
       const { messageId, timestamp } = await chatServiceRef.current.sendMessage(
         chatId,
         selectedUser._id,
         messageData
       );
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId
-            ? { ...m, id: messageId, timestamp, status: MESSAGE_STATUS.SENT }
-            : m
-        )
-      );
-      // If chatId was null, it will be set on sent-ack
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId ? { ...m, status: MESSAGE_STATUS.FAILED } : m
-        )
-      );
+      
+      // Update optimistic message with real ID
+      updateOptimisticMessage(messageData.content, currentTimestamp, msg => ({
+        ...msg,
+        chatId,
+        id: messageId,
+        timestamp,
+        status: MESSAGE_STATUS.SENT,
+      }));
+    } catch (err) {
+      // Update optimistic message as failed
+      updateOptimisticMessage(messageData.content, currentTimestamp, msg => ({
+        ...msg,
+        status: MESSAGE_STATUS.FAILED,
+        error: "Failed to send message",
+      }));
       setError("Failed to send message");
     }
   };
+  
 
   const handleTyping = (isTyping) => {
     if (chatId && chatServiceRef.current) {
@@ -240,7 +260,7 @@ const ChatArea = ({ selectedUser }) => {
   const handleMenuClick = () => {};
 
   return (
-    <div className='f-full w-full flex-1 flex flex-col'>
+    <div className='f-full w-full flex-1 flex flex-col bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text '>
       {renderError()}
       <ChatHeader
         receiverData={{

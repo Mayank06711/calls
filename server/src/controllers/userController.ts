@@ -491,6 +491,7 @@ class User {
 
       // Prepare sanitized response data
       const responseData = {
+        _id: user._id,
         fullName: user.fullName,
         username: user.username,
         // Mask email: show first 2 chars and domain

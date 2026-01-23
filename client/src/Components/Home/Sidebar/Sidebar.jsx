@@ -53,32 +53,29 @@ function Sidebar({ isDarkMode }) {
       } shadow-lg 
         ${
           isSidebarExpanded ? "w-48" : "w-16"
-        } transition-[width] duration-300 ease-in-out z-40`}
+        } transition-[width] duration-200 ease-in-out z-40`}
     >
-      <div className="flex flex-col justify-between h-full tour3">
-        <div className="py-4">
+      <div className="flex flex-col justify-between h-full  tour3">
+        <div className="py-4 ">
           {MENU_ITEMS.map((item, index) => (
             <div
               key={index}
-              className={`flex items-center px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}
+              className={`flex items-center px-4  py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}
               onMouseEnter={() => setSidebarExpanded(true)}
               onMouseLeave={() => setSidebarExpanded(false)}
               onClick={()=> handleNavigation(item.path)}
             >
               <span
-                className=" dark:text-gray-300"
+                className="flex-shrink-0 dark:text-gray-300 py-2 "
                 style={{ color: colors.fourth }}
               >
                 {item.icon}
               </span>
-              <span
-                className={`ml-4 whitespace-nowrap ${
-                  isSidebarExpanded ? "opacity-100" : "opacity-0"
-                } 
-                transition-opacity duration-200`}
-              >
-                {item.label}
-              </span>
+              {isSidebarExpanded && (
+                <span className="ml-4 whitespace-nowrap transition-opacity opacity-50 duration-600">
+                  {item.label}
+                </span>
+              )}
             </div>
           ))}
         </div>
