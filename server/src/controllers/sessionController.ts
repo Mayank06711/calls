@@ -11,6 +11,7 @@ import {
   getDeviceDescription,
 } from "../helper/sessionHelper";
 import { ISession } from "../interface/ISession";
+import { RedisManager } from "../utils/redisClient";
 
 // Extend Express Request to include sessionTokenId
 declare global {
@@ -189,6 +190,32 @@ class SessionController {
         throw new ApiError(400, "Session ID is required");
       }
 
+      // Find the session first to get the tokenId (which is the Redis sessionId)
+      const sessionDoc = await SessionModel.findOne({
+        _id: sessionId,
+        userId,
+        isActive: true,
+      });
+
+      if (!sessionDoc) {
+        throw new ApiError(404, "Session not found or already revoked");
+      }
+
+      // Get lastActive from Redis before removal
+      const redisSessionId = sessionDoc.refreshTokenId || sessionDoc.tokenId;
+      let lastActiveAt = sessionDoc.lastActiveAt;
+
+      if (redisSessionId) {
+        const activity = await RedisManager.getSessionActivity(
+          userId.toString(),
+          redisSessionId
+        );
+        if (activity?.lastActiveAt) {
+          lastActiveAt = new Date(activity.lastActiveAt);
+        }
+      }
+
+      // Update MongoDB
       const session = await SessionModel.findOneAndUpdate(
         {
           _id: sessionId,
@@ -200,12 +227,17 @@ class SessionController {
           revokedAt: new Date(),
           revokedReason: "Revoked by user",
           revokedBy: userId,
+          lastActiveAt,
         },
         { new: true }
       );
 
-      if (!session) {
-        throw new ApiError(404, "Session not found or already revoked");
+      // Remove from Redis if we have the sessionId
+      if (redisSessionId) {
+        await RedisManager.removeActiveSession(
+          userId.toString(),
+          redisSessionId
+        );
       }
 
       console.log(`[SESSION] User ${userId} revoked session ${sessionId}`);
@@ -245,8 +277,15 @@ class SessionController {
         revokedBy: userId,
       });
 
+      // Clear sessions from Redis
+      const currentSessionId = req.sessionTokenId || req.user?.sessionId;
+      // If keepCurrent is true and we have a session ID, pass it to excluded
+      const excludedSessionId = keepCurrent ? currentSessionId : undefined;
+      
+      await RedisManager.removeAllActiveSessions(userId.toString(), excludedSessionId);
+
       console.log(
-        `[SESSION] User ${userId} revoked ${result.modifiedCount} sessions`
+        `[SESSION] User ${userId} revoked ${result.modifiedCount} sessions. Redis cleared.`
       );
 
       return res.status(200).json(

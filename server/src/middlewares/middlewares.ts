@@ -12,6 +12,7 @@ import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
 import { AuthServices } from "../helper/auth";
+import { RedisManager } from "../utils/redisClient";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -86,10 +87,15 @@ class Middleware {
   ) {
     try {
       // Extract the access token from cookies or headers
+      // Prioritize Header (e.g., for Partial Token or explicit API calls)
+      const authHeader = req.header("Authorization");
       const accessToken =
-        req.cookies?.accessToken ||
-        req.header("Authorization")?.replace("Bearer ", "");
+        authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+      
+      console.log(`[Middleware] Verifying JWT. Source: ${authHeader ? 'Header' : (req.cookies?.accessToken ? 'Cookie' : 'None')}`);
+
       if (!accessToken || accessToken.length === 0) {
+        console.log("[Middleware] No token found.");
         throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
 
@@ -136,10 +142,42 @@ class Middleware {
         ]);
       }
 
+      // Check partial token restrictions
+      if (decodedToken.isPartial) {
+        console.log(`[Middleware] Partial token detected. Route: ${req.originalUrl}, Method: ${req.method}`);
+        // Allowed routes for partial tokens: Session management only
+        const isAllowed =
+          req.originalUrl.includes("/sessions") &&
+          (req.method === "DELETE" ||
+            req.method === "GET" ||
+            req.method === "POST");
+
+        if (!isAllowed) {
+          console.warn(`[Middleware] Access denied for partial token. URL: ${req.originalUrl}`);
+          throw new ApiError(403, "Access restricted for partial session", [
+            "Complete login to access this resource",
+          ]);
+        }
+        console.log(`[Middleware] Access granted for partial token.`);
+      }
+
+      // Check if session is still active in Redis (if sessionId is present)
+      if (decodedToken.sessionId) {
+        const isActive = await RedisManager.isSessionActive(
+          decodedToken._id.toString(),
+          decodedToken.sessionId
+        );
+        if (!isActive) {
+          throw new ApiError(401, "Session expired or revoked", [
+            "Please login again",
+          ]);
+        }
+      }
+
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
         _id: decodedToken._id,
-      }).select("isExpert isAdmin isMFAEnabled isActive");
+      }).select("isExpert isAdmin isMFAEnabled isActive isBlockedByAdmin");
       // Check if user does not exist
       if (!user) {
         throw new ApiError(401, "Invalid access token", [
@@ -152,7 +190,7 @@ class Middleware {
           "Access denied",
         ]);
       }
-      // Attach admin info to the request
+      // Attach user info to the request (including session and subscription info)
       req.user = {
         _id: user._id as ObjectId,
         isAdmin: user.isAdmin,
@@ -160,6 +198,9 @@ class Middleware {
         isActive: user.isActive,
         isMFAEnabled: user.isMFAEnabled,
         isBlockedByAdmin: user.isBlockedByAdmin,
+        sessionId: decodedToken.sessionId,
+        subscriptionId: decodedToken.subscriptionId,
+        subscriptionType: decodedToken.subscriptionType || "free",
       };
 
       return next();
@@ -424,7 +465,34 @@ class Middleware {
     next();
   };
 
-  // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
+  // Track session activity middleware (fire-and-forget)
+  private static _trackSessionActivity = (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ) => {
+    // Fire and forget - don't block the request
+    if (req.user?.sessionId && req.user?._id) {
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        "unknown";
+      RedisManager.updateSessionActivity(
+        req.user._id.toString(),
+        req.user.sessionId,
+        {
+          lastEndpoint: req.path,
+          lastMethod: req.method,
+          ip,
+        }
+      ).catch((err) =>
+        console.error("[Middleware] Session activity update failed:", err)
+      );
+    }
+    next();
+  };
+
+  // Expose the private methods as static methods wrapped in AsyncHandler so that errors can be caught
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
@@ -433,6 +501,7 @@ class Middleware {
   static IsAdmin = AsyncHandler.wrap(Middleware._isAdmin);
   static globalErrorHandler = Middleware.ErrorHandler;
   static platformDetector = Middleware._platformDetector;
+  static trackSessionActivity = Middleware._trackSessionActivity;
 }
 
 export { Middleware };

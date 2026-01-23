@@ -553,6 +553,287 @@ class RedisManager {
       throw error;
     }
   }
+
+  // ============ SESSION MANAGEMENT METHODS ============
+
+  /**
+   * Add a session to a user's active session set.
+   * Also stores session metadata.
+   */
+  static async addActiveSession(
+    userId: string,
+    sessionId: string,
+    metadata: {
+      device?: string;
+      deviceType?: string;
+      platform?: string;
+      browser?: string;
+      ip?: string;
+    }
+  ): Promise<void> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    const metaKey = `session:meta:${userId}:${sessionId}`;
+    const activityKey = `session:activity:${userId}:${sessionId}`;
+
+    const now = new Date().toISOString();
+
+    const multi = this.redis.multi();
+    // Add sessionId to the active set
+    multi.sadd(activeSetKey, sessionId);
+    multi.expire(activeSetKey, 86400); // 24 hours
+
+    // Store metadata hash
+    multi.hset(metaKey, {
+      device: metadata.device || "Unknown",
+      deviceType: metadata.deviceType || "unknown",
+      platform: metadata.platform || "unknown",
+      browser: metadata.browser || "unknown",
+      ip: metadata.ip || "unknown",
+      createdAt: now,
+    });
+    multi.expire(metaKey, 1296000); // 15 days
+
+    // Initialize activity hash
+    multi.hset(activityKey, {
+      lastActiveAt: now,
+      lastEndpoint: "/login",
+      lastMethod: "POST",
+      requestCount: "1",
+      ip: metadata.ip || "unknown",
+    });
+    multi.expire(activityKey, 86400); // 24 hours
+
+    await multi.exec();
+    console.log(`[Session] Added session ${sessionId} for user ${userId}`);
+  }
+
+  /**
+   * Remove a session from a user's active session set and clean up related keys.
+   */
+  static async removeActiveSession(
+    userId: string,
+    sessionId: string
+  ): Promise<void> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    const metaKey = `session:meta:${userId}:${sessionId}`;
+    const activityKey = `session:activity:${userId}:${sessionId}`;
+
+    const multi = this.redis.multi();
+    multi.srem(activeSetKey, sessionId);
+    multi.del(metaKey);
+    multi.del(activityKey);
+    await multi.exec();
+    console.log(`[Session] Removed session ${sessionId} for user ${userId}`);
+  }
+
+  /**
+   * Remove all active sessions for a user, optionally keeping one.
+   */
+  static async removeAllActiveSessions(
+    userId: string,
+    exceptSessionId?: string
+  ): Promise<void> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const sessionIds = await this.getActiveSessionIds(userId);
+    
+    if (sessionIds.length === 0) return;
+
+    const pipeline = this.redis.multi();
+    const activeSetKey = `session:active:${userId}`;
+
+    sessionIds.forEach((sessionId) => {
+      // Skip the session we want to keep
+      if (exceptSessionId && sessionId === exceptSessionId) return;
+
+      const metaKey = `session:meta:${userId}:${sessionId}`;
+      const activityKey = `session:activity:${userId}:${sessionId}`;
+      
+      pipeline.srem(activeSetKey, sessionId);
+      pipeline.del(metaKey);
+      pipeline.del(activityKey);
+    });
+
+    await pipeline.exec();
+    console.log(`[Session] Removed all sessions for user ${userId} (except: ${exceptSessionId || "none"})`);
+  }
+
+  /**
+   * Get the count of active sessions for a user.
+   */
+  static async getActiveSessionCount(userId: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    const sessionIds = await this.redis.smembers(activeSetKey);
+    
+    if (sessionIds.length === 0) return 0;
+
+    // Check validity of each session (lazy cleanup)
+    const pipeline = this.redis.multi();
+    sessionIds.forEach((id) => {
+      pipeline.exists(`session:meta:${userId}:${id}`);
+    });
+    const results = await pipeline.exec();
+
+    let validCount = 0;
+    const staleIds: string[] = [];
+
+    if (results) {
+      results.forEach((res, index) => {
+        // [error, result]
+        if (res[1] === 0) {
+          staleIds.push(sessionIds[index]);
+        } else {
+          validCount++;
+        }
+      });
+    }
+
+    if (staleIds.length > 0) {
+      await this.redis.srem(activeSetKey, ...staleIds);
+      console.log(`[Session] Cleaned up ${staleIds.length} stale sessions for user ${userId}`);
+    }
+
+    return validCount;
+  }
+
+  /**
+   * Get all active session IDs for a user.
+   */
+  static async getActiveSessionIds(userId: string): Promise<string[]> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    return await this.redis.smembers(activeSetKey);
+  }
+
+  /**
+   * Check if a specific session is active for a user.
+   */
+  static async isSessionActive(
+    userId: string,
+    sessionId: string
+  ): Promise<boolean> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    const result = await this.redis.sismember(activeSetKey, sessionId);
+    return result === 1;
+  }
+
+  /**
+   * Update session activity (fire-and-forget, non-blocking).
+   */
+  static async updateSessionActivity(
+    userId: string,
+    sessionId: string,
+    data: {
+      lastEndpoint: string;
+      lastMethod: string;
+      ip?: string;
+    }
+  ): Promise<void> {
+    if (!this.redis) {
+      console.error("[Session] Redis not initialized for activity update.");
+      return;
+    }
+    const activityKey = `session:activity:${userId}:${sessionId}`;
+    const now = new Date().toISOString();
+
+    // Fire and forget - don't await
+    this.redis
+      .multi()
+      .hset(activityKey, "lastActiveAt", now)
+      .hset(activityKey, "lastEndpoint", data.lastEndpoint)
+      .hset(activityKey, "lastMethod", data.lastMethod)
+      .hincrby(activityKey, "requestCount", 1)
+      .expire(activityKey, 86400)
+      .exec()
+      .catch((err) => console.error("[Session] Activity update error:", err));
+  }
+
+  /**
+   * Get session activity data.
+   */
+  static async getSessionActivity(
+    userId: string,
+    sessionId: string
+  ): Promise<Record<string, string> | null> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activityKey = `session:activity:${userId}:${sessionId}`;
+    const data = await this.redis.hgetall(activityKey);
+    return Object.keys(data).length > 0 ? data : null;
+  }
+
+  /**
+   * Get session metadata.
+   */
+  static async getSessionMetadata(
+    userId: string,
+    sessionId: string
+  ): Promise<Record<string, string> | null> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const metaKey = `session:meta:${userId}:${sessionId}`;
+    const data = await this.redis.hgetall(metaKey);
+    return Object.keys(data).length > 0 ? data : null;
+  }
+
+  /**
+   * Get all sessions data for a user (for limit modal display).
+   */
+  static async getAllSessionsData(
+    userId: string
+  ): Promise<
+    Array<{
+      sessionId: string;
+      metadata: Record<string, string> | null;
+      activity: Record<string, string> | null;
+    }>
+  > {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const sessionIds = await this.getActiveSessionIds(userId);
+    const results = await Promise.all(
+      sessionIds.map(async (sessionId) => {
+        const metadata = await this.getSessionMetadata(userId, sessionId);
+        // If metadata is null, session is effectively expired
+        if (!metadata) return null;
+        return {
+          sessionId,
+          metadata,
+          activity: await this.getSessionActivity(userId, sessionId),
+        };
+      })
+    );
+    
+    // Filter out nulls (stale sessions)
+    // We optionally cleanup here too, but getActiveSessionCount usually handles it.
+    // If we want to be sure:
+    const validSessions = results.filter((s): s is NonNullable<typeof s> => s !== null);
+    
+    if (sessionIds.length !== validSessions.length) {
+       // Trigger cleanup in background
+       this.getActiveSessionCount(userId).catch(err => console.error("Background cleanup failed", err));
+    }
+
+    return validSessions;
+  }
 }
 
 export { RedisManager };

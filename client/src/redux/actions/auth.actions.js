@@ -14,7 +14,9 @@ import {
   SET_TIMER_ACTIVE,
   SET_USER_INFO,
   SET_ALREADY_VERIFIED,
-  SET_PROFILE_DATA_LOADING
+  SET_PROFILE_DATA_LOADING,
+  SHOW_SESSION_LIMIT,
+  HIDE_SESSION_LIMIT
 } from "../action_creators/login.action_creaters";
 
 export const setUserId = (userId) => ({
@@ -86,4 +88,13 @@ export const resetOtpStates = (payload) => ({
 export const setProfileDataLoading = (isLoading) => ({
   type: SET_PROFILE_DATA_LOADING,
   payload: isLoading,
+});
+
+export const showSessionLimit = (data) => ({
+  type: SHOW_SESSION_LIMIT,
+  payload: data,
+});
+
+export const hideSessionLimit = () => ({
+  type: HIDE_SESSION_LIMIT,
 });

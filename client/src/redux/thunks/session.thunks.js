@@ -47,13 +47,17 @@ export const fetchSessionsThunk = () => async (dispatch) => {
 /**
  * Revoke a specific session
  */
-export const revokeSessionThunk = (sessionId) => async (dispatch) => {
+export const revokeSessionThunk = (sessionId, token = null) => async (dispatch) => {
   try {
     dispatch(revokeSessionRequest());
 
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
     const { data, error } = await makeRequest(
       HTTP_METHODS.DELETE,
-      `${ENDPOINTS.SESSIONS.REVOKE}/${sessionId}`
+      `${ENDPOINTS.SESSIONS.REVOKE}/${sessionId}`,
+      null,
+      config
     );
 
     if (error) {
@@ -81,14 +85,17 @@ export const revokeSessionThunk = (sessionId) => async (dispatch) => {
 /**
  * Revoke all sessions (optionally keep current)
  */
-export const revokeAllSessionsThunk = (keepCurrent = true) => async (dispatch) => {
+export const revokeAllSessionsThunk = (keepCurrent = true, token = null) => async (dispatch) => {
   try {
     dispatch(revokeAllSessionsRequest());
+
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
     const { data, error } = await makeRequest(
       HTTP_METHODS.POST,
       ENDPOINTS.SESSIONS.REVOKE_ALL,
-      { keepCurrent }
+      { keepCurrent },
+      config
     );
 
     if (error) {

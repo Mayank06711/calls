@@ -79,7 +79,7 @@ const createAxiosInstance = (config = {}) => {
 
         // Otherwise handle as error, names as normalErro means that its
         const normalErros = Promise.reject({
-          data: null,
+          data: processedError.data || null,
           error: {
             message: processedError.message || "Something went wrong",
             statusCode: processedError.status || 500,

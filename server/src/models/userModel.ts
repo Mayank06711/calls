@@ -125,7 +125,11 @@ UserSchema.pre<IUser>("save", async function (next) {
 
 // Instance Methods
 
-UserSchema.methods.generateAccessToken = function () {
+UserSchema.methods.generateAccessToken = function (
+  sessionId?: string,
+  subscriptionId?: string,
+  subscriptionType?: string
+) {
   // Generate a JSON Web Token (JWT) containing user information
   // Sign the token with the ACCESS_TOKEN_SECRET environment variable
   // Set the expiration time for the token based on the ACCESS_TOKEN_EXPIRY environment variable
@@ -136,9 +140,12 @@ UserSchema.methods.generateAccessToken = function () {
     email: this.email,
     username: this.username,
     city: this.city,
+    sessionId: sessionId || undefined,
+    subscriptionId: subscriptionId || undefined,
+    subscriptionType: subscriptionType || "free",
     iss: "KYF",
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 15 minutes
+    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
     aud: "kyf-api",
     jti: crypto.randomBytes(16).toString("hex"),
   };
@@ -160,10 +167,17 @@ UserSchema.methods.generateAccessToken = function () {
   );
 };
 
-UserSchema.methods.generateRefreshToken = function () {
+UserSchema.methods.generateRefreshToken = function (
+  sessionId?: string,
+  subscriptionId?: string,
+  subscriptionType?: string
+) {
   // Creating payload
   const payload = {
     _id: this._id,
+    sessionId: sessionId || undefined,
+    subscriptionId: subscriptionId || undefined,
+    subscriptionType: subscriptionType || "free",
     iss: "KYF",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60, // 15 days

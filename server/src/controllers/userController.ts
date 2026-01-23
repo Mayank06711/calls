@@ -140,12 +140,43 @@ class User {
   private static async _logout(req: express.Request, res: express.Response) {
     try {
       const userId = req.user?._id;
+      const sessionId = req.user?.sessionId;
+
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
 
-      // Invalidate all sessions for this user (logout from all devices)
-      await SessionController.invalidateSession(userId.toString());
+      // Import RedisManager dynamically to avoid circular dependency issues
+      const { RedisManager } = await import("../utils/redisClient");
+
+      // If we have a sessionId, sync lastActive from Redis to MongoDB before removal
+      if (sessionId) {
+        const activity = await RedisManager.getSessionActivity(
+          userId.toString(),
+          sessionId
+        );
+
+        // Invalidate this specific session in MongoDB
+        await SessionController.invalidateSession(
+          userId.toString(),
+          sessionId,
+          "User logged out"
+        );
+
+        // Remove session from Redis
+        await RedisManager.removeActiveSession(userId.toString(), sessionId);
+      } else {
+        // If no sessionId, invalidate all sessions (legacy behavior)
+        await SessionController.invalidateSession(userId.toString());
+
+        // Also try to clear all Redis sessions for this user
+        const sessionIds = await RedisManager.getActiveSessionIds(
+          userId.toString()
+        );
+        for (const sid of sessionIds) {
+          await RedisManager.removeActiveSession(userId.toString(), sid);
+        }
+      }
 
       // Find user and clear refresh token
       const user = await UserModel.findByIdAndUpdate(
@@ -179,7 +210,7 @@ class User {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, "Internal Server Error: Unable to create user");
+      throw new ApiError(500, "Internal Server Error: Unable to logout");
     }
   }
 

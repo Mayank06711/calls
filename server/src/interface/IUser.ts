@@ -40,8 +40,16 @@ export interface IUser extends Document {
 
   // defining methods here so that typescript can
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
-  generateAccessToken(): string;
-  generateRefreshToken(): string;
+  generateAccessToken(
+    sessionId?: string,
+    subscriptionId?: string,
+    subscriptionType?: string
+  ): string;
+  generateRefreshToken(
+    sessionId?: string,
+    subscriptionId?: string,
+    subscriptionType?: string
+  ): string;
   isPasswordCorrect(password: string): Promise<boolean>;
   getProfileMedia(): Promise<{ photo?: MediaItem; video?: MediaItem }>;
   getAllMedia(): Promise<{

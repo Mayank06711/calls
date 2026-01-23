@@ -17,6 +17,7 @@ import {
   otpVerificationSuccess,
   resetTimer,
   setTimerActive,
+  showSessionLimit,
 } from "../actions/auth.actions";
 // import { ensureSocketAuthenticated } from "../../socket/authentication";
 import { fetchUserInfoThunk } from "./userInfo.thunks";
@@ -80,7 +81,26 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       ENDPOINTS.AUTH.VERIFY_OTP,
       verificationData
     );
+
     if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed, // changed from maxSessions to match controller
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          mobNum: verificationData.mobNum,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData 
+        }));
+        // Don't mark as failure yet, let user decide
+         dispatch(otpVerificationFailure(false)); 
+         // Optional: Hide notification if modal is shown
+         // dispatch(showNotification(error.message, error.statusCode));
+        return;
+      }
+
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification(error.message, error.statusCode));
       return;

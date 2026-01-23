@@ -379,6 +379,7 @@ class SocketManager {
 
             socket.data.authenticated = true;
             socket.data.userId = userData.userId;
+            socket.data.sessionId = userData.sessionId;
 
             // setting up the chat controller listerns
             const chatController = ChatController.getInstance();
@@ -441,6 +442,21 @@ class SocketManager {
         );
         if (result) {
           if (result.data) {
+            const data = result.data as any;
+            // Check if session is active in Redis
+            if (data.sessionId) {
+              const isSessionActive = await RedisManager.isSessionActive(
+                data.userId.toString(),
+                data.sessionId
+              );
+              if (!isSessionActive) {
+                return {
+                  success: false,
+                  errorType: "session_expired",
+                  message: "Session expired or revoked",
+                };
+              }
+            }
             return { success: true, data: result.data };
           } else if (result.isExpire) {
             return { success: false, errorType: "token_expired", message: "Access token expired" };
@@ -460,6 +476,21 @@ class SocketManager {
           this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.REFRESH
         );
         if (result && result.data) {
+          const data = result.data as any;
+          // Check if session is active in Redis
+          if (data.sessionId) {
+            const isSessionActive = await RedisManager.isSessionActive(
+              data.userId.toString(),
+              data.sessionId
+            );
+            if (!isSessionActive) {
+              return {
+                success: false,
+                errorType: "session_expired",
+                message: "Session expired or revoked",
+              };
+            }
+          }
           return { success: true, data: result.data };
         } else if (result && result.isExpire) {
           return { success: false, errorType: "token_expired", message: "Refresh token expired" };
@@ -520,6 +551,7 @@ class SocketManager {
       {
         userId: userData.userId,
         mobNum: userData.mobNum,
+        sessionId: userData.sessionId,
         socketId: socket.id,
         connectedAt: Date.now(),
         lastRefreshedAt: Date.now(),
@@ -547,6 +579,7 @@ class SocketManager {
         status: "refreshed",
         userId: userData.userId, // Ensure we update with latest data
         mobNum: userData.mobNum,
+        sessionId: userData.sessionId,
       },
       this.SOCKET_CONSTANTS.REDIS.TTL.SOCKET_DATA,
       this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.ADD_TO_SET,
@@ -759,6 +792,20 @@ class SocketManager {
         console.log(
           `User disconnected - Socket: ${socket.id}, User: ${userData.userId}`
         );
+
+        if (socket.data.sessionId && socket.data.userId) {
+          RedisManager.updateSessionActivity(
+            socket.data.userId,
+            socket.data.sessionId,
+            {
+              lastEndpoint: "socket:disconnect",
+              lastMethod: "SOCKET",
+              ip: socket.handshake.address,
+            }
+          ).catch((err) =>
+            console.error("Failed to update session activity on disconnect:", err)
+          );
+        }
         
         // Check if user has any other active sockets before broadcasting offline
         const userMapping = await RedisManager.getDataFromGroup(

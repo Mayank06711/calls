@@ -191,8 +191,20 @@ class AuthServices {
       }
 
       // Generate new access and refresh tokens
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
+      const sessionId = decodedToken.sessionId;
+      const subscriptionId = decodedToken.subscriptionId;
+      const subscriptionType = decodedToken.subscriptionType;
+
+      const accessToken = user.generateAccessToken(
+        sessionId,
+        subscriptionId,
+        subscriptionType
+      );
+      const refreshToken = user.generateRefreshToken(
+        sessionId,
+        subscriptionId,
+        subscriptionType
+      );
       user.refreshToken = refreshToken;
       await user.save({ validateBeforeSave: false });
 
@@ -327,6 +339,7 @@ class AuthServices {
         data: {
           userId: user._id,
           username: user.username,
+          sessionId: decodedToken.sessionId,
           status: type === "access" ? "authenticated" : "refreshed",
           tokenExpiry: decodedToken.exp,
         }, //  no user found

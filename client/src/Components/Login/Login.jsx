@@ -9,6 +9,7 @@ import { resetTimer, setTimerActive } from "../../redux/actions/login.actions";
 import { Tooltip, IconButton } from "@mui/material";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import { feedbackClick } from "../../redux/actions";
+import SessionLimitModal from "./SessionLimitModal";
 
 
 function Login() {
@@ -67,6 +68,7 @@ function Login() {
 
   return (
     <div className='modal'>
+      <SessionLimitModal />
       <form className='flex flex-col h-full'>
         <div className='banner'></div>
         <label className='title'>Know Your Style</label>

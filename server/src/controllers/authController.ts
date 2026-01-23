@@ -13,6 +13,11 @@ import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
 import { SessionController } from "./sessionController";
 import { generateTokenId } from "../helper/sessionHelper";
+import {
+  generateSessionId,
+  getMaxSessionsForSubscription,
+} from "../helper/sessionLimits";
+import { AuthServices } from "../helper/auth";
 const otpLogPossibleKeys = [
   "mob_num",
   "reference_id",
@@ -471,11 +476,71 @@ class Authentication {
       }
       let user = await UserModel.findOne({
         phoneNumber: formattedRecipientNumber,
-      });
+      }).populate("currentSubscriptionId");
 
       if (user && user.isPhoneVerified && user.isActive) {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        // Get subscription info for session limit check
+        const subscriptionType = (user.currentSubscriptionId as any)?.type || "free";
+        const subscriptionId = (user.currentSubscriptionId as any)?._id?.toString();
+        const userId = (user._id as any).toString();
+
+        // Check session limit
+        const maxSessions = getMaxSessionsForSubscription(subscriptionType);
+        const activeSessionCount = await RedisManager.getActiveSessionCount(userId);
+
+        if (activeSessionCount >= maxSessions) {
+          // Session limit reached - return 403 with active sessions infoAnd partial token
+          const activeSessions = await RedisManager.getAllSessionsData(userId);
+          
+          // Generate partial token for session management
+          const partialPayload = {
+            _id: user._id,
+            email: user.email,
+            username: user.username,
+            isPartial: true,
+          };
+          const partialToken = await AuthServices.genJWT_Token(
+            partialPayload,
+            process.env.ACCESS_TOKEN_SECRET!,
+            "1h"
+          );
+
+          return res.status(403).json({
+            success: false,
+            message: "Session limit reached",
+            error: "SESSION_LIMIT_REACHED",
+            data: {
+              maxAllowed: maxSessions,
+              currentCount: activeSessionCount,
+              subscriptionType,
+              partialToken, // Token for revocation
+              activeSessions: activeSessions.map((s) => ({
+                sessionId: s.sessionId,
+                device: s.metadata?.device || "Unknown",
+                deviceType: s.metadata?.deviceType || "unknown",
+                platform: s.metadata?.platform || "unknown",
+                browser: s.metadata?.browser || "unknown",
+                ip: s.metadata?.ip || "unknown",
+                createdAt: s.metadata?.createdAt,
+                lastActiveAt: s.activity?.lastActiveAt,
+              })),
+            },
+          });
+        }
+
+        // Generate new sessionId for this login
+        const sessionId = generateSessionId();
+
+        const accessToken = user.generateAccessToken(
+          sessionId,
+          subscriptionId,
+          subscriptionType
+        );
+        const refreshToken = user.generateRefreshToken(
+          sessionId,
+          subscriptionId,
+          subscriptionType
+        );
         if (!refreshToken || !accessToken) {
           throw new ApiError(
             500,
@@ -486,13 +551,47 @@ class Authentication {
         user.refreshToken = refreshToken;
         await user.save();
 
-        // Create session record for this login
+        // Extract device info from request
+        const userAgent = req.headers["user-agent"] || "";
+        const ip =
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          "unknown";
+
+        // Add session to Redis
+        await RedisManager.addActiveSession(userId, sessionId, {
+          device: userAgent.substring(0, 100),
+          deviceType: req.isMobileApp ? "mobile" : "desktop",
+          platform: userAgent.includes("Windows")
+            ? "windows"
+            : userAgent.includes("Mac")
+            ? "macos"
+            : userAgent.includes("Linux")
+            ? "linux"
+            : userAgent.includes("Android")
+            ? "android"
+            : userAgent.includes("iPhone")
+            ? "ios"
+            : "unknown",
+          browser: userAgent.includes("Chrome")
+            ? "chrome"
+            : userAgent.includes("Firefox")
+            ? "firefox"
+            : userAgent.includes("Safari")
+            ? "safari"
+            : userAgent.includes("Edge")
+            ? "edge"
+            : "unknown",
+          ip,
+        });
+
+        // Create session record for this login (MongoDB)
         const tokenId = generateTokenId();
         await SessionController.createSession(
-          (user._id as any).toString(),
+          userId,
           req,
           tokenId,
-          undefined,
+          sessionId,
           "otp"
         );
 
@@ -541,8 +640,21 @@ class Authentication {
         user.isPhoneVerified = true;
         user.isActive = true;
       }
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
+
+      // New users default to "free" subscription
+      const newUserSessionId = generateSessionId();
+      const newUserId = (user._id as any).toString();
+
+      const accessToken = user.generateAccessToken(
+        newUserSessionId,
+        undefined,
+        "free"
+      );
+      const refreshToken = user.generateRefreshToken(
+        newUserSessionId,
+        undefined,
+        "free"
+      );
       if (!refreshToken || !accessToken) {
         throw new ApiError(500, "Failed to generate access or refresh token.");
       }
@@ -550,13 +662,47 @@ class Authentication {
       user.refreshToken = refreshToken;
       await user.save();
 
-      // Create session record for this login
+      // Extract device info from request
+      const newUserAgent = req.headers["user-agent"] || "";
+      const newIp =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        "unknown";
+
+      // Add session to Redis for new user
+      await RedisManager.addActiveSession(newUserId, newUserSessionId, {
+        device: newUserAgent.substring(0, 100),
+        deviceType: req.isMobileApp ? "mobile" : "desktop",
+        platform: newUserAgent.includes("Windows")
+          ? "windows"
+          : newUserAgent.includes("Mac")
+          ? "macos"
+          : newUserAgent.includes("Linux")
+          ? "linux"
+          : newUserAgent.includes("Android")
+          ? "android"
+          : newUserAgent.includes("iPhone")
+          ? "ios"
+          : "unknown",
+        browser: newUserAgent.includes("Chrome")
+          ? "chrome"
+          : newUserAgent.includes("Firefox")
+          ? "firefox"
+          : newUserAgent.includes("Safari")
+          ? "safari"
+          : newUserAgent.includes("Edge")
+          ? "edge"
+          : "unknown",
+        ip: newIp,
+      });
+
+      // Create session record for this login (MongoDB)
       const tokenId = generateTokenId();
       await SessionController.createSession(
-        (user._id as any).toString(),
+        newUserId,
         req,
         tokenId,
-        undefined,
+        newUserSessionId,
         "otp"
       );
 
