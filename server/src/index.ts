@@ -4,7 +4,8 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
-import { createServer, Server as HTTPServer } from "http"; // Import Server type
+import { createServer as createHttpServer, Server as HTTPServer } from "http";
+import { createServer as createHttpsServer } from "https";
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
@@ -39,6 +40,8 @@ class ServerManager {
       `https://${process.env.AWS_PUBLIC_IP}:3000`,
       "http://localhost:3000",
       "https://localhost:3000",
+      "http://192.168.31.125:3000",
+      "https://192.168.31.125:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
       "https://staging.d15sv24wr1qszx.amplifyapp.com",
     ],
@@ -187,35 +190,36 @@ class ServerManager {
     console.log("Logs flushed.");
   }
   public async start() {
-    // Load SSL key and certificate
-    const key = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.key"),
-      "utf8"
-    );
-    const cert = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.crt"),
-      "utf8"
-    );
-    //  HTTPS server with key and cert and for that createServer must be imported from https not http
-    this.server = createServer(
-      // {
-      //   key: key,
-      //   cert: cert,
-      // },
-      this.app
-    );
+    const useHttps = process.env.USE_HTTPS === "true";
+    const Port = process.env.PORT || 5005;
+
+    if (useHttps) {
+      const key = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.key"),
+        "utf8"
+      );
+      const cert = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.crt"),
+        "utf8"
+      );
+      this.server = createHttpsServer({ key, cert }, this.app) as unknown as HTTPServer;
+    } else {
+      this.server = createHttpServer(this.app);
+    }
+
     // Socket.io for real-time communication
     this.io = new SocketIOServer(this.server, {
       cors: ServerManager.CORS_OPTIONS,
     });
-    const Port = process.env.PORT || 5005;
+
     try {
       await connectDB();
       await RedisManager.initRedisConnection();
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
-          console.log(`Server is running on http://localhost:${Port}`);
+          const protocol = useHttps ? "https" : "http";
+          console.log(`Server is running on ${protocol}://localhost:${Port}`);
           resolve();
         });
       });
