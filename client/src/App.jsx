@@ -54,6 +54,10 @@ import Feedback from "./Components/Feedback/Feedback";
 import { showNotification } from "./redux/actions";
 // Import the SocketProvider for context-based socket management
 import { SocketProvider } from "./socket/SocketContext";
+import { VideoCallProvider } from "./hooks/useVideoCall";
+import VideoCall from "./Components/Home/VideoCall/VideoCall";
+import IncomingCall from "./Components/Home/VideoCall/IncomingCall";
+import CallErrorModal from "./Components/Home/VideoCall/CallErrorModal";
 
 // Listens for custom 'app:navigate' events (e.g. from browser notification clicks)
 // and performs client-side navigation without a full page reload.
@@ -178,6 +182,7 @@ const App = () => {
       {console.log("[App] Rendering with SocketProvider")}
       <SocketProvider>
         {/* SocketProvider manages socket connection, authentication, and exposes context */}
+        <VideoCallProvider>
         <NotificationProvider>
         <Router>
           <NavigationListener />
@@ -275,8 +280,13 @@ const App = () => {
             </Routes>
           </div>
           <Feedback />
+          {/* Global video call overlays — rendered above all routes */}
+          <VideoCall />
+          <IncomingCall />
+          <CallErrorModal />
         </Router>
         </NotificationProvider>
+        </VideoCallProvider>
       </SocketProvider>
     </ThemeProvider>
   );
