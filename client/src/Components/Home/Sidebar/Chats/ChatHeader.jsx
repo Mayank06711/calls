@@ -16,7 +16,8 @@ const ChatHeader = ({
   onVideoCall,
   onMenuClick,
   lastMessage,
-  currentUserId
+  currentUserId,
+  isExpert
 }) => {
   const colors = useSubscriptionColors();
 
@@ -99,7 +100,7 @@ const ChatHeader = ({
         {/* {showMessageStatus && (
           <MessageStatus status={lastMessage.status} />
         )} */}
-       <Tooltip title="Video Call" arrow placement="top">
+       <Tooltip title={isExpert ? "Request Video Call" : "Video Call"} arrow placement="top">
         
         <IconButton 
           onClick={onVideoCall}
@@ -147,6 +148,7 @@ ChatHeader.propTypes = {
   onMenuClick: PropTypes.func,
   lastMessage: PropTypes.object,
   currentUserId: PropTypes.string,
+  isExpert: PropTypes.bool,
 };
 
 export default ChatHeader;
