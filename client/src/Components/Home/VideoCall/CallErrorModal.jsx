@@ -1,6 +1,7 @@
 import React from "react";
 import { useVideoCall } from "../../../hooks/useVideoCall";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { Close, WorkspacePremium, ErrorOutline, WifiOff, PersonOff, PhoneLocked } from "@mui/icons-material";
 
 // Map error codes to user-friendly messages, icons, and whether to show subscription CTA
@@ -51,6 +52,7 @@ const ERROR_CONFIG = {
 function CallErrorModal() {
   const { callError, dismissCallError } = useVideoCall();
   const navigate = useNavigate();
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
 
   if (!callError) return null;
 
@@ -103,7 +105,7 @@ function CallErrorModal() {
 
           {/* Buttons */}
           <div className="flex flex-col gap-3 w-full">
-            {config.showSubscriptionCTA && (
+            {config.showSubscriptionCTA && !isExpert && (
               <button
                 onClick={handleGetSubscription}
                 className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-lg transition-all active:scale-[0.98]"
