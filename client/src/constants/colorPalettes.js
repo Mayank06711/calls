@@ -24,4 +24,10 @@ export const COLORS = {
       third: 'rgb(180, 132, 108)',
       fourth: 'rgb(125, 90, 80)',
     },
+    EXPERT: {
+      first: 'rgb(218, 232, 225)',
+      second: 'rgb(140, 178, 162)',
+      third: 'rgb(74, 125, 105)',
+      fourth: 'rgb(38, 78, 65)',
+    },
   };
