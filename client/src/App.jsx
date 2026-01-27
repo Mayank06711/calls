@@ -58,6 +58,8 @@ import { VideoCallProvider } from "./hooks/useVideoCall";
 import VideoCall from "./Components/Home/VideoCall/VideoCall";
 import IncomingCall from "./Components/Home/VideoCall/IncomingCall";
 import CallErrorModal from "./Components/Home/VideoCall/CallErrorModal";
+import ExpertPermissionRequest from "./Components/Home/VideoCall/ExpertPermissionRequest";
+import ExpertPermissionStatus from "./Components/Home/VideoCall/ExpertPermissionStatus";
 
 // Listens for custom 'app:navigate' events (e.g. from browser notification clicks)
 // and performs client-side navigation without a full page reload.
@@ -94,6 +96,7 @@ const theme = createTheme({
 const App = () => {
   console.log("[App] Mounting App component");
   const userId = useSelector((state) => state.auth.userId);
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
   const dispatch = useDispatch();
   const [isAuthInitializing, setIsAuthInitializing] = useState(true); // 🔐 Prevent redirect during initial load
   const {
@@ -225,10 +228,10 @@ const App = () => {
                 <Route path='reels' element={<Reels />} />
 
                 <Route path='subscriptions'>
-                  <Route index element={<Subscriptions />} />
-                  <Route path='gold' element={<GoldSubscription />} />
-                  <Route path='silver' element={<SilverSubscription />} />
-                  <Route path='platinum' element={<PlatinumSubscription />} />
+                  <Route index element={isExpert ? <Navigate to='/chats' replace /> : <Subscriptions />} />
+                  <Route path='gold' element={isExpert ? <Navigate to='/chats' replace /> : <GoldSubscription />} />
+                  <Route path='silver' element={isExpert ? <Navigate to='/chats' replace /> : <SilverSubscription />} />
+                  <Route path='platinum' element={isExpert ? <Navigate to='/chats' replace /> : <PlatinumSubscription />} />
                 </Route>
 
                 <Route path='/settings' element={<Settings />} />
@@ -283,6 +286,8 @@ const App = () => {
           {/* Global video call overlays — rendered above all routes */}
           <VideoCall />
           <IncomingCall />
+          <ExpertPermissionRequest />
+          <ExpertPermissionStatus />
           <CallErrorModal />
         </Router>
         </NotificationProvider>
