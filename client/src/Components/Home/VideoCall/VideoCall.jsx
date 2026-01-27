@@ -6,6 +6,7 @@ import {
   VideocamOff,
   Mic,
   MicOff,
+  Lock,
 } from "@mui/icons-material";
 
 function VideoCall() {
@@ -24,24 +25,25 @@ function VideoCall() {
     endCall,
     toggleVideo,
     toggleAudio,
+    isVideoSwapped,
+    toggleVideoSwap,
+    timeWarning,
   } = useVideoCall();
 
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
+  const fullscreenVideoRef = useRef(null);
+  const pipVideoRef = useRef(null);
 
-  // Attach local stream to video element
+  // Assign streams based on swap state
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+    const fullscreenStream = isVideoSwapped ? localStream : remoteStream;
+    const pipStream = isVideoSwapped ? remoteStream : localStream;
+    if (fullscreenVideoRef.current) {
+      fullscreenVideoRef.current.srcObject = fullscreenStream;
     }
-  }, [localStream]);
-
-  // Attach remote stream to video element
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
+    if (pipVideoRef.current) {
+      pipVideoRef.current.srcObject = pipStream;
     }
-  }, [remoteStream]);
+  }, [localStream, remoteStream, isVideoSwapped]);
 
   // Only show during active call states (not idle)
   if (
@@ -75,29 +77,51 @@ function VideoCall() {
         if (endReason === "CALLEE_BUSY") return "User Busy";
         if (endReason === "media_error") return "Camera/Mic Error";
         if (endReason === "connection_lost") return "Connection Lost";
+        if (endReason === "time_limit") return "Time Limit Reached";
         return "Call Ended";
       default:
         return "";
     }
   };
 
+  // Determine what's showing in fullscreen vs PiP based on swap
+  const fullscreenIsLocal = isVideoSwapped;
+  const fullscreenVideoOn = fullscreenIsLocal ? isVideoEnabled : remoteVideoEnabled;
+  const fullscreenStream = fullscreenIsLocal ? localStream : remoteStream;
+  const pipVideoOn = fullscreenIsLocal ? remoteVideoEnabled : isVideoEnabled;
+  const pipStream = fullscreenIsLocal ? remoteStream : localStream;
+  const pipIsLocal = !fullscreenIsLocal;
+
+  const formatTimeWarning = (remaining) => {
+    const m = Math.ceil(remaining / 60);
+    return m <= 1 ? "Call ending in less than 1 minute" : `Call ending in ${m} minutes`;
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col">
-      {/* Remote video — full screen background */}
+      {/* Time warning banner */}
+      {timeWarning && (
+        <div className="absolute top-0 left-0 right-0 z-10 bg-amber-500 text-black text-center py-2 px-4 text-sm font-semibold">
+          {formatTimeWarning(timeWarning.remaining)}
+        </div>
+      )}
+
+      {/* Fullscreen video area */}
       <div className="flex-1 relative overflow-hidden bg-black">
-        {/* Always render remote video element so srcObject is never lost */}
         <video
-          ref={remoteVideoRef}
+          ref={fullscreenVideoRef}
           autoPlay
           playsInline
+          muted={fullscreenIsLocal}
           className="w-full h-full object-cover"
           style={{
-            display: remoteStream && remoteVideoEnabled ? "block" : "none",
+            display: fullscreenStream && fullscreenVideoOn ? "block" : "none",
+            transform: fullscreenIsLocal ? "scaleX(-1)" : "none",
           }}
         />
 
-        {/* Avatar fallback when remote video is off */}
-        {(!remoteStream || !remoteVideoEnabled) && (
+        {/* Avatar fallback when fullscreen video is off */}
+        {(!fullscreenStream || !fullscreenVideoOn) && (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
             {remoteUserInfo?.avatar ? (
               <img
@@ -117,8 +141,8 @@ function VideoCall() {
           </div>
         )}
 
-        {/* Top bar overlay: status & timer */}
-        <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent">
+        {/* Top bar overlay: status, timer, encryption badge */}
+        <div className={`absolute ${timeWarning ? "top-10" : "top-0"} left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent transition-all`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white text-sm font-medium opacity-80">
@@ -127,6 +151,15 @@ function VideoCall() {
               <p className="text-white text-lg font-semibold">
                 {getStatusText()}
               </p>
+              {/* Encryption badge */}
+              {callState === CALL_STATES.CONNECTED && (
+                <div className="flex items-center gap-1 mt-1 opacity-70">
+                  <Lock sx={{ fontSize: 12 }} className="text-green-400" />
+                  <span className="text-green-400 text-[10px]">
+                    End-to-end encrypted (DTLS-SRTP)
+                  </span>
+                </div>
+              )}
             </div>
             {!remoteAudioEnabled && callState === CALL_STATES.CONNECTED && (
               <div className="bg-red-600/80 px-2 py-1 rounded text-white text-xs">
@@ -136,23 +169,25 @@ function VideoCall() {
           </div>
         </div>
 
-        {/* Local video PiP */}
-        {localStream && (
-          <div className="absolute bottom-24 right-4 w-32 h-44 rounded-xl overflow-hidden shadow-lg border-2 border-gray-700 bg-gray-800">
-            {/* Always render local video element so srcObject is never lost */}
+        {/* PiP — tap to swap */}
+        {pipStream && (
+          <div
+            onClick={toggleVideoSwap}
+            className="absolute bottom-24 right-4 w-32 h-44 rounded-xl overflow-hidden shadow-lg border-2 border-gray-700 bg-gray-800 cursor-pointer active:scale-95 transition-transform"
+          >
             <video
-              ref={localVideoRef}
+              ref={pipVideoRef}
               autoPlay
               playsInline
-              muted
+              muted={pipIsLocal}
               className="w-full h-full object-cover"
               style={{
-                transform: "scaleX(-1)",
-                display: isVideoEnabled ? "block" : "none",
+                transform: pipIsLocal ? "scaleX(-1)" : "none",
+                display: pipVideoOn ? "block" : "none",
               }}
             />
-            {/* Camera-off overlay */}
-            {!isVideoEnabled && (
+            {/* Camera-off overlay for PiP */}
+            {!pipVideoOn && (
               <div className="w-full h-full flex items-center justify-center bg-gray-700">
                 <VideocamOff className="text-gray-400" />
               </div>
