@@ -216,6 +216,7 @@ class UserSettings {
 
   // Specific settings update handlers
   private static async _updateThemeSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     // All theme customization requires premium subscription
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
@@ -228,6 +229,7 @@ class UserSettings {
     req: Request,
     res: Response
   ) {
+    UserSettings._assertNotExpert(req);
     // Push, marketing, and sound toggles require premium subscription
     const { push, marketing, sound } = req.body;
     if (push !== undefined || marketing !== undefined || sound !== undefined) {
@@ -243,10 +245,12 @@ class UserSettings {
   }
 
   private static async _updatePrivacySettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     return UserSettings._updateSpecificSettings(req, res, "privacy");
   }
 
   private static async _updatePreferenceSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     // All preference customization requires premium subscription
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
@@ -256,6 +260,7 @@ class UserSettings {
   }
 
   private static async _updateLayoutSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     // All layout customization requires premium subscription
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
@@ -268,11 +273,13 @@ class UserSettings {
     req: Request,
     res: Response
   ) {
+    UserSettings._assertNotExpert(req);
     // Accessibility settings are available to ALL users — no premium gate
     return UserSettings._updateSpecificSettings(req, res, "accessibility");
   }
 
   private static async _updateUsageTrackingSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
       throw new ApiError(403, "Usage tracking settings require Gold or Platinum subscription");
@@ -281,6 +288,7 @@ class UserSettings {
   }
 
   private static async _updateAnalyticsPreferencesSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
       throw new ApiError(403, "Analytics preferences require Gold or Platinum subscription");
@@ -289,6 +297,7 @@ class UserSettings {
   }
 
   private static async _updateReelsPreferencesSettings(req: Request, res: Response) {
+    UserSettings._assertNotExpert(req);
     const hasAccess = await UserSettings._checkStyleAccess(req);
     if (!hasAccess) {
       throw new ApiError(403, "Reels preferences require Gold or Platinum subscription");
@@ -296,10 +305,23 @@ class UserSettings {
     return UserSettings._updateSpecificSettings(req, res, "reelsPreferences");
   }
 
+  // Helper: block experts from modifying any settings
+  private static _assertNotExpert(req: Request): void {
+    if (req.user?.isExpert) {
+      throw new ApiError(
+        403,
+        "Expert accounts cannot modify settings. Please contact an admin if you need this functionality."
+      );
+    }
+  }
+
   // Helper method to check if user has style customization access
   private static async _checkStyleAccess(req: Request): Promise<boolean> {
     const userId = req.user?._id;
     if (!userId) return false;
+
+    // Admin bypass — full access to all settings
+    if (req.user?.isAdmin) return true;
 
     const user = await UserModel.findById(userId)
       .populate('currentSubscriptionId')
@@ -331,17 +353,22 @@ class UserSettings {
         ? user.currentSubscriptionId.type
         : 'Free';
 
-      const hasAccess = hasStyleAccess(subscriptionType);
+      const isExpert = !!req.user?.isExpert;
+      const isAdmin = !!req.user?.isAdmin;
+      const hasAccess = isAdmin ? true : isExpert ? false : hasStyleAccess(subscriptionType);
 
       // Return style options with access status
       const response = {
         hasAccess,
+        isExpert,
         subscriptionType,
         requiredSubscriptions: STYLE_ALLOWED_SUBSCRIPTIONS,
         options: hasAccess ? getAllStyleOptions() : null,
-        message: hasAccess 
-          ? "Style customization available" 
-          : "Upgrade to Gold or Platinum to unlock style customization"
+        message: isExpert
+          ? "Settings are not available for expert accounts. Please contact an admin if you need this functionality."
+          : hasAccess
+            ? "Style customization available"
+            : "Upgrade to Gold or Platinum to unlock style customization"
       };
 
       res.status(200).json(successResponse(response, "Style options fetched successfully"));
