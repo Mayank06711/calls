@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useSelector } from "react-redux";
 import { useVideoCallActions } from "../../../../hooks/useVideoCall";
 
-const ChatArea = ({ selectedUser, chatServiceRef, onBack }) => {
+const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert }) => {
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
   const [isTyping] = useState(false);
@@ -23,7 +23,7 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack }) => {
   const [isSocketReady, setIsSocketReady] = useState(false);
   const [isUserOnline, setIsUserOnline] = useState(false); // Track real-time online status
   const { socket } = useSocketContext();
-  const { initiateCall } = useVideoCallActions();
+  const { initiateCall, requestCallPermission } = useVideoCallActions();
   // chatServiceRef is now passed as prop from Chats.jsx (shared instance)
   const messagesEndRef = useRef(null);
   const currentUserId = useSelector(state => state.auth?.userId);
@@ -378,11 +378,16 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
   };
 
   const handleVideoCall = () => {
-    if (selectedUser?._id) {
-      initiateCall(selectedUser._id, {
-        name: selectedUser?.fullName || selectedUser?.name || selectedUser?.username || "User",
-        avatar: selectedUser?.profilePhoto?.url || null,
-      });
+    if (!selectedUser?._id) return;
+    const userInfo = {
+      name: selectedUser?.fullName || selectedUser?.name || selectedUser?.username || "User",
+      avatar: selectedUser?.profilePhoto?.url || null,
+    };
+    if (isExpert) {
+      // Expert must request permission first
+      requestCallPermission(selectedUser._id, userInfo);
+    } else {
+      initiateCall(selectedUser._id, userInfo);
     }
   };
   const handleMenuClick = () => {};
@@ -402,6 +407,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         onBack={onBack}
         onVideoCall={handleVideoCall}
         onMenuClick={handleMenuClick}
+        isExpert={isExpert}
         lastMessage={messages.length > 0 ? messages[messages.length - 1] : null}
         currentUserId={currentUserId}
       />
@@ -434,6 +440,7 @@ ChatArea.propTypes = {
     current: PropTypes.object,
   }),
   onBack: PropTypes.func, // Back button handler for mobile
+  isExpert: PropTypes.bool,
 };
 
 export default ChatArea;
