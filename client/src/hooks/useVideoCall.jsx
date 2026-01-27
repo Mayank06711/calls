@@ -32,6 +32,8 @@ const VideoCallActionsContext = createContext(null);
 export function VideoCallProvider({ children }) {
   const { socket, isAuthenticated } = useSocketContext();
   const userId = useSelector((state) => state.auth.userId);
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
+  const isAdmin = useSelector((state) => state.auth.userInfo?.isAdmin);
 
   // ── State ──
   const [callState, setCallState] = useState(CALL_STATES.IDLE);
@@ -49,6 +51,15 @@ export function VideoCallProvider({ children }) {
   const [remoteUserInfo, setRemoteUserInfo] = useState(null); // { name, avatar }
   const [endReason, setEndReason] = useState(null);
   const [callError, setCallError] = useState(null);
+  // Expert permission state
+  const [permissionState, setPermissionState] = useState("idle"); // idle | requesting | granted | denied | incoming_request
+  const [permissionTarget, setPermissionTarget] = useState(null); // { userId, name, avatar }
+  const [permissionExpert, setPermissionExpert] = useState(null); // { expertId, name, avatar, qualification }
+  const [permissionWindowExpiry, setPermissionWindowExpiry] = useState(null);
+  // Time warning from server
+  const [timeWarning, setTimeWarning] = useState(null); // { remaining: number } | null
+  // Video swap (PiP ↔ fullscreen)
+  const [isVideoSwapped, setIsVideoSwapped] = useState(false);
 
   // ── Refs (for use inside callbacks without re-registration) ──
   const callServiceRef = useRef(null);
@@ -119,6 +130,13 @@ export function VideoCallProvider({ children }) {
     setRemoteUserInfo(null);
     setEndReason(null);
     setCallState(CALL_STATES.IDLE);
+    setIsVideoSwapped(false);
+    setTimeWarning(null);
+    // Reset permission state
+    setPermissionState("idle");
+    setPermissionTarget(null);
+    setPermissionExpert(null);
+    setPermissionWindowExpiry(null);
   }, []); // ← No dependencies! Uses refs for mutable data.
 
   // ── Helper: get user media ──
@@ -380,6 +398,48 @@ export function VideoCallProvider({ children }) {
     if (data.audio !== undefined) setRemoteAudioEnabled(data.audio);
   }, []);
 
+  // ── Expert permission callbacks ──
+  const onPermissionRequest = useCallback((payload) => {
+    const data = payload.data || payload;
+    console.log("[useVideoCall] Permission request from expert:", data.expertId);
+    setPermissionExpert({
+      expertId: data.expertId,
+      name: data.expertName || "Expert",
+      avatar: data.expertAvatar || null,
+      qualification: data.expertQualification || null,
+    });
+    setPermissionState("incoming_request");
+  }, []);
+
+  const onPermissionGranted = useCallback((payload) => {
+    const data = payload.data || payload;
+    console.log("[useVideoCall] Permission granted to call:", data.userId);
+    setPermissionTarget({
+      userId: data.userId,
+      name: data.userName || "User",
+      avatar: data.userAvatar || null,
+    });
+    setPermissionState("granted");
+    setPermissionWindowExpiry(Date.now() + (data.windowSeconds || 300) * 1000);
+  }, []);
+
+  const onPermissionDenied = useCallback((payload) => {
+    console.log("[useVideoCall] Permission denied:", payload);
+    setPermissionState("denied");
+    setTimeout(() => {
+      setPermissionState("idle");
+      setPermissionTarget(null);
+    }, 3000);
+  }, []);
+
+  const onTimeWarning = useCallback((payload) => {
+    const data = payload.data || payload;
+    console.log("[useVideoCall] Time warning:", data.remaining, "seconds remaining");
+    setTimeWarning({ remaining: data.remaining });
+    // Auto-clear warning after 8 seconds
+    setTimeout(() => setTimeWarning(null), 8000);
+  }, []);
+
   // Keep callbacksRef always pointing to latest callbacks
   useEffect(() => {
     callbacksRef.current = {
@@ -394,6 +454,10 @@ export function VideoCallProvider({ children }) {
       onAnswer,
       onIceCandidate,
       onMediaState,
+      onPermissionRequest,
+      onPermissionGranted,
+      onPermissionDenied,
+      onTimeWarning,
     };
   });
 
@@ -419,6 +483,10 @@ export function VideoCallProvider({ children }) {
       onAnswer: (p) => callbacksRef.current.onAnswer?.(p),
       onIceCandidate: (p) => callbacksRef.current.onIceCandidate?.(p),
       onMediaState: (p) => callbacksRef.current.onMediaState?.(p),
+      onPermissionRequest: (p) => callbacksRef.current.onPermissionRequest?.(p),
+      onPermissionGranted: (p) => callbacksRef.current.onPermissionGranted?.(p),
+      onPermissionDenied: (p) => callbacksRef.current.onPermissionDenied?.(p),
+      onTimeWarning: (p) => callbacksRef.current.onTimeWarning?.(p),
     });
 
     return () => {
@@ -441,6 +509,22 @@ export function VideoCallProvider({ children }) {
     async (calleeId, userInfo) => {
       if (callState !== CALL_STATES.IDLE) return;
       if (!callServiceRef.current) return;
+
+      // Expert must have granted permission before calling (unless admin)
+      if (isExpert && !isAdmin && permissionState !== "granted") {
+        setCallError({
+          errorCode: "PERMISSION_REQUIRED",
+          message: "You must request and receive permission before calling a user.",
+        });
+        return;
+      }
+
+      // Clear permission UI once expert proceeds with the call
+      if (permissionState === "granted") {
+        setPermissionState("idle");
+        setPermissionTarget(null);
+        setPermissionWindowExpiry(null);
+      }
 
       setRemoteUserId(calleeId);
       setIsCaller(true);
@@ -480,7 +564,7 @@ export function VideoCallProvider({ children }) {
         });
       }
     },
-    [callState]
+    [callState, isExpert, isAdmin, permissionState]
   );
 
   const acceptCall = useCallback(async () => {
@@ -580,6 +664,59 @@ export function VideoCallProvider({ children }) {
     }
   }, []);
 
+  /** Expert requests permission to call a user */
+  const requestCallPermission = useCallback(async (targetUserId, userInfo) => {
+    if (!callServiceRef.current) return;
+    if (permissionState === "requesting") return; // prevent double-tap
+
+    setPermissionState("requesting");
+    setPermissionTarget({
+      userId: targetUserId,
+      name: userInfo?.name || "User",
+      avatar: userInfo?.avatar || null,
+    });
+
+    try {
+      const response = await callServiceRef.current.requestPermission(targetUserId);
+      const data = response.data || response;
+      if (data.status !== "ok") {
+        console.error("[useVideoCall] Permission request failed:", data);
+        setPermissionState("denied");
+        setTimeout(() => {
+          setPermissionState("idle");
+          setPermissionTarget(null);
+        }, 3000);
+      }
+      // If ok, server will emit call:permission-granted or call:permission-denied
+    } catch (err) {
+      console.error("[useVideoCall] Permission request error:", err);
+      setPermissionState("denied");
+      setTimeout(() => {
+        setPermissionState("idle");
+        setPermissionTarget(null);
+      }, 3000);
+    }
+  }, [permissionState]);
+
+  /** User responds to an expert's permission request */
+  const respondToPermission = useCallback(async (expertId, accepted) => {
+    if (!callServiceRef.current) return;
+
+    try {
+      await callServiceRef.current.respondToPermission(expertId, accepted);
+    } catch (err) {
+      console.error("[useVideoCall] Permission response error:", err);
+    }
+    // Reset permission UI
+    setPermissionState("idle");
+    setPermissionExpert(null);
+  }, []);
+
+  /** Toggle PiP ↔ fullscreen video swap */
+  const toggleVideoSwap = useCallback(() => {
+    setIsVideoSwapped((prev) => !prev);
+  }, []);
+
   // ── Context values ──
   // Actions context — stable references, won't cause re-renders from duration ticks
   const actions = useMemo(() => ({
@@ -591,7 +728,10 @@ export function VideoCallProvider({ children }) {
     toggleAudio,
     cleanup,
     dismissCallError,
-  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError]);
+    requestCallPermission,
+    respondToPermission,
+    toggleVideoSwap,
+  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError, requestCallPermission, respondToPermission, toggleVideoSwap]);
 
   // Full state + actions context (used by VideoCall/IncomingCall UI)
   const value = {
@@ -611,6 +751,15 @@ export function VideoCallProvider({ children }) {
     remoteUserInfo,
     endReason,
     callError,
+    // Expert permission state
+    permissionState,
+    permissionTarget,
+    permissionExpert,
+    permissionWindowExpiry,
+    // Time warning
+    timeWarning,
+    // Video swap
+    isVideoSwapped,
     // Actions
     ...actions,
   };
