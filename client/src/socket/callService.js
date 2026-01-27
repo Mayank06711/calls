@@ -43,6 +43,10 @@ class CallService {
       "call:answer": callbacks.onAnswer,
       "call:ice-candidate": callbacks.onIceCandidate,
       "call:media-state": callbacks.onMediaState,
+      "call:permission-request": callbacks.onPermissionRequest,
+      "call:permission-granted": callbacks.onPermissionGranted,
+      "call:permission-denied": callbacks.onPermissionDenied,
+      "call:time-warning": callbacks.onTimeWarning,
     };
 
     Object.entries(events).forEach(([event, handler]) => {
@@ -170,6 +174,41 @@ class CallService {
   toggleAudio(callId, enabled) {
     if (!this.socket) return;
     this.socket.emit("call:toggle-audio", { callId, enabled });
+  }
+
+  /**
+   * Request permission to call a user (expert flow)
+   */
+  async requestPermission(userId) {
+    try {
+      const response = await emitWithTimeout(
+        this.socket,
+        "call:request-permission",
+        { userId },
+        10000
+      );
+      return response;
+    } catch (error) {
+      console.error("[CallService] requestPermission error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Respond to an expert's permission request
+   */
+  async respondToPermission(expertId, accepted) {
+    try {
+      const response = await emitWithTimeout(
+        this.socket,
+        "call:permission-response",
+        { expertId, accepted }
+      );
+      return response;
+    } catch (error) {
+      console.error("[CallService] respondToPermission error:", error);
+      throw error;
+    }
   }
 
   /**
