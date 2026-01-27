@@ -11,6 +11,7 @@ function AnalyticsSettings() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { styleOptions, data } = useSelector(state => state.settings);
+  const isExpert = useSelector(state => state.auth.userInfo?.isExpert);
 
   // Local state for immediate UI feedback (optimistic update)
   const [localPrefs, setLocalPrefs] = useState(data?.analyticsPreferences || {});
@@ -35,7 +36,7 @@ function AnalyticsSettings() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  const hasAccess = styleOptions.hasAccess;
+  const hasAccess = styleOptions?.hasAccess;
 
   const handleToggle = useCallback((field) => {
     setLocalPrefs(prev => {
@@ -94,21 +95,27 @@ function AnalyticsSettings() {
         <p className="dark:text-gray-400 text-gray-600 mb-4">Manage your analytics preferences and data collection</p>
 
         {/* Premium Feature Notice */}
-        {!hasAccess && !styleOptions.loading && (
-          <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
+        {!hasAccess && !styleOptions?.loading && (
+          <div className={`mb-6 p-4 rounded-lg ${isExpert ? 'bg-gradient-to-r from-gray-500/10 to-gray-600/10 border border-gray-500/30' : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <Lock className="text-amber-500" fontSize="small" />
-              <span className="font-semibold text-amber-600 dark:text-amber-400">Premium Feature</span>
+              <Lock className={isExpert ? "text-gray-500" : "text-amber-500"} fontSize="small" />
+              <span className={`font-semibold ${isExpert ? 'text-gray-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {isExpert ? "Not Available" : "Premium Feature"}
+              </span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-              Analytics preferences are available for <strong>Gold</strong> and <strong>Platinum</strong> subscribers.
+              {isExpert
+                ? "Settings are not available for expert accounts. Please contact an admin if you need this functionality."
+                : <>Analytics preferences are available for <strong>Gold</strong> and <strong>Platinum</strong> subscribers.</>}
             </p>
-            <button
-              onClick={handleUpgradeClick}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:from-amber-600 hover:to-orange-600 transition-all"
-            >
-              Upgrade Now
-            </button>
+            {!isExpert && (
+              <button
+                onClick={handleUpgradeClick}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:from-amber-600 hover:to-orange-600 transition-all"
+              >
+                Upgrade Now
+              </button>
+            )}
           </div>
         )}
 
