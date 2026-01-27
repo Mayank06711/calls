@@ -16,6 +16,7 @@ import User from "./controllers/userController";
 import { throws } from "assert";
 import { ChatController } from "./controllers/chatController";
 import { NotificationController } from "./controllers/notificationController";
+import { CallController } from "./controllers/callController";
 
 // When User1 connects
 /*socket1.data = {
@@ -387,6 +388,10 @@ class SocketManager {
 
             // Flush queued notifications for this user
             await notificationController.flushQueuedNotifications(socket.id, userData.userId);
+
+            // Setting up call controller listeners
+            const callController = CallController.getInstance();
+            callController.setupAuthenticatedSocketListeners(socket);
 
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
