@@ -14,6 +14,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useNavigate,
 } from "react-router-dom";
 
 import Login from "./Components/Login/Login";
@@ -28,6 +29,7 @@ import Subscriptions from "./Components/Home/Sidebar/Subscriptions/Subscriptions
 import Settings from "./Components/Home/Sidebar/Settings/Settings";
 import UserProfile from "./Components/Home/Hearders/UserProfile/UserProfile";
 import NotificationPanel from "./Components/Home/Hearders/Notifications/NotificationPanel";
+import { NotificationProvider } from "./hooks/useNotifications";
 import UserSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings";
 import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle";
 import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
@@ -52,6 +54,18 @@ import Feedback from "./Components/Feedback/Feedback";
 import { showNotification } from "./redux/actions";
 // Import the SocketProvider for context-based socket management
 import { SocketProvider } from "./socket/SocketContext";
+
+// Listens for custom 'app:navigate' events (e.g. from browser notification clicks)
+// and performs client-side navigation without a full page reload.
+function NavigationListener() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = (e) => navigate(e.detail.path);
+    window.addEventListener('app:navigate', handler);
+    return () => window.removeEventListener('app:navigate', handler);
+  }, [navigate]);
+  return null;
+}
 
 const theme = createTheme({
   palette: {
@@ -164,7 +178,9 @@ const App = () => {
       {console.log("[App] Rendering with SocketProvider")}
       <SocketProvider>
         {/* SocketProvider manages socket connection, authentication, and exposes context */}
+        <NotificationProvider>
         <Router>
+          <NavigationListener />
           <div className='relative flex justify-center items-center h-[100vh]'>
             <Toast />
             {/* <div
@@ -260,6 +276,7 @@ const App = () => {
           </div>
           <Feedback />
         </Router>
+        </NotificationProvider>
       </SocketProvider>
     </ThemeProvider>
   );

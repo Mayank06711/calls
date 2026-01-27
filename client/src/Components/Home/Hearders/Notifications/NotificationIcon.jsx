@@ -3,10 +3,12 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import { IconButton, Badge } from '@mui/material';
 import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../../../../hooks/useNotifications';
 
 function Notification() {
     const colors=useSubscriptionColors();
     const navigate = useNavigate();
+    const { unreadCount } = useNotifications();
 
     const handleClick = (path) => {
       navigate(path);
@@ -14,8 +16,8 @@ function Notification() {
   return (
     <div >
      <IconButton onClick={() => handleClick("/notifications")}>
-      <Badge 
-        badgeContent={0} 
+      <Badge
+        badgeContent={unreadCount}
         max={99}
         sx={{
           '& .MuiBadge-badge': {

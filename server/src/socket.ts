@@ -15,6 +15,7 @@ import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
 import { throws } from "assert";
 import { ChatController } from "./controllers/chatController";
+import { NotificationController } from "./controllers/notificationController";
 
 // When User1 connects
 /*socket1.data = {
@@ -305,17 +306,9 @@ class SocketManager {
         return;
       }
 
-      await RedisManager.cacheDataInGroup<PendingAuthData>(
-        this.SOCKET_CONSTANTS.AUTH.GROUP,
-        socket.id,
-        {
-          startTime: Date.now(),
-          serverId: process.env.SERVER_ID || "default",
-          status: this.SOCKET_CONSTANTS.AUTH.STATUS, // pending
-        },
-        this.SOCKET_CONSTANTS.AUTH.TIMEOUT / 1000
-      );
-
+      // Register the authenticate handler FIRST (synchronous) to avoid
+      // a race condition where the client emits "authenticate" before
+      // the handler is attached (the Redis cache below is async).
       let lockId: string | null = null;
       let userData: any = null;
 
@@ -388,6 +381,13 @@ class SocketManager {
             // Flush pending read receipts for this user
             await chatController.flushPendingReadReceipts(socket.id, userData.userId);
 
+            // Setting up notification controller listeners
+            const notificationController = NotificationController.getInstance();
+            notificationController.setupAuthenticatedSocketListeners(socket);
+
+            // Flush queued notifications for this user
+            await notificationController.flushQueuedNotifications(socket.id, userData.userId);
+
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
             
@@ -423,6 +423,19 @@ class SocketManager {
           }
         }
       );
+
+      // Cache pending auth data AFTER the handler is registered so
+      // no "authenticate" event can be missed due to async delay.
+      RedisManager.cacheDataInGroup<PendingAuthData>(
+        this.SOCKET_CONSTANTS.AUTH.GROUP,
+        socket.id,
+        {
+          startTime: Date.now(),
+          serverId: process.env.SERVER_ID || "default",
+          status: this.SOCKET_CONSTANTS.AUTH.STATUS, // pending
+        },
+        this.SOCKET_CONSTANTS.AUTH.TIMEOUT / 1000
+      ).catch((err) => console.error("Error caching pending auth:", err));
     });
   }
 
@@ -1191,6 +1204,7 @@ class SocketManager {
         .map((socket) => ({
           socketId: socket.key,
           userId: socket.userId,
+          sessionId: socket.sessionId,
           mobNum: socket.mobNum,
           connectedAt: new Date(socket.connectedAt).toISOString(),
           lastRefreshedAt: socket.lastRefreshedAt
@@ -1293,13 +1307,43 @@ class SocketManager {
 
       await Promise.all(
         userSockets.map((socketData) =>
-          this.removeSocket(socketData.key, "User disconnected by system")
+          this.removeSocket(socketData.key, "All sessions revoked", "session_revoked", true)
         )
       );
 
       return userSockets.length;
     } catch (error) {
       console.error(`Error disconnecting user ${userId}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Disconnect all sockets for a specific session
+   * Used when a session is revoked via API
+   */
+  public async disconnectBySessionId(userId: string, sessionId: string): Promise<number> {
+    try {
+      const sockets = await this.getAuthenticatedSockets();
+      const sessionSockets = sockets.filter(
+        (socket) => socket.userId === userId && socket.sessionId === sessionId
+      );
+
+      if (sessionSockets.length === 0) {
+        console.log(`[Socket] No active sockets found for session ${sessionId}`);
+        return 0;
+      }
+
+      await Promise.all(
+        sessionSockets.map((socketData) =>
+          this.removeSocket(socketData.key, "Session revoked", "session_revoked", true)
+        )
+      );
+
+      console.log(`[Socket] Disconnected ${sessionSockets.length} socket(s) for session ${sessionId}`);
+      return sessionSockets.length;
+    } catch (error) {
+      console.error(`Error disconnecting session ${sessionId}:`, error);
       return 0;
     }
   }

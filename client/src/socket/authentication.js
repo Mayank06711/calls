@@ -10,6 +10,7 @@ import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
 import { makeRequest } from "../utils/apiHandlers";
 import { ENDPOINTS, HTTP_METHODS } from "../constants/apiEndpoints";
+import { getAccessToken, setAccessToken, clearAuthData } from "../utils/tokenManager";
 
 // Waits for the socket to fully disconnect before proceeding
 const waitForSocketDisconnect = (socket) => {
@@ -28,10 +29,10 @@ const authenticateSocket = async () => {
   try {
     const socket = SocketManager.getSocket(false, true);
     SocketManager.isAuthenticating = true;
-    console.log("[authenticateSocket] Emitting AUTHENTICATE event with token:", localStorage.getItem("token"));
+    console.log("[authenticateSocket] Emitting AUTHENTICATE event with token:", getAccessToken());
     const response = await emitEvent(socket, {
       event: SOCKET_CONSTANTS.AUTH.AUTHENTICATE,
-      data: () => ({ accessToken: localStorage.getItem("token") }),
+      data: () => ({ accessToken: getAccessToken() }),
       timeout: 30000,
       retryOptions: {
         maxRetries: 3,
@@ -68,12 +69,11 @@ const authenticateSocket = async () => {
             );
             const newToken = data?.data?.token || data?.token;
             if (statusCode === 200 && newToken) {
-              localStorage.setItem("token", newToken);
+              setAccessToken(newToken);
               // Throw special error to break retry loop and signal re-auth
               throw Object.assign(new Error("SOCKET_REAUTHENTICATE"), { code: "SOCKET_REAUTHENTICATE" });
             } else {
-              localStorage.removeItem("token");
-              localStorage.removeItem("userId");
+              clearAuthData();
               store.dispatch(showNotification("Session expired. Please log in again.", "error"));
             }
           } else {
@@ -121,7 +121,7 @@ const ensureSocketAuthenticated = async () => {
     }
     throw new Error("Timed out waiting for authentication to complete");
   }
-  const token = localStorage.getItem("token");
+  const token = getAccessToken();
   if (!token) {
     SocketManager.isAuthenticating = false;
     throw new Error("No authentication token found");

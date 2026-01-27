@@ -29,7 +29,8 @@ const initialState = {
       email: true,
       push: true,
       sms: false,
-      marketing: false,
+      messageAlerts: true,
+      marketing: true,
       sound: true,
       quietHours: {
         enabled: false,
@@ -56,6 +57,7 @@ const initialState = {
       measurements: "metric",
     },
     layout: {
+      sidebarPosition: "left",
       sidebarCollapsed: false,
       compactView: false,
       showTutorials: true,
@@ -72,6 +74,21 @@ const initialState = {
       fontSize: 1,
       textSpacing: 1,
       cursorSize: "default",
+    },
+    usageTracking: {
+      activityTracking: false,
+    },
+    analyticsPreferences: {
+      personalAnalytics: false,
+      anonymousUsage: false,
+      weeklyReport: false,
+      dataRetention: "6months",
+    },
+    reelsPreferences: {
+      autoPlay: false,
+      defaultQuality: "auto",
+      downloadOptions: false,
+      dataSaver: false,
     },
   },
   // Store unsaved changes separately
@@ -221,7 +238,73 @@ const settingsReducer = (state = initialState, action) => {
           }
         };
       }
-      
+
+      if (type === 'notifications') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            notifications: data?.notifications || state.data.notifications
+          }
+        };
+      }
+
+      if (type === 'preferences') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            preferences: data?.preferences || state.data.preferences
+          }
+        };
+      }
+
+      if (type === 'layout') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            layout: data?.layout || state.data.layout
+          }
+        };
+      }
+
+      if (type === 'usageTracking') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            usageTracking: data?.usageTracking || state.data.usageTracking
+          }
+        };
+      }
+
+      if (type === 'analyticsPreferences') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            analyticsPreferences: data?.analyticsPreferences || state.data.analyticsPreferences
+          }
+        };
+      }
+
+      if (type === 'reelsPreferences') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            reelsPreferences: data?.reelsPreferences || state.data.reelsPreferences
+          }
+        };
+      }
+
       // Generic fallback - update the entire data from response
       return {
         ...state,

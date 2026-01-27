@@ -455,13 +455,11 @@ class Authentication {
           .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
       }
 
-      // Remove OTP from Redis after successful verification
-      await RedisManager.removeDataFromGroup("otp_data", otpKey);
-      // Remove OTP request data
-      await RedisManager.removeDataFromGroup(
-        "otp_requests",
-        otpRequestCountKey
-      );
+      // NOTE: OTP is NOT deleted here. It is consumed only after session limit
+      // check passes (or for new users, after user creation). This keeps the
+      // OTP valid if SESSION_LIMIT_REACHED is returned, so the client can
+      // retry after revoking a session with the original TTL intact.
+
       // Update OTP status in the database
       if (process.env.NODE_ENV === "prod") {
         const updateQuery = {
@@ -484,52 +482,82 @@ class Authentication {
         const subscriptionId = (user.currentSubscriptionId as any)?._id?.toString();
         const userId = (user._id as any).toString();
 
-        // Check session limit
-        const maxSessions = getMaxSessionsForSubscription(subscriptionType);
-        const activeSessionCount = await RedisManager.getActiveSessionCount(userId);
+        // Acquire distributed lock to prevent race condition on session creation
+        const lockKey = `session:create:${userId}`;
+        const lockId = await RedisManager.acquireLock(lockKey, 10000); // 10 second timeout
 
-        if (activeSessionCount >= maxSessions) {
-          // Session limit reached - return 403 with active sessions infoAnd partial token
-          const activeSessions = await RedisManager.getAllSessionsData(userId);
-          
-          // Generate partial token for session management
-          const partialPayload = {
-            _id: user._id,
-            email: user.email,
-            username: user.username,
-            isPartial: true,
-          };
-          const partialToken = await AuthServices.genJWT_Token(
-            partialPayload,
-            process.env.ACCESS_TOKEN_SECRET!,
-            "1h"
-          );
-
-          return res.status(403).json({
+        if (!lockId) {
+          // Another login is in progress for this user
+          return res.status(429).json({
             success: false,
-            message: "Session limit reached",
-            error: "SESSION_LIMIT_REACHED",
-            data: {
-              maxAllowed: maxSessions,
-              currentCount: activeSessionCount,
-              subscriptionType,
-              partialToken, // Token for revocation
-              activeSessions: activeSessions.map((s) => ({
-                sessionId: s.sessionId,
-                device: s.metadata?.device || "Unknown",
-                deviceType: s.metadata?.deviceType || "unknown",
-                platform: s.metadata?.platform || "unknown",
-                browser: s.metadata?.browser || "unknown",
-                ip: s.metadata?.ip || "unknown",
-                createdAt: s.metadata?.createdAt,
-                lastActiveAt: s.activity?.lastActiveAt,
-              })),
-            },
+            message: "Another login is in progress. Please try again.",
+            error: "LOGIN_IN_PROGRESS",
           });
         }
 
-        // Generate new sessionId for this login
-        const sessionId = generateSessionId();
+        try {
+          // Check session limit (within lock)
+          const maxSessions = getMaxSessionsForSubscription(subscriptionType);
+          const activeSessionCount = await RedisManager.getActiveSessionCount(userId);
+
+          if (activeSessionCount >= maxSessions) {
+            // Release lock before returning
+            await RedisManager.releaseLock(lockKey, lockId);
+
+            // OTP is intentionally NOT consumed here — it stays in Redis with
+            // its original TTL so the client can call verifyOtp again after
+            // revoking a session from the SessionLimitModal.
+
+            // Session limit reached - return 403 with active sessions info and partial token
+            const activeSessions = await RedisManager.getAllSessionsData(userId);
+
+            // Generate partial token for session management
+            // Include standard claims for middleware validation
+            const partialPayload = {
+              _id: user._id,
+              email: user.email,
+              username: user.username,
+              isPartial: true,
+              iss: "KYF",
+              aud: "kyf-api",
+              iat: Math.floor(Date.now() / 1000),
+              exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
+            };
+            const partialToken = await AuthServices.genJWT_Token(
+              partialPayload,
+              process.env.ACCESS_TOKEN_SECRET!,
+              "1h"
+            );
+
+            return res.status(403).json({
+              success: false,
+              message: "Session limit reached",
+              error: "SESSION_LIMIT_REACHED",
+              data: {
+                maxAllowed: maxSessions,
+                currentCount: activeSessionCount,
+                subscriptionType,
+                partialToken, // Token for revocation
+                activeSessions: activeSessions.map((s) => ({
+                  sessionId: s.sessionId,
+                  device: s.metadata?.device || "Unknown",
+                  deviceType: s.metadata?.deviceType || "unknown",
+                  platform: s.metadata?.platform || "unknown",
+                  browser: s.metadata?.browser || "unknown",
+                  ip: s.metadata?.ip || "unknown",
+                  createdAt: s.metadata?.createdAt,
+                  lastActiveAt: s.activity?.lastActiveAt,
+                })),
+              },
+            });
+          }
+
+          // Session limit passed — consume the OTP now
+          await RedisManager.removeDataFromGroup("otp_data", otpKey);
+          await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+
+          // Generate new sessionId for this login
+          const sessionId = generateSessionId();
 
         const accessToken = user.generateAccessToken(
           sessionId,
@@ -595,6 +623,9 @@ class Authentication {
           "otp"
         );
 
+        // Release the lock after session is created
+        await RedisManager.releaseLock(lockKey, lockId);
+
         const response = {
           referenceId: referenceId,
           mobNum: formattedRecipientNumber,
@@ -618,6 +649,11 @@ class Authentication {
           .cookie("accessToken", accessToken, Authentication.options)
           .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
           .json(successResponse(response, "OTP Verified Successfully"));
+        } catch (error) {
+          // Release lock on error
+          await RedisManager.releaseLock(lockKey, lockId);
+          throw error;
+        }
       }
 
       // If the user doesn't exist or is not verified, proceed with OTP verification process
@@ -640,6 +676,10 @@ class Authentication {
         user.isPhoneVerified = true;
         user.isActive = true;
       }
+
+      // New/unverified user — consume the OTP now
+      await RedisManager.removeDataFromGroup("otp_data", otpKey);
+      await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
 
       // New users default to "free" subscription
       const newUserSessionId = generateSessionId();

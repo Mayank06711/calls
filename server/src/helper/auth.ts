@@ -44,7 +44,7 @@ class AuthServices {
   private static getKey(salt: Buffer): Buffer {
     return crypto.pbkdf2Sync(
       process.env.ENCRYPTION_SECRET!,
-      salt,
+      new Uint8Array(salt),
       AuthServices.ENCYRPTION.iterations, // iterations
       AuthServices.ENCYRPTION.keyLength, // key length
       "sha512"
@@ -58,19 +58,24 @@ class AuthServices {
 
     const cipher = crypto.createCipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
 
     const encrypted = Buffer.concat([
-      cipher.update(text, "utf8"),
-      cipher.final(),
+      cipher.update(text, "utf8") as unknown as Uint8Array,
+      cipher.final() as unknown as Uint8Array,
     ]);
 
     const tag = cipher.getAuthTag();
 
     // Combine all components: salt + iv + tag + encrypted
-    const result = Buffer.concat([salt, iv, tag, encrypted]);
+    const result = Buffer.concat([
+      new Uint8Array(salt),
+      new Uint8Array(iv),
+      new Uint8Array(tag),
+      new Uint8Array(encrypted),
+    ]);
 
     return result.toString("base64");
   }
@@ -99,14 +104,14 @@ class AuthServices {
 
     const decipher = crypto.createDecipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
-    decipher.setAuthTag(tag);
+    decipher.setAuthTag(new Uint8Array(tag));
 
     const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
+      decipher.update(new Uint8Array(encrypted)) as unknown as Uint8Array,
+      decipher.final() as unknown as Uint8Array,
     ]);
     return decrypted.toString("utf8");
   }

@@ -12,6 +12,7 @@ import { GetUsersQuery, UserListResponse } from "../interface/IUser";
 import { MediaModel } from "../models/mediaModel";
 import { cacheUserList, generateCacheKey, getAllUsersFromCache } from "../redis/user.redis";
 import { SessionController } from "./sessionController";
+import { SocketManager } from "../socket";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -165,6 +166,14 @@ class User {
 
         // Remove session from Redis
         await RedisManager.removeActiveSession(userId.toString(), sessionId);
+
+        // Disconnect sockets for this specific session
+        try {
+          const socketManager = SocketManager.getInstance();
+          await socketManager.disconnectBySessionId(userId.toString(), sessionId);
+        } catch (socketError) {
+          console.error("[Logout] Failed to disconnect sockets:", socketError);
+        }
       } else {
         // If no sessionId, invalidate all sessions (legacy behavior)
         await SessionController.invalidateSession(userId.toString());
@@ -175,6 +184,14 @@ class User {
         );
         for (const sid of sessionIds) {
           await RedisManager.removeActiveSession(userId.toString(), sid);
+        }
+
+        // Disconnect all sockets for this user
+        try {
+          const socketManager = SocketManager.getInstance();
+          await socketManager.disconnectUser(userId.toString());
+        } catch (socketError) {
+          console.error("[Logout] Failed to disconnect sockets:", socketError);
         }
       }
 

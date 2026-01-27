@@ -583,7 +583,7 @@ class RedisManager {
     const multi = this.redis.multi();
     // Add sessionId to the active set
     multi.sadd(activeSetKey, sessionId);
-    multi.expire(activeSetKey, 86400); // 24 hours
+    multi.expire(activeSetKey, 1296000); // 15 days (matches refresh token validity)
 
     // Store metadata hash
     multi.hset(metaKey, {
@@ -707,6 +707,38 @@ class RedisManager {
   }
 
   /**
+   * Clean up orphaned activity keys for a user.
+   * Removes activity keys whose session ID is not in the active SET.
+   */
+  static async cleanupOrphanedActivityKeys(userId: string): Promise<number> {
+    if (!this.redis) {
+      throw new Error("Redis is not initialized.");
+    }
+    const activeSetKey = `session:active:${userId}`;
+    const activeIds = new Set(await this.redis.smembers(activeSetKey));
+    const pattern = `session:activity:${userId}:*`;
+    const prefix = `session:activity:${userId}:`;
+
+    let orphanedCount = 0;
+    const stream = this.redis.scanStream({ match: pattern, count: 100 });
+
+    for await (const keys of stream) {
+      for (const key of keys as string[]) {
+        const sessionId = key.slice(prefix.length);
+        if (!activeIds.has(sessionId)) {
+          await this.redis!.del(key);
+          orphanedCount++;
+        }
+      }
+    }
+
+    if (orphanedCount > 0) {
+      console.log(`[Session] Cleaned up ${orphanedCount} orphaned activity key(s) for user ${userId}`);
+    }
+    return orphanedCount;
+  }
+
+  /**
    * Get all active session IDs for a user.
    */
   static async getActiveSessionIds(userId: string): Promise<string[]> {
@@ -748,17 +780,26 @@ class RedisManager {
       console.error("[Session] Redis not initialized for activity update.");
       return;
     }
+    const activeSetKey = `session:active:${userId}`;
     const activityKey = `session:activity:${userId}:${sessionId}`;
     const now = new Date().toISOString();
 
+    // Guard: only update if session is still in the active set.
+    // Prevents recreating orphaned activity keys after a session is revoked
+    // (race condition with fire-and-forget middleware).
+    const isActive = await this.redis.sismember(activeSetKey, sessionId);
+    if (isActive !== 1) return;
+
     // Fire and forget - don't await
+    // Also extend activeSetKey TTL on activity (sliding window)
     this.redis
       .multi()
       .hset(activityKey, "lastActiveAt", now)
       .hset(activityKey, "lastEndpoint", data.lastEndpoint)
       .hset(activityKey, "lastMethod", data.lastMethod)
       .hincrby(activityKey, "requestCount", 1)
-      .expire(activityKey, 86400)
+      .expire(activityKey, 86400) // 24h sliding window for activity
+      .expire(activeSetKey, 1296000) // 15 days sliding window for active set
       .exec()
       .catch((err) => console.error("[Session] Activity update error:", err));
   }

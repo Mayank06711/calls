@@ -56,7 +56,15 @@ function SessionSettings() {
       }
     };
   }, [showLogoutConfirm, countdown]);
-  
+
+  // Auto-submit when countdown reaches 0
+  useEffect(() => {
+    if (showLogoutConfirm && countdown === 0 && !isLoggingOut) {
+      handleConfirmLogout();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLogoutConfirm, countdown]);
+
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 

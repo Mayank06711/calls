@@ -10,6 +10,10 @@
     "start:dev": "ts-node-dev src/index.ts",
     "test:socket": "ts-node src/socketTest.ts",
     "test:chatsocket": "ts-node src/socketChatTest.ts",
+    "test:session": "ts-node src/sessionTest.ts",
+    "test:integration": "ts-node src/integrationTest.ts",
+    "test:sessionlimit": "ts-node src/sessionLimitTest.ts",
+    "test:realworld": "ts-node src/realWorldSessionTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -70,6 +74,6 @@
     "pm2": "^5.4.3",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.2"
+    "typescript": "^5.9.3"
   }
 }

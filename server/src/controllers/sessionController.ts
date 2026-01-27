@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import { SessionModel } from "../models/sessionModel";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
@@ -12,15 +13,7 @@ import {
 } from "../helper/sessionHelper";
 import { ISession } from "../interface/ISession";
 import { RedisManager } from "../utils/redisClient";
-
-// Extend Express Request to include sessionTokenId
-declare global {
-  namespace Express {
-    interface Request {
-      sessionTokenId?: string;
-    }
-  }
-}
+import { SocketManager } from "../socket";
 
 class SessionController {
   /**
@@ -130,6 +123,11 @@ class SessionController {
         throw new ApiError(401, "Unauthorized access");
       }
 
+      // Redis is the source of truth for active sessions
+      const redisSessionIds = await RedisManager.getActiveSessionIds(userId.toString());
+      const redisSet = new Set(redisSessionIds);
+
+      // Query MongoDB (include refreshTokenId for reconciliation, exclude later)
       const sessions = await SessionModel.find({
         userId,
         isActive: true,
@@ -137,11 +135,40 @@ class SessionController {
         expiresAt: { $gt: new Date() },
       })
         .sort({ lastActiveAt: -1 })
-        .select("-__v -refreshTokenId")
+        .select("-__v")
         .lean();
 
-      // Transform sessions for frontend
-      const transformedSessions = sessions.map((session: any) => ({
+      // Reconcile: mark MongoDB sessions not in Redis as inactive
+      const staleSessionIds = sessions
+        .filter((s: any) => s.refreshTokenId && !redisSet.has(s.refreshTokenId))
+        .map((s: any) => s._id);
+
+      if (staleSessionIds.length > 0) {
+        await SessionModel.updateMany(
+          { _id: { $in: staleSessionIds } },
+          {
+            isActive: false,
+            revokedAt: new Date(),
+            revokedReason: "Session expired (Redis reconciliation)",
+          }
+        );
+        console.log(
+          `[SESSION] Reconciled ${staleSessionIds.length} stale MongoDB session(s) for user ${userId}`
+        );
+      }
+
+      // Clean up orphaned Redis activity keys (fire-and-forget)
+      RedisManager.cleanupOrphanedActivityKeys(userId.toString()).catch((err) =>
+        console.error("[SESSION] Orphaned activity cleanup failed:", err)
+      );
+
+      // Only return sessions that are active in Redis
+      const activeSessions = sessions.filter(
+        (s: any) => s.refreshTokenId && redisSet.has(s.refreshTokenId)
+      );
+
+      // Transform sessions for frontend (exclude sensitive fields)
+      const transformedSessions = activeSessions.map((session: any) => ({
         id: session._id,
         device: {
           type: session.device.type,
@@ -159,7 +186,7 @@ class SessionController {
         loginMethod: session.loginMethod,
         lastActiveAt: session.lastActiveAt,
         createdAt: session.createdAt,
-        isCurrent: session.tokenId === req.sessionTokenId,
+        isCurrent: session.refreshTokenId === req.user?.sessionId,
       }));
 
       return res.status(200).json(
@@ -190,18 +217,27 @@ class SessionController {
         throw new ApiError(400, "Session ID is required");
       }
 
-      // Find the session first to get the tokenId (which is the Redis sessionId)
+      // Find session by MongoDB _id, tokenId, or refreshTokenId (Redis sessionId)
+      // Build $or dynamically to avoid CastError when sessionId is not a valid ObjectId
+      const orConditions: Record<string, string>[] = [
+        { tokenId: sessionId },
+        { refreshTokenId: sessionId },
+      ];
+      if (mongoose.Types.ObjectId.isValid(sessionId)) {
+        orConditions.unshift({ _id: sessionId });
+      }
+
       const sessionDoc = await SessionModel.findOne({
-        _id: sessionId,
         userId,
         isActive: true,
+        $or: orConditions,
       });
 
       if (!sessionDoc) {
         throw new ApiError(404, "Session not found or already revoked");
       }
 
-      // Get lastActive from Redis before removal
+      // The Redis sessionId is stored in refreshTokenId
       const redisSessionId = sessionDoc.refreshTokenId || sessionDoc.tokenId;
       let lastActiveAt = sessionDoc.lastActiveAt;
 
@@ -215,32 +251,71 @@ class SessionController {
         }
       }
 
-      // Update MongoDB
-      const session = await SessionModel.findOneAndUpdate(
-        {
-          _id: sessionId,
-          userId,
-          isActive: true,
-        },
-        {
-          isActive: false,
-          revokedAt: new Date(),
-          revokedReason: "Revoked by user",
-          revokedBy: userId,
-          lastActiveAt,
-        },
-        { new: true }
-      );
+      // Use atomic operation pattern: Redis first, then MongoDB
+      // If MongoDB fails, we rollback Redis (add session back)
+      let redisRemoved = false;
 
-      // Remove from Redis if we have the sessionId
-      if (redisSessionId) {
-        await RedisManager.removeActiveSession(
-          userId.toString(),
-          redisSessionId
+      try {
+        // Step 1: Remove from Redis first
+        if (redisSessionId) {
+          await RedisManager.removeActiveSession(
+            userId.toString(),
+            redisSessionId
+          );
+          redisRemoved = true;
+        }
+
+        // Step 2: Update MongoDB
+        const session = await SessionModel.findOneAndUpdate(
+          {
+            _id: sessionDoc._id,
+            userId,
+            isActive: true,
+          },
+          {
+            isActive: false,
+            revokedAt: new Date(),
+            revokedReason: "Revoked by user",
+            revokedBy: userId,
+            lastActiveAt,
+          },
+          { new: true }
         );
+
+        if (!session) {
+          // MongoDB update failed, rollback Redis
+          if (redisRemoved && redisSessionId) {
+            console.warn("[SESSION] MongoDB update failed, rolling back Redis");
+            // Note: We can't fully rollback because we don't have the original metadata
+            // But this is a rare edge case and the session will be recreated on next login
+          }
+          throw new ApiError(500, "Failed to revoke session in database");
+        }
+
+        // Step 3: Disconnect sockets (non-critical, don't fail on error)
+        if (redisSessionId) {
+          try {
+            const socketManager = SocketManager.getInstance();
+            const disconnectedCount = await socketManager.disconnectBySessionId(
+              userId.toString(),
+              redisSessionId
+            );
+            if (disconnectedCount > 0) {
+              console.log(`[SESSION] Disconnected ${disconnectedCount} socket(s) for session ${redisSessionId}`);
+            }
+          } catch (socketError) {
+            console.error("[SESSION] Failed to disconnect sockets:", socketError);
+          }
+        }
+      } catch (error) {
+        // If anything fails after Redis removal, log the inconsistency
+        if (redisRemoved) {
+          console.error("[SESSION] Inconsistency: Redis removed but operation failed:", error);
+        }
+        throw error;
       }
 
-      console.log(`[SESSION] User ${userId} revoked session ${sessionId}`);
+      console.log(`[SESSION] User ${userId} revoked session ${sessionId} (Redis: ${redisSessionId})`)
 
       return res.status(200).json(
         successResponse({}, "Session revoked successfully")
@@ -265,9 +340,9 @@ class SessionController {
         isActive: true,
       };
 
-      // If keepCurrent is true and we have current session token, exclude it
-      if (keepCurrent && req.sessionTokenId) {
-        filter.tokenId = { $ne: req.sessionTokenId };
+      // If keepCurrent is true and we have current session ID, exclude it
+      if (keepCurrent && req.user?.sessionId) {
+        filter.refreshTokenId = { $ne: req.user.sessionId };
       }
 
       const result = await SessionModel.updateMany(filter, {
@@ -278,11 +353,33 @@ class SessionController {
       });
 
       // Clear sessions from Redis
-      const currentSessionId = req.sessionTokenId || req.user?.sessionId;
+      const currentSessionId = req.user?.sessionId;
       // If keepCurrent is true and we have a session ID, pass it to excluded
       const excludedSessionId = keepCurrent ? currentSessionId : undefined;
-      
+
       await RedisManager.removeAllActiveSessions(userId.toString(), excludedSessionId);
+
+      // Disconnect all sockets for this user (except current session if keepCurrent)
+      try {
+        const socketManager = SocketManager.getInstance();
+        if (keepCurrent && currentSessionId) {
+          // Get all sessions and disconnect each except current
+          const sockets = await socketManager.getSocketStatus();
+          const userSockets = sockets.filter(
+            (s: any) => s.userId === userId.toString() && s.sessionId !== currentSessionId
+          );
+          for (const socket of userSockets) {
+            if (socket.sessionId) {
+              await socketManager.disconnectBySessionId(userId.toString(), socket.sessionId);
+            }
+          }
+        } else {
+          // Disconnect all user sockets
+          await socketManager.disconnectUser(userId.toString());
+        }
+      } catch (socketError) {
+        console.error("[SESSION] Failed to disconnect sockets:", socketError);
+      }
 
       console.log(
         `[SESSION] User ${userId} revoked ${result.modifiedCount} sessions. Redis cleared.`

@@ -69,7 +69,7 @@ function Login() {
   return (
     <div className='modal'>
       <SessionLimitModal />
-      <form className='flex flex-col h-full'>
+      <form className='flex flex-col h-full' onSubmit={(e) => e.preventDefault()}>
         <div className='banner'></div>
         <label className='title'>Know Your Style</label>
         <div className='h-48'>

@@ -1,11 +1,8 @@
 import React from 'react'
+import NotificationPage from './NotificationPage'
 
 function NotificationPanel() {
-  return (
-    <div>
-     notification dfd
-    </div>
-  )
+  return <NotificationPage />
 }
 
 export default NotificationPanel

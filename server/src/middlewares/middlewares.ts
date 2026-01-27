@@ -145,12 +145,18 @@ class Middleware {
       // Check partial token restrictions
       if (decodedToken.isPartial) {
         console.log(`[Middleware] Partial token detected. Route: ${req.originalUrl}, Method: ${req.method}`);
-        // Allowed routes for partial tokens: Session management only
-        const isAllowed =
-          req.originalUrl.includes("/sessions") &&
-          (req.method === "DELETE" ||
-            req.method === "GET" ||
-            req.method === "POST");
+
+        // Allowed routes for partial tokens: Only session management endpoints
+        // Use exact path matching to prevent unintended access
+        const allowedSessionRoutes = [
+          /^\/api\/v\d+\/sessions\/?$/,                    // GET /sessions, POST /sessions/revoke-all
+          /^\/api\/v\d+\/sessions\/[a-zA-Z0-9_-]+\/?$/,    // DELETE /sessions/:sessionId
+          /^\/api\/v\d+\/sessions\/revoke-all\/?$/,        // POST /sessions/revoke-all
+        ];
+
+        const isAllowed = allowedSessionRoutes.some((pattern) =>
+          pattern.test(req.originalUrl.split("?")[0]) // Remove query params
+        ) && ["GET", "DELETE", "POST"].includes(req.method);
 
         if (!isAllowed) {
           console.warn(`[Middleware] Access denied for partial token. URL: ${req.originalUrl}`);
@@ -162,7 +168,8 @@ class Middleware {
       }
 
       // Check if session is still active in Redis (if sessionId is present)
-      if (decodedToken.sessionId) {
+      // Skip session validation for partial tokens (they don't have sessions yet)
+      if (decodedToken.sessionId && !decodedToken.isPartial) {
         const isActive = await RedisManager.isSessionActive(
           decodedToken._id.toString(),
           decodedToken.sessionId

@@ -20,5 +20,8 @@ router.patch("/privacy", UserSettings.updatePrivacySettings);
 router.patch("/preferences", UserSettings.updatePreferenceSettings);
 router.patch("/layout", UserSettings.updateLayoutSettings);
 router.patch("/accessibility", UserSettings.updateAccessibilitySettings);
+router.patch("/usage-tracking", UserSettings.updateUsageTrackingSettings);
+router.patch("/analytics-preferences", UserSettings.updateAnalyticsPreferencesSettings);
+router.patch("/reels-preferences", UserSettings.updateReelsPreferencesSettings);
 
 export default router;

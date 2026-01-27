@@ -140,7 +140,7 @@ class UserSettings {
   private static async _updateSpecificSettings(
     req: Request,
     res: Response,
-    settingType: keyof IUserSettings
+    settingType: string
   ) {
     try {
       const userId = req.user?._id;
@@ -154,7 +154,12 @@ class UserSettings {
       console.log('User ID:', userId);
       console.log('Request Body:', JSON.stringify(req.body, null, 2));
 
-      const updateData = { [settingType]: req.body };
+      // Use $set with dot notation for partial updates (doesn't wipe other fields in the sub-document)
+      const flatUpdate: Record<string, any> = {};
+      for (const [key, value] of Object.entries(req.body)) {
+        flatUpdate[`${settingType}.${key}`] = value;
+      }
+      const updateData = { $set: flatUpdate };
       console.log('Update Data:', JSON.stringify(updateData, null, 2));
 
       const settings = await executeModelOperation(
@@ -211,13 +216,10 @@ class UserSettings {
 
   // Specific settings update handlers
   private static async _updateThemeSettings(req: Request, res: Response) {
-    // Check if user is trying to update premium style features (fontSize, customFonts)
-    const { fontSize, customFonts } = req.body;
-    if (fontSize || customFonts) {
-      const hasAccess = await UserSettings._checkStyleAccess(req);
-      if (!hasAccess) {
-        throw new ApiError(403, "Style customization requires Gold or Platinum subscription");
-      }
+    // All theme customization requires premium subscription
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Theme customization requires Gold or Platinum subscription");
     }
     return UserSettings._updateSpecificSettings(req, res, "theme");
   }
@@ -226,6 +228,17 @@ class UserSettings {
     req: Request,
     res: Response
   ) {
+    // Push, marketing, and sound toggles require premium subscription
+    const { push, marketing, sound } = req.body;
+    if (push !== undefined || marketing !== undefined || sound !== undefined) {
+      const hasAccess = await UserSettings._checkStyleAccess(req);
+      if (!hasAccess) {
+        throw new ApiError(
+          403,
+          "Push notifications, marketing, and sound settings require Gold or Platinum subscription"
+        );
+      }
+    }
     return UserSettings._updateSpecificSettings(req, res, "notifications");
   }
 
@@ -234,10 +247,20 @@ class UserSettings {
   }
 
   private static async _updatePreferenceSettings(req: Request, res: Response) {
+    // All preference customization requires premium subscription
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Preference settings require Gold or Platinum subscription");
+    }
     return UserSettings._updateSpecificSettings(req, res, "preferences");
   }
 
   private static async _updateLayoutSettings(req: Request, res: Response) {
+    // All layout customization requires premium subscription
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Layout settings require Gold or Platinum subscription");
+    }
     return UserSettings._updateSpecificSettings(req, res, "layout");
   }
 
@@ -245,15 +268,32 @@ class UserSettings {
     req: Request,
     res: Response
   ) {
-    // Check if user is trying to update premium style features (fontSize, fontFamily, textSpacing)
-    const { fontSize, fontFamily, textSpacing } = req.body;
-    if (fontSize !== undefined || fontFamily !== undefined || textSpacing !== undefined) {
-      const hasAccess = await UserSettings._checkStyleAccess(req);
-      if (!hasAccess) {
-        throw new ApiError(403, "Style customization requires Gold or Platinum subscription");
-      }
-    }
+    // Accessibility settings are available to ALL users — no premium gate
     return UserSettings._updateSpecificSettings(req, res, "accessibility");
+  }
+
+  private static async _updateUsageTrackingSettings(req: Request, res: Response) {
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Usage tracking settings require Gold or Platinum subscription");
+    }
+    return UserSettings._updateSpecificSettings(req, res, "usageTracking");
+  }
+
+  private static async _updateAnalyticsPreferencesSettings(req: Request, res: Response) {
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Analytics preferences require Gold or Platinum subscription");
+    }
+    return UserSettings._updateSpecificSettings(req, res, "analyticsPreferences");
+  }
+
+  private static async _updateReelsPreferencesSettings(req: Request, res: Response) {
+    const hasAccess = await UserSettings._checkStyleAccess(req);
+    if (!hasAccess) {
+      throw new ApiError(403, "Reels preferences require Gold or Platinum subscription");
+    }
+    return UserSettings._updateSpecificSettings(req, res, "reelsPreferences");
   }
 
   // Helper method to check if user has style customization access
@@ -336,6 +376,15 @@ class UserSettings {
   );
   public static updateAccessibilitySettings = AsyncHandler.wrap(
     UserSettings._updateAccessibilitySettings
+  );
+  public static updateUsageTrackingSettings = AsyncHandler.wrap(
+    UserSettings._updateUsageTrackingSettings
+  );
+  public static updateAnalyticsPreferencesSettings = AsyncHandler.wrap(
+    UserSettings._updateAnalyticsPreferencesSettings
+  );
+  public static updateReelsPreferencesSettings = AsyncHandler.wrap(
+    UserSettings._updateReelsPreferencesSettings
   );
 }
 

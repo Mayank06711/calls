@@ -645,29 +645,117 @@ class AdminController {
         );
       }
 
-      const notificationPayload = {
-        eventType,
-        text,
+      // Use the notification service with MongoDB persistence
+      const notificationService = NotificationService.getInstance();
+      const notification = await notificationService.emitBroadcastNotification({
+        type: eventType as any,
+        title: text,
+        message: text,
+        severity: req.body.severity,
+        discount: req.body.discount,
+        expiresIn: req.body.expiresIn,
+        description: req.body.description,
         extLink: extLink || null,
         stickyTime: stickyTime || 1000,
         sentBy: {
           adminId: adminId.toString(),
-          position: admin.position,
+          position: admin.position === "superadmin" ? "" : admin.position,
         },
-        timestamp: new Date(),
-      };
+      });
 
-      // Use the notification service
-      console.log("about to emit notifiaion")
-      const notificationService = NotificationService.getInstance();
-      notificationService.emitNotification(notificationPayload);
-      console.log("emotted")
       return res.status(200).json(
         successResponse(
           {
-            notification: notificationPayload,
+            notification,
           },
           "Notification sent successfully"
+        )
+      );
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  private static async _sendUserNotification(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const { recipientId, type, title, message, product, severity, extLink, stickyTime } = req.body;
+
+      if (!recipientId || !type || !message) {
+        throw new ApiError(400, "recipientId, type, and message are required");
+      }
+
+      // Suggestion notifications MUST have complete product data
+      if (type === "suggestion") {
+        if (
+          !product ||
+          !product.name ||
+          !product.image ||
+          !product.link ||
+          product.price == null ||
+          !product.brand ||
+          !product.platform
+        ) {
+          throw new ApiError(
+            400,
+            "Suggestion notifications require complete product data: name, image, link, price, brand, platform"
+          );
+        }
+      }
+
+      // Social notifications MUST have user info and action
+      if (type === "social") {
+        const { user, action } = req.body;
+        if (!user || !user.name || !action) {
+          throw new ApiError(
+            400,
+            "Social notifications require user (with name) and action"
+          );
+        }
+      }
+
+      const adminId = req.admin?._id;
+      if (!adminId) {
+        throw new ApiError(401, "Unauthorized access");
+      }
+
+      const admin = await Admin.findById(adminId);
+      if (!admin || !admin.isActive) {
+        throw new ApiError(401, "Admin account not found or deactivated");
+      }
+
+      if (!admin.hasPermission("canSendNotifications")) {
+        throw new ApiError(403, "Insufficient permissions to send notifications");
+      }
+
+      const notificationService = NotificationService.getInstance();
+      const notification = await notificationService.emitUserNotification({
+        recipientId,
+        type,
+        title: title || "",
+        message,
+        product,
+        action: req.body.action,
+        user: req.body.user,
+        content: req.body.content,
+        discount: req.body.discount,
+        expiresIn: req.body.expiresIn,
+        description: req.body.description,
+        severity,
+        extLink,
+        stickyTime,
+        sentBy: {
+          adminId: adminId.toString(),
+          position: admin.position === "superadmin" ? "" : admin.position,
+        },
+      });
+
+      return res.status(200).json(
+        successResponse(
+          { notification },
+          "User notification sent successfully"
         )
       );
     } catch (error: any) {
@@ -699,6 +787,9 @@ class AdminController {
   );
   public static sendNotification = AsyncHandler.wrap(
     AdminController._sendnotification
+  );
+  public static sendUserNotification = AsyncHandler.wrap(
+    AdminController._sendUserNotification
   );
 }
 

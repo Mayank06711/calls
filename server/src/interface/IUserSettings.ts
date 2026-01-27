@@ -16,7 +16,8 @@ export interface IUserSettings extends Document {
     email: boolean;
     push: boolean;
     sms?: boolean; // Optional SMS notifications
-    marketing?: boolean; // Optional marketing notifications
+    messageAlerts: boolean; // In-app message alerts
+    marketing: boolean; // Marketing notifications (premium)
     sound: boolean;
     customSoundUrl?: string; // Optional custom notification sound
     quietHours?: {
@@ -50,6 +51,7 @@ export interface IUserSettings extends Document {
 
   // Layout and UI preferences
   layout: {
+    sidebarPosition: "left" | "right";
     sidebarCollapsed: boolean;
     compactView: boolean;
     showTutorials: boolean;
@@ -106,5 +108,24 @@ export interface IUserSettings extends Document {
     lastActive?: Date;
     favoriteFeatures?: string[];
     engagementScore?: number;
+  };
+
+  // Premium settings (Gold/Platinum only)
+  usageTracking: {
+    activityTracking: boolean;
+  };
+
+  analyticsPreferences: {
+    personalAnalytics: boolean;
+    anonymousUsage: boolean;
+    weeklyReport: boolean;
+    dataRetention: "3months" | "6months" | "1year" | "forever";
+  };
+
+  reelsPreferences: {
+    autoPlay: boolean;
+    defaultQuality: "auto" | "low" | "medium" | "high";
+    downloadOptions: boolean;
+    dataSaver: boolean;
   };
 }

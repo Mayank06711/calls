@@ -151,12 +151,12 @@ const updateSpecificSettings =
         return;
       }
 
-      if (response.success) {
+      if (response.data?.success) {
         dispatch(
-          updateSettingsSuccess({ type: settingType, data: response.data })
+          updateSettingsSuccess({ type: settingType, data: response.data.data })
         );
         dispatch(showNotification(successMessage, "success"));
-        
+
         // Set flag to bypass cache on next fetch (after page refresh)
         localStorage.setItem('settingsUpdatedAt', Date.now().toString());
       }
@@ -174,10 +174,11 @@ const updateSpecificSettings =
   };
 
 // Specific settings update thunks
+// NOTE: Send raw data (NOT wrapped) — the server builds $set dot notation from req.body keys
 export const updateThemeSettings = (themeData) =>
   updateSpecificSettings(
     "theme",
-    { theme: themeData },
+    themeData,
     ENDPOINTS.SETTINGS.THEME,
     "Theme settings updated successfully"
   );
@@ -185,7 +186,7 @@ export const updateThemeSettings = (themeData) =>
 export const updateNotificationSettings = (notificationData) =>
   updateSpecificSettings(
     "notifications",
-    { notifications: notificationData },
+    notificationData,
     ENDPOINTS.SETTINGS.NOTIFICATIONS,
     "Notification settings updated successfully"
   );
@@ -193,7 +194,7 @@ export const updateNotificationSettings = (notificationData) =>
 export const updatePrivacySettings = (privacyData) =>
   updateSpecificSettings(
     "privacy",
-    { privacy: privacyData },
+    privacyData,
     ENDPOINTS.SETTINGS.PRIVACY,
     "Privacy settings updated successfully"
   );
@@ -201,7 +202,7 @@ export const updatePrivacySettings = (privacyData) =>
 export const updatePreferenceSettings = (preferenceData) =>
   updateSpecificSettings(
     "preferences",
-    { preferences: preferenceData },
+    preferenceData,
     ENDPOINTS.SETTINGS.PREFERENCES,
     "Preference settings updated successfully"
   );
@@ -209,7 +210,7 @@ export const updatePreferenceSettings = (preferenceData) =>
 export const updateLayoutSettings = (layoutData) =>
   updateSpecificSettings(
     "layout",
-    { layout: layoutData },
+    layoutData,
     ENDPOINTS.SETTINGS.LAYOUT,
     "Layout settings updated successfully"
   );
@@ -217,9 +218,33 @@ export const updateLayoutSettings = (layoutData) =>
 export const updateAccessibilitySettings = (accessibilityData) =>
   updateSpecificSettings(
     "accessibility",
-    { accessibility: accessibilityData },
+    accessibilityData,
     ENDPOINTS.SETTINGS.ACCESSIBILITY,
     "Accessibility settings updated successfully"
+  );
+
+export const updateUsageTrackingSettings = (data) =>
+  updateSpecificSettings(
+    "usageTracking",
+    data,
+    ENDPOINTS.SETTINGS.USAGE_TRACKING,
+    "Usage tracking settings updated successfully"
+  );
+
+export const updateAnalyticsPreferencesSettings = (data) =>
+  updateSpecificSettings(
+    "analyticsPreferences",
+    data,
+    ENDPOINTS.SETTINGS.ANALYTICS_PREFERENCES,
+    "Analytics preferences updated successfully"
+  );
+
+export const updateReelsPreferencesSettings = (data) =>
+  updateSpecificSettings(
+    "reelsPreferences",
+    data,
+    ENDPOINTS.SETTINGS.REELS_PREFERENCES,
+    "Reels preferences updated successfully"
   );
 
 // Fetch style options (premium feature - Gold/Platinum only)
@@ -249,15 +274,7 @@ export const fetchStyleOptionsThunk = () => async (dispatch) => {
 };
 
 // Update accessibility with font size (premium feature)
-export const updateAccessibilityFontSize = (fontSize) => async (dispatch, getState) => {
-  const { styleOptions } = getState().settings;
-  
-  // Check if user has access
-  if (!styleOptions.hasAccess) {
-    dispatch(showNotification("Font size customization requires Gold or Platinum subscription", "warning"));
-    return { success: false, error: "Premium subscription required" };
-  }
-
+export const updateAccessibilityFontSize = (fontSize) => async (dispatch) => {
   try {
     dispatch(updateSettingsRequest());
 
@@ -296,16 +313,8 @@ export const updateAccessibilityFontSize = (fontSize) => async (dispatch, getSta
   }
 };
 
-// Update accessibility with font family (premium feature)
-export const updateAccessibilityFontFamily = (fontFamily) => async (dispatch, getState) => {
-  const { styleOptions } = getState().settings;
-  
-  // Check if user has access
-  if (!styleOptions.hasAccess) {
-    dispatch(showNotification("Font family customization requires Gold or Platinum subscription", "warning"));
-    return { success: false, error: "Premium subscription required" };
-  }
-
+// Update accessibility with font family
+export const updateAccessibilityFontFamily = (fontFamily) => async (dispatch) => {
   try {
     dispatch(updateSettingsRequest());
 

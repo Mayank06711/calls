@@ -10,6 +10,11 @@ class ChatController {
   private static instance: ChatController | null = null;
   private readonly socketManager: SocketManager;
   private readonly READ_RECEIPT_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+
+  // Session validation cache - avoid excessive Redis calls
+  private sessionValidationCache: Map<string, { valid: boolean; timestamp: number }> = new Map();
+  private readonly SESSION_CACHE_TTL = 30000; // 30 seconds cache
+
   private readonly CHAT_EVENTS = {
     // Client 1 sends message to server
     MESSAGE: "message", // c1-server
@@ -77,6 +82,61 @@ class ChatController {
     });
   }
 
+  /**
+   * Validate session is still active before processing critical events
+   * Uses caching to avoid excessive Redis calls
+   */
+  private async validateSession(socket: Socket): Promise<boolean> {
+    const userId = socket.data.userId;
+    const sessionId = socket.data.sessionId;
+
+    if (!userId || !sessionId) {
+      return false;
+    }
+
+    const cacheKey = `${userId}:${sessionId}`;
+    const cached = this.sessionValidationCache.get(cacheKey);
+
+    // Return cached result if still valid
+    if (cached && Date.now() - cached.timestamp < this.SESSION_CACHE_TTL) {
+      return cached.valid;
+    }
+
+    // Check Redis for session validity
+    try {
+      const isActive = await RedisManager.isSessionActive(userId, sessionId);
+
+      // Cache the result
+      this.sessionValidationCache.set(cacheKey, {
+        valid: isActive,
+        timestamp: Date.now(),
+      });
+
+      // If session is invalid, emit error and disconnect
+      if (!isActive) {
+        socket.emit("session:revoked", {
+          message: "Your session has been revoked. Please login again.",
+        });
+        socket.disconnect(true);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("[ChatController] Session validation error:", error);
+      // On error, allow the operation to proceed (fail-open for availability)
+      return true;
+    }
+  }
+
+  /**
+   * Invalidate session cache when session is revoked
+   */
+  public invalidateSessionCache(userId: string, sessionId: string): void {
+    const cacheKey = `${userId}:${sessionId}`;
+    this.sessionValidationCache.delete(cacheKey);
+  }
+
   public setupAuthenticatedSocketListeners(socket: Socket): void {
     if (!socket.data.authenticated || !socket.data.userId) {
       console.log(
@@ -135,6 +195,19 @@ class ChatController {
       );
       socket.on(event, async (data: any, callback?: Function) => {
         try {
+          // Validate session before processing critical events
+          const isSessionValid = await this.validateSession(socket);
+          if (!isSessionValid) {
+            if (callback) {
+              callback({
+                status: "error",
+                message: "Session expired or revoked",
+                code: "SESSION_REVOKED",
+              });
+            }
+            return;
+          }
+
           console.log(`Received event ${event} with data:`, data);
           await handler(data, socket, callback);
         } catch (error) {

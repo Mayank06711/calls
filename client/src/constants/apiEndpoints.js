@@ -67,6 +67,9 @@ export const ENDPOINTS = {
     PREFERENCES: `/api/${API_CONFIG.VERSION}/settings/preferences`,
     LAYOUT: `/api/${API_CONFIG.VERSION}/settings/layout`,
     ACCESSIBILITY: `/api/${API_CONFIG.VERSION}/settings/accessibility`,
+    USAGE_TRACKING: `/api/${API_CONFIG.VERSION}/settings/usage-tracking`,
+    ANALYTICS_PREFERENCES: `/api/${API_CONFIG.VERSION}/settings/analytics-preferences`,
+    REELS_PREFERENCES: `/api/${API_CONFIG.VERSION}/settings/reels-preferences`,
   },
 
   SESSIONS: {

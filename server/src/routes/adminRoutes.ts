@@ -29,5 +29,6 @@ router.get("/data/:modelName", AdminController.fetchModelData);
 
 // Notification routes
 router.post("/notifications/send", AdminController.sendNotification);
+router.post("/notifications/send/user", AdminController.sendUserNotification);
 
 export default router;
