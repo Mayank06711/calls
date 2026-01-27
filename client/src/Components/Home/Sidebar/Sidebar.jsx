@@ -13,11 +13,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getSubscriptionPlansThunk } from "../../../redux/thunks/subscription.thunks";
 
 const MENU_ITEMS = [
-  { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats", },
+  { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats" },
   {
     icon: <BiSolidBadgeDollar />,
     label: "Subscriptions",
     path: "/subscriptions",
+    hideForExpert: true,
   },
   { icon: <PiFilmReelFill />, label: "Reels", path: "/reels" },
   { icon: <IoSettings />, label: "Settings", path: "/settings" },
@@ -28,6 +29,7 @@ function Sidebar({ isDarkMode }) {
   const [isSidebarExpanded, setSidebarExpanded] = useState(false);
   const colors = useSubscriptionColors();
   const isLoggingOut = useSelector((state) => state.auth.isLoggingOut);
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
   const subscriptionPlans = useSelector((state) => state.plans);
 
   const navigate = useNavigate();
@@ -57,7 +59,7 @@ function Sidebar({ isDarkMode }) {
     >
       <div className="flex flex-col justify-between h-full  tour3">
         <div className="py-4 ">
-          {MENU_ITEMS.map((item, index) => (
+          {MENU_ITEMS.filter((item) => !(item.hideForExpert && isExpert)).map((item, index) => (
             <div
               key={index}
               className={`flex items-center px-4  py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}
