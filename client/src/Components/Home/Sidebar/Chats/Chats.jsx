@@ -120,6 +120,7 @@ function ChatSection() {
     (state) => state.loaderState.loaders[LOADER_TYPES.GET_MORE_USERS]
   );
 
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
   // Add socket status selectors
   const socketStatus = useSelector((state) => state.socketMetrics);
   const { connected, authenticated } = socketStatus;
@@ -758,10 +759,11 @@ function ChatSection() {
       {/* Chat Area - full width on mobile, hidden when no user selected on mobile */}
       {selectedUser && isSocketReady ? (
         <div className='flex-1 h-full overflow-hidden'>
-          <ChatArea 
-            selectedUser={selectedUser} 
-            chatServiceRef={chatServiceRef} 
+          <ChatArea
+            selectedUser={selectedUser}
+            chatServiceRef={chatServiceRef}
             onBack={handleBackToList}
+            isExpert={isExpert}
           />
         </div>
       ) : (
