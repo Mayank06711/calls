@@ -1,21 +1,19 @@
 import PropTypes from 'prop-types';
-import { 
-  VideoCall, 
-  Call, 
-  MoreVert, 
-  ArrowBack 
+import {
+  VideoCall,
+  MoreVert,
+  ArrowBack
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import MessageStatus from './MessageStatus';
 import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 import { IconButton, Tooltip } from '@mui/material';
 
-const ChatHeader = ({ 
-  receiverData, 
-  isTyping, 
+const ChatHeader = ({
+  receiverData,
+  isTyping,
   onBack,
   onVideoCall,
-  onVoiceCall,
   onMenuClick,
   lastMessage,
   currentUserId
@@ -101,22 +99,6 @@ const ChatHeader = ({
         {/* {showMessageStatus && (
           <MessageStatus status={lastMessage.status} />
         )} */}
-        <Tooltip title="Voice Call" arrow placement="top">
-        <IconButton
-          onClick={onVoiceCall}
-          className="p-2 rounded-full transition-colors duration-200"
-          style={{ 
-            color: colors.third,
-            backgroundColor: 'transparent',
-            '&:hover': {
-              backgroundColor: `${colors.first}20` // 20 is for 20% opacity
-            }
-          }}
-        >
-          <Call />
-        </IconButton>
-        </Tooltip>
-
        <Tooltip title="Video Call" arrow placement="top">
         
         <IconButton 
@@ -162,7 +144,6 @@ ChatHeader.propTypes = {
   isTyping: PropTypes.bool,
   onBack: PropTypes.func,
   onVideoCall: PropTypes.func,
-  onVoiceCall: PropTypes.func,
   onMenuClick: PropTypes.func,
   lastMessage: PropTypes.object,
   currentUserId: PropTypes.string,
