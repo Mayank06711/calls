@@ -60,6 +60,8 @@ import IncomingCall from "./Components/Home/VideoCall/IncomingCall";
 import CallErrorModal from "./Components/Home/VideoCall/CallErrorModal";
 import ExpertPermissionRequest from "./Components/Home/VideoCall/ExpertPermissionRequest";
 import ExpertPermissionStatus from "./Components/Home/VideoCall/ExpertPermissionStatus";
+import TermsAndConditions from "./Components/Legal/TermsAndConditions";
+import PrivacyPolicy from "./Components/Legal/PrivacyPolicy";
 
 // Listens for custom 'app:navigate' events (e.g. from browser notification clicks)
 // and performs client-side navigation without a full page reload.
@@ -279,6 +281,8 @@ const App = () => {
                   )
                 }
               />
+              <Route path='/terms' element={<TermsAndConditions />} />
+              <Route path='/privacy' element={<PrivacyPolicy />} />
               <Route path='*' element={<Missing />} />
             </Routes>
           </div>
