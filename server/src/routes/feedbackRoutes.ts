@@ -1,18 +1,20 @@
 import express from "express";
 import FeedbackController from "../controllers/feedbackController";
 import { Middleware } from "../middlewares/middlewares";
+import { validate, BugFeedbackSchema, ExpertFeedbackSchema } from "../validation/zodSchema";
 const router = express.Router();
 
-// PUBLIC ROUTES 
+// PUBLIC ROUTES
 
 // Submit Bug Feedback - Anyone can submit (anonymous or logged-in)
-router.post("/bug", FeedbackController.submitBugFeedback);
+router.post("/bug", validate(BugFeedbackSchema), FeedbackController.submitBugFeedback);
 
-// PROTECTED ROUTES 
-router.use(Middleware.VerifyJWT); 
+// PROTECTED ROUTES
+router.use(Middleware.VerifyJWT);
 // Submit Expert Feedback - Only logged-in users
 router.post(
   "/expert",
+  validate(ExpertFeedbackSchema),
   FeedbackController.submitExpertFeedback
 );
 
