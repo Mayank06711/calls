@@ -2,6 +2,11 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+// @ts-ignore -- xss-clean has no type definitions
+import xssClean from "xss-clean";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
 import { createServer as createHttpServer, Server as HTTPServer } from "http";
@@ -19,6 +24,7 @@ import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import adminRouter from "./routes/adminRoutes";
 import sessionRouter from "./routes/sessionRoutes";
+import legalRouter from "./routes/legalRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -65,17 +71,25 @@ class ServerManager {
 
   // Initialize middlewares
   private initializeMiddlewares() {
+    // Security headers (CSP, HSTS, X-XSS-Protection, etc.)
+    this.app.use(helmet());
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     // this.app.set("trust proxy", 1);
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use(cookieParser());
+    // Prevent NoSQL injection (sanitizes req.body, req.query, req.params)
+    this.app.use(mongoSanitize());
+    // Prevent HTTP parameter pollution
+    this.app.use(hpp());
+    // Prevent XSS attacks (sanitizes user input)
+    this.app.use(xssClean());
     this.app.use(
       rateLimit({
-        windowMs: 10 * 60 * 1000, // 15 minutes
-        max: 1000, // limit each IP to 100 requests per windowMs
+        windowMs: 10 * 60 * 1000, // 10 minutes
+        max: 1000, // limit each IP to 1000 requests per windowMs
         message:
-          "Too many requests from this IP, please try again later after 15 mins.",
+          "Too many requests from this IP, please try again later after 10 mins.",
       })
     );
     this.app.use(Middleware.platformDetector);
@@ -89,6 +103,7 @@ class ServerManager {
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
     this.app.use("/api/v1/sessions", sessionRouter);
+    this.app.use("/api/v1/legal", legalRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
