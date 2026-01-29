@@ -82,14 +82,49 @@ function Sidebar({ isDarkMode }) {
           ))}
         </div>
 
-        <div className="ml-3 mb-5 tour8">
-          <IconButton onClick={handleLogout} disabled={isLoggingOut}>
-            {isLoggingOut ? (
-              <CircularProgress size={24} style={{ color: colors.fourth }} />
+        <div className="mb-3">
+          <div
+            className={`flex flex-col ${isSidebarExpanded ? "px-4" : "px-2"} mb-2`}
+            onMouseEnter={() => setSidebarExpanded(true)}
+            onMouseLeave={() => setSidebarExpanded(false)}
+          >
+            {isSidebarExpanded ? (
+              <>
+                <span
+                  className="text-[10px] cursor-pointer hover:underline mb-0.5"
+                  style={{ color: colors.third }}
+                  onClick={() => navigate("/terms")}
+                >
+                  Terms
+                </span>
+                <span
+                  className="text-[10px] cursor-pointer hover:underline"
+                  style={{ color: colors.third }}
+                  onClick={() => navigate("/privacy")}
+                >
+                  Privacy
+                </span>
+              </>
             ) : (
-              <IoMdLogOut style={{ color: colors.fourth }} />
+              <span
+                className="text-[10px] text-center cursor-pointer"
+                style={{ color: colors.third }}
+                title="Terms & Privacy"
+                onClick={() => setSidebarExpanded(true)}
+              >
+                T&P
+              </span>
             )}
-          </IconButton>
+          </div>
+          <div className="ml-3 tour8">
+            <IconButton onClick={handleLogout} disabled={isLoggingOut}>
+              {isLoggingOut ? (
+                <CircularProgress size={24} style={{ color: colors.fourth }} />
+              ) : (
+                <IoMdLogOut style={{ color: colors.fourth }} />
+              )}
+            </IconButton>
+          </div>
         </div>
       </div>
     </nav>
