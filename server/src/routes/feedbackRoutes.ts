@@ -9,8 +9,17 @@ const router = express.Router();
 // Submit Bug Feedback - Anyone can submit (anonymous or logged-in)
 router.post("/bug", validate(BugFeedbackSchema), FeedbackController.submitBugFeedback);
 
+// PUBLIC: Get expert rating (no auth needed)
+router.get("/expert/:expertId/rating", FeedbackController.getExpertRating);
+
 // PROTECTED ROUTES
 router.use(Middleware.VerifyJWT);
+
+// Expert profile stats (includes user-specific data like their rating, tip history)
+router.get(
+  "/expert/:expertId/profile-stats",
+  FeedbackController.getExpertProfileStats
+);
 // Submit Expert Feedback - Only logged-in users
 router.post(
   "/expert",
