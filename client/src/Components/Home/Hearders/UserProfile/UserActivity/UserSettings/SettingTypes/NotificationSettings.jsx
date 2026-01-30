@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { NotificationsOutlined, Email, Message, Campaign, VolumeUp, Lock } from '@mui/icons-material';
+import { NotificationsOutlined, Email, Message, Campaign, VolumeUp, Lock, GraphicEq } from '@mui/icons-material';
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateNotificationSettings } from '../../../../../../../redux/thunks/settings.thunk';
@@ -127,6 +127,18 @@ function NotificationSettings() {
             description="Get notified for new messages"
             checked={localPrefs.messageAlerts ?? true}
             onChange={() => handleToggle('messageAlerts')}
+            locked={false}
+            saving={saving}
+            colors={colors}
+          />
+
+          {/* Chat Sound — FREE */}
+          <ToggleRow
+            icon={<GraphicEq style={{ color: colors.fourth }} />}
+            label="Chat Sound"
+            description="Play sound when sending or receiving chat messages"
+            checked={localPrefs.chatSound ?? true}
+            onChange={() => handleToggle('chatSound')}
             locked={false}
             saving={saving}
             colors={colors}
