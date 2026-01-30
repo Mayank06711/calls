@@ -79,6 +79,34 @@ export async function playNotificationSound() {
 }
 
 /**
+ * Plays a short WhatsApp-like chat message "pop" sound.
+ * Distinct from the notification chime — single short pop tone.
+ */
+export async function playChatSound() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 600;
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  } catch {
+    // Silently fail
+  }
+}
+
+/**
  * Request browser notification permission.
  * Call this early (e.g. on app mount or after user interaction).
  * Returns the permission status: 'granted', 'denied', or 'default'.
