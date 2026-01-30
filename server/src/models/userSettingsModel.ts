@@ -30,6 +30,7 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       push: { type: Boolean, default: true },
       sms: { type: Boolean, default: false },
       messageAlerts: { type: Boolean, default: true },
+      chatSound: { type: Boolean, default: true },
       marketing: { type: Boolean, default: true },
       sound: { type: Boolean, default: true },
       customSoundUrl: String,
