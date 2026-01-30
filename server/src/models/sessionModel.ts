@@ -52,18 +52,18 @@ const SessionSchema = new Schema<ISession>(
       index: true,
     },
     
-    // Token identification
-    tokenId: {
+    // Session identification
+    refreshTokenId: {
       type: String,
       required: true,
       unique: true,
       index: true,
     },
-    refreshTokenId: {
+    refreshToken: {
       type: String,
-      index: true,
+      required: true,
     },
-    
+
     // Device information
     device: {
       type: DeviceInfoSchema,
@@ -122,63 +122,6 @@ SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index -
 // Instance method to check if session is valid
 SessionSchema.methods.isValid = function (): boolean {
   return this.isActive && !this.revokedAt && new Date() < this.expiresAt;
-};
-
-// Static method to get active sessions for a user
-SessionSchema.statics.getActiveSessions = function (userId: string) {
-  return this.find({
-    userId,
-    isActive: true,
-    revokedAt: { $exists: false },
-    expiresAt: { $gt: new Date() },
-  }).sort({ lastActiveAt: -1 });
-};
-
-// Static method to revoke all sessions for a user except current
-SessionSchema.statics.revokeAllExcept = function (
-  userId: string,
-  currentTokenId: string,
-  reason: string = "User logged out all sessions"
-) {
-  return this.updateMany(
-    {
-      userId,
-      tokenId: { $ne: currentTokenId },
-      isActive: true,
-    },
-    {
-      $set: {
-        isActive: false,
-        revokedAt: new Date(),
-        revokedReason: reason,
-        revokedBy: userId,
-      },
-    }
-  );
-};
-
-// Static method to revoke a specific session
-SessionSchema.statics.revokeSession = function (
-  sessionId: string,
-  userId: string,
-  reason: string = "Session revoked by user"
-) {
-  return this.findOneAndUpdate(
-    {
-      _id: sessionId,
-      userId,
-      isActive: true,
-    },
-    {
-      $set: {
-        isActive: false,
-        revokedAt: new Date(),
-        revokedReason: reason,
-        revokedBy: userId,
-      },
-    },
-    { new: true }
-  );
 };
 
 export const SessionModel = mongoose.model<ISession>("Session", SessionSchema);
