@@ -256,7 +256,7 @@ function UserInfo() {
           </span>
           {!userData.isExpert && (
             <span className="text-[10px] text-gray-400">
-              {userData.isSubscribed ? "Premium" : "Free"}
+              {userData.subscription?.type || "Free"}
             </span>
           )}
         </div>
@@ -423,7 +423,7 @@ function UserInfo() {
           {renderStatusChip("Role", userData.isExpert ? "Expert" : "User")}
           {!userData.isExpert && renderStatusChip(
             "Subscription",
-            userData.isSubscribed ? "Premium" : "Free"
+            userData.subscription?.type || "Free"
           )}
           {renderStatusChip(
             "MFA",
