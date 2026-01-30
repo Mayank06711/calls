@@ -30,6 +30,7 @@ const initialState = {
       push: true,
       sms: false,
       messageAlerts: true,
+      chatSound: true,
       marketing: true,
       sound: true,
       quietHours: {
@@ -246,6 +247,17 @@ const settingsReducer = (state = initialState, action) => {
           data: {
             ...state.data,
             notifications: data?.notifications || state.data.notifications
+          }
+        };
+      }
+
+      if (type === 'privacy') {
+        return {
+          ...state,
+          saveInProgress: false,
+          data: {
+            ...state.data,
+            privacy: data?.privacy || state.data.privacy
           }
         };
       }
