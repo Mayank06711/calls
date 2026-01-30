@@ -135,6 +135,7 @@ export interface CloudinaryUploadOptions {
   isBuffer?: boolean;
   fileName?: string;
   uploadPreset?: string;
+  fileType?: string;
 }
 
 export interface FileUploadData {
@@ -142,7 +143,7 @@ export interface FileUploadData {
   fileName: string;
   fileType: string;
   size: number;
-  type: "chat" | "avatar";
+  type: "chat" | "avatar" | "reel";
   metadata?: {
     width?: number;
     height?: number;
