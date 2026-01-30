@@ -1,30 +1,22 @@
+import geoip from "geoip-lite";
 import {
   IDeviceInfo,
   ILocationInfo,
+  SessionRequestInfo,
 } from "../interface/ISession";
-
-/**
- * Get header value as string (handles array headers)
- */
-function getHeaderAsString(header: string | string[] | undefined): string | undefined {
-  if (Array.isArray(header)) {
-    return header[0];
-  }
-  return header || undefined;
-}
 
 /**
  * Parse user agent string to extract device information
  * Also checks custom mobile app headers for better detection
  */
-export function parseUserAgent(userAgent: string, req?: any): IDeviceInfo {
+export function parseUserAgent(userAgent: string, customHeaders?: SessionRequestInfo["customHeaders"]): IDeviceInfo {
   const ua = userAgent.toLowerCase();
-  
+
   // Check for custom mobile app headers first (more accurate)
-  const customPlatform = req ? getHeaderAsString(req.headers["x-platform"]) : undefined;
-  const customDeviceModel = req ? getHeaderAsString(req.headers["x-device-model"]) : undefined;
-  const customDeviceBrand = req ? getHeaderAsString(req.headers["x-device-brand"]) : undefined;
-  const appVersion = req ? getHeaderAsString(req.headers["x-app-version"]) : undefined;
+  const customPlatform = customHeaders?.platform;
+  const customDeviceModel = customHeaders?.deviceModel;
+  const customDeviceBrand = customHeaders?.deviceBrand;
+  const appVersion = customHeaders?.appVersion;
 
   // Detect device type
   let type: IDeviceInfo["type"] = "unknown";
@@ -209,62 +201,26 @@ export function parseUserAgent(userAgent: string, req?: any): IDeviceInfo {
 }
 
 /**
- * Get client IP from request
+ * Create location info from IP using GeoIP lookup
  */
-export function getClientIp(req: any): string {
-  // Check various headers used by proxies
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (forwardedFor) {
-    // x-forwarded-for may contain multiple IPs, take the first one
-    const ips = Array.isArray(forwardedFor)
-      ? forwardedFor[0]
-      : forwardedFor.split(",")[0];
-    return ips.trim();
+export function createLocationInfo(ip: string): ILocationInfo {
+  const geo = geoip.lookup(ip);
+
+  if (!geo) {
+    return { ip };
   }
 
-  // Other common headers
-  const realIp = req.headers["x-real-ip"];
-  if (realIp) {
-    return Array.isArray(realIp) ? realIp[0] : realIp;
-  }
-
-  // CloudFlare
-  const cfIp = req.headers["cf-connecting-ip"];
-  if (cfIp) {
-    return Array.isArray(cfIp) ? cfIp[0] : cfIp;
-  }
-
-  // Fall back to connection remote address
-  return (
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    req.ip ||
-    "unknown"
-  );
-}
-
-/**
- * Create location info from IP (basic version - can be enhanced with GeoIP service)
- */
-export function createLocationInfo(ip: string, geoData?: any): ILocationInfo {
-  // If you have a GeoIP service, you can use it here
-  // For now, just return basic info
   return {
     ip,
-    city: geoData?.city,
-    region: geoData?.region,
-    country: geoData?.country,
-    timezone: geoData?.timezone,
-    coordinates: geoData?.coordinates,
+    city: geo.city || undefined,
+    region: geo.region || undefined,
+    country: geo.country || undefined,
+    timezone: geo.timezone || undefined,
+    coordinates:
+      geo.ll && geo.ll.length === 2
+        ? { latitude: geo.ll[0], longitude: geo.ll[1] }
+        : undefined,
   };
-}
-
-/**
- * Generate a unique token ID for session tracking
- */
-export function generateTokenId(): string {
-  const crypto = require("crypto");
-  return crypto.randomBytes(32).toString("hex");
 }
 
 /**
