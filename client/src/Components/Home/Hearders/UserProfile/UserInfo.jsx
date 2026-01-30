@@ -254,9 +254,11 @@ function UserInfo() {
           <span className="text-[10px] text-gray-400">
             {userData.isExpert ? "Expert" : "User"}
           </span>
-          <span className="text-[10px] text-gray-400">
-            {userData.isSubscribed ? "Premium" : "Free"}
-          </span>
+          {!userData.isExpert && (
+            <span className="text-[10px] text-gray-400">
+              {userData.isSubscribed ? "Premium" : "Free"}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -419,7 +421,7 @@ function UserInfo() {
             )}
           </div>
           {renderStatusChip("Role", userData.isExpert ? "Expert" : "User")}
-          {renderStatusChip(
+          {!userData.isExpert && renderStatusChip(
             "Subscription",
             userData.isSubscribed ? "Premium" : "Free"
           )}
