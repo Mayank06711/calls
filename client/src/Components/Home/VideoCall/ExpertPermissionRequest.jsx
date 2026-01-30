@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useVideoCall } from "../../../hooks/useVideoCall";
 import { Phone, PhoneDisabled } from "@mui/icons-material";
+import { playPermissionNotification, stopRingtone } from "../../../utils/callRingtone";
 
 const AUTO_DECLINE_SECONDS = 60;
 
@@ -8,6 +9,16 @@ function ExpertPermissionRequest() {
   const { permissionState, permissionExpert, respondToPermission } =
     useVideoCall();
   const [countdown, setCountdown] = useState(AUTO_DECLINE_SECONDS);
+
+  // Play notification sound when permission request arrives
+  useEffect(() => {
+    if (permissionState === "incoming_request") {
+      playPermissionNotification();
+    } else {
+      stopRingtone();
+    }
+    return () => stopRingtone();
+  }, [permissionState]);
 
   // Auto-decline countdown
   useEffect(() => {
