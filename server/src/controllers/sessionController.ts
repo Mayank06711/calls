@@ -1,17 +1,14 @@
 import express from "express";
-import mongoose from "mongoose";
 import { SessionModel } from "../models/sessionModel";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { successResponse } from "../utils/apiResponse";
 import {
   parseUserAgent,
-  getClientIp,
   createLocationInfo,
-  generateTokenId,
   getDeviceDescription,
 } from "../helper/sessionHelper";
-import { ISession } from "../interface/ISession";
+import { ISession, SessionRequestInfo } from "../interface/ISession";
 import { RedisManager } from "../utils/redisClient";
 import { SocketManager } from "../socket";
 
@@ -21,16 +18,14 @@ class SessionController {
    */
   static async createSession(
     userId: string,
-    req: express.Request,
-    tokenId: string,
-    refreshTokenId?: string,
+    reqInfo: SessionRequestInfo,
+    refreshTokenId: string,
+    refreshToken: string,
     loginMethod: ISession["loginMethod"] = "password"
   ) {
     try {
-      const userAgent = req.headers["user-agent"] || "unknown";
-      const device = parseUserAgent(userAgent, req); // Pass req for custom headers
-      const ip = getClientIp(req);
-      const location = createLocationInfo(ip);
+      const device = parseUserAgent(reqInfo.userAgent, reqInfo.customHeaders);
+      const location = createLocationInfo(reqInfo.ip);
 
       // Calculate expiry (15 days for refresh token)
       const expiresAt = new Date();
@@ -38,8 +33,8 @@ class SessionController {
 
       const session = await SessionModel.create({
         userId,
-        tokenId,
         refreshTokenId,
+        refreshToken,
         device,
         location,
         isActive: true,
@@ -60,32 +55,19 @@ class SessionController {
   }
 
   /**
-   * Update last active timestamp for a session
-   */
-  static async updateLastActive(tokenId: string) {
-    try {
-      await SessionModel.findOneAndUpdate(
-        { tokenId, isActive: true },
-        { lastActiveAt: new Date() }
-      );
-    } catch (error) {
-      console.error("[SESSION] Error updating last active:", error);
-    }
-  }
-
-  /**
    * Invalidate a session on logout
+   * @param sessionId - The session identifier (sess_<uuid>) stored as refreshTokenId in MongoDB
    */
   static async invalidateSession(
     userId: string,
-    tokenId?: string,
+    sessionId?: string,
     reason: string = "User logged out"
   ) {
     try {
-      if (tokenId) {
-        // Invalidate specific session
+      if (sessionId) {
+        // Invalidate specific session by refreshTokenId (the sess_<uuid> from JWT)
         await SessionModel.findOneAndUpdate(
-          { userId, tokenId, isActive: true },
+          { userId, refreshTokenId: sessionId, isActive: true },
           {
             isActive: false,
             revokedAt: new Date(),
@@ -93,7 +75,7 @@ class SessionController {
             revokedBy: userId,
           }
         );
-        console.log(`[SESSION] Invalidated session ${tokenId} for user ${userId}`);
+        console.log(`[SESSION] Invalidated session ${sessionId} for user ${userId}`);
       } else {
         // Invalidate all sessions for user
         await SessionModel.updateMany(
@@ -169,7 +151,7 @@ class SessionController {
 
       // Transform sessions for frontend (exclude sensitive fields)
       const transformedSessions = activeSessions.map((session: any) => ({
-        id: session._id,
+        id: session.refreshTokenId,
         device: {
           type: session.device.type,
           platform: session.device.platform,
@@ -217,20 +199,10 @@ class SessionController {
         throw new ApiError(400, "Session ID is required");
       }
 
-      // Find session by MongoDB _id, tokenId, or refreshTokenId (Redis sessionId)
-      // Build $or dynamically to avoid CastError when sessionId is not a valid ObjectId
-      const orConditions: Record<string, string>[] = [
-        { tokenId: sessionId },
-        { refreshTokenId: sessionId },
-      ];
-      if (mongoose.Types.ObjectId.isValid(sessionId)) {
-        orConditions.unshift({ _id: sessionId });
-      }
-
       const sessionDoc = await SessionModel.findOne({
+        refreshTokenId: sessionId,
         userId,
         isActive: true,
-        $or: orConditions,
       });
 
       if (!sessionDoc) {
@@ -238,7 +210,7 @@ class SessionController {
       }
 
       // The Redis sessionId is stored in refreshTokenId
-      const redisSessionId = sessionDoc.refreshTokenId || sessionDoc.tokenId;
+      const redisSessionId = sessionDoc.refreshTokenId;
       let lastActiveAt = sessionDoc.lastActiveAt;
 
       if (redisSessionId) {
