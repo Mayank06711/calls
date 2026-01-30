@@ -107,6 +107,15 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
     }
     if (data.success) {
       const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      // Store token in localStorage BEFORE dispatching setUserId to Redux.
+      // SocketContext reacts to userId and immediately connects + authenticates
+      // the socket, which reads the token from localStorage via getAccessToken().
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
       dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
@@ -114,11 +123,6 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       if(isAlreadyVerified){
         dispatch(fetchUserInfoThunk());
       }
-
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("token", token);
-      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
-      localStorage.setItem("fullName", fullName);
 
       console.log("[verifyOtpThunk] Set userId, token, isAlreadyVerified, fullName:", userId, token, isAlreadyVerified, fullName);
 
