@@ -126,21 +126,24 @@ UserSchema.pre<IUser>("save", async function (next) {
 // Instance Methods
 
 UserSchema.methods.generateAccessToken = function (
-  sessionId?: string,
+  sessionId: string,
   subscriptionId?: string,
   subscriptionType?: string
 ) {
   // Generate a JSON Web Token (JWT) containing user information
   // Sign the token with the ACCESS_TOKEN_SECRET environment variable
   // Set the expiration time for the token based on the ACCESS_TOKEN_EXPIRY environment variable
-
+  if(!sessionId){
+    throw new Error("Session ID is required to generate access token");
+  }
   // Create payload
   const payload = {
     _id: this._id,
     email: this.email,
     username: this.username,
     city: this.city,
-    sessionId: sessionId || undefined,
+    isExpert: this.isExpert || false,
+    sessionId: sessionId,
     subscriptionId: subscriptionId || undefined,
     subscriptionType: subscriptionType || "free",
     iss: "KYF",
@@ -168,14 +171,18 @@ UserSchema.methods.generateAccessToken = function (
 };
 
 UserSchema.methods.generateRefreshToken = function (
-  sessionId?: string,
+  sessionId: string,
   subscriptionId?: string,
   subscriptionType?: string
 ) {
+  if(!sessionId){
+    throw new Error("Session ID is required to generate refresh token");
+  }
   // Creating payload
   const payload = {
     _id: this._id,
-    sessionId: sessionId || undefined,
+    isExpert: this.isExpert || false,
+    sessionId: sessionId,
     subscriptionId: subscriptionId || undefined,
     subscriptionType: subscriptionType || "free",
     iss: "KYF",
