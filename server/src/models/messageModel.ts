@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model, Model, Types } from "mongoose";
 import {
   IAttachment,
   INewMessage,
@@ -6,6 +6,20 @@ import {
   MessageType,
   IMessageMedia,
 } from "../interface/IMessage";
+import { FileHandler } from "../helper/fileHandler";
+
+interface IMsgModelStatics extends Model<INewMsg> {
+  deleteMessagesForMe(
+    chatId: Types.ObjectId,
+    messageIds: number[],
+    userId: Types.ObjectId
+  ): Promise<void>;
+  deleteMessagesForEveryoneAtomic(
+    chatId: Types.ObjectId,
+    messageIds: number[],
+    senderId: Types.ObjectId
+  ): Promise<{ deletedIds: number[]; skippedIds: number[] }>;
+}
 
 const mediaItemSchema = {
   public_id: String,
@@ -123,6 +137,18 @@ const MsgSchema = new Schema<INewMsg>(
       type: Number,
       default: 0,
     },
+    chatHiddenFor: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    chatDeletedFor: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
@@ -133,6 +159,8 @@ const MsgSchema = new Schema<INewMsg>(
 MsgSchema.index({ sender: 1, receiver: 1 }, { unique: true });
 MsgSchema.index({ "messages.createdAt": 1 });
 MsgSchema.index({ isActive: 1 });
+MsgSchema.index({ chatHiddenFor: 1 });
+MsgSchema.index({ chatDeletedFor: 1 });
 MsgSchema.index({ "participantsInfo.sender.lastSeen": 1 });
 MsgSchema.index({ "participantsInfo.receiver.lastSeen": 1 });
 MsgSchema.index({ "messages.media.photos.public_id": 1 });
@@ -273,20 +301,106 @@ MsgSchema.methods.updateParticipantStatus = async function (
   await this.save();
 };
 
-MsgSchema.methods.deleteMessage = async function (
-  messageId: number,
+/**
+ * Atomic soft-delete: adds userId to deletedFor for multiple messages at once.
+ * Uses arrayFilters so no version conflict is possible.
+ */
+MsgSchema.statics.deleteMessagesForMe = async function (
+  chatId: Types.ObjectId,
+  messageIds: number[],
   userId: Types.ObjectId
-) {
-  const message = this.messages.find(
-    (m: INewMessage) => m.messageId === messageId
+): Promise<void> {
+  await this.updateOne(
+    { _id: chatId },
+    { $addToSet: { "messages.$[elem].deletedFor": userId } },
+    { arrayFilters: [{ "elem.messageId": { $in: messageIds } }] }
   );
-  if (message && !message.deletedFor?.includes(userId)) {
-    if (!message.deletedFor) {
-      message.deletedFor = [];
+};
+
+/**
+ * Atomic hard-delete for multiple messages. Only deletes messages where:
+ * - sender matches senderId
+ * - message was created today (calendar day)
+ * Returns which IDs were deleted vs skipped.
+ */
+MsgSchema.statics.deleteMessagesForEveryoneAtomic = async function (
+  chatId: Types.ObjectId,
+  messageIds: number[],
+  senderId: Types.ObjectId
+): Promise<{ deletedIds: number[]; skippedIds: number[] }> {
+  // Step 1: Fetch the chat with only the requested messages
+  const chat = await this.findOne(
+    { _id: chatId },
+    { messages: 1, lastMessage: 1 }
+  ).lean();
+
+  if (!chat) return { deletedIds: [], skippedIds: messageIds };
+
+  const requestedSet = new Set(messageIds);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Filter: only sender's own messages created today
+  const validIds: number[] = [];
+  const skippedIds: number[] = [];
+  const mediaToDelete: IMessageMedia[] = [];
+
+  for (const msg of chat.messages as INewMessage[]) {
+    if (!requestedSet.has(msg.messageId)) continue;
+    const isSender = msg.sender.toString() === senderId.toString();
+    const isToday = new Date(msg.createdAt) >= today;
+    if (isSender && isToday) {
+      validIds.push(msg.messageId);
+      if (msg.media) mediaToDelete.push(msg.media);
+    } else {
+      skippedIds.push(msg.messageId);
     }
-    message.deletedFor.push(userId);
-    await this.save();
   }
+
+  if (validIds.length === 0) return { deletedIds: [], skippedIds };
+
+  // Step 2: Delete media files
+  await Promise.all(
+    mediaToDelete.map((media) => FileHandler.deleteMessageMedia(media))
+  );
+
+  // Step 3: Atomically pull all valid messages
+  await this.updateOne(
+    { _id: chatId },
+    { $pull: { messages: { messageId: { $in: validIds } } } }
+  );
+
+  // Step 4: Update lastMessage if any deleted message was the last one
+  const lastMessageId = chat.lastMessage?.messageId;
+  if (lastMessageId !== undefined && validIds.includes(lastMessageId)) {
+    const updated = await this.findById(chatId, {
+      messages: { $slice: -1 },
+      _id: 0,
+    });
+    if (updated && updated.messages.length > 0) {
+      const last = updated.messages[0] as INewMessage;
+      await this.updateOne(
+        { _id: chatId },
+        {
+          $set: {
+            lastMessage: {
+              messageId: last.messageId,
+              text: last.text,
+              sender: last.sender,
+              messageType: last.messageType,
+              media: last.media,
+              status: last.status,
+              createdAt: last.createdAt,
+            },
+          },
+        }
+      );
+    } else {
+      await this.updateOne({ _id: chatId }, { $unset: { lastMessage: 1 } });
+    }
+  }
+
+  return { deletedIds: validIds, skippedIds };
 };
 
 // Pre-save middleware
@@ -306,6 +420,6 @@ MsgSchema.pre("save", function (next) {
   next();
 });
 
-const MsgModel = model<INewMsg>("NewMsg", MsgSchema);
+const MsgModel = model<INewMsg, IMsgModelStatics>("NewMsg", MsgSchema);
 
 export { MsgModel };
