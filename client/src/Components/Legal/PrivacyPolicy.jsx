@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createAxiosInstance } from "../../config/axios";
+import { ENDPOINTS } from "../../constants/apiEndpoints";
 
 const PrivacyPolicy = () => {
   const [content, setContent] = useState(null);
@@ -9,11 +10,12 @@ const PrivacyPolicy = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchPrivacy = async () => {
       try {
         const api = createAxiosInstance();
-        const res = await api.get("/legal/privacy");
-        setContent(res.data?.data);
+        const res = await api.get(ENDPOINTS.LEGAL.PRIVACY);
+        setContent(res.data?.data?.data);
       } catch (err) {
         setError("Failed to load privacy policy.");
       } finally {
@@ -40,7 +42,7 @@ const PrivacyPolicy = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen w-full self-start overflow-y-auto bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <button
           onClick={() => navigate(-1)}
