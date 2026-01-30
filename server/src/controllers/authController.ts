@@ -12,7 +12,6 @@ import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
 import { SessionController } from "./sessionController";
-import { generateTokenId } from "../helper/sessionHelper";
 import {
   generateSessionId,
   getMaxSessionsForSubscription,
@@ -552,12 +551,12 @@ class Authentication {
             });
           }
 
-          // Session limit passed — consume the OTP now
-          await RedisManager.removeDataFromGroup("otp_data", otpKey);
-          await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+        // Session limit passed — consume the OTP now
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
 
-          // Generate new sessionId for this login
-          const sessionId = generateSessionId();
+        // Generate new sessionId for this login
+        const sessionId = generateSessionId();
 
         const accessToken = user.generateAccessToken(
           sessionId,
@@ -569,15 +568,14 @@ class Authentication {
           subscriptionId,
           subscriptionType
         );
-        if (!refreshToken || !accessToken) {
-          throw new ApiError(
-            500,
-            "Failed to generate access or refresh token."
-          );
+        if (!accessToken && !refreshToken) {
+          throw new ApiError(500, "Failed to generate both access and refresh tokens.");
+        } else if (!accessToken) {
+          throw new ApiError(500, "Failed to generate access token.");
+        } else if (!refreshToken) {
+          throw new ApiError(500, "Failed to generate refresh token.");
         }
 
-        user.refreshToken = refreshToken;
-        await user.save();
 
         // Extract device info from request
         const userAgent = req.headers["user-agent"] || "";
@@ -613,13 +611,21 @@ class Authentication {
           ip,
         });
 
-        // Create session record for this login (MongoDB)
-        const tokenId = generateTokenId();
+        // Create session record for this login (MongoDB) — stores refresh token per-session
         await SessionController.createSession(
           userId,
-          req,
-          tokenId,
+          {
+            userAgent: userAgent || "unknown",
+            ip,
+            customHeaders: {
+              platform: req.headers["x-platform"] as string,
+              deviceModel: req.headers["x-device-model"] as string,
+              deviceBrand: req.headers["x-device-brand"] as string,
+              appVersion: req.headers["x-app-version"] as string,
+            },
+          },
           sessionId,
+          refreshToken,
           "otp"
         );
 
@@ -699,9 +705,6 @@ class Authentication {
         throw new ApiError(500, "Failed to generate access or refresh token.");
       }
 
-      user.refreshToken = refreshToken;
-      await user.save();
-
       // Extract device info from request
       const newUserAgent = req.headers["user-agent"] || "";
       const newIp =
@@ -736,13 +739,21 @@ class Authentication {
         ip: newIp,
       });
 
-      // Create session record for this login (MongoDB)
-      const tokenId = generateTokenId();
+      // Create session record for this login (MongoDB) — stores refresh token per-session
       await SessionController.createSession(
         newUserId,
-        req,
-        tokenId,
+        {
+          userAgent: newUserAgent || "unknown",
+          ip: newIp,
+          customHeaders: {
+            platform: req.headers["x-platform"] as string,
+            deviceModel: req.headers["x-device-model"] as string,
+            deviceBrand: req.headers["x-device-brand"] as string,
+            appVersion: req.headers["x-app-version"] as string,
+          },
+        },
         newUserSessionId,
+        refreshToken,
         "otp"
       );
 
