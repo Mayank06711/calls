@@ -164,6 +164,58 @@ export function playIncomingRing() {
 }
 
 /**
+ * Play a short notification chime for incoming permission requests.
+ * Pattern: gentle ascending tones repeated 3 times — less aggressive than a call ring.
+ */
+export function playPermissionNotification() {
+  stopRingtone();
+
+  try {
+    const ctx = getAudioContext();
+    let repeatCount = 0;
+    let timeoutId = null;
+
+    const playChime = () => {
+      if (repeatCount >= 3) return;
+      repeatCount++;
+
+      try {
+        const t = ctx.currentTime;
+        const tones = [440, 587.33]; // A4 → D5
+        tones.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          const start = t + i * 0.25;
+          gain.gain.setValueAtTime(0.2, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.3);
+        });
+      } catch {
+        // ignore
+      }
+
+      timeoutId = setTimeout(playChime, 2000);
+    };
+
+    currentRingtone = {
+      stop: () => {
+        repeatCount = 999;
+        if (timeoutId) clearTimeout(timeoutId);
+      },
+    };
+
+    playChime();
+  } catch {
+    // Silently fail
+  }
+}
+
+/**
  * Stop any currently playing ringtone.
  */
 export function stopRingtone() {
