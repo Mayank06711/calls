@@ -7,11 +7,11 @@ import { sanitizeData } from "../helper/sanitizeData";
 import { sendCachedResponse, successResponse } from "../utils/apiResponse";
 import { IUserSettings } from "../interface/IUserSettings";
 import { UserModel } from "../models/userModel";
-import { 
-  getAllStyleOptions, 
-  hasStyleAccess, 
+import {
+  getAllStyleOptions,
+  hasStyleAccess,
   STYLE_ALLOWED_SUBSCRIPTIONS,
-  getFontSizeCssValue 
+  getFontSizeCssValue
 } from "../helper/styleConstants";
 import { ISubscription } from "../interface/ISubscription";
 
