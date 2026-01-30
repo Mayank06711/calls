@@ -82,4 +82,4 @@ npm run test:chatsocket    # Chat socket tests
 
 ## Authors
 
-Mayank Soni, Satyam Soni
+Mayank Soni, Satyam Soni, Vishal Kushuwaha
