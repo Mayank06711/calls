@@ -2,7 +2,13 @@ import { Request, Response } from "express";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
 import BugFeedback from "../models/bugFeedbackModel";
+import ExpertFeedback from "../models/expertFeedbackModel";
 import { ApiError } from "../utils/apiError";
+import { successResponse } from "../utils/apiResponse";
+import { Types } from "mongoose";
+import { ExpertFeedbackHistoryModel } from "../models/expertFeedbackHistoryModel";
+import { ExpertTipModel } from "../models/expertTipModel";
+import { ExpertComplaintModel } from "../models/expertComplaintModel";
 
 class FeedbackController {
   // Submit Bug Feedback - Anyone can submit (user, expert, or anonymous)
@@ -134,8 +140,8 @@ class FeedbackController {
         throw new ApiError(400, "Expert ID is required");
       }
 
-      if (!message || message.trim().length < 10) {
-        throw new ApiError(400, "Message must be at least 10 characters long");
+      if (!message || message.replace(/\s/g, "").length < 10) {
+        throw new ApiError(400, "Message must be at least 10 non-space characters");
       }
 
       if (!stars || stars < 1 || stars > 5) {
@@ -154,33 +160,65 @@ class FeedbackController {
         throw new ApiError(404, "Expert not found");
       }
 
-      // Create expert feedback using BugFeedback model with expert-specific fields
-      const expertFeedback = await BugFeedback.create({
+      // Cooldown: can only rate/update once per 24 hours per expert
+      const existingRating = await ExpertFeedback.findOne({ user: userId, expert: expertId }).lean();
+      if (existingRating && existingRating.updatedAt) {
+        const hoursSinceLastUpdate = (Date.now() - new Date(existingRating.updatedAt).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastUpdate < 24) {
+          const hoursRemaining = Math.ceil(24 - hoursSinceLastUpdate);
+          throw new ApiError(429, `You can update your rating in ${hoursRemaining} hour(s)`);
+        }
+      }
+
+      // Upsert: update existing rating or create new one (1 rating per user per expert)
+      const expertFeedback = await ExpertFeedback.findOneAndUpdate(
+        { user: userId, expert: expertId },
+        {
+          $set: {
+            message: message.trim(),
+            stars,
+            aspects: aspects || [],
+            sessionId: sessionId || undefined,
+            sessionDuration: sessionDuration || undefined,
+            attachmentUrl: attachmentUrl || undefined,
+            verified: false,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      const isUpdate = expertFeedback.createdAt?.toISOString() !== expertFeedback.updatedAt?.toISOString();
+
+      // Log to rating history for admin audit trail
+      await ExpertFeedbackHistoryModel.create({
         user: userId,
+        expert: expertId,
+        stars,
+        aspects: aspects || [],
         message: message.trim(),
-        bugType: "Expert Feedback", // Custom type for expert feedback
-        customBugType: "Expert Rating",
-        severity: stars <= 2 ? "High" : stars <= 3 ? "Medium" : "Low",
-        stepsToReproduce: `Expert: ${expertId}, Rating: ${stars} stars, Session: ${
-          sessionId || "N/A"
-        }`,
-        status: "New",
+        feedbackId: expertFeedback._id,
+        action: isUpdate ? "updated" : "created",
       });
 
-      return res.status(201).json({
+      return res.status(isUpdate ? 200 : 201).json({
         success: true,
-        message: "Expert feedback submitted successfully",
+        message: isUpdate ? "Rating updated successfully" : "Rating submitted successfully",
         data: {
           id: expertFeedback._id,
           message: expertFeedback.message,
           expertId,
           stars,
+          aspects: expertFeedback.aspects,
           createdAt: expertFeedback.createdAt,
         },
       });
     } catch (error: any) {
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(error.statusCode || 500, error.message);
+      const statusCode = error instanceof ApiError ? error.statusCode : (error.statusCode || 500);
+      const message = error.message || "Internal server error";
+      return res.status(statusCode).json({
+        success: false,
+        message,
+      });
     }
   }
 
@@ -512,6 +550,182 @@ class FeedbackController {
       });
     } catch (error: any) {
       throw new ApiError(error.statusCode || 500, error.message);
+    }
+  }
+  // Get aggregated rating for an expert
+  static async getExpertRating(req: Request, res: Response) {
+    try {
+      const { expertId } = req.params;
+      if (!expertId) throw new ApiError(400, "Expert ID is required");
+
+      const rating = await ExpertFeedback.getExpertRating(new Types.ObjectId(expertId));
+      return res.status(200).json({
+        success: true,
+        data: rating,
+      });
+    } catch (error: any) {
+      const statusCode = error instanceof ApiError ? error.statusCode : (error.statusCode || 500);
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  /**
+   * Get aggregated expert profile stats for the popup.
+   * Public data + user-specific data (if authenticated).
+   */
+  static async getExpertProfileStats(req: Request, res: Response) {
+    try {
+      const { expertId } = req.params;
+      if (!expertId) throw new ApiError(400, "Expert ID is required");
+
+      const expertObjId = new Types.ObjectId(expertId);
+
+      // Requesting user (may be null for unauthenticated requests)
+      const requestingUserId = req.user?._id;
+
+      // Run all queries in parallel
+      const [
+        expertUser,
+        expertDoc,
+        ratingStats,
+        currentUserRating,
+        tipStats,
+        userTips,
+        complaintCount,
+        recentReviews,
+        ratingHistory,
+      ] = await Promise.all([
+        // Expert user info
+        UserModel.findById(expertId)
+          .select("fullName username profilePhoto isExpert bio")
+          .lean(),
+        // Expert qualifications
+        ExpertModel.findOne({ user: expertId }).lean(),
+        // Rating aggregation
+        ExpertFeedback.getExpertRating(expertObjId),
+        // Current user's rating for this expert
+        requestingUserId
+          ? ExpertFeedback.findOne({ user: requestingUserId, expert: expertId })
+              .select("stars aspects message updatedAt")
+              .lean()
+          : null,
+        // Tip stats (completed tips only)
+        ExpertTipModel.aggregate([
+          { $match: { expert: expertObjId, status: "completed" } },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$amount" },
+              totalTippers: { $addToSet: "$tipper" },
+              tipCount: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              totalAmount: 1,
+              tipCount: 1,
+              uniqueTippers: { $size: "$totalTippers" },
+            },
+          },
+        ]),
+        // User's tips to this expert (completed only)
+        requestingUserId
+          ? ExpertTipModel.aggregate([
+              {
+                $match: {
+                  tipper: new Types.ObjectId(requestingUserId.toString()),
+                  expert: expertObjId,
+                  status: "completed",
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  totalAmount: { $sum: "$amount" },
+                  count: { $sum: 1 },
+                },
+              },
+            ])
+          : [],
+        // Complaint breakdown by status
+        ExpertComplaintModel.aggregate([
+          { $match: { expert: expertObjId } },
+          {
+            $group: {
+              _id: "$status",
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+        // Recent reviews (latest 5)
+        ExpertFeedback.find({ expert: expertId })
+          .sort({ updatedAt: -1 })
+          .limit(5)
+          .select("stars aspects message updatedAt user")
+          .populate("user", "fullName username profilePhoto")
+          .lean(),
+        // Rating history for current user (admin audit or self)
+        requestingUserId
+          ? ExpertFeedbackHistoryModel.find({ user: requestingUserId, expert: expertId })
+              .sort({ createdAt: -1 })
+              .limit(10)
+              .select("stars action createdAt")
+              .lean()
+          : [],
+      ]);
+
+      if (!expertUser) throw new ApiError(404, "Expert not found");
+
+      const tipStatsResult = tipStats[0] || { totalAmount: 0, tipCount: 0, uniqueTippers: 0 };
+      const userTipResult = userTips[0] || { totalAmount: 0, count: 0 };
+
+      // Build complaint breakdown from aggregation
+      const complaintBreakdown: Record<string, number> = {
+        total: 0, new: 0, reviewing: 0, resolved: 0, dismissed: 0,
+      };
+      for (const entry of complaintCount as any[]) {
+        complaintBreakdown[entry._id] = entry.count;
+        complaintBreakdown.total += entry.count;
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          expert: {
+            _id: expertUser._id,
+            fullName: (expertUser as any).fullName,
+            username: (expertUser as any).username,
+            profilePhoto: (expertUser as any).profilePhoto,
+            bio: (expertUser as any).bio,
+            qualification: expertDoc?.qualification,
+            experienceInYears: expertDoc?.experienceInYears,
+            degreeVerified: expertDoc?.degree?.isVerified,
+            totalCustomersHandled: expertDoc?.totalCustomersHandled,
+          },
+          rating: ratingStats,
+          currentUserRating: currentUserRating || null,
+          tips: {
+            totalAmount: tipStatsResult.totalAmount,
+            tipCount: tipStatsResult.tipCount,
+            uniqueTippers: tipStatsResult.uniqueTippers,
+            userTipTotal: userTipResult.totalAmount,
+            userTipCount: userTipResult.count,
+          },
+          complaints: complaintBreakdown,
+          recentReviews,
+          ratingHistory,
+        },
+      });
+    } catch (error: any) {
+      const statusCode = error instanceof ApiError ? error.statusCode : (error.statusCode || 500);
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
     }
   }
 }
