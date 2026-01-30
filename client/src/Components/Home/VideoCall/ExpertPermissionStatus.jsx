@@ -3,16 +3,22 @@ import { useVideoCall } from "../../../hooks/useVideoCall";
 import { useSelector } from "react-redux";
 import { Phone, Close, HourglassEmpty, CheckCircle, Cancel } from "@mui/icons-material";
 
+const PERMISSION_REQUEST_TIMEOUT = 65; // seconds — matches useVideoCall timeout
+
 function ExpertPermissionStatus() {
   const {
     permissionState,
     permissionTarget,
     permissionWindowExpiry,
+    permissionCooldownEnd,
+    permissionDenyReason,
     initiateCall,
+    cancelPermissionRequest,
   } = useVideoCall();
 
   const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
   const [windowRemaining, setWindowRemaining] = useState(null);
+  const [requestCountdown, setRequestCountdown] = useState(PERMISSION_REQUEST_TIMEOUT);
 
   // Countdown for granted window
   useEffect(() => {
@@ -36,6 +42,42 @@ function ExpertPermissionStatus() {
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [permissionState, permissionWindowExpiry]);
+
+  // Countdown for denied cooldown
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  useEffect(() => {
+    if (permissionState !== "denied" || !permissionCooldownEnd) {
+      setCooldownRemaining(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((permissionCooldownEnd - Date.now()) / 1000));
+      setCooldownRemaining(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [permissionState, permissionCooldownEnd]);
+
+  // Countdown for requesting state
+  useEffect(() => {
+    if (permissionState !== "requesting") {
+      setRequestCountdown(PERMISSION_REQUEST_TIMEOUT);
+      return;
+    }
+    setRequestCountdown(PERMISSION_REQUEST_TIMEOUT);
+    const interval = setInterval(() => {
+      setRequestCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [permissionState]);
 
   // Only show for experts with active permission state
   if (!isExpert || permissionState === "idle") {
@@ -68,9 +110,16 @@ function ExpertPermissionStatus() {
               Requesting permission...
             </p>
             <p className="text-gray-400 text-xs mt-0.5">
-              Waiting for {permissionTarget?.name || "user"} to respond
+              Waiting for {permissionTarget?.name || "user"} to respond ({requestCountdown}s)
             </p>
           </div>
+          <button
+            onClick={cancelPermissionRequest}
+            className="p-1.5 rounded-full hover:bg-gray-700/50 transition-colors"
+            title="Cancel request"
+          >
+            <Close className="text-gray-400 hover:text-white" sx={{ fontSize: 18 }} />
+          </button>
         </div>
       )}
 
@@ -109,15 +158,24 @@ function ExpertPermissionStatus() {
       {/* Denied state */}
       {permissionState === "denied" && (
         <div className="p-4 flex items-center gap-3">
-          <Cancel className="text-red-400" sx={{ fontSize: 24 }} />
+          <Cancel className={permissionDenyReason === "user_offline" ? "text-gray-400" : "text-red-400"} sx={{ fontSize: 24 }} />
           <div className="flex-1">
             <p className="text-white text-sm font-medium">
-              Permission denied
+              {permissionDenyReason === "user_offline"
+                ? "User went offline"
+                : "Permission denied"}
             </p>
             <p className="text-gray-400 text-xs mt-0.5">
-              User declined your call request
+              {permissionDenyReason === "user_offline"
+                ? `${permissionTarget?.name || "User"} disconnected`
+                : cooldownRemaining > 0
+                  ? `You can request again in ${cooldownRemaining}s`
+                  : "User declined your call request"}
             </p>
           </div>
+          {cooldownRemaining > 0 && (
+            <span className="text-red-400 text-xs font-mono">{cooldownRemaining}s</span>
+          )}
         </div>
       )}
     </div>
