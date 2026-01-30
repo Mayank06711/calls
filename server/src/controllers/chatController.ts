@@ -1,4 +1,6 @@
 import { MsgModel } from "../models/messageModel";
+import { ChatRequestModel } from "../models/chatRequestModel";
+import { UserSettingsModel } from "../models/userSettingsModel";
 import { SocketManager } from "../socket";
 import { RedisManager } from "../utils/redisClient";
 import { Types } from "mongoose";
@@ -14,6 +16,30 @@ class ChatController {
   // Session validation cache - avoid excessive Redis calls
   private sessionValidationCache: Map<string, { valid: boolean; timestamp: number }> = new Map();
   private readonly SESSION_CACHE_TTL = 30000; // 30 seconds cache
+
+  // Per-socket rate limiter for delete operations (prevents DB spam)
+  // Key: `${socketId}:${event}`, Value: array of timestamps
+  private deleteRateLimits: Map<string, number[]> = new Map();
+  private readonly DELETE_RATE_LIMIT = 10; // max requests
+  private readonly DELETE_RATE_WINDOW = 10000; // per 10 seconds
+
+  private isRateLimited(socketId: string, event: string): boolean {
+    const key = `${socketId}:${event}`;
+    const now = Date.now();
+    const timestamps = this.deleteRateLimits.get(key) || [];
+
+    // Remove timestamps outside the window
+    const recent = timestamps.filter((t) => now - t < this.DELETE_RATE_WINDOW);
+
+    if (recent.length >= this.DELETE_RATE_LIMIT) {
+      this.deleteRateLimits.set(key, recent);
+      return true;
+    }
+
+    recent.push(now);
+    this.deleteRateLimits.set(key, recent);
+    return false;
+  }
 
   private readonly CHAT_EVENTS = {
     // Client 1 sends message to server
@@ -43,10 +69,23 @@ class ChatController {
     TYPING_STATUS: "typing:status",
     // when server need to broadcast some information.
     SYSTEM_MESSAGE: "system:message",
+
+    // Message deletion
+    MESSAGE_DELETE: "message:delete",         // delete for me (soft-delete)
+    MESSAGE_DELETE_ALL: "message:delete-all", // delete for everyone (sender only)
+    MESSAGE_DELETED: "message:deleted",       // notify other user about delete-for-everyone
+
+    // Chat request system
+    CHAT_REQUEST_SEND: "chat-request:send",           // c -> server (send request)
+    CHAT_REQUEST_RECEIVED: "chat-request:received",   // server -> c (notify receiver)
+    CHAT_REQUEST_RESPOND: "chat-request:respond",     // c -> server (accept/decline)
+    CHAT_REQUEST_RESPONSE: "chat-request:response",   // server -> c (notify sender of response)
+    CHAT_REQUEST_LIST: "chat-request:list",           // c -> server (get pending requests)
+    CHAT_REQUEST_STATUS: "chat-request:status",       // c -> server (check status between two users)
   } as const;
 
   constructor() {
-    console.log("i have been called by chatcontroller.");
+    console.log("[ChatController]: Initialized");
     this.socketManager = SocketManager.getInstance();
     // Set up notification listener
     this.setupNotificationListener();
@@ -61,10 +100,10 @@ class ChatController {
 
   private setupNotificationListener(): void {
     const notificationService = NotificationService.getInstance();
-    console.log("Setting up notification listener in ChatController");
+    console.log("[ChatController]: Setting up notification listener");
     notificationService.onNotification(async (notificationData) => {
       try {
-        console.log("Received admin notification:", notificationData);
+        console.log("[ChatController]: Admin notification received, broadcasting");
 
         // Broadcast notification to all connected sockets
         await this.socketManager.emitEvent({
@@ -74,10 +113,8 @@ class ChatController {
             id: Date.now(), // Generate unique ID for the notification
           },
         });
-
-        console.log("Admin notification broadcasted to all clients");
       } catch (error) {
-        console.error("Error broadcasting admin notification:", error);
+        console.error("[ChatController]: Error broadcasting notification:", error);
       }
     });
   }
@@ -114,9 +151,7 @@ class ChatController {
 
       // If session is invalid, emit error and disconnect
       if (!isActive) {
-        socket.emit("session:revoked", {
-          message: "Your session has been revoked. Please login again.",
-        });
+        socket.emit("session_revoked", "Your session has been revoked. Please login again.");
         socket.disconnect(true);
         return false;
       }
@@ -139,15 +174,11 @@ class ChatController {
 
   public setupAuthenticatedSocketListeners(socket: Socket): void {
     if (!socket.data.authenticated || !socket.data.userId) {
-      console.log(
-        `Socket ${socket.id} not authenticated, skipping chat listeners`
-      );
+      console.log(`[ChatController]: Socket ${socket.id} not authenticated, skipping`);
       return;
     }
 
-    console.log(
-      `Setting up chat listeners for authenticated socket ${socket.id}`
-    );
+    console.log(`[ChatController]: Setting up listeners for socket ${socket.id}`);
 
     // In setupAuthenticatedSocketListeners
     this.socketManager.listenToEvent({
@@ -162,7 +193,7 @@ class ChatController {
             callback(result);
           }
         } catch (error) {
-          console.error("Error in chat:check handler:", error);
+          console.error("[Chat:check]: Handler error:", error);
           if (callback) {
             callback({
               status: "error",
@@ -190,9 +221,6 @@ class ChatController {
       },
     ];
     events.forEach(({ event, handler }) => {
-      console.log(
-        `Setting up listener for event: ${event} on socket ${socket.id}`
-      );
       socket.on(event, async (data: any, callback?: Function) => {
         try {
           // Validate session before processing critical events
@@ -208,10 +236,9 @@ class ChatController {
             return;
           }
 
-          console.log(`Received event ${event} with data:`, data);
           await handler(data, socket, callback);
         } catch (error) {
-          console.error(`Error handling ${event}:`, error);
+          console.error(`[ChatController]: Error handling ${event}:`, error);
           if (callback)
             callback({
               status: "error",
@@ -219,7 +246,6 @@ class ChatController {
             });
         }
       });
-      console.log(`Event listener '${event}' attached to socket ${socket.id}`);
     });
 
     // NEW EVENT: chat:list - Get all chats with unread counts
@@ -233,7 +259,7 @@ class ChatController {
             callback(result);
           }
         } catch (error) {
-          console.error("Error in chat:list handler:", error);
+          console.error("[Chat:list]: Handler error:", error);
           if (callback) {
             callback({
               status: "error",
@@ -255,7 +281,7 @@ class ChatController {
             callback(result);
           }
         } catch (error) {
-          console.error("Error in chat:open handler:", error);
+          console.error("[Chat:open]: Handler error:", error);
           if (callback) {
             callback({
               status: "error",
@@ -276,14 +302,28 @@ class ChatController {
           const isOnline = socketStatus.some(
             s => s.userId === data.userId && s.isActive
           );
-          console.log(`[user:check-online] User ${data.userId} is ${isOnline ? 'ONLINE' : 'OFFLINE'}`);
+          let statusHidden = false;
+          if (isOnline) {
+            // Experts cannot appear offline — skip privacy check for experts
+            const targetIsExpert = await this.isUserExpert(data.userId);
+            if (!targetIsExpert) {
+              const settings = await UserSettingsModel.findOne(
+                { userId: data.userId },
+                { 'privacy.showOnlineStatus': 1 }
+              ).lean();
+              if (settings?.privacy?.showOnlineStatus === false) {
+                statusHidden = true;
+              }
+            }
+          }
+          console.log(`[user:check-online] User ${data.userId} is ${isOnline ? (statusHidden ? 'HIDDEN' : 'ONLINE') : 'OFFLINE'}`);
           if (callback) {
-            callback({ status: 'success', userId: data.userId, isOnline });
+            callback({ status: 'success', userId: data.userId, isOnline: statusHidden ? false : isOnline, statusHidden });
           }
         } catch (error) {
-          console.error("Error in user:check-online handler:", error);
+          console.error("[Chat:checkOnline]: Handler error:", error);
           if (callback) {
-            callback({ status: 'error', isOnline: false });
+            callback({ status: 'error', isOnline: false, statusHidden: false });
           }
         }
       },
@@ -296,19 +336,750 @@ class ChatController {
       handler: async (data: any, socket: Socket, callback?: Function) => {
         try {
           const socketStatus = await this.socketManager.getSocketStatus();
-          const onlineUserIds = [...new Set(socketStatus
+          const allOnlineIds = [...new Set(socketStatus
             .filter(s => s.isActive)
             .map(s => s.userId)
           )];
-          console.log(`[users:get-online] Found ${onlineUserIds.length} online users`);
+          // Find users who have showOnlineStatus disabled
+          const hiddenSettings = await UserSettingsModel.find(
+            { userId: { $in: allOnlineIds }, 'privacy.showOnlineStatus': false },
+            { userId: 1 }
+          ).lean();
+          const hiddenSet = new Set(hiddenSettings.map(s => s.userId.toString()));
+          // Experts cannot appear offline — remove experts from hidden set
+          const { UserModel } = await import("../models/userModel");
+          const expertUsers = await UserModel.find(
+            { _id: { $in: [...hiddenSet] }, isExpert: true },
+            { _id: 1 }
+          ).lean();
+          for (const expert of expertUsers) {
+            hiddenSet.delete(expert._id.toString());
+          }
+          const onlineUserIds = allOnlineIds.filter(id => !hiddenSet.has(id));
+          const hiddenUserIds = allOnlineIds.filter(id => hiddenSet.has(id));
+          console.log(`[users:get-online] Found ${onlineUserIds.length} online, ${hiddenUserIds.length} hidden`);
           if (callback) {
-            callback({ status: 'success', onlineUserIds });
+            callback({ status: 'success', onlineUserIds, hiddenUserIds });
           }
         } catch (error) {
-          console.error("Error in users:get-online handler:", error);
+          console.error("[Chat:getOnline]: Handler error:", error);
           if (callback) {
-            callback({ status: 'error', onlineUserIds: [] });
+            callback({ status: 'error', onlineUserIds: [], hiddenUserIds: [] });
           }
+        }
+      },
+    });
+
+    // EVENT: privacy:status-changed — client notifies server after toggling showOnlineStatus
+    // Server broadcasts the appropriate events to all clients
+    this.socketManager.listenToEvent({
+      event: 'privacy:status-changed',
+      socketIds: [socket.id],
+      handler: async (data: { showOnlineStatus: boolean }, socket: Socket, callback?: Function) => {
+        try {
+          const userId = socket.data?.userId?.toString();
+          if (!userId) {
+            if (callback) callback({ status: 'error', message: 'Not authenticated' });
+            return;
+          }
+          // Experts cannot appear offline
+          if (socket.data.isExpert) {
+            if (callback) callback({ status: 'error', message: 'Experts cannot appear offline' });
+            return;
+          }
+          if (data.showOnlineStatus === false) {
+            // User wants to hide — broadcast offline + hidden
+            await this.socketManager.emitEvent({ event: 'user:offline', data: { userId, timestamp: new Date() } });
+            await this.socketManager.emitEvent({ event: 'user:hidden', data: { userId, timestamp: new Date() } });
+            console.log(`[privacy:status-changed] User ${userId} is now HIDDEN`);
+          } else {
+            // User wants to show — broadcast unhidden + online
+            await this.socketManager.emitEvent({ event: 'user:unhidden', data: { userId, timestamp: new Date() } });
+            await this.socketManager.emitEvent({ event: 'user:online', data: { userId, timestamp: new Date() } });
+            console.log(`[privacy:status-changed] User ${userId} is now VISIBLE`);
+          }
+          if (callback) callback({ status: 'success' });
+        } catch (error) {
+          console.error("[Chat:privacyStatus]: Handler error:", error);
+          if (callback) callback({ status: 'error' });
+        }
+      },
+    });
+
+    // MESSAGE DELETE (for me) — soft-delete via deletedFor array
+    // Accepts single messageId or array of messageIds
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.MESSAGE_DELETE,
+      socketIds: [socket.id],
+      handler: async (data: { chatId: string; messageId: number | number[] }, socket: Socket, callback?: Function) => {
+        try {
+          if (this.isRateLimited(socket.id, "message:delete")) {
+            if (callback) callback({ status: "error", message: "Too many delete requests, slow down" });
+            return;
+          }
+          const userId = socket.data.userId;
+          const ids = Array.isArray(data.messageId) ? data.messageId : [data.messageId];
+          if (ids.length > 50) {
+            if (callback) callback({ status: "error", message: "Cannot delete more than 50 messages at once" });
+            return;
+          }
+          await MsgModel.deleteMessagesForMe(
+            new Types.ObjectId(data.chatId),
+            ids,
+            new Types.ObjectId(userId)
+          );
+          if (callback) callback({ status: "success", messageIds: ids });
+        } catch (error) {
+          console.error("[Chat:messageDelete]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // MESSAGE DELETE FOR EVERYONE — removes messages from array (sender only, today only)
+    // Accepts single messageId or array of messageIds
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.MESSAGE_DELETE_ALL,
+      socketIds: [socket.id],
+      handler: async (data: { chatId: string; messageId: number | number[] }, socket: Socket, callback?: Function) => {
+        try {
+          if (this.isRateLimited(socket.id, "message:delete-all")) {
+            if (callback) callback({ status: "error", message: "Too many delete requests, slow down" });
+            return;
+          }
+          const userId = socket.data.userId;
+          const ids = Array.isArray(data.messageId) ? data.messageId : [data.messageId];
+          if (ids.length > 50) {
+            if (callback) callback({ status: "error", message: "Cannot delete more than 50 messages at once" });
+            return;
+          }
+
+          // Delete-for-everyone is only allowed in user-to-user chats
+          const chatDoc = await MsgModel.findById(data.chatId, { chatType: 1 }).lean();
+          if (!chatDoc || chatDoc.chatType !== "userToUser") {
+            if (callback) callback({ status: "error", message: "Delete for everyone is only available in user-to-user chats", code: "DELETE_ALL_NOT_ALLOWED" });
+            return;
+          }
+
+          const { deletedIds, skippedIds } = await MsgModel.deleteMessagesForEveryoneAtomic(
+            new Types.ObjectId(data.chatId),
+            ids,
+            new Types.ObjectId(userId)
+          );
+
+          if (deletedIds.length === 0) {
+            if (callback) callback({ status: "error", message: "No messages could be deleted — only your own messages from today can be deleted for everyone" });
+            return;
+          }
+
+          if (callback) callback({ status: "success", deletedIds, skippedIds });
+
+          // Notify the other participant
+          const chat = await MsgModel.findById(data.chatId, { sender: 1, receiver: 1 }).lean();
+          if (!chat) return;
+          const otherUserId = chat.sender.toString() === userId
+            ? chat.receiver.toString()
+            : chat.sender.toString();
+
+          const otherSocket = await this.socketManager.getSocketIdUsingUserId(otherUserId);
+          if (otherSocket?.socketId) {
+            await this.socketManager.emitEvent({
+              event: this.CHAT_EVENTS.MESSAGE_DELETED,
+              data: {
+                chatId: data.chatId,
+                messageIds: deletedIds,
+                deletedBy: userId,
+                timestamp: new Date(),
+              },
+              targetSocketIds: [otherSocket.socketId],
+            });
+          }
+        } catch (error) {
+          console.error("[Chat:messageDeleteAll]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT HIDE — premium only (GOLD/SILVER/PLATINUM), not expert
+    this.socketManager.listenToEvent({
+      event: "chat:hide",
+      socketIds: [socket.id],
+      handler: async (data: { chatId: string }, socket: Socket, callback?: Function) => {
+        try {
+          if (this.isRateLimited(socket.id, "chat:hide")) {
+            if (callback) callback({ status: "error", message: "Too many requests, slow down" });
+            return;
+          }
+          const userId = socket.data.userId;
+          const subType = (socket.data.subscriptionType || "free").toUpperCase();
+          const isExpert = socket.data.isExpert || false;
+          const isPremium = ["GOLD", "SILVER", "PLATINUM"].includes(subType);
+
+          if (!isPremium || isExpert) {
+            if (callback) callback({ status: "error", message: "Hide is available for premium users only" });
+            return;
+          }
+
+          await MsgModel.findByIdAndUpdate(data.chatId, {
+            $addToSet: { chatHiddenFor: new Types.ObjectId(userId) },
+          });
+          if (callback) callback({ status: "success" });
+        } catch (error) {
+          console.error("[Chat:hide]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT UNHIDE
+    this.socketManager.listenToEvent({
+      event: "chat:unhide",
+      socketIds: [socket.id],
+      handler: async (data: { chatId: string }, socket: Socket, callback?: Function) => {
+        try {
+          const userId = socket.data.userId;
+          await MsgModel.findByIdAndUpdate(data.chatId, {
+            $pull: { chatHiddenFor: new Types.ObjectId(userId) },
+          });
+          if (callback) callback({ status: "success" });
+        } catch (error) {
+          console.error("[Chat:unhide]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT DELETE (for me) — soft-deletes all messages for this user + hides chat
+    this.socketManager.listenToEvent({
+      event: "chat:delete",
+      socketIds: [socket.id],
+      handler: async (data: { chatId: string }, socket: Socket, callback?: Function) => {
+        try {
+          if (this.isRateLimited(socket.id, "chat:delete")) {
+            if (callback) callback({ status: "error", message: "Too many requests, slow down" });
+            return;
+          }
+          const userId = socket.data.userId;
+          const userObjId = new Types.ObjectId(userId);
+          const chat = await MsgModel.findById(data.chatId);
+          if (!chat) {
+            if (callback) callback({ status: "error", message: "Chat not found" });
+            return;
+          }
+
+          // Soft-delete every message for this user
+          for (const msg of chat.messages) {
+            if (!msg.deletedFor) msg.deletedFor = [];
+            if (!msg.deletedFor.some((id: Types.ObjectId) => id.toString() === userId)) {
+              msg.deletedFor.push(userObjId);
+            }
+          }
+
+          // Mark chat as deleted for this user
+          if (!chat.chatDeletedFor) chat.chatDeletedFor = [];
+          if (!chat.chatDeletedFor.some((id: Types.ObjectId) => id.toString() === userId)) {
+            chat.chatDeletedFor.push(userObjId);
+          }
+
+          await chat.save();
+          if (callback) callback({ status: "success" });
+        } catch (error) {
+          console.error("[Chat:delete]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT HIDDEN LIST — returns chats hidden by this user
+    this.socketManager.listenToEvent({
+      event: "chat:hidden-list",
+      socketIds: [socket.id],
+      handler: async (_data: any, socket: Socket, callback?: Function) => {
+        try {
+          const userId = socket.data.userId;
+          const hiddenChats = await MsgModel.aggregate([
+            {
+              $match: {
+                chatHiddenFor: new Types.ObjectId(userId),
+              },
+            },
+            {
+              $addFields: {
+                otherParticipant: {
+                  $cond: [
+                    { $eq: ["$sender", new Types.ObjectId(userId)] },
+                    "$receiver",
+                    "$sender",
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "otherParticipant",
+                foreignField: "_id",
+                as: "participantInfo",
+              },
+            },
+            { $unwind: { path: "$participantInfo", preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                chatId: "$_id",
+                otherUser: {
+                  _id: "$participantInfo._id",
+                  fullName: "$participantInfo.fullName",
+                  username: "$participantInfo.username",
+                  profilePhoto: "$participantInfo.profilePhoto",
+                },
+                updatedAt: 1,
+              },
+            },
+          ]);
+
+          if (callback) callback({ status: "success", chats: hiddenChats });
+        } catch (error) {
+          console.error("[Chat:hiddenList]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // ============ CHAT REQUEST SYSTEM ============
+
+    // CHAT REQUEST: SEND — send a chat request to another user
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.CHAT_REQUEST_SEND,
+      socketIds: [socket.id],
+      handler: async (data: { receiverId: string }, socket: Socket, callback?: Function) => {
+        try {
+          if (this.isRateLimited(socket.id, "chat-request:send")) {
+            if (callback) callback({ status: "error", message: "Too many requests, slow down" });
+            return;
+          }
+
+          const senderId = socket.data.userId?.toString();
+          if (!senderId || !data.receiverId) {
+            if (callback) callback({ status: "error", message: "Invalid request data" });
+            return;
+          }
+
+          if (senderId === data.receiverId) {
+            if (callback) callback({ status: "error", message: "Cannot send request to yourself" });
+            return;
+          }
+
+          // Admin bypass: admins can always chat, auto-accept
+          const isAdmin = await this.checkIsAdmin(socket);
+          if (isAdmin) {
+            // Auto-create accepted request
+            await ChatRequestModel.findOneAndUpdate(
+              { sender: senderId, receiver: data.receiverId },
+              { status: "accepted", respondedAt: new Date() },
+              { upsert: true, new: true }
+            );
+            const sortedPair = [senderId, data.receiverId].sort().join(":");
+            await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+            if (callback) callback({ status: "success", autoAccepted: true });
+            return;
+          }
+
+          // Expert bypass: regular users can message experts directly, auto-accept
+          // BUT if sender IS the expert, they must go through the normal request flow
+          const receiverIsExpert = await this.isUserExpert(data.receiverId);
+          const senderIsExpert = await this.isUserExpert(senderId);
+          if (receiverIsExpert && !senderIsExpert) {
+            await ChatRequestModel.findOneAndUpdate(
+              { sender: senderId, receiver: data.receiverId },
+              { status: "accepted", respondedAt: new Date() },
+              { upsert: true, new: true }
+            );
+            const sortedPair = [senderId, data.receiverId].sort().join(":");
+            await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+            if (callback) callback({ status: "success", autoAccepted: true });
+            return;
+          }
+
+          // Check if already accepted (fast Redis check)
+          const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
+          if (isAllowed) {
+            if (callback) callback({ status: "already_accepted" });
+            return;
+          }
+
+          // Check Redis cooldown (3-day decline cooldown)
+          const cooldownTTL = await RedisManager.getTTL("chat_req_cooldown", `${senderId}:${data.receiverId}`);
+          if (cooldownTTL > 0) {
+            const daysRemaining = Math.ceil(cooldownTTL / 86400);
+            if (callback) callback({
+              status: "error",
+              message: `Request declined. You can send a new request in ${daysRemaining} day(s)`,
+              code: "COOLDOWN",
+              cooldownRemaining: cooldownTTL,
+            });
+            return;
+          }
+
+          // Check if pending request already exists (sender → receiver)
+          const existingRequest = await ChatRequestModel.findOne({
+            sender: senderId,
+            receiver: data.receiverId,
+            status: "pending",
+          });
+          if (existingRequest) {
+            if (callback) callback({ status: "already_pending", requestId: existingRequest._id });
+            return;
+          }
+
+          // Check for REVERSE pending request (receiver → sender) → auto-accept
+          const reverseRequest = await ChatRequestModel.findOne({
+            sender: data.receiverId,
+            receiver: senderId,
+            status: "pending",
+          });
+          if (reverseRequest) {
+            // Both users want to chat — auto-accept
+            reverseRequest.status = "accepted";
+            reverseRequest.respondedAt = new Date();
+            await reverseRequest.save();
+
+            const sortedPair = [senderId, data.receiverId].sort().join(":");
+            await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+
+            // Notify the original sender of the reverse request
+            const otherSocket = await this.socketManager.getSocketIdUsingUserId(data.receiverId);
+            if (otherSocket?.socketId) {
+              await this.socketManager.emitEvent({
+                event: this.CHAT_EVENTS.CHAT_REQUEST_RESPONSE,
+                data: { status: "accepted", acceptedBy: senderId, requestId: reverseRequest._id },
+                targetSocketIds: [otherSocket.socketId],
+              });
+            }
+
+            if (callback) callback({ status: "success", autoAccepted: true, requestId: reverseRequest._id });
+            return;
+          }
+
+          // Check DB cooldown fallback (if Redis key was lost)
+          const recentDecline = await ChatRequestModel.findOne({
+            sender: senderId,
+            receiver: data.receiverId,
+            status: "declined",
+            declinedAt: { $gte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+          });
+          if (recentDecline) {
+            const remainingMs = 3 * 24 * 60 * 60 * 1000 - (Date.now() - recentDecline.declinedAt!.getTime());
+            const daysRemaining = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+            if (callback) callback({
+              status: "error",
+              message: `Request declined. You can send a new request in ${daysRemaining} day(s)`,
+              code: "COOLDOWN",
+              cooldownRemaining: Math.ceil(remainingMs / 1000),
+            });
+            return;
+          }
+
+          // Create new chat request
+          const chatRequest = new ChatRequestModel({
+            sender: new Types.ObjectId(senderId),
+            receiver: new Types.ObjectId(data.receiverId),
+            status: "pending",
+          });
+          await chatRequest.save();
+
+          // Notify receiver if online
+          const receiverSocket = await this.socketManager.getSocketIdUsingUserId(data.receiverId);
+          if (receiverSocket?.socketId) {
+            // Populate sender info for the notification
+            const populatedRequest = await ChatRequestModel.findById(chatRequest._id)
+              .populate("sender", "fullName username profilePhoto isExpert")
+              .lean();
+
+            // If sender is expert, attach qualification info
+            let requestData: any = { request: populatedRequest };
+            if (senderIsExpert) {
+              try {
+                const { ExpertModel } = await import("../models/expertModel");
+                const expertDoc = await ExpertModel.findOne({ user: senderId }).select("qualification").lean();
+                requestData.request = { ...populatedRequest, senderQualification: (expertDoc as any)?.qualification || "" };
+                requestData.fromExpert = true;
+              } catch {}
+            }
+
+            await this.socketManager.emitEvent({
+              event: this.CHAT_EVENTS.CHAT_REQUEST_RECEIVED,
+              data: requestData,
+              targetSocketIds: [receiverSocket.socketId],
+            });
+          }
+
+          // Expert chat request: auto-expire after 5 minutes if not responded
+          if (senderIsExpert) {
+            const requestId = (chatRequest._id as Types.ObjectId).toString();
+            const expertRequestReceiverId = data.receiverId;
+            setTimeout(async () => {
+              try {
+                const req = await ChatRequestModel.findById(requestId);
+                if (req && req.status === "pending") {
+                  req.status = "declined";
+                  req.declinedAt = new Date();
+                  req.respondedAt = new Date();
+                  await req.save();
+                  // Set 3-day cooldown in Redis
+                  await RedisManager.cacheDataInGroup(
+                    "chat_req_cooldown",
+                    `${senderId}:${expertRequestReceiverId}`,
+                    "auto_expired",
+                    259200 // 3 days
+                  );
+                  // Notify expert that request expired
+                  const expertSocket = await this.socketManager.getSocketIdUsingUserId(senderId);
+                  if (expertSocket?.socketId) {
+                    await this.socketManager.emitEvent({
+                      event: this.CHAT_EVENTS.CHAT_REQUEST_RESPONSE,
+                      data: { status: "expired", requestId, message: "Chat request expired — user did not respond in time" },
+                      targetSocketIds: [expertSocket.socketId],
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error("[ChatRequest:autoExpire]:", err);
+              }
+            }, 300000); // 5 minutes
+          }
+
+          if (callback) callback({ status: "success", requestId: chatRequest._id });
+        } catch (error) {
+          console.error("[ChatRequest:send]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT REQUEST: RESPOND — accept or decline a chat request
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.CHAT_REQUEST_RESPOND,
+      socketIds: [socket.id],
+      handler: async (data: { requestId: string; action: "accept" | "decline" }, socket: Socket, callback?: Function) => {
+        try {
+          console.log(`[ChatRequest:respond]: requestId=${data?.requestId}, action=${data?.action}, user=${socket.data.userId}`);
+
+          if (this.isRateLimited(socket.id, "chat-request:respond")) {
+            console.log("[ChatRequest:respond]: Rate limited");
+            if (callback) callback({ status: "error", message: "Too many requests, slow down" });
+            return;
+          }
+
+          const userId = socket.data.userId?.toString();
+          if (!data.requestId || !data.action) {
+            console.log("[ChatRequest:respond]: Invalid data");
+            if (callback) callback({ status: "error", message: "Invalid request data" });
+            return;
+          }
+
+          const request = await ChatRequestModel.findById(data.requestId);
+          if (!request) {
+            console.log(`[ChatRequest:respond]: Request not found: ${data.requestId}`);
+            if (callback) callback({ status: "error", message: "Request not found" });
+            return;
+          }
+
+          // Only the receiver can respond
+          if (request.receiver.toString() !== userId) {
+            console.log(`[ChatRequest:respond]: Not authorized for request ${data.requestId}`);
+            if (callback) callback({ status: "error", message: "Not authorized to respond to this request" });
+            return;
+          }
+
+          if (request.status !== "pending") {
+            console.log(`[ChatRequest:respond]: Already ${request.status}`);
+            if (callback) callback({ status: "error", message: "Request already responded to" });
+            return;
+          }
+
+          const senderId = request.sender.toString();
+
+          if (data.action === "accept") {
+            request.status = "accepted";
+            request.respondedAt = new Date();
+            await request.save();
+
+            // Cache accepted status in Redis
+            const sortedPair = [senderId, userId].sort().join(":");
+            await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+
+            // Pre-create the chat document
+            await this.findOrCreateChat(senderId, userId);
+
+            // Notify sender if online
+            const senderSocket = await this.socketManager.getSocketIdUsingUserId(senderId);
+            if (senderSocket?.socketId) {
+              await this.socketManager.emitEvent({
+                event: this.CHAT_EVENTS.CHAT_REQUEST_RESPONSE,
+                data: { status: "accepted", acceptedBy: userId, requestId: request._id },
+                targetSocketIds: [senderSocket.socketId],
+              });
+            }
+
+            console.log(`[ChatRequest:respond]: Accepted ${data.requestId}`);
+            if (callback) callback({ status: "success", action: "accepted" });
+          } else if (data.action === "decline") {
+            request.status = "declined";
+            request.declinedAt = new Date();
+            request.respondedAt = new Date();
+            await request.save();
+
+            // Set cooldown in Redis (60s for testing — change back to 259200 for production)
+            await RedisManager.cacheDataInGroup(
+              "chat_req_cooldown",
+              `${senderId}:${userId}`,
+              "declined",
+              60 // 60 seconds for testing (production: 259200 = 3 days)
+            );
+
+            // Notify sender if online
+            const senderSocket = await this.socketManager.getSocketIdUsingUserId(senderId);
+            if (senderSocket?.socketId) {
+              await this.socketManager.emitEvent({
+                event: this.CHAT_EVENTS.CHAT_REQUEST_RESPONSE,
+                data: { status: "declined", declinedBy: userId, requestId: request._id },
+                targetSocketIds: [senderSocket.socketId],
+              });
+            }
+
+            console.log(`[ChatRequest:respond]: Declined ${data.requestId}`);
+            if (callback) callback({ status: "success", action: "declined" });
+          } else {
+            if (callback) callback({ status: "error", message: "Invalid action. Use 'accept' or 'decline'" });
+          }
+        } catch (error) {
+          console.error("[ChatRequest:respond]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT REQUEST: LIST — get pending requests (sent or received)
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.CHAT_REQUEST_LIST,
+      socketIds: [socket.id],
+      handler: async (data: { type?: "received" | "sent" }, socket: Socket, callback?: Function) => {
+        try {
+          const userId = socket.data.userId;
+          const type = data?.type || "received";
+
+          const query: any = { status: "pending" };
+          if (type === "received") {
+            query.receiver = userId;
+          } else {
+            query.sender = userId;
+          }
+
+          const requests = await ChatRequestModel.find(query)
+            .populate("sender", "fullName username profilePhoto")
+            .populate("receiver", "fullName username profilePhoto")
+            .sort({ createdAt: -1 })
+            .lean();
+
+          if (callback) callback({ status: "success", requests });
+        } catch (error) {
+          console.error("[ChatRequest:list]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
+        }
+      },
+    });
+
+    // CHAT REQUEST: STATUS — check request status between current user and another
+    this.socketManager.listenToEvent({
+      event: this.CHAT_EVENTS.CHAT_REQUEST_STATUS,
+      socketIds: [socket.id],
+      handler: async (data: { otherUserId: string }, socket: Socket, callback?: Function) => {
+        try {
+          const userId = socket.data.userId?.toString();
+          if (!data.otherUserId) {
+            if (callback) callback({ status: "error", message: "Missing otherUserId" });
+            return;
+          }
+
+          // Admin bypass: admins are always accepted
+          const isAdmin = await this.checkIsAdmin(socket);
+          if (isAdmin) {
+            if (callback) callback({ status: "success", requestStatus: "accepted" });
+            return;
+          }
+
+          // Expert bypass: regular users can message experts without a chat request
+          // But experts checking status with a regular user must go through the normal flow
+          const otherUserIsExpert = await this.isUserExpert(data.otherUserId);
+          const currentUserIsExpert = await this.isUserExpert(userId);
+          if (otherUserIsExpert && !currentUserIsExpert) {
+            if (callback) callback({ status: "success", requestStatus: "accepted" });
+            return;
+          }
+
+          // Check if already accepted (Redis → DB → legacy chat fallback)
+          const isAllowed = await this.isChatAllowed(userId, data.otherUserId);
+          if (isAllowed) {
+            if (callback) callback({ status: "success", requestStatus: "accepted" });
+            return;
+          }
+
+          // Check for pending request (sent by current user)
+          const sentRequest = await ChatRequestModel.findOne({
+            sender: userId,
+            receiver: data.otherUserId,
+            status: "pending",
+          });
+          if (sentRequest) {
+            if (callback) callback({ status: "success", requestStatus: "pending_sent", requestId: sentRequest._id });
+            return;
+          }
+
+          // Check for pending request (received by current user)
+          const receivedRequest = await ChatRequestModel.findOne({
+            sender: data.otherUserId,
+            receiver: userId,
+            status: "pending",
+          });
+          if (receivedRequest) {
+            if (callback) callback({ status: "success", requestStatus: "pending_received", requestId: receivedRequest._id });
+            return;
+          }
+
+          // Check cooldown (current user was declined by other user)
+          const cooldownTTL = await RedisManager.getTTL("chat_req_cooldown", `${userId}:${data.otherUserId}`);
+          if (cooldownTTL > 0) {
+            if (callback) callback({
+              status: "success",
+              requestStatus: "cooldown",
+              cooldownRemaining: cooldownTTL,
+            });
+            return;
+          }
+
+          // DB fallback for cooldown
+          const recentDecline = await ChatRequestModel.findOne({
+            sender: userId,
+            receiver: data.otherUserId,
+            status: "declined",
+            declinedAt: { $gte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+          });
+          if (recentDecline) {
+            const remainingMs = 3 * 24 * 60 * 60 * 1000 - (Date.now() - recentDecline.declinedAt!.getTime());
+            if (callback) callback({
+              status: "success",
+              requestStatus: "cooldown",
+              cooldownRemaining: Math.ceil(remainingMs / 1000),
+            });
+            return;
+          }
+
+          // No request exists
+          if (callback) callback({ status: "success", requestStatus: "none" });
+        } catch (error) {
+          console.error("[ChatRequest:status]: Handler error:", error);
+          if (callback) callback({ status: "error", message: error instanceof Error ? error.message : "Unknown error" });
         }
       },
     });
@@ -326,8 +1097,8 @@ class ChatController {
     callback?: Function
   ): Promise<void> {
     try {
-      const senderId = socket.data.userId;
-      console.log("Received message:", { senderId, ...data });
+      const senderId = socket.data.userId?.toString();
+      console.log(`[Chat:message]: From ${senderId} to ${data.receiverId}`);
 
       // Validate message data
       if (!this.validateMessageData(senderId, data)) {
@@ -342,12 +1113,84 @@ class ChatController {
         return;
       }
 
+      // Chat request gate: non-admin chats require an accepted request
+      // Expert bypass: anyone can message experts directly
+      const chatType = data.chatType || "userToUser";
+      const isAdminChat = chatType === "adminToUser" || chatType === "adminToExpert";
+      const receiverIsExpert = await this.isUserExpert(data.receiverId);
+      if (!isAdminChat && !receiverIsExpert) {
+        const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
+        if (!isAllowed) {
+          await this.socketManager.emitEvent({
+            event: this.CHAT_EVENTS.MESSAGE_ERROR,
+            data: {
+              error: "Chat request not accepted",
+              code: "CHAT_REQUEST_REQUIRED",
+              timestamp: new Date(),
+            },
+            targetSocketIds: [socket.id],
+          });
+          if (callback) callback({ status: "error", message: "Chat request not accepted", code: "CHAT_REQUEST_REQUIRED" });
+          return;
+        }
+      }
+
+      // Expert-to-user gate: experts must have accepted chat request to message regular users
+      const senderIsExpert = await this.isUserExpert(senderId);
+      if (!isAdminChat && senderIsExpert && !receiverIsExpert) {
+        const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
+        if (!isAllowed) {
+          await this.socketManager.emitEvent({
+            event: this.CHAT_EVENTS.MESSAGE_ERROR,
+            data: {
+              error: "User has not accepted your chat request",
+              code: "EXPERT_CHAT_REQUEST_REQUIRED",
+              timestamp: new Date(),
+            },
+            targetSocketIds: [socket.id],
+          });
+          if (callback) callback({ status: "error", message: "User has not accepted your chat request", code: "EXPERT_CHAT_REQUEST_REQUIRED" });
+          return;
+        }
+      }
+
       // Get or create chat
       const chat = await this.findOrCreateChat(
         senderId,
         data.receiverId,
         data.chatType
       );
+
+      // Bug 3 fix: if receiver deleted/hidden this chat, soft-delete all existing
+      // messages for them (so old messages stay hidden) then remove from chatDeletedFor/chatHiddenFor
+      const receiverObjId = new Types.ObjectId(data.receiverId);
+      const receiverDeletedChat = chat.chatDeletedFor?.some(
+        (id: Types.ObjectId) => id.toString() === data.receiverId
+      );
+      const receiverHiddenChat = chat.chatHiddenFor?.some(
+        (id: Types.ObjectId) => id.toString() === data.receiverId
+      );
+
+      if (receiverDeletedChat || receiverHiddenChat) {
+        // Mark all existing messages as deleted for the receiver
+        for (const msg of chat.messages) {
+          if (!msg.deletedFor) msg.deletedFor = [];
+          if (!msg.deletedFor.some((id: Types.ObjectId) => id.toString() === data.receiverId)) {
+            msg.deletedFor.push(receiverObjId);
+          }
+        }
+        if (receiverDeletedChat && chat.chatDeletedFor) {
+          chat.chatDeletedFor = chat.chatDeletedFor.filter(
+            (id: Types.ObjectId) => id.toString() !== data.receiverId
+          );
+        }
+        if (receiverHiddenChat && chat.chatHiddenFor) {
+          chat.chatHiddenFor = chat.chatHiddenFor.filter(
+            (id: Types.ObjectId) => id.toString() !== data.receiverId
+          );
+        }
+        await chat.save();
+      }
 
       // Add message to chat
       const newMessage = await chat.addMessage(
@@ -408,7 +1251,7 @@ class ChatController {
         });
       }
     } catch (error) {
-      console.error("Error handling message:", error);
+      console.error("[Chat:message]: Error:", error);
       await this.socketManager.emitEvent({
         event: this.CHAT_EVENTS.MESSAGE_ERROR,
         data: {
@@ -430,7 +1273,7 @@ class ChatController {
     socket: Socket
   ) {
     try {
-      console.log("Handling chat check:", data, "\n");
+      console.log(`[Chat:check]: ${data.senderId} → ${data.receiverId}`);
       
       // Get socket status to check if OTHER user is currently online
       const socketStatus = await this.socketManager.getSocketStatus();
@@ -446,7 +1289,7 @@ class ChatController {
         .populate("receiver", "name avatar")
         .populate("messages.sender", "name avatar");
 
-      console.log('Chat history found:', chat ? chat.messages : 'No chat');
+      console.log(`[Chat:check]: ${chat ? `Found ${chat.messages.length} messages` : 'No chat exists'}`);
 
       const result = {
         status: "success",
@@ -458,7 +1301,17 @@ class ChatController {
                 sender: chat.sender,
                 receiver: chat.receiver,
               },
-              messages: chat.messages.map((msg) => {
+              messages: chat.messages
+              .filter((msg) => {
+                // Bug 1 fix: exclude messages soft-deleted by this user
+                if (msg.deletedFor && msg.deletedFor.length > 0) {
+                  return !msg.deletedFor.some(
+                    (id: Types.ObjectId) => id.toString() === requestingUser
+                  );
+                }
+                return true;
+              })
+              .map((msg) => {
                 const messageSenderId = msg.sender?._id?.toString() || msg.sender?.toString();
                 
                 // ✅ CRITICAL FIX: Only show 'delivered' if:
@@ -482,14 +1335,7 @@ class ChatController {
                     s => s.userId === messageReceiverId && s.isActive
                   );
                   
-                  console.log(`[handleChatCheck] Message ${msg.messageId} status check:`, {
-                    messageSender: messageSenderId,
-                    messageReceiver: messageReceiverId,
-                    requestingUser,
-                    hasDeliveredAt: !!msg.status?.deliveredAt,
-                    isReceiverOnline,
-                    finalStatus: isReceiverOnline ? 'delivered' : 'sent'
-                  });
+                  console.log(`[Chat:check]: Message ${msg.messageId} → ${isReceiverOnline ? 'delivered' : 'sent'}`);
                   
                   if (isReceiverOnline) {
                     status = 'delivered';
@@ -516,7 +1362,7 @@ class ChatController {
       };
       return result; // This will be sent as acknowledgment
     } catch (error) {
-      console.error("Error in handleChatCheck:", error);
+      console.error("[Chat:check]: Error:", error);
       throw error;
     }
   }
@@ -532,12 +1378,12 @@ class ChatController {
       // ⚠️ CRITICAL: Check if message is already delivered to prevent duplicate processing
       const message = chat.messages.find(m => m.messageId === data.messageId);
       if (!message) {
-        console.log(`[handleDeliveredAck] Message ${data.messageId} not found in chat ${data.chatId}`);
+        console.log(`[Chat:deliveredAck]: Message ${data.messageId} not found in chat ${data.chatId}`);
         return;
       }
       
       if (message.status.deliveredAt) {
-        console.log(`[handleDeliveredAck] Message ${data.messageId} already delivered, skipping`);
+        console.log(`[Chat:deliveredAck]: Message ${data.messageId} already delivered, skipping`);
         return; // Already delivered, don't process again
       }
 
@@ -563,7 +1409,7 @@ class ChatController {
         });
       }
     } catch (error) {
-      console.error("Error handling delivery acknowledgment:", error);
+      console.error("[Chat:deliveredAck]: Error:", error);
     }
   }
 
@@ -574,12 +1420,12 @@ class ChatController {
     callback?: Function
   ): Promise<void> {
     try {
-      console.log(`[handleSeenAck] Received from user ${socket.data.userId}:`, data);
+      console.log(`[Chat:seenAck]: User ${socket.data.userId}, message ${data.messageId}`);
       
       const userId = socket.data.userId;
       const chat = await MsgModel.findById(data.chatId);
       if (!chat) {
-        console.error(`[handleSeenAck] Chat not found: ${data.chatId}`);
+        console.error(`[Chat:seenAck]: Chat not found: ${data.chatId}`);
         if (callback) callback({ status: 'error', message: 'Chat not found' });
         return;
       }
@@ -587,7 +1433,7 @@ class ChatController {
       // Find the message to get the sender
       const message = chat.messages.find(msg => msg.messageId === data.messageId);
       if (!message) {
-        console.error(`[handleSeenAck] Message not found: ${data.messageId}`);
+        console.error(`[Chat:seenAck]: Message not found: ${data.messageId}`);
         if (callback) callback({ status: 'error', message: 'Message not found' });
         return;
       }
@@ -597,16 +1443,12 @@ class ChatController {
       // ❗ CRITICAL VALIDATION: The person sending seen-ack MUST be the RECEIVER, not the SENDER!
       // If sender tries to mark their own message as read, reject it
       if (userId === senderId) {
-        console.error(`[handleSeenAck] REJECTED: User ${userId} tried to mark their OWN message as seen!`, {
-          messageId: data.messageId,
-          messageSender: senderId,
-          requestingUser: userId
-        });
+        console.error(`[Chat:seenAck]: REJECTED - User ${userId} tried to mark own message ${data.messageId} as seen`);
         if (callback) callback({ status: 'error', message: 'Cannot mark own message as seen' });
         return;
       }
       
-      console.log(`[handleSeenAck] Valid seen-ack: receiver ${userId} marking sender ${senderId}'s message ${data.messageId} as read`);
+      console.log(`[Chat:seenAck]: Receiver ${userId} marking message ${data.messageId} as read`);
       
       // Mark as read
       await chat.markMessageAsRead(data.messageId);
@@ -620,7 +1462,7 @@ class ChatController {
         readBy: userId,
       });
 
-      console.log(`[handleSeenAck] Successfully processed seen-ack for message ${data.messageId}`);
+      console.log(`[Chat:seenAck]: Processed message ${data.messageId}`);
       
       // Send success callback
       if (callback) {
@@ -631,13 +1473,107 @@ class ChatController {
         });
       }
     } catch (error) {
-      console.error("[handleSeenAck] Error handling seen acknowledgment:", error);
+      console.error("[Chat:seenAck]: Error:", error);
       if (callback) {
         callback({ 
           status: 'error', 
           message: error instanceof Error ? error.message : 'Unknown error' 
         });
       }
+    }
+  }
+
+  /**
+   * Check if two users have an accepted chat request (Redis cache → DB → legacy chat fallback).
+   */
+  private async isChatAllowed(senderId: string, receiverId: string): Promise<boolean> {
+    // Ensure both IDs are strings for consistent Redis keys and DB queries
+    senderId = senderId?.toString();
+    receiverId = receiverId?.toString();
+    // 1. Check Redis cache
+    const sortedPair = [senderId, receiverId].sort().join(":");
+    const cached = await RedisManager.getDataFromGroup<string>("chat_req_accepted", sortedPair);
+    if (cached === "accepted") return true;
+
+    // 2. Cache miss → check ChatRequestModel
+    const request = await ChatRequestModel.findOne({
+      $or: [
+        { sender: senderId, receiver: receiverId, status: "accepted" },
+        { sender: receiverId, receiver: senderId, status: "accepted" },
+      ],
+    });
+    if (request) {
+      await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+      return true;
+    }
+
+    // 3. Legacy fallback: existing chat with messages = implicitly accepted
+    const existingChat = await MsgModel.findOne({
+      $or: [
+        { sender: senderId, receiver: receiverId },
+        { sender: receiverId, receiver: senderId },
+      ],
+      "messages.0": { $exists: true },
+    }).lean();
+    if (existingChat) {
+      // Create accepted request for future fast lookups
+      await ChatRequestModel.findOneAndUpdate(
+        {
+          $or: [
+            { sender: senderId, receiver: receiverId },
+            { sender: receiverId, receiver: senderId },
+          ],
+        },
+        {
+          sender: existingChat.sender,
+          receiver: existingChat.receiver,
+          status: "accepted",
+          respondedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+      await RedisManager.cacheDataInGroup("chat_req_accepted", sortedPair, "accepted", 86400);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if socket user is admin. Caches result on socket.data.
+   */
+  private async checkIsAdmin(socket: Socket): Promise<boolean> {
+    if (socket.data.isAdmin !== undefined) {
+      return socket.data.isAdmin;
+    }
+    try {
+      // Dynamic import to avoid circular dependency
+      const { UserModel } = await import("../models/userModel");
+      const user = await UserModel.findById(socket.data.userId).select("isAdmin").lean();
+      socket.data.isAdmin = !!(user as any)?.isAdmin;
+    } catch {
+      socket.data.isAdmin = false;
+    }
+    return socket.data.isAdmin;
+  }
+
+  /**
+   * Check if a given userId belongs to an expert.
+   * Uses Redis cache (1 hour TTL) to avoid repeated DB lookups.
+   */
+  private async isUserExpert(userId: string): Promise<boolean> {
+    try {
+      const cached = await RedisManager.getDataFromGroup<string | boolean>("user_is_expert", userId);
+      // getDataFromGroup runs JSON.parse, which turns "true"→boolean true,
+      // so handle both boolean and string comparisons
+      if (cached !== null && cached !== undefined) return cached === true || cached === "true";
+      const { UserModel } = await import("../models/userModel");
+      const user = await UserModel.findById(userId).select("isExpert").lean();
+      const isExpert = !!(user as any)?.isExpert;
+      await RedisManager.cacheDataInGroup("user_is_expert", userId, isExpert ? "true" : "false", 3600);
+      return isExpert;
+    } catch {
+      return false;
     }
   }
 
@@ -688,13 +1624,17 @@ class ChatController {
     }
 
     try {
+      const userObjId = new Types.ObjectId(userId);
       const chats = await MsgModel.aggregate([
         {
           $match: {
             $or: [
-              { sender: new Types.ObjectId(userId) },
-              { receiver: new Types.ObjectId(userId) },
+              { sender: userObjId },
+              { receiver: userObjId },
             ],
+            // Exclude chats hidden or deleted by this user
+            chatHiddenFor: { $ne: userObjId },
+            chatDeletedFor: { $ne: userObjId },
           },
         },
         {
@@ -702,14 +1642,11 @@ class ChatController {
             // Determine the other participant
             otherParticipant: {
               $cond: [
-                { $eq: ["$sender", new Types.ObjectId(userId)] },
+                { $eq: ["$sender", userObjId] },
                 "$receiver",
                 "$sender",
               ],
             },
-            // Calculate unread count for messages where:
-            // 1. I'm the receiver (other person sent it)
-            // 2. Message is not read
             unreadCount: {
               $size: {
                 $filter: {
@@ -717,12 +1654,7 @@ class ChatController {
                   as: "msg",
                   cond: {
                     $and: [
-                      {
-                        $ne: [
-                          "$$msg.sender",
-                          new Types.ObjectId(userId),
-                        ],
-                      },
+                      { $ne: ["$$msg.sender", userObjId] },
                       { $eq: ["$$msg.status.isRead", false] },
                     ],
                   },
@@ -754,6 +1686,7 @@ class ChatController {
               username: "$participantInfo.username",
               profilePhoto: "$participantInfo.profilePhoto",
               isActive: "$participantInfo.isActive",
+              isExpert: "$participantInfo.isExpert",
             },
             lastMessage: 1,
             unreadCount: 1,
@@ -770,7 +1703,7 @@ class ChatController {
         totalUnread: chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0),
       };
     } catch (error) {
-      console.error("Error in handleChatList:", error);
+      console.error("[Chat:list]: Error:", error);
       return {
         status: "error",
         message: error instanceof Error ? error.message : "Failed to fetch chats",
@@ -810,11 +1743,7 @@ class ChatController {
         return !isMyMessage && isUnread;
       });
       
-      console.log(`[handleChatOpen] User ${userId} opening chat ${data.chatId}:`, {
-        totalMessages: chat.messages.length,
-        unreadFromOthers: unreadMessages.length,
-        myMessages: chat.messages.filter(m => (m.sender?._id?.toString() || m.sender?.toString()) === userId).length
-      });
+      console.log(`[Chat:open]: User ${userId} chat ${data.chatId}, ${unreadMessages.length} unread`);
 
       if (unreadMessages.length === 0) {
         return { status: "success", markedCount: 0 };
@@ -840,9 +1769,7 @@ class ChatController {
         });
       }
 
-      console.log(
-        `Marked ${unreadMessages.length} messages as read in chat ${data.chatId}`
-      );
+      console.log(`[Chat:open]: Marked ${unreadMessages.length} messages read in chat ${data.chatId}`);
 
       return {
         status: "success",
@@ -850,7 +1777,7 @@ class ChatController {
         messageIds: unreadMessages.map(m => m.messageId),
       };
     } catch (error) {
-      console.error("Error in handleChatOpen:", error);
+      console.error("[Chat:open]: Error:", error);
       return {
         status: "error",
         message: error instanceof Error ? error.message : "Failed to mark messages as read",
@@ -873,26 +1800,23 @@ class ChatController {
       await RedisManager.expire(queueKey, this.READ_RECEIPT_TTL);
 
       // Try immediate delivery if sender is online
-      console.log(`[queueReadReceipt] Looking for sender socket: ${receipt.senderId}`);
       const senderSocket = await this.socketManager.getSocketIdUsingUserId(
         receipt.senderId
       );
-      console.log(`[queueReadReceipt] Sender socket result:`, senderSocket);
 
       if (senderSocket && senderSocket.socketId) {
-        console.log(`[queueReadReceipt] Sender IS online, delivering immediately to socket ${senderSocket.socketId}`);
         await this.deliverReadReceipt(senderSocket.socketId, receipt);
 
         // Remove from queue after successful delivery
         await RedisManager.lrem(queueKey, 1, receiptData);
-        console.log(`✅ Delivered receipt immediately for message ${receipt.messageId}`);
+        console.log(`[Chat:receipt]: Delivered immediately for message ${receipt.messageId}`);
       } else {
         console.log(
-          `❌ Queued receipt for offline user ${receipt.senderId}, message ${receipt.messageId}`
+          `[Chat:receipt]: Queued for offline user ${receipt.senderId}, message ${receipt.messageId}`
         );
       }
     } catch (error) {
-      console.error("Error queuing read receipt:", error);
+      console.error("[Chat:receipt]: Error queuing:", error);
       // Don't throw - we don't want to fail the chat:open operation
     }
   }
@@ -917,7 +1841,7 @@ class ChatController {
         targetSocketIds: [socketId],
       });
     } catch (error) {
-      console.error("Error delivering read receipt:", error);
+      console.error("[Chat:receipt]: Error delivering:", error);
       throw error;
     }
   }
@@ -935,7 +1859,7 @@ class ChatController {
       const receipts = await RedisManager.lrange(queueKey, 0, -1);
 
       if (receipts.length === 0) {
-        console.log(`No pending receipts for user ${userId}`);
+        console.log(`[Chat:receipt]: No pending receipts for user ${userId}`);
         return;
       }
 
@@ -952,9 +1876,9 @@ class ChatController {
       // Clear delivered receipts
       await RedisManager.del(queueKey);
 
-      console.log(`Flushed ${receipts.length} pending receipts for user ${userId}`);
+      console.log(`[Chat:receipt]: Flushed ${receipts.length} pending receipts for user ${userId}`);
     } catch (error) {
-      console.error("Error flushing pending receipts:", error);
+      console.error("[Chat:receipt]: Error flushing:", error);
       // Don't throw - we don't want to fail authentication
     }
   }
