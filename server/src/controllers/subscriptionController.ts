@@ -1379,6 +1379,19 @@ class Subscription {
         );
       });
 
+      // After successful transaction, update subscription history statistics (non-blocking)
+      if (paymentStatus === "Completed" && result?.userId) {
+        SubscriptionHistoryModel.findOne({ userId: result.userId })
+          .then((history: any) => {
+            if (history && typeof history.updateStatistics === "function") {
+              return history.updateStatistics();
+            }
+          })
+          .catch((err) =>
+            console.error("[Subscription] updateStatistics error (non-blocking):", err)
+          );
+      }
+
       const sanitizedSubscription = sanitizeData(result, {
         include: [
           "_id",

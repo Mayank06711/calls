@@ -262,6 +262,37 @@ class CallController {
         type: "expert",
       });
 
+      // Increment expert's totalCustomersHandled counter (non-blocking)
+      import("../models/expertModel").then(({ ExpertModel }) =>
+        ExpertModel.findOneAndUpdate(
+          { user: new Types.ObjectId(expertId) },
+          { $inc: { totalCustomersHandled: 1 } }
+        ).catch((err: any) =>
+          console.error("[CallController] Expert counter increment error:", err)
+        )
+      );
+
+      // Link call to user's subscription history consultations (non-blocking)
+      SubscriptionHistoryModel.findOne({ userId: new Types.ObjectId(userId) })
+        .then((history) => {
+          if (!history || !history.subscriptions?.length) return;
+          const lastSub = history.subscriptions[history.subscriptions.length - 1];
+          if (lastSub) {
+            if (!lastSub.consultations) lastSub.consultations = [];
+            lastSub.consultations.push({
+              date: new Date(),
+              stylistId: new Types.ObjectId(expertId),
+              status: "Completed",
+              duration: Math.ceil(duration / 60),
+              sessionType: "video",
+            } as any);
+            return history.save();
+          }
+        })
+        .catch((err: any) =>
+          console.error("[CallController] consultation history push error:", err)
+        );
+
       console.log(
         `[CallController] Service record created for call ${callId}: user=${userId}, expert=${expertId}, duration=${duration}s, amount=${amount}`
       );

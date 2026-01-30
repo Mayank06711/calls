@@ -29,6 +29,7 @@ import chatRouter from "./routes/chaRoutes";
 import expertBlockRouter from "./routes/expertBlockRoutes";
 import expertTipRouter from "./routes/expertTipRoutes";
 import expertComplaintRouter from "./routes/expertComplaintRoutes";
+import historyRouter from "./routes/historyRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -112,6 +113,7 @@ class ServerManager {
     this.app.use("/api/v1/expert-blocks", expertBlockRouter);
     this.app.use("/api/v1/tips", expertTipRouter);
     this.app.use("/api/v1/complaints", expertComplaintRouter);
+    this.app.use("/api/v1/history", historyRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {

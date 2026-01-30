@@ -106,5 +106,17 @@ export const ENDPOINTS = {
   CHAT: {
     REQUEST_STATUS: `/api/${API_CONFIG.VERSION}/chat/request-status`, // GET /:otherUserId
   },
-  // Add more endpoint categories as needed
+  HISTORY: {
+    // User endpoints
+    CALLS: `/api/${API_CONFIG.VERSION}/history/calls`, // GET ?page=&limit=&status=
+    SUBSCRIPTIONS: `/api/${API_CONFIG.VERSION}/history/subscriptions`, // GET
+    PAYMENTS: `/api/${API_CONFIG.VERSION}/history/payments`, // GET ?page=&limit=
+    SESSIONS: `/api/${API_CONFIG.VERSION}/history/sessions`, // GET ?page=&limit=&active=
+    RATINGS: `/api/${API_CONFIG.VERSION}/history/ratings`, // GET ?page=&limit=
+    // Expert endpoints
+    EXPERT_PERFORMANCE: `/api/${API_CONFIG.VERSION}/history/expert/performance`, // GET
+    EXPERT_EARNINGS: `/api/${API_CONFIG.VERSION}/history/expert/earnings`, // GET
+    EXPERT_COMPLAINTS: `/api/${API_CONFIG.VERSION}/history/expert/complaints`, // GET ?page=&limit=
+    EXPERT_SUMMARY: `/api/${API_CONFIG.VERSION}/history/expert/summary`, // GET
+  },
 };

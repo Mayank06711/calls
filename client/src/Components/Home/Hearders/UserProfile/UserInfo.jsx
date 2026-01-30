@@ -2,6 +2,8 @@ import { Avatar, Chip } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import { useSelector, useDispatch } from "react-redux";
 import "ldrs/ripples";
@@ -22,6 +24,7 @@ function UserInfo() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
   const colors = useSubscriptionColors();
   const userInfo = useSelector((state) => state.userInfo);
 
@@ -210,11 +213,68 @@ function UserInfo() {
   };
   
 
-  return (
-    <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auto w-full lg:w-[600px] lg:min-w-[400px] rounded-md">
-      {/* avatar section */}
+  // Compact strip for mobile collapsed state
+  const CompactProfileStrip = () => (
+    <div
+      className="lg:hidden flex items-center gap-3 p-3 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20 cursor-pointer"
+      onClick={() => setIsExpanded(true)}
+    >
+      <KeyboardArrowDownIcon className="text-gray-400" sx={{ fontSize: 20 }} />
+      <Avatar
+        sx={{
+          width: 40,
+          height: 40,
+          background:
+            avatarImage || currentDisplayUrl
+              ? "none"
+              : `linear-gradient(135deg, ${colors.first} 0%, ${colors.second} 50%, ${colors.third} 100%)`,
+        }}
+        src={avatarImage || currentDisplayUrl}
+      >
+        {!avatarImage && !currentDisplayUrl && (
+          <PersonIcon sx={{ fontSize: 24, color: colors.fourth }} />
+        )}
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <h2 className="text-sm font-semibold truncate" style={{ color: colors.fourth }}>
+          {userData.fullName || "No Name"}
+        </h2>
+        <div className="flex items-center gap-2 mt-0.5">
+          {userData.isActive ? (
+            <span className="text-[10px] text-green-500 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>
+              Active
+            </span>
+          ) : (
+            <span className="text-[10px] text-red-500 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+              Inactive
+            </span>
+          )}
+          <span className="text-[10px] text-gray-400">
+            {userData.isExpert ? "Expert" : "User"}
+          </span>
+          <span className="text-[10px] text-gray-400">
+            {userData.isSubscribed ? "Premium" : "Free"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
+  // Full profile card content (used for both desktop always-visible and mobile expanded)
+  const FullProfileCard = () => (
+    <>
       <div className="w-full flex flex-col justify-center items-start p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20">
+        {/* Collapse button - mobile only, left-aligned to avoid overlap with Strut AI icon */}
+        <div className="lg:hidden flex justify-start w-full -mb-2">
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="p-1 rounded-full hover:bg-white/10 transition-colors text-gray-400"
+          >
+            <KeyboardArrowUpIcon sx={{ fontSize: 20 }} />
+          </button>
+        </div>
         <div className="flex flex-col sm:flex-row justify-start items-center w-full sm:w-auto p-2 gap-4 ">
           <div className="relative w-fit h-fit group">
             {/* Add active status indicator */}
@@ -264,7 +324,7 @@ function UserInfo() {
 
             {/* Camera Icon Overlay */}
             <div
-              className="absolute inset-0 flex items-center justify-center 
+              className="absolute inset-0 flex items-center justify-center
                  bg-black/0 group-hover:bg-black/30
                  rounded-full transition-all duration-300 cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
@@ -369,7 +429,6 @@ function UserInfo() {
           )}
         </div>
       </div>
-
 
       {/* email verificaion section */}
       {!userData.isEmailVerified && (
@@ -521,7 +580,20 @@ function UserInfo() {
           </div>
         </div>
       </div>
- 
+    </>
+  );
+
+  return (
+    <div className="flex flex-col bg-transparent dark:text-dark-text text-light-text h-auto w-full lg:w-[600px] lg:min-w-[400px] rounded-md">
+      {/* Desktop: always show full card */}
+      <div className="hidden lg:flex lg:flex-col">
+        <FullProfileCard />
+      </div>
+
+      {/* Mobile: compact strip (collapsed) or full card (expanded) */}
+      <div className="lg:hidden">
+        {isExpanded ? <FullProfileCard /> : <CompactProfileStrip />}
+      </div>
     </div>
   );
 }
