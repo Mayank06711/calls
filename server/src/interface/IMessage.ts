@@ -54,7 +54,9 @@ export interface INewMsg extends Document {
     sender: IParticipantInfo;
     receiver: IParticipantInfo;
   };
-  
+  chatHiddenFor?: Types.ObjectId[];
+  chatDeletedFor?: Types.ObjectId[];
+
   // Methods
   addMessage(
     text: string,
@@ -76,7 +78,6 @@ export interface INewMsg extends Document {
   markMessageAsRead(messageId: number): Promise<void>;
   markMessageAsDelivered(messageId: number): Promise<void>;
   updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
-  deleteMessage(messageId: number, userId: Types.ObjectId): Promise<void>;
 }
 
 // Read Receipt Interface for Redis Queue
