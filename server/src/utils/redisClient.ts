@@ -400,6 +400,23 @@ class RedisManager {
     }
   }
 
+  /**
+   * Get remaining TTL (in seconds) for a group:key.
+   * Returns -2 if key doesn't exist, -1 if no TTL set, otherwise seconds remaining.
+   */
+  public static async getTTL(group: string, key: string): Promise<number> {
+    if (!this.redis) {
+      console.error("Redis is not initialized");
+      return -2;
+    }
+    try {
+      return await this.redis.ttl(`${group}:${key}`);
+    } catch (error) {
+      console.error(`Error getting TTL for ${group}:${key}`, error);
+      return -2;
+    }
+  }
+
   static async acquireLock(
     lockKey: string,
     timeoutMs: number = 5000
