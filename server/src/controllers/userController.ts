@@ -11,7 +11,9 @@ import { generateToken, verifyToken } from "../utils/tokens";
 import { GetUsersQuery, UserListResponse } from "../interface/IUser";
 import { MediaModel } from "../models/mediaModel";
 import { cacheUserList, generateCacheKey, getAllUsersFromCache } from "../redis/user.redis";
+import ExpertFeedbackModel from "../models/expertFeedbackModel";
 import { SessionController } from "./sessionController";
+import { generateSessionId } from "../helper/sessionLimits";
 import { SocketManager } from "../socket";
 class User {
   private static options: CookieOptions = {
@@ -86,8 +88,9 @@ class User {
       if (user) {
         console.log("User created successfully:", user);
         console.log(req.body);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const sessionId = generateSessionId();
+        const accessToken = user.generateAccessToken(sessionId);
+        const refreshToken = user.generateRefreshToken(sessionId);
         if (!refreshToken || !accessToken) {
           await UserModel.findByIdAndDelete(user._id);
           throw new ApiError(
@@ -95,6 +98,32 @@ class User {
             "Failed to generate access or refresh token."
           );
         }
+
+        // Create session record for this signup
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const ip =
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          req.ip ||
+          "unknown";
+
+        await SessionController.createSession(
+          (user._id as string).toString(),
+          {
+            userAgent,
+            ip,
+            customHeaders: {
+              platform: req.headers["x-platform"] as string,
+              deviceModel: req.headers["x-device-model"] as string,
+              deviceBrand: req.headers["x-device-brand"] as string,
+              appVersion: req.headers["x-app-version"] as string,
+            },
+          },
+          sessionId,
+          refreshToken,
+          "password"
+        );
+
         // Set HTTP-only cookie for refresh token (secure it for production)
         res
           .status(200)
@@ -147,6 +176,11 @@ class User {
         throw new ApiError(401, "Unauthorized access");
       }
 
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
       // Import RedisManager dynamically to avoid circular dependency issues
       const { RedisManager } = await import("../utils/redisClient");
 
@@ -193,19 +227,6 @@ class User {
         } catch (socketError) {
           console.error("[Logout] Failed to disconnect sockets:", socketError);
         }
-      }
-
-      // Find user and clear refresh token
-      const user = await UserModel.findByIdAndUpdate(
-        userId,
-        {
-          $set: { refreshToken: "" },
-        },
-        { new: true }
-      );
-
-      if (!user) {
-        throw new ApiError(404, "User not found");
       }
 
       if (req.isMobileApp) {
@@ -819,10 +840,27 @@ class User {
         UserModel.countDocuments(filters),
       ]);
   
+      // Batch-fetch ratings for expert users
+      const expertIds = users.filter(u => u.isExpert).map(u => u._id);
+      const ratingsMap = new Map<string, { averageRating: number; totalRatings: number }>();
+      if (expertIds.length > 0) {
+        try {
+          const ratingsAgg = await ExpertFeedbackModel.aggregate([
+            { $match: { expert: { $in: expertIds } } },
+            { $group: { _id: "$expert", averageRating: { $avg: "$stars" }, totalRatings: { $sum: 1 } } },
+          ]);
+          for (const r of ratingsAgg) {
+            ratingsMap.set(r._id.toString(), { averageRating: Math.round(r.averageRating * 10) / 10, totalRatings: r.totalRatings });
+          }
+        } catch (err) {
+          console.error("Error fetching expert ratings:", err);
+        }
+      }
+
       const usersWithPhotos = await Promise.all(
         users.map(async (user) => {
           let profilePhoto = null;
-          
+
           // Fetch profile photo if user has mediaId and profilePhotoId
           if (user.mediaId && user.profilePhotoId) {
             try {
@@ -840,7 +878,9 @@ class User {
               console.error('Error fetching profile photo for user:', user._id, err);
             }
           }
-          
+
+          const rating = user.isExpert ? ratingsMap.get(user._id.toString()) : undefined;
+
           return {
             _id: user._id.toString(),
             fullName: user.fullName,
@@ -850,6 +890,10 @@ class User {
             city: user.city,
             country: user.country || "",
             isActive: user.isActive,
+            ...(user.isExpert && {
+              averageRating: rating?.averageRating || 0,
+              totalRatings: rating?.totalRatings || 0,
+            }),
           };
         })
       );
@@ -920,6 +964,20 @@ class User {
       // Get profile photo using the model's method
       const profileMedia = await user.getProfileMedia();
       
+      // Fetch rating data for experts
+      let ratingData: { averageRating: number; totalRatings: number } | undefined;
+      if (user.isExpert) {
+        try {
+          const rating = await (ExpertFeedbackModel as any).getExpertRating(user._id);
+          ratingData = {
+            averageRating: Math.round((rating?.averageRating || 0) * 10) / 10,
+            totalRatings: rating?.totalRatings || 0,
+          };
+        } catch (err) {
+          console.error("Error fetching expert rating:", err);
+        }
+      }
+
       const userResponse = {
         _id: (user._id as string).toString(),
         fullName: user.fullName,
@@ -932,6 +990,10 @@ class User {
         city: user.city,
         country: user.country || "",
         isActive: user.isActive,
+        ...(user.isExpert && ratingData && {
+          averageRating: ratingData.averageRating,
+          totalRatings: ratingData.totalRatings,
+        }),
       };
 
       return res.status(200).json(
