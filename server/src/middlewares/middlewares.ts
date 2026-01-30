@@ -167,13 +167,34 @@ class Middleware {
         console.log(`[Middleware] Access granted for partial token.`);
       }
 
-      // Check if session is still active in Redis (if sessionId is present)
+      // Check if session is still active: Redis (cache) → DB (source of truth)
       // Skip session validation for partial tokens (they don't have sessions yet)
       if (decodedToken.sessionId && !decodedToken.isPartial) {
-        const isActive = await RedisManager.isSessionActive(
-          decodedToken._id.toString(),
-          decodedToken.sessionId
-        );
+        const userId = decodedToken._id.toString();
+        const sessionId = decodedToken.sessionId;
+        let isActive = await RedisManager.isSessionActive(userId, sessionId);
+
+        // Redis miss — fall back to DB (source of truth)
+        if (!isActive) {
+          const { SessionModel } = await import("../models/sessionModel");
+          const dbSession = await SessionModel.findOne({
+            refreshTokenId: sessionId,
+            userId,
+            isActive: true,
+            revokedAt: { $exists: false },
+            expiresAt: { $gt: new Date() },
+          }).lean();
+
+          if (dbSession) {
+            // Session is valid in DB — re-cache in Redis
+            isActive = true;
+            await RedisManager.addActiveSession(userId, sessionId, {
+              device: (dbSession as any).device?.userAgent || "Unknown",
+              ip: (dbSession as any).location?.ip || "unknown",
+            });
+          }
+        }
+
         if (!isActive) {
           throw new ApiError(401, "Session expired or revoked", [
             "Please login again",
