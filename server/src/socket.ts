@@ -17,6 +17,7 @@ import { throws } from "assert";
 import { ChatController } from "./controllers/chatController";
 import { NotificationController } from "./controllers/notificationController";
 import { CallController } from "./controllers/callController";
+import { UserSettingsModel } from "./models/userSettingsModel";
 
 // When User1 connects
 /*socket1.data = {
@@ -288,7 +289,7 @@ class SocketManager {
         await this.handleSocketConnection(socket, testUserData);
         this.setupEventListeners(socket, testUserData);
         socket.data.authenticated = true; // Add this line
-        socket.data.userId = testUserData.userId; // Add this line
+        socket.data.userId = testUserData.userId?.toString(); // Add this line
 
         // Add authentication event listener for test mode
         socket.on("authenticate", async (authData: any, callback) => {
@@ -365,15 +366,17 @@ class SocketManager {
                 "Connection blocked - concurrent connection attempt"
               );
             }
-            // Check for existing connections
-            await this.handleExistingConnections(userData.userId);
+            // Check for existing connections (disconnect duplicates for same session)
+            await this.handleExistingConnections(userData.userId, userData.sessionId);
 
             // Store socket connection data
             await this.handleSocketConnection(socket, userData);
 
             socket.data.authenticated = true;
-            socket.data.userId = userData.userId;
+            socket.data.userId = userData.userId?.toString();
             socket.data.sessionId = userData.sessionId;
+            socket.data.subscriptionType = userData.subscriptionType || "free";
+            socket.data.isExpert = userData.isExpert || false;
 
             // setting up the chat controller listerns
             const chatController = ChatController.getInstance();
@@ -396,12 +399,27 @@ class SocketManager {
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
             
-            // 🟢 Broadcast to ALL clients that this user is now ONLINE
-            this.io.emit('user:online', { 
-              userId: userData.userId,
-              timestamp: new Date()
-            });
-            console.log(`🟢 Broadcasted user:online for ${userData.userId}`);
+            // 🟢 Broadcast online status (check privacy setting first)
+            try {
+              const userSettings = await UserSettingsModel.findOne(
+                { userId: userData.userId },
+                { 'privacy.showOnlineStatus': 1 }
+              ).lean();
+              // Experts always appear online — appear offline is not available for experts
+              const isExpert = userData.isExpert || false;
+              const showOnline = isExpert || userSettings?.privacy?.showOnlineStatus !== false;
+              if (showOnline) {
+                this.io.emit('user:online', { userId: userData.userId, timestamp: new Date() });
+                console.log(`🟢 Broadcasted user:online for ${userData.userId}`);
+              } else {
+                this.io.emit('user:hidden', { userId: userData.userId, timestamp: new Date() });
+                console.log(`🟡 Broadcasted user:hidden for ${userData.userId} (showOnlineStatus=false)`);
+              }
+            } catch (privacyErr) {
+              // Fallback: broadcast online if privacy check fails
+              this.io.emit('user:online', { userId: userData.userId, timestamp: new Date() });
+              console.log(`🟢 Broadcasted user:online for ${userData.userId} (privacy check failed)`);
+            }
             
             callback({
               status: userData.status,
@@ -616,15 +634,35 @@ class SocketManager {
     console.log("Replaced existing socket data", socket.id);
   }
 
-  private async handleExistingConnections(userId: string): Promise<void> {
+  private async handleExistingConnections(userId: string, sessionId?: string): Promise<void> {
     const sockets = await this.getAuthenticatedSockets();
     const userSockets = sockets.filter((socket) => socket.userId === userId);
 
-    if (userSockets.length >= this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
-      userSockets.sort((a, b) => b.connectedAt - a.connectedAt);
+    // Disconnect any existing sockets for the same session (prevents duplicates)
+    if (sessionId) {
+      const duplicateSessionSockets = userSockets.filter(
+        (socket) => socket.sessionId === sessionId
+      );
+      if (duplicateSessionSockets.length > 0) {
+        console.log(
+          `[Socket] Disconnecting ${duplicateSessionSockets.length} duplicate socket(s) for session ${sessionId}`
+        );
+        await Promise.all(
+          duplicateSessionSockets.map((socketData) =>
+            this.removeSocket(socketData.key, "Replaced by new connection")
+          )
+        );
+      }
+    }
 
-      // Disconnect oldest connections
-      const socketsToRemove = userSockets.slice(
+    // Enforce per-user connection limit
+    const remainingSockets = (await this.getAuthenticatedSockets()).filter(
+      (socket) => socket.userId === userId
+    );
+    if (remainingSockets.length >= this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
+      remainingSockets.sort((a, b) => b.connectedAt - a.connectedAt);
+
+      const socketsToRemove = remainingSockets.slice(
         this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER - 1
       );
       await Promise.all(
@@ -854,11 +892,16 @@ class SocketManager {
         
         // 🔴 ONLY broadcast user:offline if this was their LAST socket
         if (remainingSockets.length === 0) {
-          this.io.emit('user:offline', { 
+          this.io.emit('user:offline', {
             userId: userData.userId,
             timestamp: new Date()
           });
-          console.log(`🔴 Broadcasted user:offline for ${userData.userId} (last socket)`);
+          // Also emit user:unhidden to clear any yellow dot for hidden users
+          this.io.emit('user:unhidden', {
+            userId: userData.userId,
+            timestamp: new Date()
+          });
+          console.log(`🔴 Broadcasted user:offline + user:unhidden for ${userData.userId} (last socket)`);
         } else {
           console.log(`🟡 User ${userData.userId} still has ${remainingSockets.length} active socket(s)`);
         }
@@ -907,12 +950,23 @@ class SocketManager {
 
             await User.handleAvatarUploadEvent(data, userId, emitter);
           } else {
-            // Handle chat file uploads
+            // Handle chat / reel file uploads using same emitter pattern as avatar
+            socket.emit("file:upload:start", {
+              status: "started",
+              message: `${data.type} upload in progress`,
+              type: data.type,
+            });
+
             await FileHandler.handleFileUpload({
               data,
               userId,
-              callback: (response) =>
-                socket.emit("file:upload:response", response),
+              callback: (response) => {
+                if (response.status === "success") {
+                  socket.emit("file:upload:success", response);
+                } else {
+                  socket.emit("file:upload:error", response);
+                }
+              },
             });
           }
         } catch (error) {
