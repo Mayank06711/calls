@@ -7,9 +7,10 @@ import {
   SOCKET_TOTAL_CALLS_IN_PROGRESS,
 } from "../action_creators/socket.action_creators";
 
-export const socketConnected = () => {
+export const socketConnected = (isConnected) => {
   return {
     type: SOCKET_CONNECTED,
+    payload: isConnected,
   };
 };
 
