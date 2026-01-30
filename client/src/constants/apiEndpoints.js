@@ -99,5 +99,12 @@ export const ENDPOINTS = {
     // Developer routes
     GET_ASSIGNED_FEEDBACK: `/api/${API_CONFIG.VERSION}/feedback/assigned`, // GET
   },
+  LEGAL: {
+    TERMS: `/api/${API_CONFIG.VERSION}/legal/terms`, // GET
+    PRIVACY: `/api/${API_CONFIG.VERSION}/legal/privacy`, // GET
+  },
+  CHAT: {
+    REQUEST_STATUS: `/api/${API_CONFIG.VERSION}/chat/request-status`, // GET /:otherUserId
+  },
   // Add more endpoint categories as needed
 };
