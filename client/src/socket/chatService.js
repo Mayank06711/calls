@@ -560,10 +560,10 @@ destroy() {
     try {
       const response = await emitWithTimeout(this.socket, 'user:check-online', { userId }, 5000);
       console.log('🔍 User online check response:', response);
-      return response.isOnline || false;
+      return { isOnline: response.isOnline || false, statusHidden: response.statusHidden || false };
     } catch (error) {
       console.error('Error checking user online status:', error);
-      return false;
+      return { isOnline: false, statusHidden: false };
     }
   }
 
@@ -574,10 +574,58 @@ destroy() {
     try {
       const response = await emitWithTimeout(this.socket, 'users:get-online', {}, 5000);
       console.log('🟢 Online users response:', response);
-      return response.onlineUserIds || [];
+      return { onlineUserIds: response.onlineUserIds || [], hiddenUserIds: response.hiddenUserIds || [] };
     } catch (error) {
       console.error('Error getting online users:', error);
-      return [];
+      return { onlineUserIds: [], hiddenUserIds: [] };
+    }
+  }
+
+  // ============ MESSAGE DELETE METHODS ============
+
+  /**
+   * Delete message(s) for me only (soft-delete)
+   * @param {string} chatId
+   * @param {number|number[]} messageId - single ID or array of IDs
+   */
+  async deleteMessageForMe(chatId, messageId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'message:delete', { chatId, messageId });
+      return response.status === 'success';
+    } catch (error) {
+      console.error('Error deleting message for me:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete message(s) for everyone (sender only, today only)
+   * @param {string} chatId
+   * @param {number|number[]} messageId - single ID or array of IDs
+   * @returns {Promise<{success: boolean, deletedIds?: number[], skippedIds?: number[]}>}
+   */
+  async deleteMessageForEveryone(chatId, messageId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'message:delete-all', { chatId, messageId });
+      if (response.status === 'success') {
+        return { success: true, deletedIds: response.deletedIds, skippedIds: response.skippedIds };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Error deleting message for everyone:', error);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Listen for messages deleted by other user (delete-for-everyone)
+   */
+  addMessageDeletedListener(callback) {
+    if (this.socket) {
+      const existing = this.events.get('message:deleted');
+      if (existing) this.socket.off('message:deleted', existing);
+      this.socket.on('message:deleted', callback);
+      this.events.set('message:deleted', callback);
     }
   }
 
@@ -589,6 +637,139 @@ destroy() {
       this.socket.on('receipts:batch', callback);
       this.events.set('receipts:batch', callback);
     }
+  }
+
+  // ============ CHAT HIDE/DELETE METHODS ============
+
+  async hideChat(chatId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:hide', { chatId });
+      return response.status === 'success';
+    } catch (error) {
+      console.error('Error hiding chat:', error);
+      return false;
+    }
+  }
+
+  async unhideChat(chatId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:unhide', { chatId });
+      return response.status === 'success';
+    } catch (error) {
+      console.error('Error unhiding chat:', error);
+      return false;
+    }
+  }
+
+  async deleteChat(chatId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:delete', { chatId });
+      return response.status === 'success';
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      return false;
+    }
+  }
+
+  async getHiddenChats() {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat:hidden-list', {}, 10000);
+      if (response.status === 'success') {
+        return response.chats || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching hidden chats:', error);
+      return [];
+    }
+  }
+
+  // ============ CHAT REQUEST SYSTEM ============
+
+  async sendChatRequest(receiverId) {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat-request:send', { receiverId });
+      return response;
+    } catch (error) {
+      console.error('Error sending chat request:', error);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  async respondToChatRequest(requestId, action) {
+    try {
+      console.log(`[ChatService] respondToChatRequest: requestId=${requestId}, action=${action}, socket connected=${this.socket?.connected}`);
+      const response = await emitWithTimeout(this.socket, 'chat-request:respond', { requestId, action }, 10000);
+      console.log('[ChatService] respondToChatRequest response:', response);
+      return response;
+    } catch (error) {
+      console.error('[ChatService] Error responding to chat request:', error);
+      return { status: 'error', message: error.message };
+    }
+  }
+
+  async getChatRequests(type = 'received') {
+    try {
+      const response = await emitWithTimeout(this.socket, 'chat-request:list', { type }, 10000);
+      return response.status === 'success' ? response.requests : [];
+    } catch (error) {
+      console.error('Error fetching chat requests:', error);
+      return [];
+    }
+  }
+
+  async getChatRequestStatus(otherUserId, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await emitWithTimeout(this.socket, 'chat-request:status', { otherUserId });
+        return response;
+      } catch (error) {
+        console.warn(`[ChatService] chat-request:status attempt ${attempt}/${maxRetries} failed:`, error.message);
+        if (attempt < maxRetries) {
+          // Wait before retrying: 1s, 2s (increasing delay)
+          await new Promise(r => setTimeout(r, attempt * 1000));
+        }
+      }
+    }
+    console.error('[ChatService] chat-request:status all retries exhausted');
+    return { status: 'error', requestStatus: 'error' };
+  }
+
+  addChatRequestReceivedListener(callback) {
+    if (this.socket) {
+      const existing = this.events.get('chat-request:received');
+      if (existing) this.socket.off('chat-request:received', existing);
+      this.socket.on('chat-request:received', callback);
+      this.events.set('chat-request:received', callback);
+    }
+  }
+
+  addChatRequestResponseListener(callback) {
+    if (this.socket) {
+      const existing = this.events.get('chat-request:response');
+      if (existing) this.socket.off('chat-request:response', existing);
+
+      // Wrapper: call both global (Chats.jsx) and ChatArea callback
+      const wrappedCallback = (data) => {
+        console.log('[ChatService] chat-request:response received:', data);
+        callback(data); // Global handler
+        if (this._chatRequestResponseCallback) {
+          this._chatRequestResponseCallback(data);
+        }
+      };
+
+      this.socket.on('chat-request:response', wrappedCallback);
+      this.events.set('chat-request:response', wrappedCallback);
+    }
+  }
+
+  // ChatArea registers its own callback (called by the wrapped listener above)
+  setChatRequestResponseCallback(callback) {
+    this._chatRequestResponseCallback = callback;
+  }
+
+  clearChatRequestResponseCallback() {
+    this._chatRequestResponseCallback = null;
   }
 }
 
