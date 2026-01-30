@@ -704,6 +704,14 @@ export function VideoCallProvider({ children }) {
     setPermissionTarget(null);
   }, [clearPermissionTimeout]);
 
+  /** Dismiss the permission status card (denied/granted) */
+  const dismissPermissionStatus = useCallback(() => {
+    setPermissionState("idle");
+    setPermissionTarget(null);
+    setPermissionCooldownEnd(null);
+    setPermissionDenyReason(null);
+  }, []);
+
   /** Expert requests permission to call a user */
   const requestCallPermission = useCallback(async (targetUserId, userInfo) => {
     if (!callServiceRef.current) return;
@@ -793,8 +801,9 @@ export function VideoCallProvider({ children }) {
     requestCallPermission,
     respondToPermission,
     cancelPermissionRequest,
+    dismissPermissionStatus,
     toggleVideoSwap,
-  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError, requestCallPermission, respondToPermission, cancelPermissionRequest, toggleVideoSwap]);
+  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError, requestCallPermission, respondToPermission, cancelPermissionRequest, dismissPermissionStatus, toggleVideoSwap]);
 
   // Full state + actions context (used by VideoCall/IncomingCall UI)
   const value = {

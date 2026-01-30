@@ -14,6 +14,7 @@ function ExpertPermissionStatus() {
     permissionDenyReason,
     initiateCall,
     cancelPermissionRequest,
+    dismissPermissionStatus,
   } = useVideoCall();
 
   const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
@@ -176,6 +177,13 @@ function ExpertPermissionStatus() {
           {cooldownRemaining > 0 && (
             <span className="text-red-400 text-xs font-mono">{cooldownRemaining}s</span>
           )}
+          <button
+            onClick={dismissPermissionStatus}
+            className="p-1.5 rounded-full hover:bg-gray-700/50 transition-colors"
+            title="Dismiss"
+          >
+            <Close className="text-gray-400 hover:text-white" sx={{ fontSize: 18 }} />
+          </button>
         </div>
       )}
     </div>
