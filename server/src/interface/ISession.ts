@@ -28,12 +28,24 @@ export interface ILocationInfo {
   };
 }
 
+/** Slim data extracted from express.Request for session creation */
+export interface SessionRequestInfo {
+  userAgent: string;
+  ip: string;
+  customHeaders?: {
+    platform?: string;
+    deviceModel?: string;
+    deviceBrand?: string;
+    appVersion?: string;
+  };
+}
+
 export interface ISession extends Document {
   userId: Types.ObjectId;
   
-  // Token identification
-  tokenId: string; // Unique identifier for the JWT token
-  refreshTokenId?: string; // Identifier for refresh token
+  // Session identification
+  refreshTokenId: string; // Session identifier (sess_<uuid>), used in Redis and JWTs
+  refreshToken: string; // The actual JWT refresh token for this session
   
   // Device information
   device: IDeviceInfo;
