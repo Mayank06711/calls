@@ -41,12 +41,12 @@ export interface IUser extends Document {
   // defining methods here so that typescript can
   // Define the methods you plan to add to the schem TypeScript knows about the instance methods you're adding.
   generateAccessToken(
-    sessionId?: string,
+    sessionId: string,
     subscriptionId?: string,
     subscriptionType?: string
   ): string;
   generateRefreshToken(
-    sessionId?: string,
+    sessionId: string,
     subscriptionId?: string,
     subscriptionType?: string
   ): string;
