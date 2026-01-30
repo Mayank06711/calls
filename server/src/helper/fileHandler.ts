@@ -7,12 +7,51 @@ import {
 import { getCloudinary } from "../db";
 
 class FileHandler {
-  private static readonly MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
-  private static readonly ALLOWED_TYPES = [
+  // Type-specific allowed MIME types
+  private static readonly ALLOWED_IMAGE_TYPES = [
     "image/jpeg",
     "image/png",
     "image/gif",
+    "image/webp",
   ];
+  private static readonly ALLOWED_VIDEO_TYPES = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+  ];
+
+  // Type-specific size limits
+  private static readonly SIZE_LIMITS: Record<string, number> = {
+    avatar: 5 * 1024 * 1024,  // 5MB
+    chat: 5 * 1024 * 1024,    // 5MB
+    reel: 8 * 1024 * 1024,    // 8MB
+  };
+
+  // Type-specific folder mapping
+  private static readonly FOLDER_MAP: Record<string, string> = {
+    avatar: "avatars",
+    chat: "chat",
+    reel: "reels",
+  };
+
+  /** Returns allowed MIME types for the given upload type */
+  private static getAllowedTypes(uploadType: string): string[] {
+    switch (uploadType) {
+      case "avatar":
+        return this.ALLOWED_IMAGE_TYPES;
+      case "chat":
+        return [...this.ALLOWED_IMAGE_TYPES, ...this.ALLOWED_VIDEO_TYPES];
+      case "reel":
+        return this.ALLOWED_VIDEO_TYPES;
+      default:
+        return this.ALLOWED_IMAGE_TYPES;
+    }
+  }
+
+  /** Returns whether a MIME type is a video type */
+  private static isVideoType(fileType: string): boolean {
+    return this.ALLOWED_VIDEO_TYPES.includes(fileType);
+  }
 
   public static async upload({
     folder,
@@ -20,18 +59,30 @@ class FileHandler {
     isBuffer = false,
     fileName,
     uploadPreset,
+    fileType,
   }: CloudinaryUploadOptions): Promise<FileUploadResponse> {
     try {
+      const isVideo = fileType ? this.isVideoType(fileType) : false;
+
       let uploadData: any = {
         folder,
         resource_type: "auto",
-        eager: [
-          { width: 800, crop: "scale", quality: "auto" },
-          { width: 400, crop: "scale", quality: "auto" },
-        ],
         eager_async: true,
         quality: "auto:good",
       };
+
+      // Use different eager transforms for video vs image
+      if (isVideo) {
+        uploadData.eager = [
+          { width: 720, crop: "scale", quality: "auto", format: "mp4" },
+          { width: 480, crop: "scale", quality: "auto", format: "jpg", start_offset: "0" },
+        ];
+      } else {
+        uploadData.eager = [
+          { width: 800, crop: "scale", quality: "auto" },
+          { width: 400, crop: "scale", quality: "auto" },
+        ];
+      }
 
       // Convert file to base64
       if (isBuffer && Buffer.isBuffer(file)) {
@@ -40,7 +91,8 @@ class FileHandler {
           uploadData.file = Middleware.getBase64(file);
         } else {
           // Fallback for plain buffer
-          uploadData.file = `data:image/jpeg;base64,${file.toString("base64")}`;
+          const mimePrefix = fileType || "image/jpeg";
+          uploadData.file = `data:${mimePrefix};base64,${file.toString("base64")}`;
         }
       } else if (typeof file === "string") {
         // If it's already a base64 string, use it directly
@@ -86,6 +138,7 @@ class FileHandler {
         metadata: {
           width: result.width,
           height: result.height,
+          duration: result.duration,
           type: result.format,
           size: result.bytes,
         },
@@ -102,6 +155,52 @@ class FileHandler {
     }
   }
 
+  /**
+   * Delete a single resource from Cloudinary by public_id.
+   * Automatically detects resource_type from the public_id path.
+   */
+  public static async deleteFromCloudinary(publicId: string, resourceType: "image" | "video" = "image"): Promise<boolean> {
+    try {
+      const result = await getCloudinary().uploader.destroy(publicId, {
+        resource_type: resourceType,
+      });
+      return result.result === "ok";
+    } catch (error) {
+      console.error(`Cloudinary delete error for ${publicId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete all media (photos + videos) from a message's media object.
+   * Reusable for delete-for-everyone and any other cleanup.
+   */
+  public static async deleteMessageMedia(media?: { photos?: { public_id?: string }[]; videos?: { public_id?: string }[] }): Promise<void> {
+    if (!media) return;
+
+    const promises: Promise<boolean>[] = [];
+
+    if (media.photos?.length) {
+      for (const photo of media.photos) {
+        if (photo.public_id) {
+          promises.push(this.deleteFromCloudinary(photo.public_id, "image"));
+        }
+      }
+    }
+
+    if (media.videos?.length) {
+      for (const video of media.videos) {
+        if (video.public_id) {
+          promises.push(this.deleteFromCloudinary(video.public_id, "video"));
+        }
+      }
+    }
+
+    if (promises.length > 0) {
+      await Promise.allSettled(promises);
+    }
+  }
+
   public static async handleFileUpload({
     data,
     callback,
@@ -112,11 +211,15 @@ class FileHandler {
     userId: string;
   }): Promise<void> {
     try {
+      const uploadType = data.type || "chat";
+      const maxSize = this.SIZE_LIMITS[uploadType] || this.SIZE_LIMITS.chat;
+      const maxMB = maxSize / (1024 * 1024);
+
       // Validate file size
-      if (data.size > this.MAX_FILE_SIZE) {
+      if (data.size > maxSize) {
         return callback({
           status: "error",
-          message: "File size exceeds 3MB limit",
+          message: `File size exceeds ${maxMB}MB limit`,
           metadata: {
             error: "File size limit exceeded",
             size: data.size,
@@ -125,12 +228,17 @@ class FileHandler {
         });
       }
 
-      // Validate file type
-      console.log(data);
-      if (!this.ALLOWED_TYPES.includes(data.fileType)) {
+      // Validate file type based on upload type
+      const allowedTypes = this.getAllowedTypes(uploadType);
+      if (!allowedTypes.includes(data.fileType)) {
+        const typeLabels: Record<string, string> = {
+          avatar: "JPEG, PNG, GIF and WebP",
+          chat: "JPEG, PNG, GIF, WebP, MP4, WebM and MOV",
+          reel: "MP4, WebM and MOV",
+        };
         return callback({
           status: "error",
-          message: "Invalid file type. Only JPEG, PNG and GIF allowed",
+          message: `Invalid file type. Only ${typeLabels[uploadType] || typeLabels.chat} allowed`,
           metadata: {
             error: "Invalid file type",
             type: data.fileType,
@@ -172,8 +280,8 @@ class FileHandler {
         });
       }
 
-      const folder =
-        data.type === "avatar" ? `avatars/${userId}` : `chat/${userId}`;
+      const folderPrefix = this.FOLDER_MAP[uploadType] || "chat";
+      const folder = `${folderPrefix}/${userId}`;
 
       // Upload to Cloudinary
       const uploadResult = await FileHandler.upload({
@@ -181,6 +289,7 @@ class FileHandler {
         file: fileData,
         isBuffer,
         fileName: data.fileName,
+        fileType: data.fileType,
       });
       if (uploadResult.status === "error") {
         return callback(uploadResult);
