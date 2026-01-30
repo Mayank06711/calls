@@ -17,6 +17,7 @@ export interface IUserSettings extends Document {
     push: boolean;
     sms?: boolean; // Optional SMS notifications
     messageAlerts: boolean; // In-app message alerts
+    chatSound: boolean; // Play sound on chat messages (FREE)
     marketing: boolean; // Marketing notifications (premium)
     sound: boolean;
     customSoundUrl?: string; // Optional custom notification sound
