@@ -25,6 +25,10 @@ import subscriptionRoutes from "./routes/subscriptionRoutes";
 import adminRouter from "./routes/adminRoutes";
 import sessionRouter from "./routes/sessionRoutes";
 import legalRouter from "./routes/legalRoutes";
+import chatRouter from "./routes/chaRoutes";
+import expertBlockRouter from "./routes/expertBlockRoutes";
+import expertTipRouter from "./routes/expertTipRoutes";
+import expertComplaintRouter from "./routes/expertComplaintRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -104,6 +108,10 @@ class ServerManager {
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
     this.app.use("/api/v1/sessions", sessionRouter);
     this.app.use("/api/v1/legal", legalRouter);
+    this.app.use("/api/v1/chat", chatRouter);
+    this.app.use("/api/v1/expert-blocks", expertBlockRouter);
+    this.app.use("/api/v1/tips", expertTipRouter);
+    this.app.use("/api/v1/complaints", expertComplaintRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -223,8 +231,32 @@ class ServerManager {
     }
 
     // Socket.io for real-time communication
+    //
+    // maxHttpBufferSize: 10MB
+    // ─────────────────────────────────────────────────────────────────────
+    // Why 10MB: Reel uploads allow up to 8MB files. Base64 encoding adds
+    // ~33% overhead (8MB → ~10.7MB), so 10MB covers the largest payload.
+    // Avatars (5MB) and chat media (5MB) are well within this limit.
+    //
+    // DDoS / resource exhaustion risk:
+    // Socket.IO allocates this buffer PER CONNECTION at the transport layer
+    // BEFORE any application-level authentication runs. A malicious client
+    // could open many connections and send large payloads to exhaust server
+    // memory without ever authenticating.
+    //
+    // Mitigations in place:
+    // 1. Authentication is required for all socket events — unauthenticated
+    //    sockets cannot trigger file uploads or any business logic.
+    // 2. Sockets that do not authenticate within 2 minutes are forcibly
+    //    disconnected (see socket.ts auth timeout).
+    // 3. Rate limiting is applied to upload events.
+    //
+    // If the reel size limit is increased later, this value must be updated
+    // accordingly (new_limit * 1.34 to account for base64 overhead).
+    // ─────────────────────────────────────────────────────────────────────
     this.io = new SocketIOServer(this.server, {
       cors: ServerManager.CORS_OPTIONS,
+      maxHttpBufferSize: 10 * 1024 * 1024, // 10MB — see comment above
     });
 
     try {
