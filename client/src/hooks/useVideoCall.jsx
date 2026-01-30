@@ -56,6 +56,8 @@ export function VideoCallProvider({ children }) {
   const [permissionTarget, setPermissionTarget] = useState(null); // { userId, name, avatar }
   const [permissionExpert, setPermissionExpert] = useState(null); // { expertId, name, avatar, qualification }
   const [permissionWindowExpiry, setPermissionWindowExpiry] = useState(null);
+  const [permissionCooldownEnd, setPermissionCooldownEnd] = useState(null); // timestamp when cooldown expires
+  const [permissionDenyReason, setPermissionDenyReason] = useState(null); // "user_offline" | null
   // Time warning from server
   const [timeWarning, setTimeWarning] = useState(null); // { remaining: number } | null
   // Video swap (PiP ↔ fullscreen)
@@ -68,6 +70,7 @@ export function VideoCallProvider({ children }) {
   const durationIntervalRef = useRef(null);
   const callIdRef = useRef(null);
   const callStateRef = useRef(CALL_STATES.IDLE);
+  const permissionTimeoutRef = useRef(null);
   const localStreamRef = useRef(null); // Ref to avoid cleanup dependency on localStream state
 
   // Keep refs in sync with state
@@ -414,6 +417,11 @@ export function VideoCallProvider({ children }) {
   const onPermissionGranted = useCallback((payload) => {
     const data = payload.data || payload;
     console.log("[useVideoCall] Permission granted to call:", data.userId);
+    // Clear timeout since we got a real response
+    if (permissionTimeoutRef.current) {
+      clearTimeout(permissionTimeoutRef.current);
+      permissionTimeoutRef.current = null;
+    }
     setPermissionTarget({
       userId: data.userId,
       name: data.userName || "User",
@@ -424,12 +432,29 @@ export function VideoCallProvider({ children }) {
   }, []);
 
   const onPermissionDenied = useCallback((payload) => {
-    console.log("[useVideoCall] Permission denied:", payload);
+    const data = payload.data || payload;
+    console.log("[useVideoCall] Permission denied:", data);
+    // Clear timeout since we got a real response
+    if (permissionTimeoutRef.current) {
+      clearTimeout(permissionTimeoutRef.current);
+      permissionTimeoutRef.current = null;
+    }
     setPermissionState("denied");
+    setPermissionDenyReason(data.reason || null); // "user_offline" or null (normal decline)
+    const cooldownSec = data.cooldownSeconds ?? 60;
+    if (cooldownSec > 0) {
+      setPermissionCooldownEnd(Date.now() + cooldownSec * 1000);
+    } else {
+      setPermissionCooldownEnd(null);
+    }
+    // Keep denied state visible — for cooldown duration, or 5s if no cooldown (user went offline)
+    const visibleMs = cooldownSec > 0 ? cooldownSec * 1000 : 5000;
     setTimeout(() => {
       setPermissionState("idle");
       setPermissionTarget(null);
-    }, 3000);
+      setPermissionCooldownEnd(null);
+      setPermissionDenyReason(null);
+    }, visibleMs);
   }, []);
 
   const onTimeWarning = useCallback((payload) => {
@@ -664,12 +689,28 @@ export function VideoCallProvider({ children }) {
     }
   }, []);
 
+  /** Clear permission request timeout */
+  const clearPermissionTimeout = useCallback(() => {
+    if (permissionTimeoutRef.current) {
+      clearTimeout(permissionTimeoutRef.current);
+      permissionTimeoutRef.current = null;
+    }
+  }, []);
+
+  /** Cancel a pending permission request (user-initiated) */
+  const cancelPermissionRequest = useCallback(() => {
+    clearPermissionTimeout();
+    setPermissionState("idle");
+    setPermissionTarget(null);
+  }, [clearPermissionTimeout]);
+
   /** Expert requests permission to call a user */
   const requestCallPermission = useCallback(async (targetUserId, userInfo) => {
     if (!callServiceRef.current) return;
     if (permissionState === "requesting") return; // prevent double-tap
 
     setPermissionState("requesting");
+    setPermissionDenyReason(null);
     setPermissionTarget({
       userId: targetUserId,
       name: userInfo?.name || "User",
@@ -681,22 +722,43 @@ export function VideoCallProvider({ children }) {
       const data = response.data || response;
       if (data.status !== "ok") {
         console.error("[useVideoCall] Permission request failed:", data);
+        clearPermissionTimeout();
         setPermissionState("denied");
-        setTimeout(() => {
-          setPermissionState("idle");
-          setPermissionTarget(null);
-        }, 3000);
+        if (data.errorCode === "COOLDOWN" && data.cooldownRemaining) {
+          setPermissionCooldownEnd(Date.now() + data.cooldownRemaining * 1000);
+          setTimeout(() => {
+            setPermissionState("idle");
+            setPermissionTarget(null);
+            setPermissionCooldownEnd(null);
+          }, data.cooldownRemaining * 1000);
+        } else {
+          setTimeout(() => {
+            setPermissionState("idle");
+            setPermissionTarget(null);
+          }, 3000);
+        }
+      } else {
+        // Auto-timeout after 65s (user gets 60s to respond on their side)
+        clearPermissionTimeout();
+        permissionTimeoutRef.current = setTimeout(() => {
+          console.log("[useVideoCall] Permission request timed out (65s)");
+          setPermissionState("denied");
+          setTimeout(() => {
+            setPermissionState("idle");
+            setPermissionTarget(null);
+          }, 3000);
+        }, 65000);
       }
-      // If ok, server will emit call:permission-granted or call:permission-denied
     } catch (err) {
       console.error("[useVideoCall] Permission request error:", err);
+      clearPermissionTimeout();
       setPermissionState("denied");
       setTimeout(() => {
         setPermissionState("idle");
         setPermissionTarget(null);
       }, 3000);
     }
-  }, [permissionState]);
+  }, [permissionState, clearPermissionTimeout]);
 
   /** User responds to an expert's permission request */
   const respondToPermission = useCallback(async (expertId, accepted) => {
@@ -730,8 +792,9 @@ export function VideoCallProvider({ children }) {
     dismissCallError,
     requestCallPermission,
     respondToPermission,
+    cancelPermissionRequest,
     toggleVideoSwap,
-  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError, requestCallPermission, respondToPermission, toggleVideoSwap]);
+  }), [initiateCall, acceptCall, rejectCall, endCall, toggleVideo, toggleAudio, cleanup, dismissCallError, requestCallPermission, respondToPermission, cancelPermissionRequest, toggleVideoSwap]);
 
   // Full state + actions context (used by VideoCall/IncomingCall UI)
   const value = {
@@ -756,6 +819,8 @@ export function VideoCallProvider({ children }) {
     permissionTarget,
     permissionExpert,
     permissionWindowExpiry,
+    permissionCooldownEnd,
+    permissionDenyReason,
     // Time warning
     timeWarning,
     // Video swap
