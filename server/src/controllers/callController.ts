@@ -24,6 +24,8 @@ class CallController {
   private readonly REDIS_BUSY_TTL = 3600; // 1 hour max (cleaned up on call end)
   private readonly REDIS_PERMISSION_GROUP = "call:permission";
   private readonly REDIS_PERMREQ_GROUP = "call:permreq";
+  private readonly REDIS_PERM_COOLDOWN_GROUP = "call:permcooldown";
+  private readonly PERM_COOLDOWN_SECONDS = 60; // 60s cooldown after decline
 
   private readonly CALL_EVENTS = {
     INITIATE: "call:initiate",
@@ -434,9 +436,12 @@ class CallController {
       }
     );
 
-    // ── Handle disconnect during active call ──
+    // ── Handle disconnect during active call or pending permission ──
     socket.on("disconnect", async () => {
-      await this.handleDisconnectDuringCall(userId);
+      await Promise.all([
+        this.handleDisconnectDuringCall(userId),
+        this.handleDisconnectDuringPermissionRequest(userId),
+      ]);
     });
   }
 
@@ -874,6 +879,16 @@ class CallController {
           endedBy: userId,
         });
 
+        // If callee disconnected during ringing (before answer), also fire call:missed
+        // so the caller's UI shows "User went offline" instead of generic end
+        if (call.status === "failed" && !call.answeredAt && userId === calleeId) {
+          await this.emitToUser(callerId, this.CALL_EVENTS.MISSED, {
+            callId,
+            calleeId,
+            reason: "callee_offline",
+          });
+        }
+
         // Post-call: track usage and create Service record for completed calls
         if (duration !== undefined && duration > 0) {
           Promise.all([
@@ -902,6 +917,51 @@ class CallController {
       console.error("[CallController] handleDisconnectDuringCall error:", error);
     }
   }
+
+  // ─── Disconnect During Pending Permission Request ───────────────
+  // When a user goes offline while an expert has a pending permission
+  // request targeting them, immediately clear the request and notify
+  // the expert so they don't wait for the full 60s TTL.
+
+  private async handleDisconnectDuringPermissionRequest(userId: string): Promise<void> {
+    try {
+      // Scan all pending permission requests
+      const allPermReqs = await RedisManager.getAllFromGroup(this.REDIS_PERMREQ_GROUP);
+      if (!allPermReqs || allPermReqs.length === 0) return;
+
+      // Keys are stored as "expertId:targetUserId"
+      // Find any where the target (second part) is the disconnected user
+      for (const entry of allPermReqs) {
+        const key: string = entry.key;
+        if (!key) continue;
+
+        const parts = key.split(":");
+        if (parts.length < 2) continue;
+
+        const targetUserId = parts[parts.length - 1]; // last segment is the target user
+        const expertId = parts.slice(0, parts.length - 1).join(":"); // everything before is expertId
+
+        if (targetUserId !== userId) continue;
+
+        // This user was the target of a pending permission request — clean it up
+        await RedisManager.removeDataFromGroup(this.REDIS_PERMREQ_GROUP, key);
+
+        // Notify the expert that the user went offline
+        await this.emitToUser(expertId, this.CALL_EVENTS.PERMISSION_DENIED, {
+          userId,
+          reason: "user_offline",
+          cooldownSeconds: 0, // no cooldown — user went offline, not a deliberate decline
+        });
+
+        console.log(
+          `[CallController] Cleared pending permission request ${key} — user ${userId} went offline`
+        );
+      }
+    } catch (error) {
+      console.error("[CallController] handleDisconnectDuringPermissionRequest error:", error);
+    }
+  }
+
   // ─── Call Duration Timers ──────────────────────────────────────
 
   private startCallTimers(callId: string, callerId: string, calleeId: string): void {
@@ -1042,6 +1102,23 @@ class CallController {
       return { status: "error", errorCode: "REQUEST_PENDING", message: "A request is already pending" };
     }
 
+    // Check cooldown after previous decline
+    const cooldownKey = `${expertId}:${userId}`;
+    const cooldownData = await RedisManager.getDataFromGroup<{ since: number }>(
+      this.REDIS_PERM_COOLDOWN_GROUP,
+      cooldownKey
+    );
+    if (cooldownData) {
+      const elapsed = Math.floor((Date.now() - cooldownData.since) / 1000);
+      const remaining = Math.max(0, this.PERM_COOLDOWN_SECONDS - elapsed);
+      return {
+        status: "error",
+        errorCode: "COOLDOWN",
+        message: `Please wait ${remaining}s before requesting again`,
+        cooldownRemaining: remaining,
+      };
+    }
+
     // Store pending request in Redis (60s TTL)
     await RedisManager.cacheDataInGroup(
       this.REDIS_PERMREQ_GROUP,
@@ -1101,11 +1178,21 @@ class CallController {
 
       console.log(`[CallController] User ${userId} granted call permission to expert ${expertId}`);
     } else {
+      // Set 60s cooldown before expert can request this user again
+      const cooldownKey = `${expertId}:${userId}`;
+      await RedisManager.cacheDataInGroup(
+        this.REDIS_PERM_COOLDOWN_GROUP,
+        cooldownKey,
+        { since: Date.now() },
+        this.PERM_COOLDOWN_SECONDS
+      );
+
       await this.emitToUser(expertId, this.CALL_EVENTS.PERMISSION_DENIED, {
         userId,
+        cooldownSeconds: this.PERM_COOLDOWN_SECONDS,
       });
 
-      console.log(`[CallController] User ${userId} denied call permission to expert ${expertId}`);
+      console.log(`[CallController] User ${userId} denied call permission to expert ${expertId} (60s cooldown set)`);
     }
 
     return { status: "ok" };
