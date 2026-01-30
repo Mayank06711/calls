@@ -22,6 +22,7 @@ const MediaSchema = new Schema(
     chatId: { type: String },
     photos: [MediaItemSchema],
     videos: [MediaItemSchema],
+    reels: [MediaItemSchema],
   },
   { timestamps: true }
 );
@@ -109,6 +110,30 @@ MediaSchema.methods.removeVideo = async function (
 ): Promise<void> {
   this.videos = this.videos.filter(
     (video: MediaItem) => video.public_id !== publicId
+  );
+  await this.save();
+};
+
+MediaSchema.methods.addReel = async function (
+  reelData: Partial<MediaItem>
+): Promise<MediaItem> {
+  this.reels.push({
+    ...reelData,
+    createdAt: new Date(),
+  });
+  await this.save();
+  return this.reels[this.reels.length - 1];
+};
+
+MediaSchema.methods.getAllReels = function (): MediaItem[] {
+  return this.reels || [];
+};
+
+MediaSchema.methods.removeReel = async function (
+  publicId: string
+): Promise<void> {
+  this.reels = this.reels.filter(
+    (reel: MediaItem) => reel.public_id !== publicId
   );
   await this.save();
 };
