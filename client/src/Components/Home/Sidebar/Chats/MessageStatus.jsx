@@ -4,6 +4,7 @@ import { Check, DoneAll, AccessTime, ErrorOutline } from '@mui/icons-material';
 const MessageStatus = ({ status, seenColor = '#1E88E5' }) => {
 const renderStatus = () => {
   switch (status) {
+    case 'sending':
     case 'pending':
       return (
         <AccessTime sx={{ width: 16, height: 16, color: '#9e9e9e' }} />
