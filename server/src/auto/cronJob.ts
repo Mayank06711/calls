@@ -1,6 +1,6 @@
 import crons from "node-cron";
 import { checkHealth } from "../db/index";
-import Notification from "../notifications/notifications";
+import Notification from "../services/notifications";
 // Run health check every 5 minutes
 
 
@@ -11,10 +11,10 @@ const cronSchuduler = (cronTime: string) => {
       if (health) {
         console.log("Database is healthy");
       } else {
-        console.error("Database is not healthy:", health.error);
-        await Notification.sendEmailNotification(
-          "Database health check failed."
-        ); // Send notification
+        console.error("Database is not healthy:", health);
+        // await Notification.sendEmailNotification(
+        //   "Database health check failed."
+        // ); // Send notification
         process.exit(1);
       }
       console.log("Database health check result:", health);

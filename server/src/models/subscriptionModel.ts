@@ -29,6 +29,7 @@ const SubscriptionSchema = new Schema(
       type: Date,
       required: true,
     },
+    durationInDays: {type: Number, default: 7},
     amount: {
       type: Number,
       required: true,

@@ -29,7 +29,9 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       email: { type: Boolean, default: true },
       push: { type: Boolean, default: true },
       sms: { type: Boolean, default: false },
-      marketing: { type: Boolean, default: false },
+      messageAlerts: { type: Boolean, default: true },
+      chatSound: { type: Boolean, default: true },
+      marketing: { type: Boolean, default: true },
       sound: { type: Boolean, default: true },
       customSoundUrl: String,
       quietHours: {
@@ -73,20 +75,28 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       weekStartDay: {
         type: String,
         enum: ["sunday", "monday"],
+        default:"monday"
       },
       measurements: {
         type: String,
         enum: ["metric", "imperial"],
+        default:"metric"
       },
     },
 
     layout: {
+      sidebarPosition: {
+        type: String,
+        enum: ["left", "right"],
+        default: "left",
+      },
       sidebarCollapsed: { type: Boolean, default: false },
       compactView: { type: Boolean, default: false },
       showTutorials: { type: Boolean, default: true },
       defaultView: {
         type: String,
         enum: ["grid", "list"],
+        default:"grid"
       },
       customLayout: {
         widgets: [String],
@@ -99,10 +109,16 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       reducedMotion: { type: Boolean, default: false },
       screenReader: { type: Boolean, default: false },
       fontSize: Number,
+      fontFamily: {
+        type: String,
+        enum: ["inter", "roboto", "poppins", "montserrat", "playfair", "dancing-script", "pacifico", "caveat", "great-vibes", "lobster", "comfortaa", "quicksand"],
+        default: "inter"
+      },
       textSpacing: Number,
       cursorSize: {
         type: String,
         enum: ["default", "large"],
+        default:"default"
       },
     },
 
@@ -138,6 +154,33 @@ const UserSettingsSchema = new Schema<IUserSettings>(
       lastActive: Date,
       favoriteFeatures: [String],
       engagementScore: Number,
+    },
+
+    // Premium settings sections (Gold/Platinum only)
+    usageTracking: {
+      activityTracking: { type: Boolean, default: false },
+    },
+
+    analyticsPreferences: {
+      personalAnalytics: { type: Boolean, default: false },
+      anonymousUsage: { type: Boolean, default: false },
+      weeklyReport: { type: Boolean, default: false },
+      dataRetention: {
+        type: String,
+        enum: ["3months", "6months", "1year", "forever"],
+        default: "6months",
+      },
+    },
+
+    reelsPreferences: {
+      autoPlay: { type: Boolean, default: false },
+      defaultQuality: {
+        type: String,
+        enum: ["auto", "low", "medium", "high"],
+        default: "auto",
+      },
+      downloadOptions: { type: Boolean, default: false },
+      dataSaver: { type: Boolean, default: false },
     },
   },
   {

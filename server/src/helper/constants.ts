@@ -1,145 +1,190 @@
-export const SUBSCRIPTION_TYPES = ["Platinum", "Silver", "Gold"] as const;
-export type SubscriptionTier = "Silver" | "Gold" | "Platinum" | "Free";
+export const SUBSCRIPTION_TYPES = [
+  "Platinum",
+  "Gold",
+  "Silver",
+  "Free",
+] as const;
+export type SubscriptionTier = "Platinum" | "Gold" | "Silver" | "Free";
 
 export const SUBSCRIPTION_CONFIG = {
   TIERS: {
     Platinum: {
       level: 3,
-      duration: 365, // 1 year
-      price: 999,
-      features: [
-        "Unlimited AI style recommendations",
-        "8 one-on-one video consultations with top stylists monthly",
-        "Priority booking for emergency style consultations",
-        "Personalized wardrobe planning with AI",
-        "Exclusive access to designer collaborations",
-        "Virtual closet organization tools",
-        "Trend forecasting reports",
-        "Personal shopping assistance",
-        "Style event invitations",
-        "24/7 style emergency support",
-        "Seasonal color analysis",
-        "Body shape analysis with AI",
-        "Outfit planning for special events",
+      dailyPricing: [
+        { minDays: 7, maxDays: 15, pricePerDay: 24 },
+        { minDays: 16, maxDays: 30, pricePerDay: 20 },
+        { minDays: 31, maxDays: 90, pricePerDay: 13 },
+        { minDays: 91, maxDays: 180, pricePerDay: 10 },
+        { minDays: 181, maxDays: 365, pricePerDay: 8 },
       ],
+      features: {
+        "AI Style Recommendations": "Unlimited",
+        'Video Chat Consultations': "7 Videos per day",
+        "Community Access": "Unlimited",
+        "Wardrobe Tips": "Premium Tips",
+        "Digital Wardrobe Tools": "All Premium Tools",
+        "Email Support": "24/7 Priority",
+        "Style Workshops": "Unlimited Access",
+        "Trend Updates": "3 Per day",
+        "Color Analysis": "Advanced Analysis",
+        "Outfit Suggestions": "Unlimited",
+        "Emergency Consultations": "3 Per day",
+        "Designer Collaborations": "VIP Access",
+        "Personal Shopping": "Dedicated Service",
+        "Style Events": "VIP Access (3/month)",
+        "Body Shape Analysis": "Advanced Analysis",
+      },
       limits: {
-        videoConsultations: -1, // unlimited
-        aiCredits: -1, // unlimited
-        styleReports: -1, // unlimited
-        dailyRecommendations: "unlimited",
-        outfitAnalysis: "unlimited",
-        stylePreferences: "advanced",
+        "Video Calls Per Month": 210,
+        "AI Credits Per Month": "Unlimited",
+        "Style Reports Per Month": "Unlimited",
+        "Daily Outfit Suggestions": "Unlimited",
+        "Wardrobe Items Limit": 1000,
+        "Priority Queue Position": "Top",
+      },
+      support: {
+        "Response Time": "5 Minutes",
+        "Support Channels": "3 Priority Channels",
+        "Priority Level": "Top",
+        "Dedicated Stylist": "1 Highest Rated",
       },
     },
     Gold: {
       level: 2,
-      duration: 180, // 6 months
-      price: 599,
-      features: [
-        "Advanced AI style suggestions",
-        "4 video consultations with professional stylists monthly",
-        "Priority support during business hours",
-        "Digital wardrobe management",
-        "Personalized shopping recommendations",
-        "Access to style workshops",
-        "Monthly trend updates",
-        "Basic color analysis",
-        "AI-powered outfit combinations",
+      dailyPricing: [
+        { minDays: 7, maxDays: 15, pricePerDay: 14 },
+        { minDays: 16, maxDays: 30, pricePerDay: 12 },
+        { minDays: 31, maxDays: 90, pricePerDay: 8 },
+        { minDays: 91, maxDays: 180, pricePerDay: 6 },
+        { minDays: 181, maxDays: 365, pricePerDay: 5 },
       ],
+      features: {
+        "AI Style Recommendations": "50 per day",
+        'Video Chat Consultations': "4 Videos per day",
+        "Community Access": "Full Access",
+        "Wardrobe Tips": "Advanced Tips",
+        "Digital Wardrobe Tools": "Advanced Tools",
+        "Email Support": "Priority",
+        "Style Workshops": "15 per month",
+        "Trend Updates": "2 Per day",
+        "Color Analysis": "Advanced Analysis",
+        "Outfit Suggestions": "50 per day",
+        "Emergency Consultations": "1 Per day",
+        "Designer Collaborations": "Basic Access",
+        "Personal Shopping": "Available",
+        "Style Events": "Priority Access (1/month)",
+        "Body Shape Analysis": "Standard Analysis",
+      },
       limits: {
-        videoConsultations: 10,
-        aiCredits: 500,
-        styleReports: 100,
-        dailyRecommendations: 50,
-        outfitAnalysis: 100,
-        stylePreferences: "intermediate",
+        "Video Calls Per Month": 120,
+        "AI Credits Per Month": 1500,
+        "Style Reports Per Month": 50,
+        "Daily Outfit Suggestions": 50,
+        "Wardrobe Items Limit": 500,
+        "Priority Queue Position": "High",
+      },
+      support: {
+        "Response Time": "2 Hours",
+        "Support Channels": "2 Priority Channels",
+        "Priority Level": "High",
+        "Dedicated Stylist": "Shared Pool",
       },
     },
     Silver: {
       level: 1,
-      duration: 120, // 3 months
-      price: 299,
-      features: [
-        "Basic AI style recommendations",
-        "2 video consultations with stylists monthly",
-        "Email style support",
-        "Basic wardrobe organization tools",
-        "Weekly style tips",
-        "Access to style community",
-        "Limited outfit suggestions",
+      dailyPricing: [
+        { minDays: 7, maxDays: 15, pricePerDay: 9 },
+        { minDays: 16, maxDays: 30, pricePerDay: 7 },
+        { minDays: 31, maxDays: 90, pricePerDay: 3 },
+        { minDays: 91, maxDays: 180, pricePerDay: 2.5 },
+        { minDays: 181, maxDays: 365, pricePerDay: 2 },
       ],
+      features: {
+        "AI Style Recommendations": "20 per day",
+        'Video Chat Consultations': "2 Videos per day",
+        "Community Access": "Basic Access",
+        "Wardrobe Tips": "Basic Tips",
+        "Digital Wardrobe Tools": "Basic Tools",
+        "Email Support": "Standard",
+        "Style Workshops": "5 per month",
+        "Trend Updates": "1 Per day",
+        "Color Analysis": "Basic Analysis",
+        "Outfit Suggestions": "20 per day",
+        "Emergency Consultations": "2 Per month",
+        "Designer Collaborations": "View Only",
+        "Personal Shopping": "Basic",
+        "Style Events": "Regular Access",
+        "Body Shape Analysis": "Basic Analysis",
+      },
       limits: {
-        videoConsultations: 5,
-        aiCredits: 200,
-        styleReports: 50,
-        dailyRecommendations: 20,
-        outfitAnalysis: 40,
-        stylePreferences: "basic",
+        "Video Calls Per Month": 60,
+        "AI Credits Per Month": 600,
+        "Style Reports Per Month": 20,
+        "Daily Outfit Suggestions": 20,
+        "Wardrobe Items Limit": 200,
+        "Priority Queue Position": "Standard",
+      },
+      support: {
+        "Response Time": "24 Hours",
+        "Support Channels": "Email + Chat",
+        "Priority Level": "Standard",
+        "Dedicated Stylist": "No",
       },
     },
     Free: {
       level: 0,
-      duration: 30, // 30 days free trial
-      price: 0,
-      features: [
-        "Basic AI style recommendations",
-        "1 video consultation per month",
-        "Community chat access",
-        "Basic wardrobe tips",
-        "Limited AI features trial",
+      duration: 7, // 7 days trial
+      dailyPricing: [
+        { minDays: 7, maxDays: 15, pricePerDay: 0 },
+        { minDays: 16, maxDays: 30, pricePerDay: 0 },
+        { minDays: 31, maxDays: 90, pricePerDay: 0 },
+        { minDays: 91, maxDays: 180, pricePerDay: 0 },
+        { minDays: 181, maxDays: 365, pricePerDay: 0 },
       ],
-      limits: {
-        videoConsultations: 1, // 1 per month
-        aiCredits: 50, // 50 credits for trial
-        styleReports: 2, // 2 reports per month
-        dailyRecommendations: 3, // 3 recommendations per day
-        outfitAnalysis: 5, // 5 analyses per month
-        stylePreferences: "basic",
+      features: {
+        "AI Style Recommendations": "Trial (3/day)", // 0 = trial
+        'Video Chat Consultations': "1 Trial Call", // 0 = trial
+        "Community Access": "Read Only", // 0 = limited
+        "Wardrobe Tips": "Basic Tips Only", // 0 = basic
+        "Digital Wardrobe Tools": "Preview Only", // 0 = preview
+        "Email Support": "Basic", // 0 = basic
+        "Style Workshops": "Preview Only", // 0 = preview
+        "Trend Updates": "Weekly Only", // 0 = limited
+        "Color Analysis": "Basic Only", // 0 = basic
+        "Outfit Suggestions": "3 per day", // 0 = trial
+        "Emergency Consultations": "Not Available", // 0 = none
+        "Designer Collaborations": "Not Available", // 0 = none
+        "Personal Shopping": "Not Available", // 0 = none
+        "Style Events": "Not Available", // 0 = none
+        "Body Shape Analysis": "Basic Only", // 0 = basic
       },
-      trialFeatures: {
-        extraVideoCallPrice: 29.99, // Price for additional video calls
-        extraAiCreditsPrice: 9.99, // Price for 50 additional AI credits
-        extraAnalysisPrice: 4.99, // Price per additional outfit analysis
-        validityPeriod: 30, // Days before needing to upgrade
-        maxExtraVideoCalls: 2, // Maximum additional video calls purchasable
-        maxExtraAiCredits: 100, // Maximum additional AI credits purchasable
-        restrictions: [
-          "Must upgrade to paid tier after trial period",
-          "Extra purchases do not extend trial period",
-          "Unused credits expire after trial period",
-        ],
+      limits: {
+        "Video Calls Per Month": 1,
+        "AI Credits Per Month": 90, // 3 per day for 30 days
+        "Style Reports Per Month": 3,
+        "Daily Outfit Suggestions": 3,
+        "Wardrobe Items Limit": 50,
+        "Priority Queue Position": "Basic",
+      },
+      support: {
+        "Response Time": "48 Hours",
+        "Support Channels": "Email Only",
+        "Priority Level": "Basic",
+        "Dedicated Stylist": "No",
       },
     },
   },
-  PAYMENT_METHODS: [
-    {
-      id: "card",
-      name: "Credit/Debit Card",
-      enabled: true,
-      supportedCards: ["visa", "mastercard", "rupay", "amex"],
-    },
-    {
-      id: "upi",
-      name: "UPI",
-      enabled: true,
-      supportedApps: ["gpay", "phonepe", "paytm"],
-    },
-    {
-      id: "netbanking",
-      name: "Net Banking",
-      enabled: true,
-    },
-    {
-      id: "wallet",
-      name: "Digital Wallet",
-      enabled: true,
-      supportedWallets: ["paytm", "phonepe", "amazonpay"],
-    },
-  ],
   SUBSCRIPTION_RULES: {
-    MINIMUM_DAYS_FOR_UPGRADE: 1,
+    MINIMUM_DAYS: 7,
+    MAXIMUM_DAYS: 365,
     MAXIMUM_REFERRAL_DISCOUNT: 25,
     MINIMUM_AMOUNT: 0,
+    FEATURE_LEVELS: {
+      0: "Not Available/Trial",
+      1: "Basic",
+      2: "Advanced",
+      3: "Unlimited",
+    },
     STATUS_TRANSITIONS: {
       Pending: ["Active", "Cancelled"],
       Active: ["Cancelled", "Expired"],
@@ -147,11 +192,28 @@ export const SUBSCRIPTION_CONFIG = {
       Expired: [],
     },
   },
+  PAYMENT_METHODS: {
+    card: {
+      enabled: true,
+      supportedTypes: ["visa", "mastercard", "rupay", "amex"],
+    },
+    upi: {
+      enabled: true,
+      supportedApps: ["gpay", "phonepe", "paytm"],
+    },
+    netbanking: {
+      enabled: true,
+    },
+    wallet: {
+      enabled: true,
+      supportedWallets: ["paytm", "phonepe", "amazonpay"],
+    },
+  },
   POLICIES: {
     CANCELLATION_POLICY: {
-      allowedUntil: 7, // days after subscription start
+      allowedUntil: 7,
       refundPolicy: "pro-rata",
-      cooldownPeriod: 24, // hours to revert cancellation
+      cooldownPeriod: 24,
       restrictions: [
         "Unused video consultations are non-refundable",
         "AI-generated recommendations will be archived",
@@ -166,7 +228,7 @@ export const SUBSCRIPTION_CONFIG = {
       ],
     },
     REFUND_POLICY: {
-      eligibilityPeriod: 7, // days
+      eligibilityPeriod: 7,
       processingTime: "5-7 business days",
       conditions: [
         "Technical issues affecting video consultations",
@@ -211,9 +273,9 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
   VIDEO_CONSULTATION_RULES: {
-    maxDuration: 45, // minutes
-    rescheduleNotice: 24, // hours
-    cancellationNotice: 12, // hours
+    maxDuration: 45,
+    rescheduleNotice: 24,
+    cancellationNotice: 12,
     latePenalty: "counts as completed session",
     specialistTypes: [
       "Personal Stylist",
@@ -242,4 +304,22 @@ export const SUBSCRIPTION_CONFIG = {
       Free: "essential",
     },
   },
+} as const;
+
+// ── Call configuration ──────────────────────────────────────────
+export const CALL_CONFIG = {
+  /** Hard cap per single call (seconds). Server auto-hangs up. */
+  MAX_CALL_DURATION_SECONDS: 30 * 60, // 30 minutes
+  /** Seconds before auto-hangup at which warnings are sent to both parties. */
+  WARNING_AT_SECONDS: [25 * 60, 29 * 60], // 5-min and 1-min warnings
+  /** After user grants permission, expert has this many seconds to initiate the call. */
+  EXPERT_PERMISSION_WINDOW_SECONDS: 5 * 60, // 5 minutes
+  /** How long the phone rings before auto-miss. */
+  RING_TIMEOUT_SECONDS: 30,
+  /** Default expert billing rate (USD per minute). Overridable per expert later. */
+  EXPERT_RATE_PER_MINUTE: 5,
+  /** Whether monthly count limits apply to expert calls. */
+  EXPERT_CALL_LIMITS_APPLY: true,
+  /** Whether monthly count limits apply to user-to-user calls (false = unlimited for paid). */
+  USER_CALL_LIMITS_APPLY: false,
 } as const;

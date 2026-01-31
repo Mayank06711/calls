@@ -6,6 +6,15 @@ import { successResponse } from "../utils/apiResponse";
 import { FileUploadData, FileUploadResponse } from "../interface/interface";
 import { FileHandler } from "../helper/fileHandler";
 import { ISubscription } from "../interface/ISubscription";
+import { sendEmails } from "../utils/email";
+import { generateToken, verifyToken } from "../utils/tokens";
+import { GetUsersQuery, UserListResponse } from "../interface/IUser";
+import { MediaModel } from "../models/mediaModel";
+import { cacheUserList, generateCacheKey, getAllUsersFromCache } from "../redis/user.redis";
+import ExpertFeedbackModel from "../models/expertFeedbackModel";
+import { SessionController } from "./sessionController";
+import { generateSessionId } from "../helper/sessionLimits";
+import { SocketManager } from "../socket";
 class User {
   private static options: CookieOptions = {
     httpOnly: true, // Prevent JavaScript access to the cookie
@@ -79,8 +88,9 @@ class User {
       if (user) {
         console.log("User created successfully:", user);
         console.log(req.body);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const sessionId = generateSessionId();
+        const accessToken = user.generateAccessToken(sessionId);
+        const refreshToken = user.generateRefreshToken(sessionId);
         if (!refreshToken || !accessToken) {
           await UserModel.findByIdAndDelete(user._id);
           throw new ApiError(
@@ -88,6 +98,32 @@ class User {
             "Failed to generate access or refresh token."
           );
         }
+
+        // Create session record for this signup
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const ip =
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          req.ip ||
+          "unknown";
+
+        await SessionController.createSession(
+          (user._id as string).toString(),
+          {
+            userAgent,
+            ip,
+            customHeaders: {
+              platform: req.headers["x-platform"] as string,
+              deviceModel: req.headers["x-device-model"] as string,
+              deviceBrand: req.headers["x-device-brand"] as string,
+              appVersion: req.headers["x-app-version"] as string,
+            },
+          },
+          sessionId,
+          refreshToken,
+          "password"
+        );
+
         // Set HTTP-only cookie for refresh token (secure it for production)
         res
           .status(200)
@@ -124,29 +160,73 @@ class User {
           username: "username",
         });
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      console.log(error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
   private static async _logout(req: express.Request, res: express.Response) {
     try {
       const userId = req.user?._id;
+      const sessionId = req.user?.sessionId;
+
       if (!userId) {
         throw new ApiError(401, "Unauthorized access");
       }
 
-      // Find user and clear refresh token
-      const user = await UserModel.findByIdAndUpdate(
-        userId,
-        {
-          $set: { refreshToken: "" },
-        },
-        { new: true }
-      );
-
+      const user = await UserModel.findById(userId);
       if (!user) {
         throw new ApiError(404, "User not found");
+      }
+
+      // Import RedisManager dynamically to avoid circular dependency issues
+      const { RedisManager } = await import("../utils/redisClient");
+
+      // If we have a sessionId, sync lastActive from Redis to MongoDB before removal
+      if (sessionId) {
+        const activity = await RedisManager.getSessionActivity(
+          userId.toString(),
+          sessionId
+        );
+
+        // Invalidate this specific session in MongoDB
+        await SessionController.invalidateSession(
+          userId.toString(),
+          sessionId,
+          "User logged out"
+        );
+
+        // Remove session from Redis
+        await RedisManager.removeActiveSession(userId.toString(), sessionId);
+
+        // Disconnect sockets for this specific session
+        try {
+          const socketManager = SocketManager.getInstance();
+          await socketManager.disconnectBySessionId(userId.toString(), sessionId);
+        } catch (socketError) {
+          console.error("[Logout] Failed to disconnect sockets:", socketError);
+        }
+      } else {
+        // If no sessionId, invalidate all sessions (legacy behavior)
+        await SessionController.invalidateSession(userId.toString());
+
+        // Also try to clear all Redis sessions for this user
+        const sessionIds = await RedisManager.getActiveSessionIds(
+          userId.toString()
+        );
+        for (const sid of sessionIds) {
+          await RedisManager.removeActiveSession(userId.toString(), sid);
+        }
+
+        // Disconnect all sockets for this user
+        try {
+          const socketManager = SocketManager.getInstance();
+          await socketManager.disconnectUser(userId.toString());
+        } catch (socketError) {
+          console.error("[Logout] Failed to disconnect sockets:", socketError);
+        }
       }
 
       if (req.isMobileApp) {
@@ -165,9 +245,10 @@ class User {
         .clearCookie("refreshToken", User.refreshOptions)
         .json(successResponse({}, "Logged out successfully"));
     } catch (error) {
-      console.error("Error in logout:", error);
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Something went wrong during logout");
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to logout");
     }
   }
 
@@ -190,13 +271,163 @@ class User {
     }
   }
 
-  static verifyEmail(req: express.Request, res: express.Response) {
+  static async _verifyEmail(req: express.Request, res: express.Response) {
     try {
-      // check validation here only
-      res.json({ message: "Email Verified Successfully" });
+      const userId = req.user?._id;
+      const { email, final_path } = req.body;
+
+      // Combine validation checks
+      if (!userId || !email) {
+        throw new ApiError(
+          400,
+          !userId ? "Unauthorized access" : "Email not provided"
+        );
+      }
+      const user = await UserModel.findOne(
+        { _id: userId },
+        { email: 1, isEmailVerified: 1, fullName: 1 }
+      );
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      // Combine validation checks
+      if (user.isEmailVerified) {
+        throw new ApiError(
+          400,
+          `Already exist a verified email, ${user.email.toLocaleLowerCase()}`
+        );
+      }
+
+      // Generate token with minimal data
+      const token = generateToken({
+        id: userId.toString(),
+        email: user.email || email,
+        fullName: user.fullName,
+        final_path: final_path ? final_path : "profile/posts",
+      });
+
+      if (!token) {
+        throw new ApiError(
+          500,
+          "Something went wrong while sending verification email"
+        );
+      }
+      const verificationUrl = `${process.env.API_URL}/api/v1/users/email_verify/${token}`;
+
+      // Run database update and email sending in parallel
+      await Promise.all([
+        UserModel.updateOne(
+          { _id: userId },
+          { emailToken: token, email: email }
+        ),
+        sendEmails({
+          email,
+          templateCode: "EMAIL_VERIFICATION",
+          subject: "Email Verification",
+          message: "Please verify your email address",
+          data: {
+            fullName: user.fullName,
+            url: verificationUrl,
+          },
+        }),
+      ]);
+
+      res.json(successResponse({}, "Email verification sent"));
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      console.log(error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to send email");
+    }
+  }
+
+  static async verifyEmailToken(req: express.Request, res: express.Response) {
+    const clientUrl = process.env.CLIENT_URL_DEV;
+    try {
+      const { token } = req.params;
+      // Verify token exists
+      if (!token) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=Token is required`
+        // );
+        return res.redirect(`${clientUrl}`);
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+      const verificationResult = verifyToken(token);
+      if (!verificationResult.isValid || !verificationResult.data) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     verificationResult.error || "Invalid token"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/error/verification`);
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+      // Find user with matching token
+      const user = await UserModel.findOne({
+        _id: verificationResult.data.id,
+        emailToken: token,
+      });
+      if (!user) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     "User not found or token already used"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/error/verification`);
+      }
+
+      // If already verified, redirect to success with a different message
+      if (user.isEmailVerified) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-success?message=${encodeURIComponent(
+        //     "Email already verified"
+        //   )}`
+        // );
+        return res.redirect(
+          `${clientUrl}/${verificationResult.data.final_path}`
+        );
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+
+      // Verify email matches
+      if (user.email !== verificationResult.data.email) {
+        // return res.redirect(
+        //   `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+        //     "Email mismatch"
+        //   )}`
+        // );
+        return res.redirect(`${clientUrl}/error/verification`);
+        // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      }
+      // Update user verification status
+      await UserModel.findByIdAndUpdate(user._id, {
+        isEmailVerified: true,
+        emailToken: undefined, // Clear the token
+      });
+      // const redirectUrl = `${clientUrl}/hello`;
+      // Ensure we have a valid URL to redirect to
+      // if (!redirectUrl) {
+      //   console.log("novalid url");
+      //   return res.redirect(`${clientUrl}`)
+      //   // return res.redirect(`${clientUrl}/system/_status/health_check`);
+      // }
+      // Redirect to frontend success page
+      // res.redirect(redirectUrl);
+      return res.redirect(`${clientUrl}/${verificationResult.data.final_path}`);
+      // return res.redirect(
+      //   `${redirectUrl}?message=${encodeURIComponent(
+      //     "Email verified successfully"
+      //   )}`
+      // );
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.redirect(
+        `${clientUrl}/email-verification-error?message=${encodeURIComponent(
+          "Verification failed"
+        )}`
+      );
     }
   }
 
@@ -388,9 +619,11 @@ class User {
       return res
         .status(200)
         .json(successResponse(responseData, "Profile fetched successfully"));
-    } catch (error: any) {
-      if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Error fetching profile: " + error.message);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -493,11 +726,11 @@ class User {
       return res
         .status(200)
         .json(successResponse(responseData, "Profile updated successfully"));
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new ApiError(500, "Error updating profile: " + error.message);
+      throw new ApiError(500, "Internal Server Error: Unable to create user");
     }
   }
 
@@ -556,9 +789,225 @@ class User {
     };
   }
 
+  private static async _getAllUsers(req: express.Request, res: express.Response) {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        userType = "all",
+        search = "",
+      } = req.query as GetUsersQuery;
+  
+      // Generate cache key based on query parameters
+      const cacheKey = generateCacheKey(page, userType, search);
+      
+      // Try to get page from cache
+      const cachedData = await getAllUsersFromCache(cacheKey);
+      if (cachedData) {
+        return res.status(200).json(
+          successResponse(cachedData, "Users fetched successfully (cached)")
+        );
+      }
+  
+      // If not in cache, fetch from database
+      console.log("user fetch from db of page no------>",page)
+
+      const filters: any = {
+        isActive: true,
+      };
+  
+      if (userType === "expert") {
+        filters.isExpert = true;
+      } else if (userType === "user") {
+        filters.isExpert = false;
+      }
+  
+      if (search) {
+        filters.$or = [
+          { fullName: { $regex: search, $options: "i" } },
+          { username: { $regex: search, $options: "i" } },
+        ];
+      }
+  
+      const skip = (Number(page) - 1) * Number(limit);
+  
+      const [users, totalCount] = await Promise.all([
+        UserModel.find(filters)
+          .select("fullName username isExpert mediaId profilePhotoId city country isActive")
+          .skip(skip)
+          .limit(Number(limit))
+          .lean(),
+        UserModel.countDocuments(filters),
+      ]);
+  
+      // Batch-fetch ratings for expert users
+      const expertIds = users.filter(u => u.isExpert).map(u => u._id);
+      const ratingsMap = new Map<string, { averageRating: number; totalRatings: number }>();
+      if (expertIds.length > 0) {
+        try {
+          const ratingsAgg = await ExpertFeedbackModel.aggregate([
+            { $match: { expert: { $in: expertIds } } },
+            { $group: { _id: "$expert", averageRating: { $avg: "$stars" }, totalRatings: { $sum: 1 } } },
+          ]);
+          for (const r of ratingsAgg) {
+            ratingsMap.set(r._id.toString(), { averageRating: Math.round(r.averageRating * 10) / 10, totalRatings: r.totalRatings });
+          }
+        } catch (err) {
+          console.error("Error fetching expert ratings:", err);
+        }
+      }
+
+      const usersWithPhotos = await Promise.all(
+        users.map(async (user) => {
+          let profilePhoto = null;
+
+          // Fetch profile photo if user has mediaId and profilePhotoId
+          if (user.mediaId && user.profilePhotoId) {
+            try {
+              const media = await MediaModel.findById(user.mediaId);
+              if (media) {
+                const photo = media.getPhotoById(user.profilePhotoId);
+                if (photo) {
+                  profilePhoto = {
+                    url: photo.url,
+                    thumbnail_url: photo.thumbnail_url,
+                  };
+                }
+              }
+            } catch (err) {
+              console.error('Error fetching profile photo for user:', user._id, err);
+            }
+          }
+
+          const rating = user.isExpert ? ratingsMap.get(user._id.toString()) : undefined;
+
+          return {
+            _id: user._id.toString(),
+            fullName: user.fullName,
+            username: user.username,
+            isExpert: user.isExpert,
+            profilePhoto,
+            city: user.city,
+            country: user.country || "",
+            isActive: user.isActive,
+            ...(user.isExpert && {
+              averageRating: rating?.averageRating || 0,
+              totalRatings: rating?.totalRatings || 0,
+            }),
+          };
+        })
+      );
+  
+      const totalPages = Math.ceil(totalCount / Number(limit));
+      const responseData = {
+        users: usersWithPhotos,
+        pagination: {
+          currentPage: Number(page),
+          totalPages,
+          totalUsers: totalCount,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit: Number(limit),
+        },
+      };
+  
+      // Cache the page results
+      await cacheUserList(cacheKey, {
+        users: usersWithPhotos,
+        pagination: {
+          currentPage: Number(page),
+          totalPages,
+          totalUsers: totalCount,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit: Number(limit),
+        }
+      });
+  
+      return res.status(200).json(
+        successResponse(responseData, "Users fetched successfully")
+      );
+  
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to fetch users");
+    }
+  }
+
   public static getProfile = AsyncHandler.wrap(User._getProfile);
   public static updateProfile = AsyncHandler.wrap(User._updateProfile);
   public static logout = AsyncHandler.wrap(User._logout);
+  public static verifyEmail = AsyncHandler.wrap(User._verifyEmail);
+  public static getAllUsers = AsyncHandler.wrap(User._getAllUsers);
+  
+  // Get a single user by ID - for deep linking chat URLs
+  private static async _getUserById(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const { id } = req.body;
+      
+      if (!id) {
+        throw new ApiError(400, "User ID is required");
+      }
+
+      const user = await UserModel.findById(id)
+        .select("fullName username isExpert mediaId profilePhotoId city country isActive");
+
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      // Get profile photo using the model's method
+      const profileMedia = await user.getProfileMedia();
+      
+      // Fetch rating data for experts
+      let ratingData: { averageRating: number; totalRatings: number } | undefined;
+      if (user.isExpert) {
+        try {
+          const rating = await (ExpertFeedbackModel as any).getExpertRating(user._id);
+          ratingData = {
+            averageRating: Math.round((rating?.averageRating || 0) * 10) / 10,
+            totalRatings: rating?.totalRatings || 0,
+          };
+        } catch (err) {
+          console.error("Error fetching expert rating:", err);
+        }
+      }
+
+      const userResponse = {
+        _id: (user._id as string).toString(),
+        fullName: user.fullName,
+        username: user.username,
+        isExpert: user.isExpert,
+        profilePhoto: profileMedia?.photo ? {
+          url: profileMedia.photo.url,
+          thumbnail_url: profileMedia.photo.thumbnail_url,
+        } : null,
+        city: user.city,
+        country: user.country || "",
+        isActive: user.isActive,
+        ...(user.isExpert && ratingData && {
+          averageRating: ratingData.averageRating,
+          totalRatings: ratingData.totalRatings,
+        }),
+      };
+
+      return res.status(200).json(
+        successResponse(userResponse, "User fetched successfully")
+      );
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Internal Server Error: Unable to fetch user");
+    }
+  }
+  
+  public static getUserById = AsyncHandler.wrap(User._getUserById);
 }
 
 export default User;

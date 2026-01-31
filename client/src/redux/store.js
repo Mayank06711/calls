@@ -7,6 +7,12 @@ import {
   notificationReducer,
   userInfoReducer,
   socketMetricsReducer,
+  subscriptionReducer,
+  loaderReducer,
+  subscriptionPlansReducer,
+  settingsReducer,
+  isOpenFeedbackReducer,
+  sessionReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -18,6 +24,12 @@ const store = configureStore({
     notification: notificationReducer,
     userInfo: userInfoReducer,
     socketMetrics: socketMetricsReducer,
+    subscription: subscriptionReducer, 
+    loaderState: loaderReducer,
+    plans:subscriptionPlansReducer,
+    settings:settingsReducer,
+    isOpenFeedback:isOpenFeedbackReducer,
+    sessions: sessionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

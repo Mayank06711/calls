@@ -11,6 +11,12 @@ import { CookieOptions } from "express";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
+import { SessionController } from "./sessionController";
+import {
+  generateSessionId,
+  getMaxSessionsForSubscription,
+} from "../helper/sessionLimits";
+import { AuthServices } from "../helper/auth";
 const otpLogPossibleKeys = [
   "mob_num",
   "reference_id",
@@ -187,10 +193,12 @@ class Authentication {
 
   private static async _generateOtp(req: Request, res: Response) {
     const { mobNum, isTesting } = req.body;
+
     if (typeof isTesting !== "boolean") {
-      return res
-        .status(400)
-        .json(errorResponse(400, "isTesting must be a boolean"));
+      throw new ApiError(400, "isTesting must be a boolean");
+    }
+    if (!mobNum) {
+      throw new ApiError(400, "mobile number is required.");
     }
     const formattedRecipientNumber = toE164Format(mobNum, "+91");
     if (!formattedRecipientNumber) {
@@ -270,10 +278,15 @@ class Authentication {
       // Send OTP message via Twilio
       let smsRes;
       if (!isTesting) {
-        smsRes = await SmsService.sendSMS(formattedRecipientNumber, "otp", {
-          otp_code: otp,
-          expiryAt: "10",
-        });
+        console.log(otp);
+        smsRes = await SmsService.sendSMS(
+          formattedRecipientNumber,
+          "PHONE_VERIFICATION",
+          {
+            otp_code: otp,
+            expiryAt: "10",
+          }
+        );
       } else {
         smsRes = { uuid: "1234", status: "success", message: "nothing" };
       }
@@ -422,7 +435,7 @@ class Authentication {
       if (!otpData) {
         return res
           .status(401)
-          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP"));
       }
       // Check OTP expiry
       if (Date.now() > otpData.expiry_at) {
@@ -441,13 +454,11 @@ class Authentication {
           .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
       }
 
-      // Remove OTP from Redis after successful verification
-      await RedisManager.removeDataFromGroup("otp_data", otpKey);
-      // Remove OTP request data
-      await RedisManager.removeDataFromGroup(
-        "otp_requests",
-        otpRequestCountKey
-      );
+      // NOTE: OTP is NOT deleted here. It is consumed only after session limit
+      // check passes (or for new users, after user creation). This keeps the
+      // OTP valid if SESSION_LIMIT_REACHED is returned, so the client can
+      // retry after revoking a session with the original TTL intact.
+
       // Update OTP status in the database
       if (process.env.NODE_ENV === "prod") {
         const updateQuery = {
@@ -462,20 +473,164 @@ class Authentication {
       }
       let user = await UserModel.findOne({
         phoneNumber: formattedRecipientNumber,
-      });
+      }).populate("currentSubscriptionId");
 
       if (user && user.isPhoneVerified && user.isActive) {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-        if (!refreshToken || !accessToken) {
-          throw new ApiError(
-            500,
-            "Failed to generate access or refresh token."
-          );
+        // Get subscription info for session limit check
+        const subscriptionType = (user.currentSubscriptionId as any)?.type || "free";
+        const subscriptionId = (user.currentSubscriptionId as any)?._id?.toString();
+        const userId = (user._id as any).toString();
+
+        // Acquire distributed lock to prevent race condition on session creation
+        const lockKey = `session:create:${userId}`;
+        const lockId = await RedisManager.acquireLock(lockKey, 10000); // 10 second timeout
+
+        if (!lockId) {
+          // Another login is in progress for this user
+          return res.status(429).json({
+            success: false,
+            message: "Another login is in progress. Please try again.",
+            error: "LOGIN_IN_PROGRESS",
+          });
         }
 
-        user.refreshToken = refreshToken;
-        await user.save();
+        try {
+          // Check session limit (within lock)
+          const maxSessions = getMaxSessionsForSubscription(subscriptionType);
+          const activeSessionCount = await RedisManager.getActiveSessionCount(userId);
+
+          if (activeSessionCount >= maxSessions) {
+            // Release lock before returning
+            await RedisManager.releaseLock(lockKey, lockId);
+
+            // OTP is intentionally NOT consumed here — it stays in Redis with
+            // its original TTL so the client can call verifyOtp again after
+            // revoking a session from the SessionLimitModal.
+
+            // Session limit reached - return 403 with active sessions info and partial token
+            const activeSessions = await RedisManager.getAllSessionsData(userId);
+
+            // Generate partial token for session management
+            // Include standard claims for middleware validation
+            const partialPayload = {
+              _id: user._id,
+              email: user.email,
+              username: user.username,
+              isPartial: true,
+              iss: "KYF",
+              aud: "kyf-api",
+              iat: Math.floor(Date.now() / 1000),
+              exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
+            };
+            const partialToken = await AuthServices.genJWT_Token(
+              partialPayload,
+              process.env.ACCESS_TOKEN_SECRET!,
+              "1h"
+            );
+
+            return res.status(403).json({
+              success: false,
+              message: "Session limit reached",
+              error: "SESSION_LIMIT_REACHED",
+              data: {
+                maxAllowed: maxSessions,
+                currentCount: activeSessionCount,
+                subscriptionType,
+                partialToken, // Token for revocation
+                activeSessions: activeSessions.map((s) => ({
+                  sessionId: s.sessionId,
+                  device: s.metadata?.device || "Unknown",
+                  deviceType: s.metadata?.deviceType || "unknown",
+                  platform: s.metadata?.platform || "unknown",
+                  browser: s.metadata?.browser || "unknown",
+                  ip: s.metadata?.ip || "unknown",
+                  createdAt: s.metadata?.createdAt,
+                  lastActiveAt: s.activity?.lastActiveAt,
+                })),
+              },
+            });
+          }
+
+        // Session limit passed — consume the OTP now
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+
+        // Generate new sessionId for this login
+        const sessionId = generateSessionId();
+
+        const accessToken = user.generateAccessToken(
+          sessionId,
+          subscriptionId,
+          subscriptionType
+        );
+        const refreshToken = user.generateRefreshToken(
+          sessionId,
+          subscriptionId,
+          subscriptionType
+        );
+        if (!accessToken && !refreshToken) {
+          throw new ApiError(500, "Failed to generate both access and refresh tokens.");
+        } else if (!accessToken) {
+          throw new ApiError(500, "Failed to generate access token.");
+        } else if (!refreshToken) {
+          throw new ApiError(500, "Failed to generate refresh token.");
+        }
+
+
+        // Extract device info from request
+        const userAgent = req.headers["user-agent"] || "";
+        const ip =
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          "unknown";
+
+        // Add session to Redis
+        await RedisManager.addActiveSession(userId, sessionId, {
+          device: userAgent.substring(0, 100),
+          deviceType: req.isMobileApp ? "mobile" : "desktop",
+          platform: userAgent.includes("Windows")
+            ? "windows"
+            : userAgent.includes("Mac")
+            ? "macos"
+            : userAgent.includes("Linux")
+            ? "linux"
+            : userAgent.includes("Android")
+            ? "android"
+            : userAgent.includes("iPhone")
+            ? "ios"
+            : "unknown",
+          browser: userAgent.includes("Chrome")
+            ? "chrome"
+            : userAgent.includes("Firefox")
+            ? "firefox"
+            : userAgent.includes("Safari")
+            ? "safari"
+            : userAgent.includes("Edge")
+            ? "edge"
+            : "unknown",
+          ip,
+        });
+
+        // Create session record for this login (MongoDB) — stores refresh token per-session
+        await SessionController.createSession(
+          userId,
+          {
+            userAgent: userAgent || "unknown",
+            ip,
+            customHeaders: {
+              platform: req.headers["x-platform"] as string,
+              deviceModel: req.headers["x-device-model"] as string,
+              deviceBrand: req.headers["x-device-brand"] as string,
+              appVersion: req.headers["x-app-version"] as string,
+            },
+          },
+          sessionId,
+          refreshToken,
+          "otp"
+        );
+
+        // Release the lock after session is created
+        await RedisManager.releaseLock(lockKey, lockId);
 
         const response = {
           referenceId: referenceId,
@@ -483,6 +638,7 @@ class Authentication {
           userId: user._id,
           isAlreadyVerified: true,
           token: accessToken,
+          fullName: user.fullName,
         };
 
         // Handle successful verification (skip OTP validation as user is already verified)
@@ -499,13 +655,18 @@ class Authentication {
           .cookie("accessToken", accessToken, Authentication.options)
           .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
           .json(successResponse(response, "OTP Verified Successfully"));
+        } catch (error) {
+          // Release lock on error
+          await RedisManager.releaseLock(lockKey, lockId);
+          throw error;
+        }
       }
 
       // If the user doesn't exist or is not verified, proceed with OTP verification process
       if (!user) {
         user = await UserModel.create({
           phoneNumber: formattedRecipientNumber,
-          username: formattedRecipientNumber,
+          username: `user_${uuidv4().split("-")[0]}`,
           password: formattedRecipientNumber,
           isPhoneVerified: true,
           refreshToken: "",
@@ -521,14 +682,80 @@ class Authentication {
         user.isPhoneVerified = true;
         user.isActive = true;
       }
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
+
+      // New/unverified user — consume the OTP now
+      await RedisManager.removeDataFromGroup("otp_data", otpKey);
+      await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+
+      // New users default to "free" subscription
+      const newUserSessionId = generateSessionId();
+      const newUserId = (user._id as any).toString();
+
+      const accessToken = user.generateAccessToken(
+        newUserSessionId,
+        undefined,
+        "free"
+      );
+      const refreshToken = user.generateRefreshToken(
+        newUserSessionId,
+        undefined,
+        "free"
+      );
       if (!refreshToken || !accessToken) {
         throw new ApiError(500, "Failed to generate access or refresh token.");
       }
 
-      user.refreshToken = refreshToken;
-      await user.save();
+      // Extract device info from request
+      const newUserAgent = req.headers["user-agent"] || "";
+      const newIp =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        "unknown";
+
+      // Add session to Redis for new user
+      await RedisManager.addActiveSession(newUserId, newUserSessionId, {
+        device: newUserAgent.substring(0, 100),
+        deviceType: req.isMobileApp ? "mobile" : "desktop",
+        platform: newUserAgent.includes("Windows")
+          ? "windows"
+          : newUserAgent.includes("Mac")
+          ? "macos"
+          : newUserAgent.includes("Linux")
+          ? "linux"
+          : newUserAgent.includes("Android")
+          ? "android"
+          : newUserAgent.includes("iPhone")
+          ? "ios"
+          : "unknown",
+        browser: newUserAgent.includes("Chrome")
+          ? "chrome"
+          : newUserAgent.includes("Firefox")
+          ? "firefox"
+          : newUserAgent.includes("Safari")
+          ? "safari"
+          : newUserAgent.includes("Edge")
+          ? "edge"
+          : "unknown",
+        ip: newIp,
+      });
+
+      // Create session record for this login (MongoDB) — stores refresh token per-session
+      await SessionController.createSession(
+        newUserId,
+        {
+          userAgent: newUserAgent || "unknown",
+          ip: newIp,
+          customHeaders: {
+            platform: req.headers["x-platform"] as string,
+            deviceModel: req.headers["x-device-model"] as string,
+            deviceBrand: req.headers["x-device-brand"] as string,
+            appVersion: req.headers["x-app-version"] as string,
+          },
+        },
+        newUserSessionId,
+        refreshToken,
+        "otp"
+      );
 
       const response = {
         referenceId: referenceId,
@@ -536,6 +763,7 @@ class Authentication {
         userId: user._id,
         isAlreadyVerified: false,
         token: accessToken,
+        fullName: user.fullName,
       };
 
       // Handle successful verification

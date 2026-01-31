@@ -17,8 +17,11 @@ import {
   otpVerificationSuccess,
   resetTimer,
   setTimerActive,
+  showSessionLimit,
 } from "../actions/auth.actions";
-import { authenticateSocket } from "../../socket/authentication";
+// import { ensureSocketAuthenticated } from "../../socket/authentication";
+import { fetchUserInfoThunk } from "./userInfo.thunks";
+import { initializeSettingsThunk } from "./settings.thunk";
 
 export const generateOtpThunk = (mobileNumber) => async (dispatch) => {
   try {
@@ -78,28 +81,50 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       ENDPOINTS.AUTH.VERIFY_OTP,
       verificationData
     );
+
     if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed, // changed from maxSessions to match controller
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          mobNum: verificationData.mobNum,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData 
+        }));
+        // Don't mark as failure yet, let user decide
+         dispatch(otpVerificationFailure(false)); 
+         // Optional: Hide notification if modal is shown
+         // dispatch(showNotification(error.message, error.statusCode));
+        return;
+      }
+
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification(error.message, error.statusCode));
       return;
     }
     if (data.success) {
-      const { userId, isAlreadyVerified, token } = data.data;
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      // Store token in localStorage BEFORE dispatching setUserId to Redux.
+      // SocketContext reacts to userId and immediately connects + authenticates
+      // the socket, which reads the token from localStorage via getAccessToken().
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
+      dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
       dispatch(setAlreadyVerified(isAlreadyVerified));
-
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("token", token);
-      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
-
-      // Authenticate socket connection
-      try {
-        await authenticateSocket(token);
-      } catch (socketError) {
-        console.error("Socket authentication failed:", socketError);
-        // Optionally show a notification but don't fail the login
+      if(isAlreadyVerified){
+        dispatch(fetchUserInfoThunk());
       }
+
+      console.log("[verifyOtpThunk] Set userId, token, isAlreadyVerified, fullName:", userId, token, isAlreadyVerified, fullName);
 
       dispatch(
         showNotification(
@@ -107,6 +132,10 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
           statusCode
         )
       );
+
+      // Socket connection/authentication is now handled by SocketContext
+      // No direct socket logic here
+
     } else {
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification("Invalid OTP", statusCode || 400));
@@ -120,19 +149,48 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
 };
 
 export const logoutThunk = () => async (dispatch) => {
+  dispatch({ type: 'LOGOUT_REQUEST' });
   try {
-    // Clear local storage
-    localStorage.removeItem("userId");
-    localStorage.removeItem("mobNum");
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAlreadyVerified");
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.USERS.LOGOUT
+    );
+ 
+    if (error) {
+      dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      // Clear local storage
+      localStorage.removeItem("userId");
+      localStorage.removeItem("mobNum");
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAlreadyVerified");
+      localStorage.removeItem("isEmailVerified"); 
+      localStorage.removeItem("isTourCompleted");
+      // add more
 
-    // Clear Redux state
-    dispatch(clearUserId());
+      console.log("[logoutThunk] Cleared userId, token, and related keys from localStorage");
 
-    dispatch(showNotification("Logged out successfully", 200));
+      // Clear Redux state
+      dispatch({ type: 'LOGOUT_SUCCESS' });
+      dispatch(clearUserId());
+      dispatch(showNotification("Logged out successfully", statusCode));
+
+      // Redirect to login page
+      window.location.href = '/login';
+      // Socket disconnect is now handled by SocketContext
+    } else {
+      dispatch({ type: 'LOGOUT_FAILURE', payload: 'Logout failed' });
+      dispatch(showNotification("Logout failed", statusCode || 400));
+    }
   } catch (error) {
     console.error("Error during logout:", error);
-    dispatch(showNotification("Error during logout", 400));
+    dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
+    dispatch(showNotification(
+      "Unable to connect to server. Please check your internet connection.",
+      500
+    ));
   }
 };

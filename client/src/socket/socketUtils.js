@@ -9,8 +9,8 @@ export const withRetry = (handler, options = {}) => {
     maxRetries = 3,
     delay = 1000,
     exponential = true,
-    onRetry = (attempt) => console.log(`Retry attempt ${attempt}`),
-    shouldRetry = (error) => true, // Default retry on all errors
+    onRetry = (attempt) => console.log(`[withRetry] Retry attempt ${attempt}`),
+    shouldRetry = () => true, // Default retry on all errors
   } = options;
 
   return async (...args) => {
@@ -18,14 +18,17 @@ export const withRetry = (handler, options = {}) => {
 
     while (attempt < maxRetries) {
       try {
+        if (attempt > 0) {
+          console.log(`[withRetry] Attempt ${attempt + 1} of ${maxRetries}`);
+        }
         return await handler(...args);
       } catch (error) {
         attempt++;
-
+        console.log(`[withRetry] Error on attempt ${attempt}:`, error);
         if (attempt === maxRetries || !shouldRetry(error)) {
+          console.log(`[withRetry] Giving up after ${attempt} attempts.`);
           throw error;
         }
-
         const waitTime = exponential ? delay * Math.pow(2, attempt - 1) : delay;
         onRetry(attempt, error);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
@@ -40,14 +43,11 @@ export const withRetry = (handler, options = {}) => {
  * @param {Object} config - Event configuration
  * @returns {Promise} - Event response
  */
-// Update the emitEvent function to include response validation
-// ... existing code ...
-
 export const emitEvent = (
   socket,
   {
     event,
-    data = {},
+    data = {}, // it could be  a funtion also which return the data/payload it is important to protect retrying with old values
     room = null,
     broadcast = false,
     timeout = 5000,
@@ -63,86 +63,81 @@ export const emitEvent = (
         const { onBefore, onSuccess, onError, onTimeout } = handlers;
 
         onBefore?.();
+        const payload = typeof data === 'function' ? data() : data;
+        console.log(`[emitEvent] Emitting event '${event}' with data:`, payload, 'acknowledgment:', acknowledgment);
 
         const emitFunction = () => {
           if (acknowledgment) {
             // Handle room and broadcast options
-            if (room && broadcast) {
-              socket.broadcast.to(room).emit(event, data, (response) => {
-                try {
-                  if (validateResponse && !validateResponse(response)) {
-                    const error = new Error("Invalid response received");
-                    onError?.(error);
-                    reject(error);
-                    return;
+            const handleResponse = (response) => {
+              try {
+                console.log(`[emitEvent] Received response for event '${event}':`, response);
+                if (validateResponse && !validateResponse(response)) {
+                  const error = new Error("Invalid response received");
+                  error.response = response; // Attach the original response so we can use it 
+                  console.log(`[emitEvent] Response failed validation for event '${event}'. Calling onError handler.`);
+                  if (onError) {
+                    // If onError throws or returns a rejected promise, propagate that error up to the retry loop
+                    try {
+                      const maybePromise = onError(error);
+                      if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise.then(() => {
+                          // If onError resolves, reject with the original error
+                          reject(error);
+                        }).catch((err) => {
+                          // If onError rejects/throws, propagate that error (e.g., SOCKET_REAUTHENTICATE)
+                          reject(err || error);
+                        });
+                        return;
+                      }
+                    } catch (err) {
+                      // If onError throws synchronously, propagate that error
+                      reject(err || error);
+                      return;
+                    }
                   }
-                  onSuccess?.(response);
-                  resolve(response);
-                } catch (error) {
-                  onError?.(error);
+                  // If no onError or it doesn't throw, reject with the original error
                   reject(error);
+                  return;
                 }
+                onSuccess?.(response);
+                resolve(response);
+              } catch (error) {
+                console.log(`[emitEvent] Exception in handleResponse for event '${event}':`, error);
+                onError?.(error);
+                reject(error);
+              }
+            };
+            // Always get the latest data if data is a function
+            const getPayload = () => (typeof data === 'function' ? data() : data);
+            if (room && broadcast) {
+              socket.broadcast.to(room).emit(event, getPayload(), (response) => {
+                handleResponse(response);
               });
             } else if (room) {
-              socket.to(room).emit(event, data, (response) => {
-                try {
-                  if (validateResponse && !validateResponse(response)) {
-                    const error = new Error("Invalid response received");
-                    onError?.(error);
-                    reject(error);
-                    return;
-                  }
-                  onSuccess?.(response);
-                  resolve(response);
-                } catch (error) {
-                  onError?.(error);
-                  reject(error);
-                }
+              socket.to(room).emit(event, getPayload(), (response) => {
+                handleResponse(response);
               });
             } else if (broadcast) {
-              socket.broadcast.emit(event, data, (response) => {
-                try {
-                  if (validateResponse && !validateResponse(response)) {
-                    const error = new Error("Invalid response received");
-                    onError?.(error);
-                    reject(error);
-                    return;
-                  }
-                  onSuccess?.(response);
-                  resolve(response);
-                } catch (error) {
-                  onError?.(error);
-                  reject(error);
-                }
+              socket.broadcast.emit(event, getPayload(), (response) => {
+                handleResponse(response);
               });
             } else {
-              socket.emit(event, data, (response) => {
-                try {
-                  console.log(socket.connected, event, data, !validateResponse(response), validateResponse)
-                  if (validateResponse && !validateResponse(response)) {
-                    const error = new Error("Invalid response received");
-                    onError?.(error);
-                    reject(error);
-                    return;
-                  }
-                  onSuccess?.(response);
-                  resolve(response);
-                } catch (error) {
-                  onError?.(error);
-                  reject(error);
-                }
+              socket.emit(event, getPayload(), (response) => {
+                handleResponse(response);
               });
             }
           } else {
             // Handle non-acknowledgment emits
+            const getPayload = () => (typeof data === 'function' ? data() : data);
             if (room && broadcast) {
-              socket.broadcast.to(room).emit(event, data);
+              socket.broadcast.to(room).emit(event, getPayload());
             } else if (room) {
-              socket.to(room).emit(event, data);
+              socket.to(room).emit(event, getPayload());
             } else if (broadcast) {
-              socket.broadcast.emit(event, data);
+              socket.broadcast.emit(event, getPayload());
             } else {
-              socket.emit(event, data);
+              socket.emit(event, getPayload());
             }
             resolve();
           }
@@ -154,6 +149,7 @@ export const emitEvent = (
             const timeoutError = new Error(
               `Event ${event} timed out after ${timeout}ms`
             );
+            console.log(`[emitEvent] Timeout for event '${event}' after ${timeout}ms`);
             onTimeout?.(timeoutError);
             reject(timeoutError);
           }, timeout);
@@ -168,6 +164,7 @@ export const emitEvent = (
 
         emitFunction();
       } catch (error) {
+        console.log(`[emitEvent] Exception in emitHandler for event '${event}':`, error);
         handlers.onError?.(error);
         reject(error);
       }
@@ -176,6 +173,7 @@ export const emitEvent = (
 
   // Handle retries if specified
   if (retryOptions) {
+    console.log(`[emitEvent] Using retry logic for event '${event}'`);
     return withRetry(emitHandler, retryOptions)();
   }
 

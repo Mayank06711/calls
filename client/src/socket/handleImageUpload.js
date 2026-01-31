@@ -1,32 +1,54 @@
 import { SocketManager } from "./config";
-import { emitEvent } from "./socketUtils";
 import { SOCKET_CONSTANTS } from "../constants/socketContanst";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
-import { ensureSocketAuthenticated } from "./authentication";
+import { ensureSocketAuthenticated, isSocketAuthenticated } from "./authentication";
 
-const validateFile = (file) => {
+// Type-specific validation rules
+const UPLOAD_RULES = {
+  avatar: {
+    allowedTypes: ["image/jpeg", "image/png", "image/jpg", "image/gif", "image/webp"],
+    maxSize: 5 * 1024 * 1024, // 5MB
+    label: "image (JPEG, PNG, GIF, WebP)",
+    folder: "avatars",
+  },
+  chat: {
+    allowedTypes: [
+      "image/jpeg", "image/png", "image/jpg", "image/gif", "image/webp",
+      "video/mp4", "video/webm", "video/quicktime",
+    ],
+    maxSize: 5 * 1024 * 1024, // 5MB
+    label: "image or video (JPEG, PNG, GIF, WebP, MP4, WebM, MOV)",
+    folder: "chat_images",
+  },
+  reel: {
+    allowedTypes: ["video/mp4", "video/webm", "video/quicktime"],
+    maxSize: 8 * 1024 * 1024, // 8MB
+    label: "video (MP4, WebM, MOV)",
+    folder: "reels",
+  },
+};
+
+const validateFile = (file, type) => {
+  const rules = UPLOAD_RULES[type];
+  if (!rules) {
+    throw new Error(`Unknown upload type: ${type}`);
+  }
+
   console.log("Validating file:", {
     type: file.type,
     size: file.size,
     name: file.name,
+    uploadType: type,
   });
 
-  const validTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/jpg",
-    "image/gif",
-    "image/webp",
-  ];
-  const maxSize = 5 * 1024 * 1024; // 5MB
-
-  if (!validTypes.includes(file.type)) {
-    throw new Error("Please upload a valid image file (JPEG, PNG, GIF, WebP)");
+  if (!rules.allowedTypes.includes(file.type)) {
+    throw new Error(`Please upload a valid ${rules.label}`);
   }
 
-  if (file.size > maxSize) {
-    throw new Error("File size should not exceed 5MB");
+  const maxMB = rules.maxSize / (1024 * 1024);
+  if (file.size > rules.maxSize) {
+    throw new Error(`File size should not exceed ${maxMB}MB`);
   }
 
   console.log("File validation passed");
@@ -40,13 +62,11 @@ const convertToBuffer = (file) => {
     reader.readAsArrayBuffer(file);
 
     reader.onload = () => {
-      // Convert ArrayBuffer to Uint8Array
       const arrayBuffer = reader.result;
       const uint8Array = new Uint8Array(arrayBuffer);
       console.log(
         "Buffer conversion successful, length:",
-        uint8Array.length,
-        uint8Array
+        uint8Array.length
       );
       resolve(uint8Array);
     };
@@ -58,92 +78,115 @@ const convertToBuffer = (file) => {
   });
 };
 
-export const uploadImage = async (file, onProgress = () => {}) => {
-  console.log("Starting image upload process for:", file.name);
+/**
+ * Upload a file via socket.
+ *
+ * Supports two call signatures for backward compatibility:
+ *   1. uploadImage(file, onProgress)          — legacy avatar upload
+ *   2. uploadImage({ file, type, onProgress, metadata }) — new unified upload
+ *
+ * @param {File|Object} fileOrOptions - A File (legacy) or options object
+ * @param {Function}    [onProgressLegacy] - Progress callback (legacy signature only)
+ */
+export const uploadImage = async (fileOrOptions, onProgressLegacy) => {
+  // Normalise arguments: support both legacy (file, onProgress) and new ({ file, type, ... }) signatures
+  let file, type, onProgress, metadata;
+
+  if (fileOrOptions instanceof File) {
+    // Legacy call: uploadImage(file, onProgress) — defaults to avatar
+    file = fileOrOptions;
+    type = "avatar";
+    onProgress = onProgressLegacy || (() => {});
+    metadata = { uploadType: "cloudinary", folder: "avatars" };
+  } else {
+    // New call: uploadImage({ file, type, onProgress, metadata })
+    file = fileOrOptions.file;
+    type = fileOrOptions.type || "avatar";
+    onProgress = fileOrOptions.onProgress || (() => {});
+    metadata = fileOrOptions.metadata || { uploadType: "cloudinary", folder: UPLOAD_RULES[type]?.folder || "uploads" };
+  }
+
+  console.log(`Starting ${type} upload for: ${file.name}`);
   const socket = SocketManager.getSocket(false, true);
 
   try {
     // Ensure socket is connected and authenticated
-    // Ensure socket is connected
     if (!SocketManager.isSocketConnected()) {
       socket.connect();
     }
-    // Check and ensure authentication before proceeding
-    await ensureSocketAuthenticated();
+    if (!isSocketAuthenticated()) {
+      await ensureSocketAuthenticated();
+    }
 
-    validateFile(file);
+    validateFile(file, type);
     const fileBuffer = await convertToBuffer(file);
 
-    // Handle single upload at a time instead of parallel uploads
-    const uploadFile = async (fileData) => {
-      console.log("upload file with file data", fileData);
-      return new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          cleanup();
-          reject(new Error("Upload timed out"));
-        }, 300000);
+    const result = await new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error("Upload timed out"));
+      }, 300000); // 5 minutes
 
-        const cleanup = () => {
-          console.log("clean up starting");
-          socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_RESPONSE);
-          socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_ERROR);
-          socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_START);
-          socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_SUCCESS);
-          clearTimeout(timeoutId);
-        };
+      // Disconnect listener — reject if socket drops mid-upload
+      const onDisconnect = (reason) => {
+        console.error(`Socket disconnected during ${type} upload:`, reason);
+        cleanup();
+        reject(new Error("Connection lost during upload. Please try again."));
+      };
 
-        // Setup event listeners
-        socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_START, (data) => {
-          console.log(`${fileData.type} upload started:`, data);
-          onProgress(10);
-        });
+      const cleanup = () => {
+        console.log("Cleaning up upload listeners");
+        socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_RESPONSE);
+        socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_ERROR);
+        socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_START);
+        socket.off(SOCKET_CONSTANTS.FILE.UPLOAD_SUCCESS);
+        socket.off(SOCKET_CONSTANTS.CONNECTION.DISCONNECT, onDisconnect);
+        clearTimeout(timeoutId);
+      };
 
-        socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_SUCCESS, (response) => {
-          console.log(`${fileData.type} upload response:`, response);
-          if (response.status === "success") {
-            onProgress(100);
-            cleanup();
-            console.log("upload response", resolve);
-            resolve(response);
-          } else {
-            cleanup();
-            reject(new Error(response.message || "Upload failed"));
-          }
-        });
+      // Listen for disconnect during upload
+      socket.on(SOCKET_CONSTANTS.CONNECTION.DISCONNECT, onDisconnect);
 
-        socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_ERROR, (error) => {
-          console.error(`${fileData.type} upload error:`, error);
-          cleanup();
-          reject(new Error(error.message || "Upload failed"));
-        });
-
-        // Emit the upload event
-        const uploadData = {
-          file: fileBuffer,
-          fileName: file.name,
-          fileType: file.type,
-          size: file.size,
-          type: fileData.type,
-          metadata: fileData.metadata,
-        };
-
-        console.log(
-          `Emitting file upload event for ${fileData.type}, ${socket.connected}, ${socket.id}`
-        );
-        socket.emit("file:upload", uploadData);
+      // Setup event listeners
+      socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_START, (data) => {
+        console.log(`${type} upload started:`, data);
+        onProgress(10);
       });
-    };
 
-    // Upload avatar first, then chat file if needed
-    const avatarData = {
-      type: "avatar",
-      metadata: {
-        uploadType: "cloudinary",
-        folder: "avatars",
-      },
-    };
+      socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_SUCCESS, (response) => {
+        console.log(`${type} upload success:`, response);
+        if (response.status === "success") {
+          onProgress(100);
+          cleanup();
+          resolve(response);
+        } else {
+          cleanup();
+          reject(new Error(response.message || "Upload failed"));
+        }
+      });
 
-    const result = await uploadFile(avatarData);
+      socket.on(SOCKET_CONSTANTS.FILE.UPLOAD_ERROR, (error) => {
+        console.error(`${type} upload error:`, error);
+        cleanup();
+        reject(new Error(error.message || "Upload failed"));
+      });
+
+      // Emit the upload event
+      const uploadData = {
+        file: fileBuffer,
+        fileName: file.name,
+        fileType: file.type,
+        size: file.size,
+        type,
+        metadata,
+      };
+
+      console.log(
+        `Emitting file upload event for ${type}, connected: ${socket.connected}, id: ${socket.id}`
+      );
+      socket.emit("file:upload", uploadData);
+    });
+
     return result;
   } catch (error) {
     console.error("Upload process error:", error);
@@ -151,5 +194,3 @@ export const uploadImage = async (file, onProgress = () => {}) => {
     throw error;
   }
 };
-
-

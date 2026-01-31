@@ -1,37 +1,62 @@
 import peerConfiguration from "./stunServers";
 
-const createPeerConnection = (addIce) => {
-  return new Promise(async (resolve, reject) => {
-    const peerConnection = await new RTCPeerConnection(peerConfiguration);
-    //rtcPeerConnection is the connection to the peer.
-    //we may need more than one this time!!
-    //we pass it the config object, which is just stun servers
-    //it will get us ICE candidates
-    const remoteStream = new MediaStream();
-    peerConnection.addEventListener("signalingstatechange", (e) => {
-      console.log("Signaling State Change");
-      console.log(e);
-    });
+const createPeerConnection = (addIce, onConnectionStateChange) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const peerConnection = new RTCPeerConnection(peerConfiguration);
+      const remoteStream = new MediaStream();
 
-    peerConnection.addEventListener("icecandidate", (e) => {
-      console.log("Found ice candidate...");
-      if (e.candidate) {
-        addIce(e.candidate);
-      }
-    });
-
-    peerConnection.addEventListener("track", (e) => {
-      console.log("Got a track from the remote!");
-      e.streams[0].getTracks().forEach((track) => {
-        remoteStream.addTrack(track, remoteStream);
-        console.log("Fingers crossed...");
+      peerConnection.addEventListener("signalingstatechange", () => {
+        console.log("[WebRTC] Signaling state:", peerConnection.signalingState);
       });
-    });
 
-    resolve({
-      peerConnection,
-      remoteStream,
-    });
+      peerConnection.addEventListener("icecandidate", (e) => {
+        if (e.candidate) {
+          console.log("[WebRTC] Found ICE candidate");
+          addIce(e.candidate);
+        }
+      });
+
+      peerConnection.addEventListener("iceconnectionstatechange", () => {
+        const state = peerConnection.iceConnectionState;
+        console.log("[WebRTC] ICE connection state:", state);
+
+        if (state === "failed") {
+          console.log("[WebRTC] ICE failed — attempting restart");
+          peerConnection.restartIce();
+        }
+      });
+
+      peerConnection.addEventListener("connectionstatechange", () => {
+        const state = peerConnection.connectionState;
+        console.log("[WebRTC] Connection state:", state);
+        if (onConnectionStateChange) {
+          onConnectionStateChange(state);
+        }
+      });
+
+      peerConnection.addEventListener("icegatheringstatechange", () => {
+        console.log(
+          "[WebRTC] ICE gathering state:",
+          peerConnection.iceGatheringState
+        );
+      });
+
+      peerConnection.addEventListener("track", (e) => {
+        console.log("[WebRTC] Got remote track:", e.track.kind);
+        e.streams[0].getTracks().forEach((track) => {
+          remoteStream.addTrack(track);
+        });
+      });
+
+      resolve({
+        peerConnection,
+        remoteStream,
+      });
+    } catch (err) {
+      console.error("[WebRTC] Failed to create peer connection:", err);
+      reject(err);
+    }
   });
 };
 

@@ -12,12 +12,32 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
   
+  const isLanMode = mode === 'lan';
+  const backendTarget = isLanMode ? 'http://127.0.0.1:5005' : 'https://knowyourfashion.in';
+
+  // Build proxy config
+  const proxy = {
+    "/api": {
+      target: backendTarget,
+      changeOrigin: true,
+      secure: false,
+    },
+  };
+
+  // In LAN mode, also proxy Socket.IO through Vite (avoids mixed-content / cert issues)
+  if (isLanMode) {
+    proxy["/socket.io"] = {
+      target: backendTarget,
+      changeOrigin: true,
+      secure: false,
+      ws: true,
+    };
+  }
+
   return {
     plugins: [react()],
     server: {
-      proxy:{
-        "/api":"https://knowyourfashion.in"
-      },
+      proxy,
       https: env.USE_HTTPS === 'true'
         ? {
             key: fs.readFileSync(path.resolve(__dirname, "./cert/key.pem")),

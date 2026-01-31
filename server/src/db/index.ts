@@ -98,8 +98,15 @@ const dbMultipleQuery = async (queries: Query[]) => {
 
 const connectDB = async () => {
   try {
+    const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 30 * 1000,
+      socketTimeoutMS: 45 * 1000,
+    };
     const connectionInstance = await mongoose.connect(
-      `${process.env.MONGO_URI}`
+      `${process.env.MONGO_URI}`,
+      options
     );
     console.log(
       ` SEE me in src db index.js IF you Forgot
@@ -114,38 +121,42 @@ const connectDB = async () => {
   }
 };
 
+const disconnectDB = async () => {
+  try {
+    await checkHealth();
+    await mongoose.disconnect();
+    console.log("MongoDB connection closed successfully");
+  } catch (error) {
+    console.error("Error while disconnecting from MongoDB:", error);
+    throw error;
+  }
+};
 // Function to check health status
 const checkHealth = async () => {
   try {
-    // Check application status
-    const appStatus = "Application is running"; // You can enhance this with more checks if needed
-
     const readyStateOfDB = mongoose.connection.readyState;
-
+    const timestamp = new Date().toISOString();
     // Ensure the connection is established
     if (readyStateOfDB === 0) {
-      console.error(`${new Date().toISOString()} - Database disconnected.`);
+      console.error(`${timestamp} - Database disconnected.`);
       return false;
     } else if (readyStateOfDB === 2) {
-      console.log(`${new Date().toISOString()} - Database connecting...`);
+      console.log(`${timestamp} - Database connecting...`);
       return false; // The connection is still in the process of connecting
     } else if (readyStateOfDB === 1) {
-      console.log(`${new Date().toISOString()} - Database connected.`);
+      console.log(`${timestamp} - Database connected.`);
     }
 
-    // Check database connection status
+    // Perform ping test if connected
     if (mongoose.connection.db) {
-      const dbConnection = await mongoose.connection.db.admin().ping(); // For Mongoose
-
-      console.log(`${new Date().toISOString()} - ${appStatus}`);
+      const pingResult = await mongoose.connection.db.admin().ping(); // For Mongoose
+      const isHealthy = pingResult.ok === 1;
       console.log(
-        `${new Date().toISOString()} - Database connection status: ${
-          dbConnection.ok ? "OK" : "FAILED"
-        }`
+        `${timestamp} - Database ping test: ${isHealthy ? "SUCCESS" : "FAILED"}`
       );
-      return dbConnection.ok; // return true if connection is OK
+      return isHealthy;
     } else {
-      console.error(`${new Date().toISOString()} - Database is not ready.`);
+      console.error(`${timestamp} - Database is not ready.`);
       return false; // Database is not ready, return false
     }
   } catch (error) {
@@ -154,7 +165,7 @@ const checkHealth = async () => {
   }
 };
 
-const configureCloudinary =(): void => {
+const configureCloudinary = (): void => {
   if (isConfigured) {
     console.log("Cloudinary already configured");
     return;
@@ -188,7 +199,7 @@ const configureCloudinary =(): void => {
 
   isConfigured = true;
   console.log("Cloudinary configured successfully");
-}
+};
 
 const getCloudinary = () => {
   if (!isConfigured) {
@@ -197,14 +208,15 @@ const getCloudinary = () => {
     );
   }
   return cloudinary;
-}
+};
 
 export {
   checkHealth,
   connectDB,
+  disconnectDB,
   dbQuery,
   dbQueryWithTransaction,
   dbMultipleQuery,
   getCloudinary,
-  configureCloudinary
+  configureCloudinary,
 };

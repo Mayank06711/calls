@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Template, Templates } from "../interface/interface";
 
 /**
  * Get a template by ID.
@@ -7,32 +8,34 @@ import path from "path";
  * @param {string} templateId - The ID of the template to retrieve.
  * @returns {{ template_id: string; subject?: string; body: string } | null} The template object or null if not found.
  */
-const getTemplate = (
-  templateId: string
-): { template_id: string; subject?: string; body: string } | null => {
-  let templates: {
-    [key: string]: { template_id: string; subject?: string; body: string };
-  } = {};
 
+const getTemplate = (templateId: string): Template | null => {
   try {
-    // Get the absolute path to the templates.json file in the utils folder
-    const templatesPath = path.resolve(__dirname, "../templates.json"); // Relative path from 'utils' to 'templates.json'
-
-    // Load the templates from the JSON file
+    const templatesPath = path.resolve(__dirname, "../templates.json");
     const fileContent = fs.readFileSync(templatesPath, "utf-8");
-    templates = JSON.parse(fileContent).templates || {};
+    const templates: Templates = JSON.parse(fileContent).templates || {};
 
-    // Return the template by ID
-    if (templates[templateId]) {
-      return templates[templateId];
-    } else {
+    const template = templates[templateId];
+    if (!template) {
       console.error(`Template with ID "${templateId}" not found.`);
-      return null; // Template not found
+      return null;
     }
+
+    return template;
   } catch (error) {
     console.error("Error loading templates:", error);
-    return null; // Return null if there's an error reading the file or parsing JSON
+    return null;
   }
 };
 
-export { getTemplate };
+const replaceTemplateVariables = (
+  content: string,
+  variables: Record<string, any>
+) => {
+  return Object.entries(variables).reduce((text, [key, value]) => {
+    const stringValue = String(value ?? ""); // Convert to string, use empty string if null/undefined
+    return text.replace(new RegExp(`{{${key}}}`, "g"), stringValue);
+  }, content);
+};
+
+export { getTemplate, replaceTemplateVariables };

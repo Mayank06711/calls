@@ -24,6 +24,7 @@ const UserSchema: Schema<IUser> = new Schema(
         message: "Email cannot be null or empty",
       },
     },
+    emailToken:{type:String},
     phoneNumber: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     gender: {
@@ -64,8 +65,9 @@ const UserSchema: Schema<IUser> = new Schema(
         return this.isMFAEnabled; // MFASecretKey is required if MFA is enabled
       },
     },
-    isActive: { type: Boolean, default: false }, // user's active status. Default is true.
+    isActive: { type: Boolean, default: true }, // user's active status. Default is true., false when deleted.
     isAdmin: { type: Boolean, default: false }, // Whether or not the user is an admin
+    isBlockedByAdmin: {type:Boolean, default:false},
     isExpert: { type: Boolean, default: false }, // Whether or not the user is an expert
   },
   { timestamps: true }
@@ -123,20 +125,30 @@ UserSchema.pre<IUser>("save", async function (next) {
 
 // Instance Methods
 
-UserSchema.methods.generateAccessToken = function () {
+UserSchema.methods.generateAccessToken = function (
+  sessionId: string,
+  subscriptionId?: string,
+  subscriptionType?: string
+) {
   // Generate a JSON Web Token (JWT) containing user information
   // Sign the token with the ACCESS_TOKEN_SECRET environment variable
   // Set the expiration time for the token based on the ACCESS_TOKEN_EXPIRY environment variable
-
+  if(!sessionId){
+    throw new Error("Session ID is required to generate access token");
+  }
   // Create payload
   const payload = {
     _id: this._id,
     email: this.email,
     username: this.username,
     city: this.city,
+    isExpert: this.isExpert || false,
+    sessionId: sessionId,
+    subscriptionId: subscriptionId || undefined,
+    subscriptionType: subscriptionType || "free",
     iss: "KYF",
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 15 minutes
+    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
     aud: "kyf-api",
     jti: crypto.randomBytes(16).toString("hex"),
   };
@@ -158,10 +170,21 @@ UserSchema.methods.generateAccessToken = function () {
   );
 };
 
-UserSchema.methods.generateRefreshToken = function () {
+UserSchema.methods.generateRefreshToken = function (
+  sessionId: string,
+  subscriptionId?: string,
+  subscriptionType?: string
+) {
+  if(!sessionId){
+    throw new Error("Session ID is required to generate refresh token");
+  }
   // Creating payload
   const payload = {
     _id: this._id,
+    isExpert: this.isExpert || false,
+    sessionId: sessionId,
+    subscriptionId: subscriptionId || undefined,
+    subscriptionType: subscriptionType || "free",
     iss: "KYF",
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60, // 15 days
