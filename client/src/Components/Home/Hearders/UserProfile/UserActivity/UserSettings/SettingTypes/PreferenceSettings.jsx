@@ -5,6 +5,7 @@ import { TuneOutlined, Language, AccessTime, Lock } from '@mui/icons-material';
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updatePreferenceSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 const LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English' },
@@ -49,6 +50,16 @@ function PreferenceSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for preference settings
+  useEffect(() => {
+    const lang = LANGUAGE_OPTIONS.find(o => o.value === (localPrefs.language || 'en'))?.label || localPrefs.language || 'English';
+    const time = localPrefs.timeFormat || '12h';
+    const summary = `User is configuring preference settings. ${hasAccess ? `Language: ${lang}, Time format: ${time}.` : `Preference settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/preferences", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const handleChange = useCallback((field, value) => {
     setLocalPrefs(prev => ({ ...prev, [field]: value }));
