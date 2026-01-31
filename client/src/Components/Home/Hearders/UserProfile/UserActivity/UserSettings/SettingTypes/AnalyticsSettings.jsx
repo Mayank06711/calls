@@ -5,6 +5,7 @@ import { BarChartOutlined, PersonOutline, VisibilityOff, EmailOutlined, DeleteOu
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateAnalyticsPreferencesSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function AnalyticsSettings() {
   const colors = useSubscriptionColors();
@@ -37,6 +38,15 @@ function AnalyticsSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for analytics settings
+  useEffect(() => {
+    const prefs = localPrefs;
+    const summary = `User is configuring analytics preferences. ${hasAccess ? `Personal analytics: ${prefs.personalAnalytics ? "on" : "off"}, Anonymous usage: ${prefs.anonymousUsage ? "on" : "off"}, Weekly report: ${prefs.weeklyReport ? "on" : "off"}, Data retention: ${prefs.dataRetention || "default"}.` : `Analytics settings are locked (requires premium subscription).${isExpert ? " User is an expert — experts get analytics with eligible plans." : ""}`}`;
+    setAIPageContext({ page: "settings/analytics", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const handleToggle = useCallback((field) => {
     setLocalPrefs(prev => {
