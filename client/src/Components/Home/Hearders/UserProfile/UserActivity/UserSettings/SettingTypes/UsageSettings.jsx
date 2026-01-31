@@ -5,6 +5,7 @@ import { TimelineOutlined, TrackChanges, Lock } from '@mui/icons-material';
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateUsageTrackingSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function UsageSettings() {
   const colors = useSubscriptionColors();
@@ -37,6 +38,14 @@ function UsageSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for usage tracking settings
+  useEffect(() => {
+    const summary = `User is configuring usage tracking settings. ${hasAccess ? `Activity tracking: ${localPrefs.activityTracking ? "on" : "off"}.` : `Usage tracking settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/usage", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const handleToggle = useCallback((field) => {
     // Functional update so we always read the latest local state
