@@ -13,7 +13,6 @@ const SubscriptionSkeleton = () => {
   return (
     <div className="animate-pulse">
       {/* Table Skeleton */}
-      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS]?
         <div
           className="w-full rounded-2xl overflow-hidden shadow-2xl 
           border-separate border-spacing-[3px]
@@ -80,9 +79,7 @@ const SubscriptionSkeleton = () => {
               </div>
             ))}
           </div>
-        </div>:
-        <ErrorMessage/>
-      }
+        </div>
     </div>
   );
 };

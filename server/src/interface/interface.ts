@@ -11,6 +11,17 @@ export interface Template {
   };
   contentType?: ContentType;
 }
+export interface NotificationPayload {
+  eventType: string;
+  text: string;
+  extLink?: string | null;
+  stickyTime?: number;
+  sentBy: {
+    adminId: string ;
+    position: string;
+  };
+  timestamp: Date;
+}
 
 export interface Templates {
   [key: string]: Template;
@@ -79,21 +90,37 @@ export type EmitOptions = {
   auth?: boolean;
   headers?: Record<string, any>;
   targetSocketIds?: string[];
+  callback?: (response: any) => void; // Add this new field
 };
 
 export interface SocketUserData {
   userId: string;
   mobNum: string;
+  sessionId?: string; // Session ID from token
   status: "verified" | "refreshed";
 }
 export interface SocketData {
   key: string;
   userId: string;
   mobNum: string;
+  sessionId?: string; // Session ID from token
   socketId: string;
   connectedAt: number;
   lastRefreshedAt?: number;
   status: "authenticated" | "refreshed";
+}
+
+// Add these new interfaces
+export interface UserSocket {
+  socketId: string;
+  sessionId?: string; // Session ID from token
+  connectedAt: number;
+  lastActive: number;
+}
+
+export interface UserSocketMapping {
+  userId: string;
+  sockets: UserSocket[];
 }
 
 export interface PendingAuthData {
@@ -108,6 +135,7 @@ export interface CloudinaryUploadOptions {
   isBuffer?: boolean;
   fileName?: string;
   uploadPreset?: string;
+  fileType?: string;
 }
 
 export interface FileUploadData {
@@ -115,7 +143,7 @@ export interface FileUploadData {
   fileName: string;
   fileType: string;
   size: number;
-  type: "chat" | "avatar";
+  type: "chat" | "avatar" | "reel";
   metadata?: {
     width?: number;
     height?: number;

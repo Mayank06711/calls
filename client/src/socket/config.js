@@ -1,36 +1,28 @@
+// SocketManager singleton: encapsulates all socket logic (connect, disconnect, authenticate, event listeners)
+// Does not own state, only dispatches Redux actions for flag updates
+// No React hooks in this file
+
 import { io } from "socket.io-client";
 import env from "../config/env.config";
 import store from "../redux/store";
 import { socketAuthenticated, socketConnected } from "../redux/actions";
-import { authenticateSocket } from "./authentication";
-import { useEffect, useState } from 'react';
-
-
-export const useSocket = () => {
-  const [socket, setSocket] = useState(null);
-
-  useEffect(() => {
-    const socketInstance = SocketManager.getSocket(false, true);
-    setSocket(socketInstance);
-
-    return () => {
-      if (socketInstance) {
-        SocketManager.disconnectSocket();
-      }
-    };
-  }, []);
-
-  return socket;
-};
+// import { ensureSocketAuthenticated } from "./authentication";
 
 class SocketManager {
   static socket = null;
   static reconnectAttempts = 0;
   static maxReconnectAttempts = 5;
+  static isAuthenticating = false;
 
+  // Create or return the singleton socket instance
   static #createSocket(testSocket = false, connectSocket = false) {
     if (SocketManager.socket) {
-      if (connectSocket && !SocketManager.socket.connected) {
+      if (
+        connectSocket &&
+        !SocketManager.socket.connected &&
+        !SocketManager.isAuthenticating
+      ) {
+        console.log("[SocketManager] Connecting existing socket...");
         SocketManager.socket.connect();
         store.dispatch(socketConnected(true));
       }
@@ -40,9 +32,10 @@ class SocketManager {
     const SERVER_URL = env.API_BASE_URL;
     const socketOptions = {
       reconnection: true,
-      reconnectionAttempts: 3,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 15000,
+      randomizationFactor: 0.5,
       timeout: 10000,
       secure: true,
       rejectUnauthorized: false,
@@ -58,14 +51,18 @@ class SocketManager {
       };
     }
 
+    console.log("[SocketManager] Creating new socket instance...");
     SocketManager.socket = io(SERVER_URL, socketOptions);
-    // Handle disconnect - reset both connection and authentication status
+
     SocketManager.socket.on("disconnect", () => {
+      console.log("[SocketManager] Socket disconnected");
       store.dispatch(socketConnected(false));
       store.dispatch(socketAuthenticated(false));
+      SocketManager.isAuthenticating = false;
     });
 
     if (connectSocket) {
+      console.log("[SocketManager] Connecting new socket...");
       SocketManager.socket.connect();
       store.dispatch(socketConnected(true));
     }
@@ -73,81 +70,41 @@ class SocketManager {
     return SocketManager.socket;
   }
 
-  // Setting Event Listeners to fix disconnect issue
-
-  static setupEventListeners() {
-    SocketManager.socket.on("disconnect", (reason) => {
-      store.dispatch(socketConnected(false));
-      store.dispatch(socketAuthenticated(false));
-
-      // Attempt to reconnect if disconnected by server
-      if (reason === "io server disconnect") {
-        SocketManager.handleReconnection();
-      }
-
-      // Handle reconnect
-      SocketManager.socket.on("reconnect", async () => {
-        store.dispatch(socketConnected(true));
-        await SocketManager.handleAuthentication();
-      });
-
-      // Handle connect
-      SocketManager.socket.on("connect", async () => {
-        store.dispatch(socketConnected(true));
-        SocketManager.reconnectAttempts = 0;
-        await SocketManager.handleAuthentication();
-      });
-
-      // Handle connect error
-      SocketManager.socket.on("connect_error", (error) => {
-        console.error("Connection error:", error);
-        SocketManager.handleReconnection();
-      });
-    });
-  }
-
-  static async handleReconnection() {
-    if (SocketManager.reconnectAttempts > SocketManager.maxReconnectAttempts) {
-      console.error("Max reconnection attempts reached. Giving up.");
-      return;
-    }
-
-    SocketManager.reconnectAttempts++;
-    try {
-      if (!SocketManager.socket.connected) {
-        SocketManager.socket.connect();
-      }
-    } catch (error) {
-      console.error("Reconnection failed:", error);
-    }
-  }
-
-  static async handleAuthentication() {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        await authenticateSocket(token);
-      } catch (error) {
-        console.error("Authentication failed during reconnection:", error);
-      }
-    }
-  }
-
+  // Get the singleton socket instance
   static getSocket(testSocket = false, connectSocket = false) {
+    console.log(`[SocketManager] getSocket called. testSocket: ${testSocket}, connectSocket: ${connectSocket}`);
     return SocketManager.#createSocket(testSocket, connectSocket);
   }
 
+  // Returns true if socket is connected and authenticated (Redux flags)
   static isSocketConnected() {
     const isConnected = SocketManager.socket?.connected || false;
-    store.dispatch(socketConnected(isConnected));
-    return isConnected;
+    const isAuthenticated = store.getState().socketMetrics.authenticated;
+    store.dispatch(socketConnected(isConnected && isAuthenticated));
+    return isConnected && isAuthenticated;
   }
 
+  // Disconnects the socket and resets flags
   static disconnectSocket() {
     if (SocketManager.socket?.connected) {
+      console.log("[SocketManager] disconnectSocket called");
       SocketManager.socket.disconnect();
+      SocketManager.isAuthenticating = false;
       store.dispatch(socketConnected(false));
       store.dispatch(socketAuthenticated(false));
+    }
+  }
+
+  // (Optional) Add event listeners for custom events
+  static on(event, handler) {
+    if (SocketManager.socket) {
+      SocketManager.socket.on(event, handler);
+    }
+  }
+
+  static off(event, handler) {
+    if (SocketManager.socket) {
+      SocketManager.socket.off(event, handler);
     }
   }
 }

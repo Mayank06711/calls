@@ -1,4 +1,4 @@
-import { ADD_CUSTOM_FONT, FETCH_SETTINGS_FAILURE, FETCH_SETTINGS_REQUEST, FETCH_SETTINGS_SUCCESS, REMOVE_CUSTOM_FONT, SET_FONT_SIZE, SET_PRIMARY_COLOR, SET_THEME_MODE, UPDATE_SETTINGS_FAILURE, UPDATE_SETTINGS_REQUEST, UPDATE_SETTINGS_SUCCESS } from "../action_creators";
+import { ADD_CUSTOM_FONT, FETCH_SETTINGS_FAILURE, FETCH_SETTINGS_REQUEST, FETCH_SETTINGS_SUCCESS, FETCH_STYLE_OPTIONS_FAILURE, FETCH_STYLE_OPTIONS_REQUEST, FETCH_STYLE_OPTIONS_SUCCESS, REMOVE_CUSTOM_FONT, SET_FONT_SIZE, SET_PRIMARY_COLOR, SET_THEME_MODE, UPDATE_SETTINGS_FAILURE, UPDATE_SETTINGS_REQUEST, UPDATE_SETTINGS_SUCCESS } from "../action_creators";
 
 // Action Creators
 export const fetchSettingsRequest = () => ({
@@ -28,6 +28,21 @@ export const fetchSettingsRequest = () => ({
     type: UPDATE_SETTINGS_FAILURE,
     payload: error
   });
+
+// Style Options Action Creators (for premium features)
+export const fetchStyleOptionsRequest = () => ({
+  type: FETCH_STYLE_OPTIONS_REQUEST
+});
+
+export const fetchStyleOptionsSuccess = (data) => ({
+  type: FETCH_STYLE_OPTIONS_SUCCESS,
+  payload: data
+});
+
+export const fetchStyleOptionsFailure = (error) => ({
+  type: FETCH_STYLE_OPTIONS_FAILURE,
+  payload: error
+});
 
   
 // Theme-specific action creators

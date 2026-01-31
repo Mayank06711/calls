@@ -8,9 +8,31 @@ import {
   PendingAuthData,
   SocketUserData,
   SocketData,
+  UserSocket,
+  UserSocketMapping,
 } from "./interface/interface";
 import { FileHandler } from "./helper/fileHandler";
 import User from "./controllers/userController";
+import { throws } from "assert";
+import { ChatController } from "./controllers/chatController";
+import { NotificationController } from "./controllers/notificationController";
+import { CallController } from "./controllers/callController";
+import { UserSettingsModel } from "./models/userSettingsModel";
+
+// When User1 connects
+/*socket1.data = {
+    userId: "user1_id",
+    authenticated: true
+    // other data...
+}
+
+// When User2 connects
+socket2.data = {
+    userId: "user2_id",
+    authenticated: true
+    // other data...
+}
+ */
 
 /**
  * SocketManager: Singleton class for managing Socket.IO connections
@@ -41,12 +63,10 @@ import User from "./controllers/userController";
  *          ├─ Setup Event Listeners
  *          └─ Store Socket Data
  */
-
 class SocketManager {
   // 1. Core Initialization & Setup
   private static instance: SocketManager | null = null;
   private io: SocketServer;
-  private authenticatedSocket: Socket | null = null;
 
   private readonly SOCKET_CONSTANTS = {
     REDIS: {
@@ -70,7 +90,7 @@ class SocketManager {
       INTERVAL: 2 * 60 * 60,
     },
     AUTH: {
-      TIMEOUT: 60000, // 60 seconds
+      TIMEOUT: 120000, // 2 minutes
       MAX_TOKEN_AGE: {
         REFRESHED: 360, // 15 days in hours
         AUTHENTICATED: 24, // 1 day in hours
@@ -81,6 +101,22 @@ class SocketManager {
       },
       GROUP: "auth:pending",
       STATUS: "pending",
+    },
+    USER_SOCKET_MAPPING: {
+      GROUP: "userSocketMapping",
+      SET_OPERATIONS: {
+        ADD_TO_SET: true,
+        REMOVE_FROM_SET: true,
+        USE_SET: true,
+      },
+      TTL: {
+        MAPPING_DATA: 25 * 60 * 60, // 25 hours in seconds
+        SET_DATA: 25 * 60 * 60, // 25 hours in seconds
+      },
+      SORT_BY: {
+        LAST_ACTIVE: "lastActive",
+        CONNECTED_AT: "connectedAt",
+      },
     },
   } as const;
 
@@ -253,7 +289,7 @@ class SocketManager {
         await this.handleSocketConnection(socket, testUserData);
         this.setupEventListeners(socket, testUserData);
         socket.data.authenticated = true; // Add this line
-        socket.data.userId = testUserData.userId; // Add this line
+        socket.data.userId = testUserData.userId?.toString(); // Add this line
 
         // Add authentication event listener for test mode
         socket.on("authenticate", async (authData: any, callback) => {
@@ -272,17 +308,9 @@ class SocketManager {
         return;
       }
 
-      await RedisManager.cacheDataInGroup<PendingAuthData>(
-        this.SOCKET_CONSTANTS.AUTH.GROUP,
-        socket.id,
-        {
-          startTime: Date.now(),
-          serverId: process.env.SERVER_ID || "default",
-          status: this.SOCKET_CONSTANTS.AUTH.STATUS, // pending
-        },
-        this.SOCKET_CONSTANTS.AUTH.TIMEOUT / 1000
-      );
-
+      // Register the authenticate handler FIRST (synchronous) to avoid
+      // a race condition where the client emits "authenticate" before
+      // the handler is attached (the Redis cache below is async).
       let lockId: string | null = null;
       let userData: any = null;
 
@@ -308,19 +336,21 @@ class SocketManager {
             }
 
             // Verify tokens and get user data
-            userData = await this.verifyUserAuthentication(authData);
-
-            if (!userData) {
+            const authResult  = await this.verifyUserAuthentication(authData);
+            if (!authResult.success) {
               callback({
                 status: "error",
-                message: "Invalid authentication",
+                message: authResult.message || "Invalid authentication",
+                errorType: authResult.errorType,
                 socketId: socket.id,
               });
               return this.handleConnectionError(
                 socket,
-                "Invalid authentication"
+                authResult.message||"Invalid authentication, try refreshing token",
+                authResult.errorType
               );
             }
+            userData = authResult.data;
             const lockKey = `user:${userData.userId}`;
             lockId = await RedisManager.acquireLock(lockKey, 5000);
 
@@ -328,6 +358,7 @@ class SocketManager {
               callback({
                 status: "error",
                 message: "Connection blocked - concurrent connection attempt",
+                errorType: "lockId",
                 socketId: socket.id,
               });
               return this.handleConnectionError(
@@ -335,17 +366,61 @@ class SocketManager {
                 "Connection blocked - concurrent connection attempt"
               );
             }
-            // Check for existing connections
-            await this.handleExistingConnections(userData.userId);
+            // Check for existing connections (disconnect duplicates for same session)
+            await this.handleExistingConnections(userData.userId, userData.sessionId);
 
             // Store socket connection data
             await this.handleSocketConnection(socket, userData);
 
             socket.data.authenticated = true;
-            socket.data.userId = userData.userId;
+            socket.data.userId = userData.userId?.toString();
+            socket.data.sessionId = userData.sessionId;
+            socket.data.subscriptionType = userData.subscriptionType || "free";
+            socket.data.isExpert = userData.isExpert || false;
+
+            // setting up the chat controller listerns
+            const chatController = ChatController.getInstance();
+            chatController.setupAuthenticatedSocketListeners(socket);
+
+            // Flush pending read receipts for this user
+            await chatController.flushPendingReadReceipts(socket.id, userData.userId);
+
+            // Setting up notification controller listeners
+            const notificationController = NotificationController.getInstance();
+            notificationController.setupAuthenticatedSocketListeners(socket);
+
+            // Flush queued notifications for this user
+            await notificationController.flushQueuedNotifications(socket.id, userData.userId);
+
+            // Setting up call controller listeners
+            const callController = CallController.getInstance();
+            callController.setupAuthenticatedSocketListeners(socket);
 
             // Setup other event listeners
             this.setupEventListeners(socket, userData);
+            
+            // 🟢 Broadcast online status (check privacy setting first)
+            try {
+              const userSettings = await UserSettingsModel.findOne(
+                { userId: userData.userId },
+                { 'privacy.showOnlineStatus': 1 }
+              ).lean();
+              // Experts always appear online — appear offline is not available for experts
+              const isExpert = userData.isExpert || false;
+              const showOnline = isExpert || userSettings?.privacy?.showOnlineStatus !== false;
+              if (showOnline) {
+                this.io.emit('user:online', { userId: userData.userId, timestamp: new Date() });
+                console.log(`🟢 Broadcasted user:online for ${userData.userId}`);
+              } else {
+                this.io.emit('user:hidden', { userId: userData.userId, timestamp: new Date() });
+                console.log(`🟡 Broadcasted user:hidden for ${userData.userId} (showOnlineStatus=false)`);
+              }
+            } catch (privacyErr) {
+              // Fallback: broadcast online if privacy check fails
+              this.io.emit('user:online', { userId: userData.userId, timestamp: new Date() });
+              console.log(`🟢 Broadcasted user:online for ${userData.userId} (privacy check failed)`);
+            }
+            
             callback({
               status: userData.status,
               message: "Authentication successful",
@@ -371,6 +446,19 @@ class SocketManager {
           }
         }
       );
+
+      // Cache pending auth data AFTER the handler is registered so
+      // no "authenticate" event can be missed due to async delay.
+      RedisManager.cacheDataInGroup<PendingAuthData>(
+        this.SOCKET_CONSTANTS.AUTH.GROUP,
+        socket.id,
+        {
+          startTime: Date.now(),
+          serverId: process.env.SERVER_ID || "default",
+          status: this.SOCKET_CONSTANTS.AUTH.STATUS, // pending
+        },
+        this.SOCKET_CONSTANTS.AUTH.TIMEOUT / 1000
+      ).catch((err) => console.error("Error caching pending auth:", err));
     });
   }
 
@@ -378,52 +466,117 @@ class SocketManager {
   private async verifyUserAuthentication(authData: {
     refreshToken?: string;
     accessToken?: string;
-  }) {
+  }):Promise<{ success: boolean; data?: any; errorType?: string; message?: string }> {
     try {
-      let userData;
+      let result;
 
       if (authData.accessToken) {
         // First try with access token
-        userData = await AuthServices.verifyJWT_Token(
+        result = await AuthServices.verifyJWT_Token(
           authData.accessToken,
           this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.ACCESS
         );
-        if (userData) {
-          return userData;
+        if (result) {
+          if (result.data) {
+            const data = result.data as any;
+            // Check if session is active in Redis
+            if (data.sessionId) {
+              const isSessionActive = await RedisManager.isSessionActive(
+                data.userId.toString(),
+                data.sessionId
+              );
+              if (!isSessionActive) {
+                return {
+                  success: false,
+                  errorType: "session_expired",
+                  message: "Session expired or revoked",
+                };
+              }
+            }
+            return { success: true, data: result.data };
+          } else if (result.isExpire) {
+            return { success: false, errorType: "token_expired", message: "Access token expired" };
+          } else if (result.stdClaimsNotValid) {
+            return { success: false, errorType: "invalid_claims", message: "Invalid token claims" };
+          } else if (result.unExpectedError) {
+            return { success: false, errorType: "unexpected_error", message: "Unexpected error during token verification" };
+          } else {
+            return { success: false, errorType: "invalid_token", message: "Invalid access token" };
+          }
         }
       }
 
       if (authData.refreshToken) {
-        // If access token fails or isn't present, try refresh token
-        userData = await AuthServices.verifyJWT_Token(
+        result = await AuthServices.verifyJWT_Token(
           authData.refreshToken,
           this.SOCKET_CONSTANTS.AUTH.TOKEN_TYPE.REFRESH
         );
-        if (userData) {
-          return userData;
+        if (result && result.data) {
+          const data = result.data as any;
+          // Check if session is active in Redis
+          if (data.sessionId) {
+            const isSessionActive = await RedisManager.isSessionActive(
+              data.userId.toString(),
+              data.sessionId
+            );
+            if (!isSessionActive) {
+              return {
+                success: false,
+                errorType: "session_expired",
+                message: "Session expired or revoked",
+              };
+            }
+          }
+          return { success: true, data: result.data };
+        } else if (result && result.isExpire) {
+          return { success: false, errorType: "token_expired", message: "Refresh token expired" };
+        } else if (result && result.stdClaimsNotValid) {
+          return { success: false, errorType: "invalid_claims", message: "Invalid refresh token claims" };
+        } else if (result && result.unExpectedError) {
+          return { success: false, errorType: "unexpected_error", message: "Unexpected error during refresh token verification" };
+        } else {
+          return { success: false, errorType: "invalid_token", message: "Invalid refresh token" };
         }
       }
-      return null;
+  
+      return { success: false, errorType: "no_token", message: "No token provided" };
     } catch (error) {
       console.error("Token verification error:", error);
-      return null;
+      return { success: false, errorType: "exception", message: "Exception during token verification" };
     }
   }
 
   private async handleSocketConnection(socket: Socket, userData: any) {
-    const isExisting = await RedisManager.isKeyInGroup(
-      this.SOCKET_CONSTANTS.REDIS.GROUP,
-      socket.id
-    );
-    console.log(isExisting, "IsExisting");
-    if (isExisting) {
-      if (userData.status === "refreshed") {
-        await this.handleRefreshedSocket(socket, userData);
+    try {
+      // 1. First handle existing socket connection logic
+      const isExisting = await RedisManager.isKeyInGroup(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socket.id
+      );
+      console.log(isExisting, "IsExisting");
+      if (isExisting) {
+        if (userData.status === "refreshed") {
+          // For refreshed sockets, update the mapping with new timestamp
+          await this.updateUserSocketMapping(
+            socket.id,
+            userData.userId,
+            true,
+            true
+          ); // Added isRefresh parameter
+          await this.handleRefreshedSocket(socket, userData);
+        } else {
+          // For replacement, remove old mapping first
+          await this.updateUserSocketMapping(socket.id, userData.userId, true);
+          // Then create new mapping;
+          await this.handleReplacementSocket(socket, userData);
+        }
       } else {
-        await this.handleReplacementSocket(socket, userData);
+        // Only create new mapping for new sockets
+        await this.updateUserSocketMapping(socket.id, userData.userId, true);
+        await this.handleNewSocket(socket, userData);
       }
-    } else {
-      await this.handleNewSocket(socket, userData);
+    } catch (error) {
+      console.error("Error in handleSocketConnection:", error);
     }
   }
 
@@ -434,6 +587,7 @@ class SocketManager {
       {
         userId: userData.userId,
         mobNum: userData.mobNum,
+        sessionId: userData.sessionId,
         socketId: socket.id,
         connectedAt: Date.now(),
         lastRefreshedAt: Date.now(),
@@ -461,6 +615,7 @@ class SocketManager {
         status: "refreshed",
         userId: userData.userId, // Ensure we update with latest data
         mobNum: userData.mobNum,
+        sessionId: userData.sessionId,
       },
       this.SOCKET_CONSTANTS.REDIS.TTL.SOCKET_DATA,
       this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.ADD_TO_SET,
@@ -479,15 +634,35 @@ class SocketManager {
     console.log("Replaced existing socket data", socket.id);
   }
 
-  private async handleExistingConnections(userId: string): Promise<void> {
+  private async handleExistingConnections(userId: string, sessionId?: string): Promise<void> {
     const sockets = await this.getAuthenticatedSockets();
     const userSockets = sockets.filter((socket) => socket.userId === userId);
 
-    if (userSockets.length >= this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
-      userSockets.sort((a, b) => b.connectedAt - a.connectedAt);
+    // Disconnect any existing sockets for the same session (prevents duplicates)
+    if (sessionId) {
+      const duplicateSessionSockets = userSockets.filter(
+        (socket) => socket.sessionId === sessionId
+      );
+      if (duplicateSessionSockets.length > 0) {
+        console.log(
+          `[Socket] Disconnecting ${duplicateSessionSockets.length} duplicate socket(s) for session ${sessionId}`
+        );
+        await Promise.all(
+          duplicateSessionSockets.map((socketData) =>
+            this.removeSocket(socketData.key, "Replaced by new connection")
+          )
+        );
+      }
+    }
 
-      // Disconnect oldest connections
-      const socketsToRemove = userSockets.slice(
+    // Enforce per-user connection limit
+    const remainingSockets = (await this.getAuthenticatedSockets()).filter(
+      (socket) => socket.userId === userId
+    );
+    if (remainingSockets.length >= this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER) {
+      remainingSockets.sort((a, b) => b.connectedAt - a.connectedAt);
+
+      const socketsToRemove = remainingSockets.slice(
         this.SOCKET_CONSTANTS.MAX_CONNECTIONS.PER_USER - 1
       );
       await Promise.all(
@@ -498,9 +673,153 @@ class SocketManager {
     }
   }
 
-  private handleConnectionError(socket: Socket, error: unknown) {
+  private async updateUserSocketMapping(
+    socketId: string,
+    userId: string,
+    isConnecting: boolean,
+    isRefresh: boolean = false
+  ): Promise<void> {
+    try {
+      if (isConnecting) {
+        // Get existing mapping first
+        const existingMapping =
+          await RedisManager.getDataFromGroup<UserSocketMapping>(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId
+          );
+
+        // Check for duplicates
+        if (
+          existingMapping?.sockets?.some(
+            (socket) => socket.socketId === socketId
+          )
+        ) {
+          console.log(
+            `Socket ${socketId} already exists in mapping for user ${userId}, skipping duplicate add`
+          );
+          return;
+        }
+
+        // Get currently connected sockets from Socket.IO
+        const connectedSockets = await this.io.sockets.sockets.keys();
+        const connectedSocketsSet = new Set(connectedSockets);
+
+        if (isRefresh && existingMapping?.sockets) {
+          // For refresh, update lastActive and remove disconnected sockets
+          const updatedSockets = existingMapping.sockets
+            .filter((socket) => connectedSocketsSet.has(socket.socketId)) // Remove disconnected sockets
+            .map((socket) =>
+              socket.socketId === socketId
+                ? { ...socket, lastActive: Date.now() }
+                : socket
+            );
+
+          await RedisManager.cacheDataInGroup(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId,
+            { userId, sockets: updatedSockets },
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA
+          );
+          console.log(`Refreshed socket ${socketId} for user ${userId}`);
+        } else {
+          // For new connection or replacement
+          const newSocket: UserSocket = {
+            socketId,
+            connectedAt: Date.now(),
+            lastActive: Date.now(),
+          };
+
+          // Filter out disconnected sockets from existing mapping
+          const existingSockets = existingMapping?.sockets
+            ? existingMapping.sockets.filter((socket) =>
+                connectedSocketsSet.has(socket.socketId)
+              )
+            : [];
+
+          const mapping: UserSocketMapping = {
+            userId,
+            sockets: [...existingSockets, newSocket],
+          };
+
+          await RedisManager.cacheDataInGroup(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId,
+            mapping,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS.ADD_TO_SET,
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.SET_DATA
+          );
+          console.log(`Added socket ${socketId} to user ${userId} mapping`);
+        }
+      } else {
+        // Handle disconnection/removal
+        const existingMapping =
+          await RedisManager.getDataFromGroup<UserSocketMapping>(
+            this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+            userId
+          );
+
+        if (existingMapping?.sockets) {
+          // Get currently connected sockets
+          const connectedSockets = await this.io.sockets.sockets.keys();
+          const connectedSocketsSet = new Set(connectedSockets);
+
+          // Remove the specific socket and any other disconnected sockets
+          const updatedSockets = existingMapping.sockets.filter(
+            (socket) =>
+              socket.socketId !== socketId &&
+              connectedSocketsSet.has(socket.socketId)
+          );
+
+          if (updatedSockets.length === 0) {
+            // If no sockets left, remove the entire user mapping
+            await RedisManager.removeDataFromGroup(
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+              userId,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS
+                .REMOVE_FROM_SET
+            );
+            console.log(`Removed all mappings for user ${userId}`);
+          } else {
+            // Update with remaining sockets
+            const updatedMapping: UserSocketMapping = {
+              userId,
+              sockets: updatedSockets,
+            };
+
+            await RedisManager.cacheDataInGroup(
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+              userId,
+              updatedMapping,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.MAPPING_DATA,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS
+                .ADD_TO_SET,
+              this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.TTL.SET_DATA
+            );
+            console.log(
+              `Updated socket list for user ${userId}, removed socket ${socketId}`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating user-socket mapping:", error);
+      throw error;
+    }
+  }
+
+  private handleConnectionError(
+    socket: Socket,
+    error: unknown,
+    errorName?: string
+  ) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    this.removeSocket(socket.id, errorMessage, "connection_error", true);
+    this.removeSocket(
+      socket.id,
+      errorMessage,
+      errorName ? errorName : "connection_error",
+      true
+    );
   }
 
   private async cleanupLock(lockId: string | null, userData: any) {
@@ -529,16 +848,63 @@ class SocketManager {
         console.log(
           `User disconnected - Socket: ${socket.id}, User: ${userData.userId}`
         );
+
+        if (socket.data.sessionId && socket.data.userId) {
+          RedisManager.updateSessionActivity(
+            socket.data.userId,
+            socket.data.sessionId,
+            {
+              lastEndpoint: "socket:disconnect",
+              lastMethod: "SOCKET",
+              ip: socket.handshake.address,
+            }
+          ).catch((err) =>
+            console.error("Failed to update session activity on disconnect:", err)
+          );
+        }
+        
+        // Check if user has any other active sockets before broadcasting offline
+        const userMapping = await RedisManager.getDataFromGroup(
+          this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+          userData.userId.toString()
+        ) as UserSocketMapping | null;
+        
+        const remainingSockets = (userMapping?.sockets || []).filter(
+          (s: UserSocket) => s.socketId !== socket.id
+        );
+        
         await RedisManager.removeDataFromGroup(
           this.SOCKET_CONSTANTS.AUTH.GROUP,
           socket.id
         );
+
+        await RedisManager.removeDataFromGroup(
+          this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+          socket.data.userId.toString()
+        );
+
         await this.removeSocket(
           socket.id,
           "User disconnected",
           "disconnect",
           false // Don't emit on disconnect as it's already disconnected
         );
+        
+        // 🔴 ONLY broadcast user:offline if this was their LAST socket
+        if (remainingSockets.length === 0) {
+          this.io.emit('user:offline', {
+            userId: userData.userId,
+            timestamp: new Date()
+          });
+          // Also emit user:unhidden to clear any yellow dot for hidden users
+          this.io.emit('user:unhidden', {
+            userId: userData.userId,
+            timestamp: new Date()
+          });
+          console.log(`🔴 Broadcasted user:offline + user:unhidden for ${userData.userId} (last socket)`);
+        } else {
+          console.log(`🟡 User ${userData.userId} still has ${remainingSockets.length} active socket(s)`);
+        }
       } catch (error) {
         console.error("Error handling disconnect:", error);
       }
@@ -584,12 +950,23 @@ class SocketManager {
 
             await User.handleAvatarUploadEvent(data, userId, emitter);
           } else {
-            // Handle chat file uploads
+            // Handle chat / reel file uploads using same emitter pattern as avatar
+            socket.emit("file:upload:start", {
+              status: "started",
+              message: `${data.type} upload in progress`,
+              type: data.type,
+            });
+
             await FileHandler.handleFileUpload({
               data,
               userId,
-              callback: (response) =>
-                socket.emit("file:upload:response", response),
+              callback: (response) => {
+                if (response.status === "success") {
+                  socket.emit("file:upload:success", response);
+                } else {
+                  socket.emit("file:upload:error", response);
+                }
+              },
             });
           }
         } catch (error) {
@@ -667,6 +1044,12 @@ class SocketManager {
     emit: boolean = false
   ): Promise<void> {
     try {
+      // Get user ID before removing socket
+      const socketData = await RedisManager.getDataFromGroup<SocketData>(
+        this.SOCKET_CONSTANTS.REDIS.GROUP,
+        socketId
+      );
+
       const socket = this.io.sockets.sockets.get(socketId);
       if (socket) {
         if (reason && emit) {
@@ -679,6 +1062,10 @@ class SocketManager {
         socketId,
         this.SOCKET_CONSTANTS.REDIS.SET_OPERATIONS.REMOVE_FROM_SET
       );
+      // Remove from user-socket mapping if we have the user ID
+      if (socketData?.userId) {
+        await this.updateUserSocketMapping(socketId, socketData.userId, false);
+      }
     } catch (error) {
       console.error(`Error removing socket ${socketId}:`, error);
     }
@@ -876,6 +1263,7 @@ class SocketManager {
         .map((socket) => ({
           socketId: socket.key,
           userId: socket.userId,
+          sessionId: socket.sessionId,
           mobNum: socket.mobNum,
           connectedAt: new Date(socket.connectedAt).toISOString(),
           lastRefreshedAt: socket.lastRefreshedAt
@@ -913,6 +1301,64 @@ class SocketManager {
     }
   }
 
+  // Add method to get sorted connected users
+  public async getSortedConnectedUsers(
+    sortBy: keyof typeof this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SORT_BY = "LAST_ACTIVE"
+  ): Promise<UserSocketMapping[]> {
+    try {
+      const allMappings = await RedisManager.getAllFromGroup(
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.SET_OPERATIONS.USE_SET
+      );
+
+      return allMappings
+        .filter((mapping) => mapping.sockets && mapping.sockets.length > 0)
+        .sort((a, b) => {
+          const aValue = Math.max(
+            ...a.sockets.map((s: any) => s[sortBy.toLowerCase()])
+          );
+          const bValue = Math.max(
+            ...b.sockets.map((s: any) => s[sortBy.toLowerCase()])
+          );
+          return bValue - aValue; // descending order
+        });
+    } catch (error) {
+      console.error("Error getting sorted connected users:", error);
+      return [];
+    }
+  }
+
+  public async getSocketIdUsingUserId(
+    userId: string = ""
+  ): Promise<UserSocket | null> {
+    if (!userId) {
+      console.log(`[getSocketIdUsingUserId] No userId provided`);
+      return null;
+    }
+    try {
+      console.log(`[getSocketIdUsingUserId] Looking up userId: ${userId}`);
+      const userMapping = await RedisManager.getDataFromGroup<UserSocketMapping>(
+        this.SOCKET_CONSTANTS.USER_SOCKET_MAPPING.GROUP,
+        userId
+      );
+      console.log(`[getSocketIdUsingUserId] Redis result for ${userId}:`, userMapping);
+      
+      // FIX: Redis stores UserSocketMapping with sockets array, not UserSocket
+      if (!userMapping || !userMapping.sockets || userMapping.sockets.length === 0) {
+        console.log(`[getSocketIdUsingUserId] No sockets found for user ${userId}`);
+        return null;
+      }
+      
+      // Return the first active socket (most recent connection)
+      const activeSocket = userMapping.sockets[0];
+      console.log(`[getSocketIdUsingUserId] Found socket ${activeSocket.socketId} for user ${userId}`);
+      return activeSocket;
+    } catch (error) {
+      console.log("Error finding Connected user with his id=>\n", error);
+      return null;
+    }
+  }
+
   public async disconnectUser(userId: string): Promise<number> {
     try {
       const sockets = await this.getAuthenticatedSockets();
@@ -920,13 +1366,43 @@ class SocketManager {
 
       await Promise.all(
         userSockets.map((socketData) =>
-          this.removeSocket(socketData.key, "User disconnected by system")
+          this.removeSocket(socketData.key, "All sessions revoked", "session_revoked", true)
         )
       );
 
       return userSockets.length;
     } catch (error) {
       console.error(`Error disconnecting user ${userId}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Disconnect all sockets for a specific session
+   * Used when a session is revoked via API
+   */
+  public async disconnectBySessionId(userId: string, sessionId: string): Promise<number> {
+    try {
+      const sockets = await this.getAuthenticatedSockets();
+      const sessionSockets = sockets.filter(
+        (socket) => socket.userId === userId && socket.sessionId === sessionId
+      );
+
+      if (sessionSockets.length === 0) {
+        console.log(`[Socket] No active sockets found for session ${sessionId}`);
+        return 0;
+      }
+
+      await Promise.all(
+        sessionSockets.map((socketData) =>
+          this.removeSocket(socketData.key, "Session revoked", "session_revoked", true)
+        )
+      );
+
+      console.log(`[Socket] Disconnected ${sessionSockets.length} socket(s) for session ${sessionId}`);
+      return sessionSockets.length;
+    } catch (error) {
+      console.error(`Error disconnecting session ${sessionId}:`, error);
       return 0;
     }
   }
@@ -938,7 +1414,8 @@ class SocketManager {
     auth = false,
     headers = {},
     targetSocketIds,
-  }: EmitOptions): Promise<boolean> {
+    callback, //
+  }: EmitOptions & { callback?: (response: any) => void }): Promise<boolean> {
     try {
       const payload = {
         data,
@@ -957,8 +1434,10 @@ class SocketManager {
         await Promise.all(
           filteredSocketIds.map((socketId) => {
             const socket = this.io.sockets.sockets.get(socketId);
-            if (socket) {
-              socket.emit(event, payload);
+            if (socket && callback) {
+              socket.emit(event, payload, callback);
+            } else {
+              socket?.emit(event, payload);
             }
           })
         );
@@ -967,10 +1446,18 @@ class SocketManager {
           filteredSocketIds
         );
       } else if (room) {
-        this.io.to(room).emit(event, payload);
+        if (callback) {
+          this.io.to(room).emit(event, payload, callback);
+        } else {
+          this.io.to(room).emit(event, payload);
+        }
         console.log(`Event ${event} emitted to room: ${room}`);
       } else {
-        this.io.emit(event, payload);
+        if (callback) {
+          this.io.emit(event, payload, callback);
+        } else {
+          this.io.emit(event, payload);
+        }
         console.log(`Event ${event} broadcasted to all clients`);
       }
 
@@ -983,12 +1470,17 @@ class SocketManager {
 
   public async listenToEvent<T>({
     event,
+    // handler function gets data, socket, and callback function
     handler,
     room,
     socketIds,
   }: {
     event: string;
-    handler: (data: T, socket: Socket) => Promise<void> | void;
+    handler: (
+      data: T,
+      socket: Socket,
+      callback?: Function
+    ) => Promise<void> | void;
     room?: string;
     socketIds?: string[];
   }): Promise<boolean> {
@@ -1012,12 +1504,16 @@ class SocketManager {
       }
 
       targetSockets.forEach((socket) => {
-        socket.on(event, async (data: T) => {
+        // When event is received, socket.io provides data and callback
+        socket.on(event, async (data: T, callback?: Function) => {
           try {
-            await handler(data, socket);
+            await handler(data, socket, callback); // pass callback to handler
           } catch (error) {
             console.error(`Error handling event ${event}:`, error);
             socket.emit("error", { event, message: "Error processing event" });
+            if (callback) {
+              callback({ status: "error", message: "Error processing event" });
+            }
           }
         });
       });
@@ -1046,12 +1542,6 @@ class SocketManager {
       console.error("Error during socket cleanup:", error);
       throw error;
     }
-  }
-
-  public getAuthenticatedSocket(): Socket | null {
-    return this.authenticatedSocket?.connected
-      ? this.authenticatedSocket
-      : null;
   }
 }
 

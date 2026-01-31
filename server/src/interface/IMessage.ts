@@ -54,7 +54,9 @@ export interface INewMsg extends Document {
     sender: IParticipantInfo;
     receiver: IParticipantInfo;
   };
-  
+  chatHiddenFor?: Types.ObjectId[];
+  chatDeletedFor?: Types.ObjectId[];
+
   // Methods
   addMessage(
     text: string,
@@ -62,7 +64,7 @@ export interface INewMsg extends Document {
     messageType?: MessageType,
     attachments?: IAttachment[],
     replyTo?: { messageId: number; text: string }
-  ): Promise<void>;
+  ): Promise<INewMessage>;
   
   addMessageWithMedia(
     text: string,
@@ -71,10 +73,18 @@ export interface INewMsg extends Document {
     media?: IMessageMedia,
     attachments?: IAttachment[],
     replyTo?: { messageId: number; text: string }
-  ): Promise<void>;
+  ): Promise<INewMessage>;
   
   markMessageAsRead(messageId: number): Promise<void>;
   markMessageAsDelivered(messageId: number): Promise<void>;
   updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
-  deleteMessage(messageId: number, userId: Types.ObjectId): Promise<void>;
+}
+
+// Read Receipt Interface for Redis Queue
+export interface IReadReceipt {
+  messageId: number;
+  chatId: string;
+  senderId: string;
+  readAt: Date;
+  readBy: string;
 }

@@ -305,3 +305,21 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
 } as const;
+
+// ── Call configuration ──────────────────────────────────────────
+export const CALL_CONFIG = {
+  /** Hard cap per single call (seconds). Server auto-hangs up. */
+  MAX_CALL_DURATION_SECONDS: 30 * 60, // 30 minutes
+  /** Seconds before auto-hangup at which warnings are sent to both parties. */
+  WARNING_AT_SECONDS: [25 * 60, 29 * 60], // 5-min and 1-min warnings
+  /** After user grants permission, expert has this many seconds to initiate the call. */
+  EXPERT_PERMISSION_WINDOW_SECONDS: 5 * 60, // 5 minutes
+  /** How long the phone rings before auto-miss. */
+  RING_TIMEOUT_SECONDS: 30,
+  /** Default expert billing rate (USD per minute). Overridable per expert later. */
+  EXPERT_RATE_PER_MINUTE: 5,
+  /** Whether monthly count limits apply to expert calls. */
+  EXPERT_CALL_LIMITS_APPLY: true,
+  /** Whether monthly count limits apply to user-to-user calls (false = unlimited for paid). */
+  USER_CALL_LIMITS_APPLY: false,
+} as const;

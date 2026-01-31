@@ -2,9 +2,15 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+// @ts-ignore -- xss-clean has no type definitions
+import xssClean from "xss-clean";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
-import { createServer, Server as HTTPServer } from "http"; // Import Server type
+import { createServer as createHttpServer, Server as HTTPServer } from "http";
+import { createServer as createHttpsServer } from "https";
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
@@ -16,6 +22,14 @@ import feedBackRouter from "./routes/feedbackRoutes";
 import authRouter from "./routes/authRoutes";
 import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
+import adminRouter from "./routes/adminRoutes";
+import sessionRouter from "./routes/sessionRoutes";
+import legalRouter from "./routes/legalRoutes";
+import chatRouter from "./routes/chaRoutes";
+import expertBlockRouter from "./routes/expertBlockRoutes";
+import expertTipRouter from "./routes/expertTipRoutes";
+import expertComplaintRouter from "./routes/expertComplaintRoutes";
+import historyRouter from "./routes/historyRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -23,6 +37,7 @@ import {
   checkHealth,
 } from "./db";
 import cronSchuduler from "./auto/cronJob";
+
 
 class ServerManager {
   private app = express();
@@ -36,8 +51,10 @@ class ServerManager {
       `https://${process.env.AWS_PUBLIC_IP}:3000`,
       "http://localhost:3000",
       "https://localhost:3000",
+      "http://192.168.31.125:3000",
+      "https://192.168.31.125:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
-      "https://staging.d15sv24wr1qszx.amplifyapp.com"
+      "https://staging.d15sv24wr1qszx.amplifyapp.com",
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -59,17 +76,25 @@ class ServerManager {
 
   // Initialize middlewares
   private initializeMiddlewares() {
+    // Security headers (CSP, HSTS, X-XSS-Protection, etc.)
+    this.app.use(helmet());
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     // this.app.set("trust proxy", 1);
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true, limit: "30kb" }));
+    this.app.use(express.json({ limit: '10mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use(cookieParser());
+    // Prevent NoSQL injection (sanitizes req.body, req.query, req.params)
+    this.app.use(mongoSanitize());
+    // Prevent HTTP parameter pollution
+    this.app.use(hpp());
+    // Prevent XSS attacks (sanitizes user input)
+    this.app.use(xssClean());
     this.app.use(
       rateLimit({
-        windowMs: 10 * 60 * 1000, // 15 minutes
-        max: 1000, // limit each IP to 100 requests per windowMs
+        windowMs: 10 * 60 * 1000, // 10 minutes
+        max: 1000, // limit each IP to 1000 requests per windowMs
         message:
-          "Too many requests from this IP, please try again later after 15 mins.",
+          "Too many requests from this IP, please try again later after 10 mins.",
       })
     );
     this.app.use(Middleware.platformDetector);
@@ -79,9 +104,16 @@ class ServerManager {
     this.app.use("/api/v1/auth", authRouter);
     this.app.use("/api/v1/users", userRouter);
     this.app.use("/api/v1/settings", settingRoute);
-    // this.app.use("/api/v1/admins", adminRouter);
+    this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
+    this.app.use("/api/v1/sessions", sessionRouter);
+    this.app.use("/api/v1/legal", legalRouter);
+    this.app.use("/api/v1/chat", chatRouter);
+    this.app.use("/api/v1/expert-blocks", expertBlockRouter);
+    this.app.use("/api/v1/tips", expertTipRouter);
+    this.app.use("/api/v1/complaints", expertComplaintRouter);
+    this.app.use("/api/v1/history", historyRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -183,38 +215,63 @@ class ServerManager {
     console.log("Logs flushed.");
   }
   public async start() {
-    // Load SSL key and certificate
-    const key = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.key"),
-      "utf8"
-    );
-    const cert = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.crt"),
-      "utf8"
-    );
-    //  HTTPS server with key and cert and for that createServer must be imported from https not http
-    this.server = createServer(
-      // {
-      //   key: key,
-      //   cert: cert,
-      // },
-      this.app
-    );
+    const useHttps = process.env.USE_HTTPS === "true";
+    const Port = process.env.PORT || 5005;
+
+    if (useHttps) {
+      const key = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.key"),
+        "utf8"
+      );
+      const cert = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.crt"),
+        "utf8"
+      );
+      this.server = createHttpsServer({ key, cert }, this.app) as unknown as HTTPServer;
+    } else {
+      this.server = createHttpServer(this.app);
+    }
+
     // Socket.io for real-time communication
+    //
+    // maxHttpBufferSize: 10MB
+    // ─────────────────────────────────────────────────────────────────────
+    // Why 10MB: Reel uploads allow up to 8MB files. Base64 encoding adds
+    // ~33% overhead (8MB → ~10.7MB), so 10MB covers the largest payload.
+    // Avatars (5MB) and chat media (5MB) are well within this limit.
+    //
+    // DDoS / resource exhaustion risk:
+    // Socket.IO allocates this buffer PER CONNECTION at the transport layer
+    // BEFORE any application-level authentication runs. A malicious client
+    // could open many connections and send large payloads to exhaust server
+    // memory without ever authenticating.
+    //
+    // Mitigations in place:
+    // 1. Authentication is required for all socket events — unauthenticated
+    //    sockets cannot trigger file uploads or any business logic.
+    // 2. Sockets that do not authenticate within 2 minutes are forcibly
+    //    disconnected (see socket.ts auth timeout).
+    // 3. Rate limiting is applied to upload events.
+    //
+    // If the reel size limit is increased later, this value must be updated
+    // accordingly (new_limit * 1.34 to account for base64 overhead).
+    // ─────────────────────────────────────────────────────────────────────
     this.io = new SocketIOServer(this.server, {
       cors: ServerManager.CORS_OPTIONS,
+      maxHttpBufferSize: 10 * 1024 * 1024, // 10MB — see comment above
     });
-    const Port = process.env.PORT || 5005;
+
     try {
       await connectDB();
       await RedisManager.initRedisConnection();
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
-          console.log(`Server is running on http://localhost:${Port}`);
+          const protocol = useHttps ? "https" : "http";
+          console.log(`Server is running on ${protocol}://localhost:${Port}`);
           resolve();
         });
-      }); 
+      });
     } catch (error) {
       console.error("Error during server initialization:", error);
       process.exit(1);

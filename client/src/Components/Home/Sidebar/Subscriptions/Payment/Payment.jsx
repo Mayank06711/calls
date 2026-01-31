@@ -268,23 +268,115 @@ const Payment = ({ numberOfDays, planColor }) => {
                 {/* Date Range Picker for first step */}
                 {index === 0 && (
                   <div
-                    className={`mt-4 flex ${
+                    className={`mt-4 flex flex-col md:flex-row ${
                       activeStep !== index
                         ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none"
                         : ""
                     } `}
                   >
-                    <div>
+                    <div className="overflow-x-auto">
                       <DateRange {...dateRangeProps} />
                       <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                         {`Select start date for your ${numberOfDays}-day subscription`}
                       </p>
+                    
+                      {/* Date range confirmation section - below calendar on mobile */}
+                      <div 
+                        className="flex flex-col mt-4 md:hidden"
+                        style={{ maxWidth: '252px' }}
+                      >
+                        <div
+                          className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-100 dark:border-gray-700"
+                          style={{ borderColor: `${planColor}33` }}
+                        >
+                          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            Selected Period ({numberOfDays} days)
+                          </h4>
+
+                          <div className="space-y-5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <div
+                                  className="w-2 h-10 rounded-full mr-2"
+                                  style={{ backgroundColor: planColor }}
+                                ></div>
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">From</p>
+                                  <p className="font-bold text-gray-800 dark:text-gray-200">
+                                    {format(dateRange[0].startDate, "dd")}
+                                    <span className="text-blue-500 dark:text-blue-400"> {format(dateRange[0].startDate, "MMM")} </span>
+                                    {format(dateRange[0].startDate, "yyyy")}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <div
+                                  className="w-2 h-10 rounded-full mr-2"
+                                  style={{ backgroundColor: planColor }}
+                                ></div>
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">To</p>
+                                  <p className="font-bold text-gray-800 dark:text-gray-200">
+                                    {format(dateRange[0].endDate, "dd")}
+                                    <span className="text-indigo-500 dark:text-indigo-400"> {format(dateRange[0].endDate, "MMM")} </span>
+                                    {format(dateRange[0].endDate, "yyyy")}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-center">
+                              <span
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: `${planColor}15`,
+                                  color: planColor,
+                                }}
+                              >
+                                {numberOfDays} days subscription
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          onClick={handleStepComplete}
+                          startIcon={
+                            isLoading ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : (
+                              <CheckCircleOutline fontSize="small" />
+                            )
+                          }
+                          sx={{
+                            mt: 1,
+                            borderColor: planColor,
+                            color: planColor,
+                            "&:hover": {
+                              borderColor: `${planColor}dd`,
+                              backgroundColor: `${planColor}0a`,
+                            },
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            borderWidth: "1.5px",
+                            textTransform: "none",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          {isLoading ? "Processing..." : "Confirm"}
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-col ml-4">
-                      {/* Date range confirmation section - compact and modern */}
+                    {/* Desktop sidebar - hidden on mobile */}
+                    <div className="hidden md:flex flex-col mt-0 ml-4">
                       <div
-                        className=" w-64 bg-white dark:bg-gray-800 rounded-lg   p-4 border border-blue-100 dark:border-gray-700"
+                        className="w-64 bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-100 dark:border-gray-700"
                         style={{ borderColor: `${planColor}33` }}
                       >
                         <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
@@ -292,23 +384,17 @@ const Payment = ({ numberOfDays, planColor }) => {
                         </h4>
 
                         <div className="space-y-5">
-                          {/* Date Cards - Compact */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
                               <div
-                                className="w-2 h-10  rounded-full mr-2"
+                                className="w-2 h-10 rounded-full mr-2"
                                 style={{ backgroundColor: planColor }}
                               ></div>
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  From
-                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">From</p>
                                 <p className="font-bold text-gray-800 dark:text-gray-200">
                                   {format(dateRange[0].startDate, "dd")}
-                                  <span className="text-blue-500 dark:text-blue-400">
-                                    {" "}
-                                    {format(dateRange[0].startDate, "MMM")}{" "}
-                                  </span>
+                                  <span className="text-blue-500 dark:text-blue-400"> {format(dateRange[0].startDate, "MMM")} </span>
                                   {format(dateRange[0].startDate, "yyyy")}
                                 </p>
                               </div>
@@ -318,26 +404,20 @@ const Payment = ({ numberOfDays, planColor }) => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
                               <div
-                                className="w-2 h-10  rounded-full mr-2"
+                                className="w-2 h-10 rounded-full mr-2"
                                 style={{ backgroundColor: planColor }}
                               ></div>
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  To
-                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">To</p>
                                 <p className="font-bold text-gray-800 dark:text-gray-200">
                                   {format(dateRange[0].endDate, "dd")}
-                                  <span className="text-indigo-500 dark:text-indigo-400">
-                                    {" "}
-                                    {format(dateRange[0].endDate, "MMM")}{" "}
-                                  </span>
+                                  <span className="text-indigo-500 dark:text-indigo-400"> {format(dateRange[0].endDate, "MMM")} </span>
                                   {format(dateRange[0].endDate, "yyyy")}
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          {/* Duration Badge */}
                           <div className="flex justify-center">
                             <span
                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -349,8 +429,6 @@ const Payment = ({ numberOfDays, planColor }) => {
                               {numberOfDays} days subscription
                             </span>
                           </div>
-
-                          {/* Confirm Button - Compact */}
                         </div>
                       </div>
                       <Button
@@ -388,14 +466,15 @@ const Payment = ({ numberOfDays, planColor }) => {
                 {/* Email Verification Section */}
                 {!isEmailVerified && index === 1 && (
                   <div
-                    className={`mt-4 max-w-sm ${
+                    className={`mt-4 ${
                       activeStep !== index
                         ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none"
                         : ""
                     }`}
+                    style={{ maxWidth: '252px' }}
                   >
                     <div
-                      className="rounded-lg shadow-md p-4 border border-blue-100 dark:border-gray-700"
+                      className="md:max-w-sm rounded-lg shadow-md p-4 border border-blue-100 dark:border-gray-700"
                       style={{ borderColor: `${planColor}33` }}
                     >
                       <div className="space-y-4">
@@ -466,14 +545,15 @@ const Payment = ({ numberOfDays, planColor }) => {
                 {/* Referral code input for second step */}
                 {((isEmailVerified && index === 1) || (!isEmailVerified && index === 2)) && (
                   <div
-                    className={`mt-4 max-w-sm ${
+                    className={`mt-4 ${
                       activeStep !== index
                         ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none"
                         : ""
                     }`}
+                    style={{ maxWidth: '252px' }}
                   >
                     <div
-                      className=" rounded-lg shadow-md p-4 border border-blue-100 dark:border-gray-700"
+                      className="md:max-w-sm rounded-lg shadow-md p-4 border border-blue-100 dark:border-gray-700"
                       style={{ borderColor: `${planColor}33` }}
                     >
                       <div className="space-y-4">

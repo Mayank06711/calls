@@ -3,11 +3,11 @@ import { ENDPOINTS, HTTP_METHODS } from '../../constants/apiEndpoints';
 import { startLoader, stopLoader } from '../actions/loader.actions';
 import { LOADER_TYPES } from '../action_creators';
 import { showNotification } from '../actions';
-export const processAIChat = ({ 
-  question, 
-  context, 
-  userInfo, 
-  isSubscription 
+export const processAIChat = ({
+  question,
+  context,
+  userInfo,
+  isSubscription
 }) => async (dispatch) => {
 
     const aiChating = LOADER_TYPES.AI_CHAT_PROCESS;

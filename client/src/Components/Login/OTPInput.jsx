@@ -52,6 +52,16 @@ function OTPInput({
           nextInput.focus();
         }
       }
+
+      // Auto-submit when all 6 digits are filled
+      if (value && newOtp.every(d => d !== '')) {
+        const verificationData = {
+          referenceId,
+          mobNum: phoneNumber,
+          otp: newOtp.join('')
+        };
+        dispatch(verifyOtpThunk(verificationData));
+      }
     }
   };
 
@@ -60,6 +70,12 @@ function OTPInput({
       const prevInput = e.target.previousElementSibling;
       if (prevInput) {
         prevInput.focus();
+      }
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (otp.join('').length === 6) {
+        handleVerify();
       }
     }
   };

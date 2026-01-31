@@ -19,9 +19,9 @@ const initialState = {
 const socketMetricsReducer = (state = initialState, action) => {
   switch (action.type) {
     case SOCKET_CONNECTED:
-      return { ...state, connected: true };
+      return { ...state, connected: action.payload !== undefined ? !!action.payload : true };
     case SOCKET_AUTHENTICATED:
-      return { ...state, authenticated: true };
+      return { ...state, authenticated: action.payload !== undefined ? !!action.payload : true };
     case SOCKET_TOTAL_CONNECTIONS:
       return { ...state, totalConnections: action.payload };
     case SOCKET_TOTAL_CALLS:

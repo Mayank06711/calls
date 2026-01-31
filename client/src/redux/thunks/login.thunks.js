@@ -17,8 +17,9 @@ import {
   otpVerificationSuccess,
   resetTimer,
   setTimerActive,
+  showSessionLimit,
 } from "../actions/auth.actions";
-import { authenticateSocket } from "../../socket/authentication";
+// import { ensureSocketAuthenticated } from "../../socket/authentication";
 import { fetchUserInfoThunk } from "./userInfo.thunks";
 import { initializeSettingsThunk } from "./settings.thunk";
 
@@ -80,13 +81,41 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       ENDPOINTS.AUTH.VERIFY_OTP,
       verificationData
     );
+
     if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed, // changed from maxSessions to match controller
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          mobNum: verificationData.mobNum,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData 
+        }));
+        // Don't mark as failure yet, let user decide
+         dispatch(otpVerificationFailure(false)); 
+         // Optional: Hide notification if modal is shown
+         // dispatch(showNotification(error.message, error.statusCode));
+        return;
+      }
+
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification(error.message, error.statusCode));
       return;
     }
     if (data.success) {
-      const { userId, isAlreadyVerified, token,fullName } = data.data;
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      // Store token in localStorage BEFORE dispatching setUserId to Redux.
+      // SocketContext reacts to userId and immediately connects + authenticates
+      // the socket, which reads the token from localStorage via getAccessToken().
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
       dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
@@ -95,12 +124,8 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
         dispatch(fetchUserInfoThunk());
       }
 
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("token", token);
-      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
-      localStorage.setItem("fullName", fullName);
+      console.log("[verifyOtpThunk] Set userId, token, isAlreadyVerified, fullName:", userId, token, isAlreadyVerified, fullName);
 
-      
       dispatch(
         showNotification(
           data.message || "OTP verified successfully!",
@@ -108,13 +133,8 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
         )
       );
 
-      // Authenticate socket connection
-      try {
-        await authenticateSocket(token);
-      } catch (socketError) {
-        console.error("Socket authentication failed:", socketError);
-        // Optionally show a notification but don't fail the login
-      }
+      // Socket connection/authentication is now handled by SocketContext
+      // No direct socket logic here
 
     } else {
       dispatch(otpVerificationFailure(true));
@@ -127,7 +147,6 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
     dispatch(showNotification(error.message || "Failed to verify OTP", 400));
   }
 };
-
 
 export const logoutThunk = () => async (dispatch) => {
   dispatch({ type: 'LOGOUT_REQUEST' });
@@ -152,6 +171,7 @@ export const logoutThunk = () => async (dispatch) => {
       localStorage.removeItem("isTourCompleted");
       // add more
 
+      console.log("[logoutThunk] Cleared userId, token, and related keys from localStorage");
 
       // Clear Redux state
       dispatch({ type: 'LOGOUT_SUCCESS' });
@@ -160,6 +180,7 @@ export const logoutThunk = () => async (dispatch) => {
 
       // Redirect to login page
       window.location.href = '/login';
+      // Socket disconnect is now handled by SocketContext
     } else {
       dispatch({ type: 'LOGOUT_FAILURE', payload: 'Logout failed' });
       dispatch(showNotification("Logout failed", statusCode || 400));

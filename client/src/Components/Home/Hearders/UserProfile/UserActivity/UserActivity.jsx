@@ -7,9 +7,12 @@ import PostAddIcon from "@mui/icons-material/PostAdd";
 import StyleIcon from "@mui/icons-material/Style";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
+import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+
 function UserActivity() {
   const navigate = useNavigate();
   const location = useLocation();
+  const colors = useSubscriptionColors();
 
   const tabs = [
     { id: "posts", label: "Posts", icon: <PostAddIcon fontSize="small" />, path: "posts" },
@@ -30,11 +33,11 @@ function UserActivity() {
   };
 
   return (
-    <div className=" ml-0 flex-1 flex flex-col p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20 backdrop-blur-sm transition-all duration-300 dark:text-dark-text text-light-text">
+    <div className="flex-1 flex flex-col p-2 sm:p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20 backdrop-blur-sm transition-all duration-300 dark:text-dark-text text-light-text min-h-[300px] lg:min-h-0 w-full min-w-0 overflow-hidden">
       <Stack
         direction="row"
         spacing={1}
-        className="overflow-x-auto pb-2 flex-nowrap"
+        className="overflow-x-auto pb-2 flex-nowrap shrink-0"
         sx={{
           "::-webkit-scrollbar": { height: "4px" },
           "::-webkit-scrollbar-track": { background: "transparent" },
@@ -48,29 +51,37 @@ function UserActivity() {
       <IconButton onClick={() => navigate(-1)}>
         <ReplyRoundedIcon fontSize="medium" className="dark:text-dark-text text-light-text" />
       </IconButton>
-        {tabs.map((tab) => (
-          <Chip
-            key={tab.id}
-            icon={tab.icon}
-            label={tab.label}
-            onClick={() => navigate(tab.path)}
-            sx={{
-              backgroundColor:
-              getCurrentTab === tab.id ? "rgba(255,255,255,0.1)" : "transparent",
-              border: "1px solid rgba(255,255,255,0.2)",
-              "&:hover": {
-                backgroundColor: "rgba(255,255,255,0.15)",
-              },
-              transition: "all 0.1s ease",
-              minWidth: "fit-content",
-              color: "inherit",
-              cursor: "pointer",
-            }}
-          />
-        ))}
+        {tabs.map((tab) => {
+          const isActive = getCurrentTab() === tab.path || location.pathname.includes(tab.path);
+          return (
+            <Chip
+              key={tab.id}
+              icon={React.cloneElement(tab.icon, { 
+                style: { color: isActive ? colors.fourth : colors.third } 
+              })}
+              label={tab.label}
+              onClick={() => navigate(tab.path)}
+              sx={{
+                backgroundColor: isActive ? `${colors.fourth}20` : "transparent",
+                border: `1px solid ${isActive ? colors.fourth : colors.third}40`,
+                "&:hover": {
+                  backgroundColor: `${colors.fourth}30`,
+                  borderColor: colors.fourth,
+                },
+                transition: "all 0.1s ease",
+                minWidth: "fit-content",
+                color: isActive ? colors.fourth : "inherit",
+                cursor: "pointer",
+                "& .MuiChip-label": {
+                  color: isActive ? colors.fourth : "inherit",
+                },
+              }}
+            />
+          );
+        })}
       </Stack>
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 overflow-auto">
         {/* Content for each tab will go here */}
         <Outlet />
       </div>

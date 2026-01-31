@@ -13,6 +13,7 @@ const BugFeedbackSchema: Schema = new Schema<IBugFeedback>(
       type: String,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+      required: false,
     },
     message: {
       type: String,
@@ -25,7 +26,7 @@ const BugFeedbackSchema: Schema = new Schema<IBugFeedback>(
     bugType: {
       type: String,
       required: true,
-      enum: ["UI Issue", "Crash", "Performance", "Security", "Functionality", "Other"],
+      enum: ["UI Issue", "Crash", "Performance","Suggestion", "Security", "Functionality", "Other"],
     },
     customBugType: {
       type: String,
@@ -34,7 +35,7 @@ const BugFeedbackSchema: Schema = new Schema<IBugFeedback>(
     },
     severity: {
       type: String,
-      required: true,
+      required: false,
       enum: ["Critical", "High", "Medium", "Low"],
       default: "Medium",
     },
@@ -62,7 +63,12 @@ const BugFeedbackSchema: Schema = new Schema<IBugFeedback>(
       city: { type: String, trim: true },
       country: { type: String, trim: true },
       region: { type: String, trim: true },
+      ip:{ type: String, trim: true },
+      latitude:{ type: String, trim: true },
+      longitude:{ type: String, trim: true },
     },
+    
+    
     
     // Attachments
     attachmentUrls: [{
@@ -108,9 +114,9 @@ BugFeedbackSchema.pre("validate", function(next) {
   }
   
   // Either user ID or email must be provided
-  if (!this.user && !this.email) {
-    this.invalidate("email", "Either user ID or email must be provided");
-  }
+  // if (!this.user && !this.email) {
+  //   this.invalidate("email", "Either user ID or email must be provided");
+  // }
   
   next();
 });

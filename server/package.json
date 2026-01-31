@@ -10,6 +10,10 @@
     "start:dev": "ts-node-dev src/index.ts",
     "test:socket": "ts-node src/socketTest.ts",
     "test:chatsocket": "ts-node src/socketChatTest.ts",
+    "test:session": "ts-node src/sessionTest.ts",
+    "test:integration": "ts-node src/integrationTest.ts",
+    "test:sessionlimit": "ts-node src/sessionLimitTest.ts",
+    "test:realworld": "ts-node src/realWorldSessionTest.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -39,7 +43,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^7.4.0",
+    "geoip-lite": "^1.4.10",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.5.46",
@@ -54,12 +62,15 @@
     "socket.io-client": "^4.8.1",
     "twilio": "^5.4.0",
     "uuid": "^10.0.0",
+    "xss-clean": "^0.1.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^4.17.21",
+    "@types/geoip-lite": "^1.4.4",
+    "@types/hpp": "^0.2.7",
     "@types/ioredis": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/mongoose": "^5.11.97",
@@ -70,6 +81,6 @@
     "pm2": "^5.4.3",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.2"
+    "typescript": "^5.9.3"
   }
 }

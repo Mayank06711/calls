@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { CookieOptions } from "express";
-import JWT, { JwtPayload } from "jsonwebtoken";
+import JWT, { JsonWebTokenError, JwtPayload } from "jsonwebtoken";
 import crypto from "crypto";
 import { RedisManager } from "../utils/redisClient";
 import { ApiError } from "../utils/apiError";
@@ -44,7 +44,7 @@ class AuthServices {
   private static getKey(salt: Buffer): Buffer {
     return crypto.pbkdf2Sync(
       process.env.ENCRYPTION_SECRET!,
-      salt,
+      new Uint8Array(salt),
       AuthServices.ENCYRPTION.iterations, // iterations
       AuthServices.ENCYRPTION.keyLength, // key length
       "sha512"
@@ -58,19 +58,24 @@ class AuthServices {
 
     const cipher = crypto.createCipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
 
     const encrypted = Buffer.concat([
-      cipher.update(text, "utf8"),
-      cipher.final(),
+      cipher.update(text, "utf8") as unknown as Uint8Array,
+      cipher.final() as unknown as Uint8Array,
     ]);
 
     const tag = cipher.getAuthTag();
 
     // Combine all components: salt + iv + tag + encrypted
-    const result = Buffer.concat([salt, iv, tag, encrypted]);
+    const result = Buffer.concat([
+      new Uint8Array(salt),
+      new Uint8Array(iv),
+      new Uint8Array(tag),
+      new Uint8Array(encrypted),
+    ]);
 
     return result.toString("base64");
   }
@@ -99,14 +104,14 @@ class AuthServices {
 
     const decipher = crypto.createDecipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
-    decipher.setAuthTag(tag);
+    decipher.setAuthTag(new Uint8Array(tag));
 
     const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
+      decipher.update(new Uint8Array(encrypted)) as unknown as Uint8Array,
+      decipher.final() as unknown as Uint8Array,
     ]);
     return decrypted.toString("utf8");
   }
@@ -185,16 +190,99 @@ class AuthServices {
         );
       }
 
-      // Ensure the incoming refresh token matches the one stored in the user's document
-      if (incomingRefreshToken !== user.refreshToken) {
-        throw new ApiError(401, "Refresh token is expired login again");
+      // Verify refresh token against the session (per-session token rotation)
+      const sessionId = decodedToken.sessionId;
+      const subscriptionId = decodedToken.subscriptionId;
+      const subscriptionType = decodedToken.subscriptionType;
+
+      if (!sessionId) {
+        throw new ApiError(401, "Invalid refresh token: no session ID");
+      }
+      
+      const { SessionModel } = await import("../models/sessionModel");
+
+      const session = await SessionModel.findOne({
+        refreshTokenId: sessionId,
+        userId: user._id,
+      });
+
+      if (!session) {
+        throw new ApiError(401, "Session not found");
+      }
+
+      if (!session.isActive) {
+        throw new ApiError(401, "Session inactive");
+      }
+
+      if (session.revokedAt) {
+        throw new ApiError(401, "Session revoked");
+      }
+
+      if (session.expiresAt <= new Date()) {
+        throw new ApiError(401, "Session expired");
+      }
+      if (incomingRefreshToken !== session.refreshToken) {
+        throw new ApiError(401, "Refresh token is expired or revoked");
       }
 
       // Generate new access and refresh tokens
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
-      user.refreshToken = refreshToken;
-      await user.save({ validateBeforeSave: false });
+      const accessToken = user.generateAccessToken(
+        sessionId,
+        subscriptionId,
+        subscriptionType
+      );
+      const refreshToken = user.generateRefreshToken(
+        sessionId,
+        subscriptionId,
+        subscriptionType
+      );
+
+      // Session maintenance on token refresh
+      const userId = decodedToken._id.toString();
+
+      // 1. Restore session in Redis if it was lost (e.g. Redis restart/flush)
+      const isRedisActive = await RedisManager.isSessionActive(userId, sessionId);
+      if (!isRedisActive) {
+         // Extract device info from request
+        const userAgent = req.headers["user-agent"] || "";
+        
+        const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+        
+        await RedisManager.addActiveSession(userId, sessionId, {
+            device: userAgent.substring(0, 100),
+            deviceType: req.isMobileApp ? "mobile" : "desktop",
+            platform: userAgent.includes("Windows")
+              ? "windows"
+              : userAgent.includes("Mac")
+              ? "macos"
+              : userAgent.includes("Linux")
+              ? "linux"
+              : userAgent.includes("Android")
+              ? "android"
+              : userAgent.includes("iPhone")
+              ? "ios"
+              : "unknown",
+            browser: userAgent.includes("Chrome")
+              ? "chrome"
+              : userAgent.includes("Firefox")
+              ? "firefox"
+              : userAgent.includes("Safari")
+              ? "safari"
+              : userAgent.includes("Edge")
+              ? "edge"
+              : "unknown",
+            ip,
+          });
+        console.log(`[Auth] Session ${sessionId} restored in Redis after refresh`);
+      }
+
+      // 2. Rotate refresh token on session + extend expiresAt (sliding window)
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 15);
+      await SessionModel.updateOne(
+        { _id: session._id },
+        { $set: { refreshToken, expiresAt: newExpiresAt, lastActiveAt: new Date() } }
+      );
 
       if (req.isMobileApp) {
         return res
@@ -285,7 +373,12 @@ class AuthServices {
       // Verify token expiration
       const now = Math.floor(Date.now() / 1000);
       if (decodedToken.exp && decodedToken.exp < now) {
-        return null;
+        return {
+          isExpire: true,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null,
+        };
       }
 
       // Verify standard claims
@@ -294,28 +387,67 @@ class AuthServices {
         decodedToken.aud !== "kyf-api" ||
         (decodedToken.iat && decodedToken.iat > now)
       ) {
-        return null;
+        return {
+          isExpire: false,
+          stdClaimsNotValid: true,
+          unExpectedError: false,
+          data: null,
+        };
       }
 
-      const query =
-        type === "refresh"
-          ? { _id: decodedToken._id, refreshToken: token, isActive: true }
-          : { _id: decodedToken._id, isActive: true };
+      // For refresh tokens, session-level verification happens in _refreshAccessToken,
+      // so we only need to verify the user exists and is active here
+      const query = { _id: decodedToken._id, isActive: true };
 
       const user = await UserModel.findOne(query);
-      if (!user) return null;
+      if (!user)
+        return {
+          isExpire: false,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null, //  no user found
+        };
       return {
-        userId: user._id,
-        phoneNumber: user.phoneNumber,
-        username: user.username,
-        status: type === "access" ? "authenticated" : "refreshed",
-        tokenExpiry: decodedToken.exp,
+        isExpire: false,
+        stdClaimsNotValid: false,
+        unExpectedError: false,
+        data: {
+          userId: user._id,
+          username: user.username,
+          sessionId: decodedToken.sessionId,
+          subscriptionType: decodedToken.subscriptionType || "free",
+          isExpert: user.isExpert || false,
+          status: type === "access" ? "authenticated" : "refreshed",
+          tokenExpiry: decodedToken.exp,
+        },
       };
-    } catch (error) {
-      return null;
+    } catch (error: any) {
+      // Handle JWT errors specifically
+      if (error.name === "TokenExpiredError") {
+        return {
+          isExpire: true,
+          stdClaimsNotValid: false,
+          unExpectedError: false,
+          data: null, // token expired
+        };
+      } else if (error.name === "JsonWebTokenError") {
+        return {
+          isExpire: false,
+          stdClaimsNotValid: false,
+          unExpectedError: true,
+          data: null, // invalid token
+        };
+      }
+      // Other unexpected errors
+      return {
+        isExpire: false,
+        stdClaimsNotValid: false,
+        unExpectedError: true,
+        data: null, //  no user found
+      };
     }
   }
-  
+
   public static async verifyAndForwardToAI(req: Request, res: Response) {
     try {
       const userId = req.user?._id;

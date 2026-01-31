@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
@@ -11,12 +11,16 @@ import QrCodeIcon from "@mui/icons-material/QrCode";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import GooglePayIcon from "@mui/icons-material/Payment";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
 import SubscriptionSkeleton from "./SubscriptionSkeleton";
 import { useNavigate } from "react-router-dom";
+import ErrorMessage from "./ErrorMessage";
+import { getSubscriptionPlansThunk } from "../../../../redux/thunks/subscription.thunks";
+import { useAIContext } from "../../../../context/AIContext";
 
 function Subscriptions() {
+  const dispatch = useDispatch();
   const currentColors = useSubscriptionColors();
   const userName = localStorage.getItem("fullName") || "Guest";
   const firstName = userName.split(" ")[0];
@@ -24,6 +28,25 @@ function Subscriptions() {
   const plans = subscriptionPlans.plans;
   const loaders = useSelector((state) => state.loaderState.loaders);
   const navigate = useNavigate();
+  const currentSub = useSelector((state) => state.userInfo?.data?.subscription?.type || "Free");
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // Fetch subscription plans on mount if not already loaded
+  useEffect(() => {
+    if (!plans) {
+      dispatch(getSubscriptionPlansThunk());
+    }
+  }, [dispatch, plans]);
+
+  // Set AI context with subscription info
+  useEffect(() => {
+    const summary = `User is viewing subscription plans. Current plan: ${currentSub}. Available plans: Free (₹0/day), Silver (₹2/day), Gold (₹5/day, recommended), Platinum (₹8/day).`;
+    setAIPageContext({
+      page: "subscriptions",
+      description: summary,
+    });
+    return () => clearAIPageContext();
+  }, [currentSub]);
 
   // Get colors for each subscription type
   const subscriptionColors = {
@@ -101,6 +124,7 @@ function Subscriptions() {
   };
 
   const dynamicFeatures = getAllFeatures();
+  console.log("dynamic feature",dynamicFeatures)
 
   // Update the handleSubscriptionSelect function
   const handleSubscriptionSelect = (planType) => {
@@ -198,10 +222,10 @@ function Subscriptions() {
   };
 
   return (
-    <div className="px-14 py-10 bg-light-secondary/30 dark:bg-dark-secondary/30 rounded-3xl">
+    <div className="px-4 md:px-14 py-6 md:py-10 bg-light-secondary/30 dark:bg-dark-secondary/30 rounded-3xl overflow-x-hidden">
       {/* Personal Greeting */}
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-medium mb-2 text-light-text/90 dark:text-dark-text/90">
+      <div className="text-center mb-6 md:mb-8">
+        <h2 className="text-xl md:text-2xl font-medium mb-2 text-light-text/90 dark:text-dark-text/90">
           Hey{" "}
           <span className="font-bold text-light-accent dark:text-dark-accent">
             {firstName}
@@ -209,25 +233,132 @@ function Subscriptions() {
           ! Ready to unlock premium features? ✨
         </h2>
       </div>
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-light-accent to-dark-accent bg-clip-text text-transparent">
+      <div className="text-center mb-8 md:mb-10">
+        <h1 className="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-light-accent to-dark-accent bg-clip-text text-transparent">
           Elevate Your Experience Today
         </h1>
-        <p className="text-lg max-w-2xl mx-auto leading-relaxed font-normal tracking-wide bg-gradient-to-r from-light-text/90 to-light-text/70 dark:from-dark-text/90 dark:to-dark-text/70 bg-clip-text">
+        <p className="text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-normal tracking-wide bg-gradient-to-r from-light-text/90 to-light-text/70 dark:from-dark-text/90 dark:to-dark-text/70 bg-clip-text">
           Unlock your potential with our flexible subscription plans. Whether
-          you're just starting or scaling up, we have the perfect plan to
+          you are just starting or scaling up, we have the perfect plan to
           support your journey.
         </p>
       </div>
       {/* table content */}
-      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] || !planHeader ? (
-        <SubscriptionSkeleton />
-      ) : (
-        <table
-          className="w-full rounded-2xl overflow-hidden shadow-2xl 
-        border-separate border-spacing-[3px]
-        bg-light-secondary/20 dark:bg-dark-secondary/20"
-        >
+      {loaders[LOADER_TYPES.SUBSCRIPTION_GET_PLANS] ? (
+            <SubscriptionSkeleton/>
+      ) : !dynamicFeatures.length > 0? (
+        <ErrorMessage/>
+      ):(
+        <>
+          {/* Mobile/Tablet Card Layout */}
+          <div className="lg:hidden flex flex-col gap-4">
+            {planHeader?.map((plan) => (
+              <div
+                key={plan.type}
+                className="rounded-2xl overflow-hidden shadow-lg border border-white/10"
+                style={{
+                  background: `linear-gradient(135deg, ${subscriptionColors[plan.type]?.first}15 0%, ${subscriptionColors[plan.type]?.third}15 100%)`,
+                }}
+              >
+                {/* Plan Header */}
+                <div
+                  className="p-4 text-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${subscriptionColors[plan.type]?.first}30 0%, ${subscriptionColors[plan.type]?.third}30 100%)`,
+                  }}
+                >
+                  <h3 className="text-xl font-bold text-light-text dark:text-dark-text">
+                    {plan.name}
+                  </h3>
+                  <div
+                    className="text-3xl font-extrabold mt-1"
+                    style={{ color: subscriptionColors[plan.type]?.fourth }}
+                  >
+                    {plan.price}
+                  </div>
+                  {plan.type !== "FREE" && (
+                    <span className="text-xs opacity-75 text-light-text dark:text-dark-text">
+                      {plan.duration}
+                    </span>
+                  )}
+                </div>
+
+                {/* Features List */}
+                <div className="p-4 space-y-2">
+                  {dynamicFeatures.map((feature, idx) => (
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center py-2 border-b border-white/10 last:border-0"
+                    >
+                      <span className="text-sm text-light-text/80 dark:text-dark-text/80">
+                        {feature.name}
+                      </span>
+                      <span
+                        className="text-sm font-medium"
+                        style={{ color: subscriptionColors[plan.type]?.fourth }}
+                      >
+                        {feature[plan.type.toLowerCase()]}
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Limits */}
+                  {plans && Object.entries(plans.limits).map(([limitKey, values], idx) => (
+                    <div
+                      key={`limit-${idx}`}
+                      className="flex justify-between items-center py-2 border-b border-white/10 last:border-0"
+                    >
+                      <span className="text-sm text-light-text/80 dark:text-dark-text/80">
+                        {limitKey.replace(/([A-Z])/g, " $1").trim()}
+                      </span>
+                      <span
+                        className="text-sm font-medium"
+                        style={{ color: subscriptionColors[plan.type]?.fourth }}
+                      >
+                        {Array.isArray(values) ? values[3 - planHeader.findIndex(p => p.type === plan.type)] : values}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action Button */}
+                {plan.type !== "FREE" && (
+                  <div className="p-4 pt-0">
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleSubscriptionSelect(plan.type)}
+                      fullWidth
+                      sx={{
+                        padding: "0.75rem 1rem",
+                        borderRadius: "0.75rem",
+                        fontWeight: 600,
+                        fontSize: "1rem",
+                      }}
+                      style={{
+                        backgroundColor: plan.recommended
+                          ? subscriptionColors[plan.type]?.fourth
+                          : "transparent",
+                        borderColor: subscriptionColors[plan.type]?.fourth,
+                        borderWidth: "2px",
+                        color: plan.recommended
+                          ? "white"
+                          : subscriptionColors[plan.type]?.fourth,
+                      }}
+                    >
+                      {plan.recommended ? "Recommended" : "Select Plan"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <table
+            className="hidden lg:table w-full rounded-2xl overflow-hidden shadow-2xl 
+          border-separate border-spacing-[3px]
+          bg-light-secondary/20 dark:bg-dark-secondary/20"
+          >
           <thead>
             <tr>
               <th
@@ -598,41 +729,44 @@ function Subscriptions() {
             </tr>
           </tbody>
         </table>
-      )}
+        </>
+      )
+      
+      }
 
-      <div className="mt-12 grid grid-cols-3 gap-8">
-        <div className="text-center p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
-          <div className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
+      <div className="mt-8 md:mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
+        <div className="text-center p-4 md:p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
+          <div className="text-3xl md:text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
             98%
           </div>
-          <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
+          <h3 className="text-lg md:text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
             Customer Satisfaction
           </h3>
-          <p className="text-light-text/70 dark:text-dark-text/70">
+          <p className="text-sm md:text-base text-light-text/70 dark:text-dark-text/70">
             Our users consistently rate their experience as exceptional
           </p>
         </div>
 
-        <div className="text-center p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
-          <div className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
+        <div className="text-center p-4 md:p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
+          <div className="text-3xl md:text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
             2x
           </div>
-          <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
+          <h3 className="text-lg md:text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
             Productivity Boost
           </h3>
-          <p className="text-light-text/70 dark:text-dark-text/70">
+          <p className="text-sm md:text-base text-light-text/70 dark:text-dark-text/70">
             Users report doubled productivity after upgrading their plan
           </p>
         </div>
 
-        <div className="text-center p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md">
-          <div className="text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
+        <div className="text-center p-4 md:p-6 bg-light-primary dark:bg-dark-primary rounded-xl shadow-md sm:col-span-2 md:col-span-1">
+          <div className="text-3xl md:text-4xl font-bold text-light-accent dark:text-dark-accent mb-2">
             24/7
           </div>
-          <h3 className="text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
+          <h3 className="text-lg md:text-xl font-semibold mb-2 text-light-text dark:text-dark-text">
             Premium Support
           </h3>
-          <p className="text-light-text/70 dark:text-dark-text/70">
+          <p className="text-sm md:text-base text-light-text/70 dark:text-dark-text/70">
             Round-the-clock support to ensure your success
           </p>
         </div>
@@ -669,7 +803,7 @@ function Subscriptions() {
           Secure Payment Options
         </h3>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {/* UPI Section */}
           <div className="h-full space-y-3 flex flex-col">
             <h4 className="font-medium text-light-text dark:text-dark-text">
@@ -774,7 +908,7 @@ function Subscriptions() {
         </div>
 
         {/* Security Badges */}
-        <div className="mt-8 flex justify-center items-center gap-6 text-light-text/50 dark:text-dark-text/50">
+        <div className="mt-8 flex flex-wrap justify-center items-center gap-4 md:gap-6 text-light-text/50 dark:text-dark-text/50">
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path
@@ -782,7 +916,7 @@ function Subscriptions() {
                 d="M10 1.944a1 1 0 0 1 .993.883l.007.117v1.5a6.5 6.5 0 1 1-2 0v-1.5a1 1 0 0 1 1-1zm0 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
               />
             </svg>
-            <span className="text-sm">Secure Payments</span>
+            <span className="text-xs md:text-sm">Secure Payments</span>
           </div>
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -791,7 +925,7 @@ function Subscriptions() {
                 d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z"
               />
             </svg>
-            <span className="text-sm">End-to-End Encrypted</span>
+            <span className="text-xs md:text-sm">End-to-End Encrypted</span>
           </div>
           <div className="flex items-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -800,7 +934,7 @@ function Subscriptions() {
                 d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.707-9.293a1 1 0 0 0-1.414-1.414L9 10.586 7.707 9.293a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l4-4z"
               />
             </svg>
-            <span className="text-sm">PCI DSS Compliant</span>
+            <span className="text-xs md:text-sm">PCI DSS Compliant</span>
           </div>
         </div>
       </div>

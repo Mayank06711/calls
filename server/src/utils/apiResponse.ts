@@ -95,11 +95,8 @@ const successResponse = (
   };
 };
 
-const errorResponse = (error: any, msg: string = "Error") => {
-  if (error instanceof ApiError) {
-    throw error;
-  }
-  throw new ApiError(500, msg + error.message);
+const errorResponse = (statusCode: number, msg: string = "Error") => {
+  throw new ApiError(statusCode, msg);
 };
 
 export { errorResponse, successResponse, sendCachedResponse };

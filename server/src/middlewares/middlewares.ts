@@ -12,6 +12,7 @@ import { AsyncHandler } from "../utils/AsyncHandler";
 import { ApiError } from "../utils/apiError";
 import { ObjectId } from "mongoose";
 import { AuthServices } from "../helper/auth";
+import { RedisManager } from "../utils/redisClient";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -36,6 +37,7 @@ class Middleware {
 
   public static getBase64 = (file: any) =>
     `data:${file[0].mimetype};base64,${file[0].buffer.toString("base64")}`;
+  
   private static async uploadFilesToCloudinary(files: any[] = []) {
     if (!files || files.length === 0) {
       throw new Error("No files provided for upload");
@@ -85,10 +87,15 @@ class Middleware {
   ) {
     try {
       // Extract the access token from cookies or headers
+      // Prioritize Header (e.g., for Partial Token or explicit API calls)
+      const authHeader = req.header("Authorization");
       const accessToken =
-        req.cookies?.accessToken ||
-        req.header("Authorization")?.replace("Bearer ", "");
+        authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+      
+      console.log(`[Middleware] Verifying JWT. Source: ${authHeader ? 'Header' : (req.cookies?.accessToken ? 'Cookie' : 'None')}`);
+
       if (!accessToken || accessToken.length === 0) {
+        console.log("[Middleware] No token found.");
         throw new ApiError(401, "No token provided", ["Authentication failed"]);
       }
 
@@ -135,10 +142,70 @@ class Middleware {
         ]);
       }
 
+      // Check partial token restrictions
+      if (decodedToken.isPartial) {
+        console.log(`[Middleware] Partial token detected. Route: ${req.originalUrl}, Method: ${req.method}`);
+
+        // Allowed routes for partial tokens: Only session management endpoints
+        // Use exact path matching to prevent unintended access
+        const allowedSessionRoutes = [
+          /^\/api\/v\d+\/sessions\/?$/,                    // GET /sessions, POST /sessions/revoke-all
+          /^\/api\/v\d+\/sessions\/[a-zA-Z0-9_-]+\/?$/,    // DELETE /sessions/:sessionId
+          /^\/api\/v\d+\/sessions\/revoke-all\/?$/,        // POST /sessions/revoke-all
+        ];
+
+        const isAllowed = allowedSessionRoutes.some((pattern) =>
+          pattern.test(req.originalUrl.split("?")[0]) // Remove query params
+        ) && ["GET", "DELETE", "POST"].includes(req.method);
+
+        if (!isAllowed) {
+          console.warn(`[Middleware] Access denied for partial token. URL: ${req.originalUrl}`);
+          throw new ApiError(403, "Access restricted for partial session", [
+            "Complete login to access this resource",
+          ]);
+        }
+        console.log(`[Middleware] Access granted for partial token.`);
+      }
+
+      // Check if session is still active: Redis (cache) → DB (source of truth)
+      // Skip session validation for partial tokens (they don't have sessions yet)
+      if (decodedToken.sessionId && !decodedToken.isPartial) {
+        const userId = decodedToken._id.toString();
+        const sessionId = decodedToken.sessionId;
+        let isActive = await RedisManager.isSessionActive(userId, sessionId);
+
+        // Redis miss — fall back to DB (source of truth)
+        if (!isActive) {
+          const { SessionModel } = await import("../models/sessionModel");
+          const dbSession = await SessionModel.findOne({
+            refreshTokenId: sessionId,
+            userId,
+            isActive: true,
+            revokedAt: { $exists: false },
+            expiresAt: { $gt: new Date() },
+          }).lean();
+
+          if (dbSession) {
+            // Session is valid in DB — re-cache in Redis
+            isActive = true;
+            await RedisManager.addActiveSession(userId, sessionId, {
+              device: (dbSession as any).device?.userAgent || "Unknown",
+              ip: (dbSession as any).location?.ip || "unknown",
+            });
+          }
+        }
+
+        if (!isActive) {
+          throw new ApiError(401, "Session expired or revoked", [
+            "Please login again",
+          ]);
+        }
+      }
+
       // Find user based on decodedToken fields (either username or id)
       const user = await UserModel.findOne({
         _id: decodedToken._id,
-      }).select("isExpert isAdmin isMFAEnabled isActive");
+      }).select("isExpert isAdmin isMFAEnabled isActive isBlockedByAdmin");
       // Check if user does not exist
       if (!user) {
         throw new ApiError(401, "Invalid access token", [
@@ -146,23 +213,133 @@ class Middleware {
         ]);
       }
 
-      // Attach admin info to the request
+      if (user.isBlockedByAdmin) {
+        throw new ApiError(403, "User is blocked by admin, contact support", [
+          "Access denied",
+        ]);
+      }
+      // Attach user info to the request (including session and subscription info)
       req.user = {
         _id: user._id as ObjectId,
         isAdmin: user.isAdmin,
         isExpert: user.isExpert,
         isActive: user.isActive,
         isMFAEnabled: user.isMFAEnabled,
+        isBlockedByAdmin: user.isBlockedByAdmin,
+        sessionId: decodedToken.sessionId,
+        subscriptionId: decodedToken.subscriptionId,
+        subscriptionType: decodedToken.subscriptionType || "free",
       };
 
       return next();
     } catch (error) {
+      throw error;
+    }
+  }
+
+  private static async _isAdmin(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      // Extract the admin access token from cookies or headers
+      const adminAccessToken =
+        req.cookies?.adminAccessToken ||
+        req.header("Authorization")?.replace("Bearer ", "");
+
+      if (!adminAccessToken || adminAccessToken.length === 0) {
+        throw new ApiError(401, "No admin token provided", [
+          "Authentication failed",
+        ]);
+      }
+
+      // First verify JWT signature for admin token
+      let wrappedToken: JwtPayload = JWT.verify(
+        adminAccessToken,
+        process.env.ADMIN_ACCESS_TOKEN_SECRET!,
+        {
+          algorithms: ["HS512"],
+          complete: true,
+        }
+      ) as JwtPayload;
+
+      // Decrypt the payload
+      const decryptedPayloadStr = AuthServices.decrypt(
+        wrappedToken.payload.data
+      );
+      const decodedToken = JSON.parse(decryptedPayloadStr);
+
+      // Verify token expiration
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.exp && decodedToken.exp < now) {
+        throw new ApiError(401, "Admin token has expired", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Verify admin-specific claims
+      if (decodedToken.iss !== "KYF-ADMIN") {
+        throw new ApiError(401, "Invalid admin token issuer", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (decodedToken.aud !== "kyf-admin-api") {
+        throw new ApiError(401, "Invalid admin token audience", [
+          "Authentication failed",
+        ]);
+      }
+
+      // Find admin based on decoded token
+      const admin = await Admin.findById(decodedToken._id);
+      if (!admin) {
+        throw new ApiError(401, "Invalid admin token", [
+          "Authentication failed",
+        ]);
+      }
+
+      if (!admin.isActive) {
+        throw new ApiError(401, "Admin account is deactivated", [
+          "Access denied",
+        ]);
+      }
+
+      // Verify the associated user exists and is active
+      const user = await UserModel.findById(admin.userId).select(
+        "isActive isAdmin"
+      );
+      if (!user || !user.isActive || !user.isAdmin) {
+        throw new ApiError(
+          401,
+          "Associated user account is invalid or inactive",
+          ["Access denied"]
+        );
+      }
+
+      // Attach admin info to the request
+      req.admin = {
+        _id: admin._id as ObjectId,
+        position: admin.position,
+        isActive: admin.isActive,
+      };
+
+      // Also attach user info for backward compatibility
+      req.user = {
+        _id: user._id as ObjectId,
+        isAdmin: user.isAdmin,
+        isExpert: user.isExpert,
+        isActive: user.isActive,
+        isMFAEnabled: user.isMFAEnabled,
+        isBlockedByAdmin: user.isBlockedByAdmin,
+      };
+
+      next();
+    } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-
-      // For any other errors
-      throw new ApiError(401, "Token verification failed", [
+      throw new ApiError(401, "Admin token verification failed", [
         "Authentication failed",
         error as Error,
       ]);
@@ -220,44 +397,6 @@ class Middleware {
     }
   }
 
-  private static async _isAdmin(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      const id = req.user?._id;
-      const originalUrl = req.originalUrl;
-
-      if (!id) {
-        throw new ApiError(
-          401,
-          "User ID is missing. Authentication is required"
-        );
-      }
-
-      if (!req.originalUrl.startsWith("/admin")) {
-        throw new ApiError(403, "Access restricted to admin users only", [
-          "Unauthorized Access",
-        ]);
-      }
-
-      const admin = await Admin.findById(id);
-      if (!admin) {
-        throw new ApiError(403, "Access denied - Admin privileges required", [
-          "Unauthorized Access",
-        ]);
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, "Admin verification failed", [error as Error]);
-    }
-  }
-
   // for all error
   private static ErrorHandler(
     err: Error | ApiError, // The error caught by the middleware
@@ -285,7 +424,11 @@ class Middleware {
           success: false,
           message: err.message || "Internal Server Error",
           data: err.data,
-          errors: err.errors.filter((e) => !(e instanceof ApiError)),
+          errors: Array.isArray(err.errors)
+            ? err.errors
+            : err.errors
+            ? [err.errors]
+            : [],
         });
       }
 
@@ -293,8 +436,8 @@ class Middleware {
       if (err.name === "ValidationError") {
         return res.status(400).json({
           success: false,
-          message: "Validation Error",
-          errors: err.message,
+          message: err.message || "Validation Error",
+          errors: [],
         });
       }
 
@@ -312,6 +455,16 @@ class Middleware {
           message: "Database Error",
           errors: [err.message],
         });
+      }
+      if (err.name === "TokenExpiredError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Token expired" });
+      }
+      if (err.name === "JsonWebTokenError") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid token" });
       }
       // Default error response
       return res.status(500).json({
@@ -340,7 +493,34 @@ class Middleware {
     next();
   };
 
-  // Expose the private methods as static methods wrapped in AsyncHandler so that erros can be catched
+  // Track session activity middleware (fire-and-forget)
+  private static _trackSessionActivity = (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ) => {
+    // Fire and forget - don't block the request
+    if (req.user?.sessionId && req.user?._id) {
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        "unknown";
+      RedisManager.updateSessionActivity(
+        req.user._id.toString(),
+        req.user.sessionId,
+        {
+          lastEndpoint: req.path,
+          lastMethod: req.method,
+          ip,
+        }
+      ).catch((err) =>
+        console.error("[Middleware] Session activity update failed:", err)
+      );
+    }
+    next();
+  };
+
+  // Expose the private methods as static methods wrapped in AsyncHandler so that errors can be caught
   static SingleFile = Middleware.singleFile;
   static AttachmentsMulter = Middleware.attachmentsMulter;
   static UploadFilesToCloudinary = Middleware.uploadFilesToCloudinary;
@@ -349,6 +529,7 @@ class Middleware {
   static IsAdmin = AsyncHandler.wrap(Middleware._isAdmin);
   static globalErrorHandler = Middleware.ErrorHandler;
   static platformDetector = Middleware._platformDetector;
+  static trackSessionActivity = Middleware._trackSessionActivity;
 }
 
 export { Middleware };
