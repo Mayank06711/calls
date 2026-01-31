@@ -5,6 +5,7 @@ import { NotificationsOutlined, Email, Message, Campaign, VolumeUp, Lock, Graphi
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateNotificationSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function NotificationSettings() {
   const colors = useSubscriptionColors();
@@ -37,6 +38,15 @@ function NotificationSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for notification settings
+  useEffect(() => {
+    const p = localPrefs;
+    const summary = `User is configuring notification settings. ${hasAccess ? `Push: ${p.push !== false ? "on" : "off"}, Email: ${p.email !== false ? "on" : "off"}, Message alerts: ${p.messageAlerts !== false ? "on" : "off"}, Chat sound: ${p.chatSound !== false ? "on" : "off"}, Marketing: ${p.marketing !== false ? "on" : "off"}, Sound: ${p.sound !== false ? "on" : "off"}.` : `Push notifications, marketing, and sound are locked (requires premium).${isExpert ? " User is an expert — settings not available for expert accounts." : ""} Free settings — Email: ${p.email !== false ? "on" : "off"}, Message alerts: ${p.messageAlerts !== false ? "on" : "off"}, Chat sound: ${p.chatSound !== false ? "on" : "off"}.`}`;
+    setAIPageContext({ page: "settings/notifications", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const handleToggle = useCallback((field) => {
     // Functional update so we always read the latest local state
