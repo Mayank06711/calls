@@ -22,6 +22,7 @@ import { useVideoCallActions } from "../../../../hooks/useVideoCall";
 import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
 import { PersonAdd, HourglassEmpty, Check, Close } from "@mui/icons-material";
 import { playChatSound } from "../../../../utils/notificationSound";
+import { useAIContext } from "../../../../context/AIContext";
 
 const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestResponse }) => {
   const [messages, setMessages] = useState([]);
@@ -46,6 +47,36 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
   const currentUserId = useSelector(state => state.auth?.userId);
   const isAdmin = useSelector(state => state.auth?.userInfo?.isAdmin);
   const chatSoundEnabled = useSelector(state => state.settings?.data?.notifications?.chatSound ?? true);
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+  const displayName = selectedUser?.fullName || selectedUser?.name || selectedUser?.username || 'User';
+
+  // --- AI Context: tell Strut AI what chat the user is looking at ---
+  useEffect(() => {
+    if (!selectedUser) return;
+    const receiverIsExpert = selectedUser?.isExpert || false;
+    const senderIsExpert = isExpert || false;
+    const isPrivateChat = !receiverIsExpert && !senderIsExpert && !isAdmin;
+
+    const chatCtx = {
+      page: "chat",
+      chatId: selectedUser._id,
+      description: `User is chatting with ${displayName}${receiverIsExpert ? " (Expert)" : ""}`,
+      chatContext: {
+        receiverName: displayName,
+        receiverRole: receiverIsExpert ? "expert" : "user",
+        isPrivateChat,
+        // Compact string summary instead of raw message objects
+        ...(!isPrivateChat && messages.length > 0 && {
+          recentConversation: messages.slice(-20).map(m =>
+            `${m.senderId === currentUserId ? "me" : displayName}: ${m.type === "text" ? m.content : `[${m.type}]`}`
+          ).join("\n"),
+        }),
+      },
+    };
+    setAIPageContext(chatCtx);
+
+    return () => clearAIPageContext();
+  }, [selectedUser?._id, displayName, isExpert, isAdmin, messages.length]);
 
   // Update isSocketReady based on chatServiceRef from parent
   useEffect(() => {
@@ -778,8 +809,6 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
       }
     }
   };
-
-  const displayName = selectedUser?.fullName || selectedUser?.name || selectedUser?.username || 'User';
 
   // Render the chat request status UI
   const renderRequestStatus = () => {
