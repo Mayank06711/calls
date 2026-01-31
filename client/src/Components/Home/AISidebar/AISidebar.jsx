@@ -1,23 +1,30 @@
-import { IconButton } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import React, { useState } from "react";
 import CycloneIcon from "@mui/icons-material/Cyclone";
+import DeleteSweepOutlined from "@mui/icons-material/DeleteSweepOutlined";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import AIAssistant from "./AIAssistant/AIAssistant";
 import "ldrs/ping";
 
 function AISidebar({ isDarkMode }) {
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [chatKey, setChatKey] = useState(0);
   const colors = useSubscriptionColors();
+
+  const handleClearChat = () => {
+    setChatKey(prev => prev + 1);
+  };
+
   return (
     <>
       {/* Mobile overlay backdrop - blurred to show content behind */}
       {isAIOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 z-40 sm:hidden"
           onClick={() => setIsAIOpen(false)}
         />
       )}
-      
+
       <aside
         className={`fixed right-0 top-16 h-[calc(100vh-4rem)] shadow-lg z-50
           ${
@@ -67,15 +74,29 @@ function AISidebar({ isDarkMode }) {
                 background: `linear-gradient(135deg, ${colors.first} 0%, ${colors.second} 50%, ${colors.third} 100%)`,
               }}
             >
-              <div className="ml-12 h-full flex items-center">
+              <div className="ml-12 h-full flex items-center justify-between pr-3 relative z-10">
                 <h2
                   className="text-xl font-semibold"
                   style={{ color: colors.fourth }}
                 >
                   Strut AI
                 </h2>
+                {/* Clear chat button */}
+                <Tooltip title="Clear chat" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={handleClearChat}
+                    sx={{
+                      color: colors.fourth,
+                      opacity: 0.7,
+                      '&:hover': { opacity: 1, backgroundColor: `${colors.fourth}15` },
+                    }}
+                  >
+                    <DeleteSweepOutlined sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Tooltip>
               </div>
-              <div className="absolute -right-4 -top-4 w-20 h-20 opacity-10">
+              <div className="absolute -right-4 -top-4 w-20 h-20 opacity-10 pointer-events-none">
                 <CycloneIcon sx={{ fontSize: 80, color: colors.fourth }} />
               </div>
             </div>
@@ -88,7 +109,7 @@ function AISidebar({ isDarkMode }) {
             isAIOpen ? "opacity-100" : "opacity-0"
           } transition-opacity duration-300`}
         >
-          <AIAssistant />
+          <AIAssistant key={chatKey} />
         </div>
       </div>
     </aside>
