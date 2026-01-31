@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
 import AISidebar from "./AISidebar/AISidebar";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { AIContextProvider } from "../../context/AIContext";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
@@ -265,6 +266,7 @@ function Home() {
   };
 
   return (
+    <AIContextProvider>
     <div
       className={`min-h-screen w-full ${
         isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
@@ -345,6 +347,7 @@ function Home() {
       {/* AI Assistant Panel */}
       <AISidebar isDarkMode={isDarkMode} />
     </div>
+    </AIContextProvider>
   );
 }
 
