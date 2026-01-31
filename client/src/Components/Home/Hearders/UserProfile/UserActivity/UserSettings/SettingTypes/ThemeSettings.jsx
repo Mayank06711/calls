@@ -20,6 +20,7 @@ import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateThemeSettings } from '../../../../../../../redux/thunks/settings.thunk';
 import { setThemeMode, setPrimaryColor, setFontSize, addCustomFont, removeCustomFont } from '../../../../../../../redux/actions';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 // Predefined color options
 const colorOptions = [
@@ -62,6 +63,15 @@ function ThemeSettings() {
   const [activeTab, setActiveTab] = useState('appearance');
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for theme settings
+  useEffect(() => {
+    const colorName = colorOptions.find(c => c.value === theme.primaryColor)?.name || theme.primaryColor;
+    const summary = `User is configuring theme settings. ${hasAccess ? `Display mode: ${theme.mode}, Primary color: ${colorName} (${theme.primaryColor}), Font size: ${theme.fontSize}, Custom fonts: ${theme.customFonts?.length || 0}.${dirtyFields?.length > 0 ? " Has unsaved changes." : ""}` : `Theme settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/theme", description: summary });
+    return () => clearAIPageContext();
+  }, [theme, hasAccess, isExpert, dirtyFields, setAIPageContext, clearAIPageContext]);
 
   // Fetch settings and style options when component mounts
   useEffect(() => {
