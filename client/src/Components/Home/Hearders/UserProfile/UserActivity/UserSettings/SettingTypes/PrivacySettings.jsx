@@ -7,6 +7,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useSocketContext } from '../../../../../../../socket/SocketContext';
 import ChatService from '../../../../../../../socket/chatService';
 import { fetchSettingsThunk, updatePrivacySettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function PrivacySettings() {
   const colors = useSubscriptionColors();
@@ -41,6 +42,14 @@ function PrivacySettings() {
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
+
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for privacy settings — keep it generic, no sensitive details
+  useEffect(() => {
+    setAIPageContext({ page: "settings/privacy", description: "User is viewing privacy settings. Privacy details are not shared with AI for security reasons." });
+    return () => clearAIPageContext();
+  }, [setAIPageContext, clearAIPageContext]);
 
   const handleToggleOnlineStatus = useCallback(() => {
     const newValue = !localShowOnline;
