@@ -5,6 +5,7 @@ import { ViewQuiltOutlined, Lock } from '@mui/icons-material';
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateLayoutSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function LayoutSettings() {
   const colors = useSubscriptionColors();
@@ -37,6 +38,14 @@ function LayoutSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for layout settings
+  useEffect(() => {
+    const summary = `User is configuring layout settings. ${hasAccess ? `Sidebar position: ${localPrefs.sidebarPosition || "left"}, Density: ${localPrefs.compactView ? "compact" : "comfortable"}.` : `Layout settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/layout", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const handleChange = useCallback((field, value) => {
     // Functional update so we always read the latest local state
