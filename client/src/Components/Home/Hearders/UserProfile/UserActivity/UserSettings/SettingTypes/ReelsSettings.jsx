@@ -5,6 +5,7 @@ import { VideoLibraryOutlined, PlayCircleOutline, HighQuality, Download, DataSav
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { fetchStyleOptionsThunk, fetchSettingsThunk, updateReelsPreferencesSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function ReelsSettings() {
   const colors = useSubscriptionColors();
@@ -37,6 +38,15 @@ function ReelsSettings() {
   }, []);
 
   const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for reels settings
+  useEffect(() => {
+    const p = localPrefs;
+    const summary = `User is configuring reels settings. ${hasAccess ? `Autoplay: ${p.autoPlay ? "on" : "off"}, Default quality: ${p.defaultQuality || "auto"}, Download options: ${p.downloadOptions ? "on" : "off"}, Data saver: ${p.dataSaver ? "on" : "off"}.` : `Reels settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/reels", description: summary });
+    return () => clearAIPageContext();
+  }, [localPrefs, hasAccess, isExpert, setAIPageContext, clearAIPageContext]);
 
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
