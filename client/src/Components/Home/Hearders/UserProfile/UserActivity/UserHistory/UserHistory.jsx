@@ -23,6 +23,7 @@ import {
 import { useSubscriptionColors } from '../../../../../../utils/getSubscriptionColors';
 import { makeRequest } from '../../../../../../utils/apiHandlers';
 import { ENDPOINTS } from '../../../../../../constants/apiEndpoints';
+import { useAIContext } from '../../../../../../context/AIContext';
 
 // ─── Tab definitions ──────────────────────────────────────────
 const USER_TABS = [
@@ -50,6 +51,53 @@ function UserHistory() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const requestIdRef = useRef(0);
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // Set AI context with a compact summary of the loaded history data
+  useEffect(() => {
+    if (!data || loading) return;
+
+    let summary = `User is viewing ${activeTab} history.`;
+    try {
+      if (activeTab === "calls") {
+        const stats = data.stats || {};
+        const calls = data.calls || [];
+        summary += ` Stats: ${stats.totalCalls || 0} total, ${stats.completedCalls || 0} completed, ${stats.missedCalls || 0} missed.`;
+        if (calls.length > 0) {
+          summary += " Recent: " + calls.slice(0, 5).map(c =>
+            `${c.otherParticipant?.fullName || "Unknown"} - ${c.callType || "call"} (${c.status}, ${c.duration || 0}s)`
+          ).join("; ");
+        }
+      } else if (activeTab === "payments") {
+        const tipStats = data.tips?.stats || {};
+        const subPayments = data.subscriptionPayments || [];
+        summary += ` ${tipStats.tipCount || 0} tips sent (₹${tipStats.completedTips || 0} total). ${subPayments.length} subscription payments.`;
+      } else if (activeTab === "subscriptions") {
+        const current = data.currentSubscription;
+        const history = data.history || [];
+        summary += current ? ` Current plan: ${current.type || current.plan || "Unknown"}.` : " No active subscription.";
+        summary += ` ${history.length} past subscription records.`;
+      } else if (activeTab === "ratings") {
+        const ratings = data.ratings || [];
+        summary += ` ${ratings.length} ratings given.`;
+      } else if (activeTab === "summary" && data) {
+        summary += ` Expert dashboard summary available.`;
+      } else if (activeTab === "performance" && data) {
+        summary += ` Expert performance data available.`;
+      } else if (activeTab === "earnings" && data) {
+        summary += ` Expert earnings data available.`;
+      } else if (activeTab === "complaints" && data) {
+        summary += ` Expert complaints data available.`;
+      }
+    } catch { /* ignore formatting errors */ }
+
+    setAIPageContext({
+      page: "profile/history",
+      description: summary,
+    });
+
+    return () => clearAIPageContext();
+  }, [activeTab, data, loading]);
 
   const fetchData = useCallback(async (tab) => {
     const thisRequestId = ++requestIdRef.current;
