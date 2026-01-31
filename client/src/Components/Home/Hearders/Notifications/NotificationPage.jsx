@@ -7,6 +7,7 @@ import {
 } from '@mui/icons-material';
 import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
 import { useNotifications } from '../../../../hooks/useNotifications';
+import { useAIContext } from '../../../../context/AIContext';
 import SuggestionCard from './cards/SuggestionCard';
 import SystemCard from './cards/SystemCard';
 import SocialCard from './cards/SocialCard';
@@ -42,10 +43,26 @@ function NotificationPage() {
     notifications,
   } = useNotifications();
 
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
   // Mark all as read when opening the notification page
   useEffect(() => {
     markAllAsRead();
   }, []);
+
+  // AI context for notifications page
+  useEffect(() => {
+    const total = notifications.length;
+    const catSummary = categories
+      .filter(c => c !== 'all')
+      .map(c => `${TAB_LABELS[c]}: ${counts[c] || 0}`)
+      .join(', ');
+    const summary = total === 0
+      ? `User is viewing notifications. No notifications of any type. Categories available: ${categories.filter(c => c !== 'all').map(c => TAB_LABELS[c]).join(', ')}.`
+      : `User is viewing notifications. Total: ${total}${unreadCount > 0 ? `, ${unreadCount} unread` : ''}. By category — ${catSummary}. Currently filtering by: ${TAB_LABELS[activeCategory]}.`;
+    setAIPageContext({ page: "notifications", description: summary });
+    return () => clearAIPageContext();
+  }, [notifications.length, unreadCount, counts, activeCategory, categories, setAIPageContext, clearAIPageContext]);
 
   const renderCard = (notification) => {
     const CardComponent = CARD_COMPONENTS[notification.type];
