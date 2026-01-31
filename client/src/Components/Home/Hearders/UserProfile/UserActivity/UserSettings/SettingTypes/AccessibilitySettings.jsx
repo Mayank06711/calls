@@ -6,6 +6,7 @@ import SettingTemplate from '../SettingTemplate';
 import { fetchSettingsThunk, updateAccessibilityFontSize, updateAccessibilityFontFamily } from '../../../../../../../redux/thunks/settings.thunk';
 import { FONT_SIZE_OPTIONS, FONT_FAMILY_OPTIONS, applyFontSize, applyFontFamily, dbValueToFontSize } from '../../../../../../../constants/styleOptions';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function AccessibilitySettings() {
   const dispatch = useDispatch();
@@ -53,6 +54,17 @@ function AccessibilitySettings() {
       if (fontFamilyTimerRef.current) clearTimeout(fontFamilyTimerRef.current);
     };
   }, []);
+
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for accessibility settings
+  useEffect(() => {
+    const sizeLabel = FONT_SIZE_OPTIONS.find(o => o.value === selectedFontSize)?.label || selectedFontSize;
+    const familyLabel = FONT_FAMILY_OPTIONS.find(o => o.value === selectedFontFamily)?.label || selectedFontFamily;
+    const summary = `User is configuring accessibility settings. Font size: ${sizeLabel}, Font family: ${familyLabel}. Screen reader, high contrast, and reduced motion toggles are also available (not yet connected to backend).`;
+    setAIPageContext({ page: "settings/accessibility", description: summary });
+    return () => clearAIPageContext();
+  }, [selectedFontSize, selectedFontFamily, setAIPageContext, clearAIPageContext]);
 
   const handleFontSizeChange = (e) => {
     const newSize = e.target.value;
