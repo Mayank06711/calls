@@ -17,6 +17,7 @@ import SubscriptionSkeleton from "./SubscriptionSkeleton";
 import { useNavigate } from "react-router-dom";
 import ErrorMessage from "./ErrorMessage";
 import { getSubscriptionPlansThunk } from "../../../../redux/thunks/subscription.thunks";
+import { useAIContext } from "../../../../context/AIContext";
 
 function Subscriptions() {
   const dispatch = useDispatch();
@@ -27,6 +28,8 @@ function Subscriptions() {
   const plans = subscriptionPlans.plans;
   const loaders = useSelector((state) => state.loaderState.loaders);
   const navigate = useNavigate();
+  const currentSub = useSelector((state) => state.userInfo?.data?.subscription?.type || "Free");
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
 
   // Fetch subscription plans on mount if not already loaded
   useEffect(() => {
@@ -34,6 +37,16 @@ function Subscriptions() {
       dispatch(getSubscriptionPlansThunk());
     }
   }, [dispatch, plans]);
+
+  // Set AI context with subscription info
+  useEffect(() => {
+    const summary = `User is viewing subscription plans. Current plan: ${currentSub}. Available plans: Free (₹0/day), Silver (₹2/day), Gold (₹5/day, recommended), Platinum (₹8/day).`;
+    setAIPageContext({
+      page: "subscriptions",
+      description: summary,
+    });
+    return () => clearAIPageContext();
+  }, [currentSub]);
 
   // Get colors for each subscription type
   const subscriptionColors = {

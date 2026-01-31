@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { COLORS } from "../../../../../constants/colorPalettes";
 import { motion } from "framer-motion";
@@ -16,6 +16,8 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SpeedIcon from "@mui/icons-material/Speed";
 import Payment from "../Payment/Payment";
+import { useAIContext } from "../../../../../context/AIContext";
+import { useSelector } from "react-redux";
 
 function PlatinumSubscription() {
   const location = useLocation();
@@ -26,6 +28,19 @@ function PlatinumSubscription() {
   const [customDays, setCustomDays] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
   const [selectedDays, setSelectedDays] = useState(null);
+  const currentSub = useSelector((state) => state.userInfo?.data?.subscription?.type || "Free");
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  useEffect(() => {
+    const base = planDetails?.basePrice || 0;
+    const included = features?.included?.map(f => f.name).join(", ") || "";
+    const limits = features?.limits?.map(f => f.name).join(", ") || "";
+    const support = features?.support?.map(f => f.name).join(", ") || "";
+    const pricing = base ? `7d=₹${Math.round(base * 7)} (₹${base}/day), 15d=₹${Math.round(base * 0.95 * 15)} (₹${(base * 0.95).toFixed(2)}/day, 5% off), 30d=₹${Math.round(base * 0.9 * 30)} (₹${(base * 0.9).toFixed(2)}/day, 10% off), 90d=₹${Math.round(base * 0.85 * 90)} (₹${(base * 0.85).toFixed(2)}/day, 15% off), 180d=₹${Math.round(base * 0.8 * 180)} (₹${(base * 0.8).toFixed(2)}/day, 20% off), 365d=₹${Math.round(base * 0.75 * 365)} (₹${(base * 0.75).toFixed(2)}/day, 25% off)` : "";
+    const summary = `User is viewing the Platinum plan page. Current plan: ${currentSub}. Platinum base price: ₹${base}/day. Pricing: ${pricing}.${included ? ` Included features: ${included}.` : ""}${limits ? ` Limits: ${limits}.` : ""}${support ? ` Support: ${support}.` : ""} Custom days (7-365) available with tiered discounts.`;
+    setAIPageContext({ page: "subscriptions/platinum", description: summary });
+    return () => clearAIPageContext();
+  }, [planDetails, features, currentSub]);
 
   const subscriptionColors = {
     FREE: COLORS.CASUAL,
