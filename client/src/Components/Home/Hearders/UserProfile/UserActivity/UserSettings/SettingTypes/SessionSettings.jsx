@@ -15,6 +15,7 @@ import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
 import { logoutThunk } from '../../../../../../../redux/thunks/login.thunks';
 import { fetchSessionsThunk, revokeSessionThunk, revokeAllSessionsThunk } from '../../../../../../../redux/thunks/session.thunks';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 function SessionSettings() {
   const colors = useSubscriptionColors();
@@ -29,7 +30,16 @@ function SessionSettings() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
   const countdownRef = useRef(null);
-  
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for sessions page
+  useEffect(() => {
+    const otherSessions = sessions?.filter(s => !s.isCurrent) || [];
+    const summary = `User is managing active sessions. Total sessions: ${count || 0}. ${otherSessions.length > 0 ? `Other devices: ${otherSessions.map(s => `${s.deviceType || "unknown"} (${s.location || "unknown location"}, last active ${s.lastActiveAt ? new Date(s.lastActiveAt).toLocaleDateString() : "unknown"})`).join("; ")}.` : "No other active sessions."} ${lastLoginInfo ? `Last login: ${lastLoginInfo.device || "unknown device"} from ${lastLoginInfo.location || "unknown location"}.` : ""}`;
+    setAIPageContext({ page: "settings/sessions", description: summary });
+    return () => clearAIPageContext();
+  }, [sessions, count, lastLoginInfo, setAIPageContext, clearAIPageContext]);
+
   // Fetch sessions on mount
   useEffect(() => {
     dispatch(fetchSessionsThunk());
