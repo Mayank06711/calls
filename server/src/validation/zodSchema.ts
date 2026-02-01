@@ -168,6 +168,143 @@ const SendUserNotificationSchema = z.object({
   stickyTime: z.number().optional(),
 });
 
+// ─── Wardrobe Schemas ──────────────────────────────────────────────────────
+
+const AddClothSchema = z.object({
+  type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear"], {
+    required_error: "Clothing type is required",
+  }),
+  subcategory: z.string().min(1, "Subcategory is required").trim(),
+  photoUrl: z.string().url("Invalid photo URL"),
+  thumbnailUrl: z.string().url("Invalid thumbnail URL").optional(),
+  color: z.string().trim().optional(),
+  pattern: z.enum(["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract", "Printed"]).optional(),
+  fabric: z.enum(["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Chiffon", "Velvet", "Satin", "Leather", "Georgette", "Crepe", "Khadi", "Other"]).optional(),
+  brand: z.string().trim().optional(),
+  season: z.enum(["Summer", "Winter", "Monsoon", "All"]).default("All"),
+  occasions: z.array(z.enum(["Wedding", "Office", "Casual", "Party", "Travel", "Festive", "Date Night", "Sports", "Lounge"])).optional(),
+  price: z.number().min(0).optional(),
+  purchaseDate: z.string().datetime().optional(),
+});
+
+const UpdateClothSchema = AddClothSchema.partial();
+
+const CreateOutfitSchema = z.object({
+  name: z.string().trim().optional(),
+  itemIds: z.array(mongoId).min(1, "At least one item is required"),
+  occasion: z.string().trim().optional(),
+  season: z.string().trim().optional(),
+  tags: z.array(z.string().trim()).default([]),
+  notes: z.string().trim().optional(),
+});
+
+const UpdateOutfitSchema = CreateOutfitSchema.partial();
+
+const MeasurementsSchema = z.object({
+  bust: z.number().min(0).optional(),
+  waist: z.number().min(0).optional(),
+  hips: z.number().min(0).optional(),
+  inseam: z.number().min(0).optional(),
+  shoulderWidth: z.number().min(0).optional(),
+}).optional();
+
+const StyleProfileSchema = z.object({
+  // ── Required (engine core — unchanged) ───────────────────────────────
+  bodyShape: z.enum(["Trapezoid", "Rectangle", "Triangle", "Inverted_Triangle", "Oval", "Hourglass", "Pear", "Apple"], {
+    required_error: "Body shape is required",
+  }),
+  height: z.enum(["Short", "Medium", "Tall"], { required_error: "Height is required" }),
+  skinTone: z.enum(["Fair", "Wheatish", "Dusky", "Dark Brown"], { required_error: "Skin tone is required" }),
+  undertone: z.enum(["Warm", "Cool", "Olive", "Neutral"], { required_error: "Undertone is required" }),
+  ageGroup: z.enum(["GenZ (16-25)", "Young Adult (26-35)", "Mid-Aged (36-50)", "Senior (50+)"], {
+    required_error: "Age group is required",
+  }),
+  fitPreference: z.enum(["Slim Fit", "Regular Fit", "Oversized"], { required_error: "Fit preference is required" }),
+  styleVibe: z.enum(["Classic", "Trendy", "Desi", "Fusion", "Old Money"], { required_error: "Style vibe is required" }),
+
+  // ── Optional Tier 1 (onboarding, skippable) ─────────────────────────
+  faceShape: z.enum(["Oval", "Round", "Square", "Heart", "Diamond", "Oblong", "Triangle"]).optional(),
+  hairType: z.enum([
+    "Straight Fine", "Straight Medium", "Straight Coarse",
+    "Wavy Fine", "Wavy Medium", "Wavy Coarse",
+    "Curly Loose", "Curly Springy", "Curly Tight",
+    "Coily Soft", "Coily Zigzag", "Coily Dense",
+  ]).optional(),
+  hairLength: z.enum(["Bald", "Very Short", "Short", "Medium", "Long", "Very Long"]).optional(),
+  hairColor: z.enum([
+    "Black", "Dark Brown", "Medium Brown", "Light Brown", "Blonde",
+    "Red", "Gray/Silver", "White", "Highlighted", "Colored/Dyed",
+  ]).optional(),
+  eyeShape: z.enum(["Almond", "Round", "Hooded", "Upturned", "Downturned", "Monolid", "Deep Set"]).optional(),
+  lipShape: z.enum(["Full", "Thin", "Cupids Bow", "Heart", "Wide", "Round", "Bottom Heavy", "Top Heavy"]).optional(),
+  colorPaletteSeason: z.enum(["Spring", "Summer", "Autumn", "Winter"]).optional(),
+
+  // ── Optional Tier 2 (progressive disclosure) ────────────────────────
+  measurements: MeasurementsSchema,
+  heightExact: z.number().min(50).max(250).optional(),
+  weight: z.number().min(20).max(300).optional(),
+  fabricPreferences: z.array(z.enum(["Natural & Breathable", "Luxury", "Easy Care", "Performance", "Sustainable"])).optional(),
+  fabricSensitivities: z.array(z.enum(["Wool", "Synthetic", "Chemical Dye", "Rough Texture", "None"])).optional(),
+  colorPreferences: z.array(z.enum(["Neutrals", "Earth Tones", "Pastels", "Jewel Tones", "Brights", "Metallics"])).optional(),
+  budgetRange: z.enum(["Ultra Budget", "Budget", "Moderate", "Mid Luxury", "Luxury"]).optional(),
+  lifestyleTypes: z.array(z.enum(["Office Formal", "Office Casual", "Work From Home", "Casual", "Athletic", "Social Events", "Parent Life"])).optional(),
+  fashionChallenges: z.array(z.enum(["Finding Fit", "Body Confidence", "Color Confusion", "Budget", "Time"])).optional(),
+  favoritePatterns: z.array(z.enum(["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract", "Printed"])).optional(),
+  necklinePreferences: z.array(z.enum(["V-Neck", "Scoop", "Crew", "Boat", "Off-Shoulder", "Turtleneck", "Mandarin", "Sweetheart"])).optional(),
+  modestyCoverage: z.enum(["Very Modest", "Moderate", "Standard", "Less Coverage"]).optional(),
+  favoriteBrands: z.string().trim().optional(),
+  styleInspiration: z.string().trim().optional(),
+});
+
+const SuggestFullOutfitSchema = z.object({
+  occasion: z.string().min(1, "Occasion is required"),
+  season: z.enum(["Summer", "Winter", "Monsoon", "auto"], { required_error: "Season is required" }),
+});
+
+const SuggestFromItemSchema = z.object({
+  clothingItemId: mongoId,
+  occasion: z.string().min(1, "Occasion is required"),
+  season: z.enum(["Summer", "Winter", "Monsoon", "auto"], { required_error: "Season is required" }),
+});
+
+const SuggestLayerSchema = z.object({
+  clothingItemId: mongoId,
+  occasion: z.string().min(1, "Occasion is required"),
+  season: z.enum(["Summer", "Winter", "Monsoon", "auto"], { required_error: "Season is required" }),
+});
+
+const SuggestFootwearSchema = z.object({
+  topItemId: mongoId,
+  bottomItemId: mongoId,
+  occasion: z.string().min(1, "Occasion is required"),
+  season: z.enum(["Summer", "Winter", "Monsoon", "auto"], { required_error: "Season is required" }),
+  layerColor: z.string().trim().optional(),
+});
+
+const GeneratePairingsSchema = z.object({
+  occasion: z.string().min(1, "Occasion is required"),
+  season: z.enum(["Summer", "Winter", "Monsoon", "auto"], { required_error: "Season is required" }),
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+const SavePairingSchema = z.object({
+  itemIds: z.array(mongoId).min(2, "At least 2 items required for a pairing"),
+  occasion: z.string().trim().optional(),
+  season: z.string().trim().optional(),
+  name: z.string().trim().optional(),
+  tags: z.array(z.string().trim()).default([]),
+  notes: z.string().trim().optional(),
+});
+
+const LogWearSchema = z.object({
+  outfitId: mongoId,
+  wornAt: z.string().datetime().optional(),
+  occasion: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+  weather: z.string().trim().optional(),
+});
+
 // ─── Exports ────────────────────────────────────────────────────────────────
 
 export {
@@ -188,4 +325,17 @@ export {
   UserIdParamSchema,
   SendNotificationSchema,
   SendUserNotificationSchema,
+  // Wardrobe
+  AddClothSchema,
+  UpdateClothSchema,
+  CreateOutfitSchema,
+  UpdateOutfitSchema,
+  StyleProfileSchema,
+  SuggestFullOutfitSchema,
+  SuggestFromItemSchema,
+  SuggestLayerSchema,
+  SuggestFootwearSchema,
+  GeneratePairingsSchema,
+  SavePairingSchema,
+  LogWearSchema,
 };

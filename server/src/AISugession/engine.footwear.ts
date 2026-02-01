@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { getTopCategory, getBottomCategory, getShoeColorSuggestion } from "./shared";
 
 // --- 1. INTERFACES ---
 
@@ -56,70 +57,20 @@ export class FootwearEngine {
         }
     }
 
-    // --- A. CATEGORY MAPPERS (Translates specific items to logic groups) ---
-    private getTopCategory(topName: string, gender: string): string {
-        const lower = topName.toLowerCase();
-        if (gender === "Male") {
-            if (lower.includes("kurta") || lower.includes("sherwani") || lower.includes("pathani")) return "Ethnic Top";
-            if (lower.includes("shirt") && !lower.includes("t-shirt")) return "Western Shirt";
-            return "T-Shirt/Top"; 
-        } else {
-            if (lower.includes("kurti") || lower.includes("suit") || lower.includes("anarkali")) return "Ethnic Top";
-            if (lower.includes("saree") || lower.includes("lehenga") || lower.includes("gown")) return "Dress/Saree";
-            return "Western Shirt"; 
-        }
-    }
-
-    private getBottomCategory(bottomName: string, gender: string): string {
-        const lower = bottomName.toLowerCase();
-        if (lower.includes("dhoti") || lower.includes("pajama") || lower.includes("salwar") || lower.includes("churidar")) return "Ethnic Bottom";
-        if (lower.includes("lehenga") || lower.includes("skirt")) return "Open Bottom (Lehenga)";
-        if (lower.includes("shorts")) return "Shorts/Skirts";
-        if (lower.includes("trouser") || lower.includes("formal") || lower.includes("suit")) return "Formal Trousers";
-        return "Jeans/Chinos";
-    }
-
-    // --- B. THE COLOR BRAIN (Smart Matching) ---
-    private getShoeColor(type: string, topColor: string, layerColor?: string): string {
-        
-        // RULE 1: SANDWICH METHOD (Match Shoes to Layer)
-        // If there is a layer (Jacket/Stole), shoes usually match it to frame the outfit.
-        if (layerColor && type === "Classic") {
-            if (layerColor.includes("Gold") || layerColor.includes("Beige")) return "Tan / Gold";
-            if (layerColor.includes("Silver") || layerColor.includes("Grey")) return "Black / Grey";
-            if (layerColor.includes("Black")) return "Black";
-            if (layerColor.includes("Brown")) return "Dark Brown";
-            // If layer is colorful (e.g. Red), go neutral
-            return "Nude / Beige";
-        }
-
-        // RULE 2: FALLBACK TO TOP
-        const isWarm = topColor.includes("Red") || topColor.includes("Yellow") || topColor.includes("Orange") || topColor.includes("Cream");
-        
-        if (type === "Classic") {
-            if (topColor.includes("Black")) return "Black";
-            if (isWarm) return "Tan / Brown";
-            return "Black / Navy";
-        }
-
-        if (type === "Trendy") {
-            if (topColor.includes("White")) return "White (Crisp)";
-            return "Contrast Pop Color";
-        }
-
-        return "Neutral / Earthy"; 
-    }
+    // --- A & B: Bridge mappers + color logic now use shared.ts ---
+    // getTopCategory(), getBottomCategory(), getShoeColorSuggestion() imported from "./shared"
 
     // --- C. KEY GENERATOR ---
     private generateKey(input: FootwearInput, topCat: string, bottomCat: string): string {
-        // Order MUST match Builder
-        return `${input.gender}|${input.occasion}|${input.season}|${input.styleVibe}|${topCat}|${bottomCat}|${input.height}|${input.ageGroup}|${input.fitPreference}|${input.bodyShape}|${input.undertone}|${input.skinTone}`;
+        // Order MUST match Builder:
+        // Gender|Occasion|Season|Vibe|TopCat|BottomCat|Height|Age
+        return `${input.gender}|${input.occasion}|${input.season}|${input.styleVibe}|${topCat}|${bottomCat}|${input.height}|${input.ageGroup}`;
     }
 
     // --- MAIN FUNCTION ---
     public getFootwearOptions(input: FootwearInput): FootwearResult {
-        const topCat = this.getTopCategory(input.topItemName, input.gender);
-        const bottomCat = this.getBottomCategory(input.bottomItemName, input.gender);
+        const topCat = getTopCategory(input.topItemName, input.gender);
+        const bottomCat = getBottomCategory(input.bottomItemName, input.gender);
         
         const key = this.generateKey(input, topCat, bottomCat);
         const ids = this.db.data[key];
@@ -146,19 +97,19 @@ export class FootwearEngine {
                 {
                     type: "Classic",
                     item: itemClassic,
-                    color: this.getShoeColor("Classic", input.topItemColor, input.layerColor),
+                    color: getShoeColorSuggestion("Classic", input.topItemColor, input.layerColor),
                     note: "Timeless choice matching the occasion."
                 },
                 {
                     type: "Trendy",
                     item: itemTrendy,
-                    color: this.getShoeColor("Trendy", input.topItemColor, input.layerColor),
+                    color: getShoeColorSuggestion("Trendy", input.topItemColor, input.layerColor),
                     note: "Modern choice to elevate the look."
                 },
                 {
                     type: "Comfort",
                     item: itemComfort,
-                    color: this.getShoeColor("Comfort", input.topItemColor, input.layerColor),
+                    color: getShoeColorSuggestion("Comfort", input.topItemColor, input.layerColor),
                     note: "Focuses on ease of movement."
                 }
             ]

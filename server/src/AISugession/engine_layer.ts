@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { getTopCategory, getLayerColorSuggestion } from "./shared";
 
 // --- 1. INTERFACES ---
 
@@ -52,72 +53,20 @@ export class LayeringEngine {
         }
     }
 
-    // --- A. THE BRIDGE: Maps Specific Top -> General Category ---
-    private getTopCategory(topName: string, gender: string): string {
-        const lower = topName.toLowerCase();
-
-        if (gender === "Male") {
-            // Ethnic
-            if (lower.includes("kurta") || lower.includes("sherwani") || lower.includes("pathani") || lower.includes("bandhgala")) return "Ethnic Top";
-            // Formal/Western
-            if (lower.includes("shirt") && !lower.includes("t-shirt")) return "Western Shirt";
-            // Casual
-            return "T-Shirt/Top"; 
-        } else {
-            // Ethnic
-            if (lower.includes("kurti") || lower.includes("suit") || lower.includes("anarkali") || lower.includes("sharara")) return "Ethnic Top";
-            // Saree/Lehenga
-            if (lower.includes("saree") || lower.includes("lehenga") || lower.includes("gown") || lower.includes("drape")) return "Dress/Saree";
-            // Western
-            return "Western Shirt"; 
-        }
-    }
-
-    // --- B. THE COLOR BRAIN: Calculates Layer Colors based on Top Color ---
-    private getLayerColor(type: "Classic" | "Contrast" | "Statement", topColor: string, input: LayeringInput): string {
-        const isWedding = input.occasion.includes("Wedding");
-        
-        // 1. CLASSIC (Harmonious / Matching / Neutral)
-        if (type === "Classic") {
-            if (input.occasion.includes("Office")) return "Grey / Navy / Black"; // Professional
-            if (topColor.includes("White") || topColor.includes("Cream")) return "Beige / Gold";
-            if (topColor.includes("Black")) return "Charcoal Grey";
-            return "Matching Tone (Monochrome)";
-        }
-
-        // 2. CONTRAST (Complementary)
-        if (type === "Contrast") {
-            if (topColor.includes("Yellow") || topColor.includes("Mustard")) return "Floral Pink / Green";
-            if (topColor.includes("Green")) return isWedding ? "Peach / Red" : "Beige";
-            if (topColor.includes("Blue")) return "White / Silver";
-            if (topColor.includes("Red") || topColor.includes("Maroon")) return "Beige / Gold";
-            if (topColor.includes("Black")) return isWedding ? "Brocade / Silver" : "Tan / Camel";
-            if (topColor.includes("White")) return "Deep Maroon / Navy";
-            return "Contrast Color";
-        }
-
-        // 3. STATEMENT (Bold / Texture / Pattern)
-        if (type === "Statement") {
-            if (input.styleVibe === "Fusion") return "Geometric Print / Abstract";
-            if (isWedding) return "Heavy Gold Zari / Velvet";
-            if (input.season === "Winter") return "Rich Burgundy / Emerald";
-            return "Bold Pattern / Neon Accent";
-        }
-
-        return "Neutral";
-    }
+    // --- A & B: Bridge mapper + color logic now use shared.ts ---
+    // getTopCategory() and getLayerColorSuggestion() imported from "./shared"
 
     // --- C. THE KEY GENERATOR ---
     private generateKey(input: LayeringInput, topCategory: string): string {
         // Order MUST match Builder:
-        // Gender|Occasion|Season|Vibe|TopCategory|Age|Body|Height|Undertone|Skin|Fit
-        return `${input.gender}|${input.occasion}|${input.season}|${input.styleVibe}|${topCategory}|${input.ageGroup}|${input.bodyShape}|${input.height}|${input.undertone}|${input.skinTone}|${input.fitPreference}`;
+        // Gender|Occasion|Season|Vibe|TopCategory|Age|Body|Height
+        return `${input.gender}|${input.occasion}|${input.season}|${input.styleVibe}|${topCategory}|${input.ageGroup}|${input.bodyShape}|${input.height}`;
     }
 
     // --- MAIN FUNCTION ---
     public getLayeringOptions(input: LayeringInput): LayeringResult {
         // 1. Translate Top Item -> Category
-        const topCategory = this.getTopCategory(input.topItemName, input.gender);
+        const topCategory = getTopCategory(input.topItemName, input.gender);
 
         // 2. Build Key & Lookup
         const key = this.generateKey(input, topCategory);
@@ -146,19 +95,19 @@ export class LayeringEngine {
                 {
                     type: "Classic",
                     item: itemClassic,
-                    color: this.getLayerColor("Classic", input.topItemColor, input),
+                    color: getLayerColorSuggestion("Classic", input.topItemColor, input.occasion, input.styleVibe, input.season),
                     reason: "Safe, harmonious choice."
                 },
                 {
                     type: "Contrast",
                     item: itemContrast,
-                    color: this.getLayerColor("Contrast", input.topItemColor, input),
+                    color: getLayerColorSuggestion("Contrast", input.topItemColor, input.occasion, input.styleVibe, input.season),
                     reason: "Adds visual pop and breaks the monochrome."
                 },
                 {
                     type: "Statement",
                     item: itemStatement,
-                    color: this.getLayerColor("Statement", input.topItemColor, input),
+                    color: getLayerColorSuggestion("Statement", input.topItemColor, input.occasion, input.styleVibe, input.season),
                     reason: "Bold choice for a unique look."
                 }
             ]

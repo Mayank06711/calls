@@ -14,6 +14,8 @@
     "test:integration": "ts-node src/integrationTest.ts",
     "test:sessionlimit": "ts-node src/sessionLimitTest.ts",
     "test:realworld": "ts-node src/realWorldSessionTest.ts",
+    "test:wardrobe": "ts-node src/wardrobeTest.ts",
+    "build:engines": "ts-node src/AISugession/builder_top.ts && ts-node src/AISugession/builder_pair.ts && ts-node src/AISugession/builder_layer.ts && ts-node src/AISugession/builder_footwear.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -32,6 +34,8 @@
   },
   "homepage": "https://github.com/Mayank06711/calls#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.980.0",
+    "@aws-sdk/s3-request-presigner": "^3.980.0",
     "@types/bcrypt": "^5.0.2",
     "@types/multer": "^1.4.12",
     "@types/pg": "^8.11.10",

@@ -1,29 +1,8 @@
 import * as fs from "fs";
-
-// --- 1. THE 11 USER FACTORS ---
-const GENDERS = ["Male", "Female"] as const;
-const OCCASIONS = [
-    "Wedding: Haldi (Day)", "Wedding: Mehendi (Afternoon)", "Wedding: Sangeet (Night)", 
-    "Wedding: Main Pheras (Guest)", "Wedding: Reception (Night)",
-    "Office: Daily Wear", "Office: Board Meeting", "Office: Friday Casuals",
-    "Social: Clubbing", "Social: Dinner Date", "Social: Brunch", 
-    "Travel: Airport Look", "Travel: Beach Vacation"
-] as const;
-
-const STYLE_VIBES = ["Classic", "Trendy", "Desi", "Fusion", "Old Money"] as const;
-const AGE_GROUPS = ["GenZ (16-25)", "Young Adult (26-35)", "Mid-Aged (36-50)", "Senior (50+)"] as const;
-const SEASONS = ["Summer", "Winter", "Monsoon"] as const;
-const HEIGHTS = ["Short", "Medium", "Tall"] as const;
-
-// Included for Key Consistency with other engines:
-const FIT_PREFS = ["Slim Fit", "Regular Fit", "Oversized"] as const;
-const BODY_SHAPES = ["Trapezoid", "Rectangle", "Oval", "Hourglass", "Pear", "Apple"] as const;
-const UNDERTONES = ["Warm", "Cool", "Olive", "Neutral"] as const;
-const SKIN_TONES = ["Fair", "Wheatish", "Dusky", "Dark Brown"] as const;
-
-// --- 2. OUTFIT CONTEXT (Top + Bottom) ---
-const TOP_CATEGORIES = ["Ethnic Top", "Western Shirt", "T-Shirt/Top", "Dress/Saree"] as const;
-const BOTTOM_CATEGORIES = ["Formal Trousers", "Jeans/Chinos", "Ethnic Bottom", "Shorts/Skirts", "Open Bottom (Lehenga)"] as const;
+import {
+    GENDERS, OCCASIONS, STYLE_VIBES, AGE_GROUPS, SEASONS, HEIGHTS,
+    TOP_CATEGORIES, BOTTOM_CATEGORIES, getOccasionContext,
+} from "./shared";
 
 // --- 3. THE MASTER SHOE WARDROBE (Expanded for Realism) ---
 
@@ -93,16 +72,9 @@ const FOOTWEAR_DB: any = {
 
 // --- 4. THE 13-FACTOR LOGIC ---
 
-function getContext(occasion: string): string {
-    if (occasion.includes("Wedding") || occasion.includes("Festival")) return "Wedding";
-    if (occasion.includes("Office") || occasion.includes("Board")) return "Office";
-    if (occasion.includes("Travel") || occasion.includes("Beach")) return "Travel";
-    return "Social";
-}
-
 function selectThreeShoes(params: any): string[] {
     const { gender, topCat, bottomCat, occasion, season, vibe, height, age } = params;
-    const context = getContext(occasion);
+    const context = getOccasionContext(occasion);
 
     // 1. Traverse Matrix
     // Safe navigation with Fallbacks
@@ -185,7 +157,7 @@ function buildFootwearDB() {
     let count = 0;
     let isFirst = true;
 
-    // THE 13-FACTOR LOOP
+    // THE 8-FACTOR LOOP (removed fit, body, undertone, skin - they don't affect shoe selection)
     GENDERS.forEach(gender => {
     OCCASIONS.forEach(occasion => {
     SEASONS.forEach(season => {
@@ -194,16 +166,11 @@ function buildFootwearDB() {
     BOTTOM_CATEGORIES.forEach(bottomCat => {
     HEIGHTS.forEach(height => {
     AGE_GROUPS.forEach(age => {
-        // Dummy loops for Key Consistency
-        FIT_PREFS.forEach(fit => {
-        BODY_SHAPES.forEach(body => {
-        UNDERTONES.forEach(undertone => {
-        SKIN_TONES.forEach(skin => {
 
-            const key = `${gender}|${occasion}|${season}|${vibe}|${topCat}|${bottomCat}|${height}|${age}|${fit}|${body}|${undertone}|${skin}`;
-            
+            const key = `${gender}|${occasion}|${season}|${vibe}|${topCat}|${bottomCat}|${height}|${age}`;
+
             const [opt1, opt2, opt3] = selectThreeShoes({ gender, topCat, bottomCat, occasion, season, vibe, height, age });
-            
+
             const id1 = getOrAddId(opt1);
             const id2 = getOrAddId(opt2);
             const id3 = getOrAddId(opt3);
@@ -213,23 +180,34 @@ function buildFootwearDB() {
             isFirst = false;
             count++;
 
-            if (count % 500000 === 0) {
+            if (count % 10000 === 0) {
                 console.log(`  ...Generated ${count} Footwear Rules`);
-                if (global.gc) global.gc();
             }
 
-        }); }); }); });
     }); }); }); }); }); }); }); });
 
     fs.closeSync(tempFd);
 
     console.log("💾 Saving Footwear Master JSON...");
     const finalFd = fs.openSync("footwear_master_db.json", "w");
-    
+
     fs.writeSync(finalFd, `{"dicts":{"items":${JSON.stringify(SHOE_DICT)}}, "data":{`);
-    fs.writeSync(finalFd, fs.readFileSync("footwear_temp.txt").toString());
+
+    // Stream temp file in chunks to avoid ERR_STRING_TOO_LONG
+    const CHUNK = 64 * 1024 * 1024; // 64MB chunks
+    const tempSize = fs.statSync("footwear_temp.txt").size;
+    const buf = new Uint8Array(Math.min(CHUNK, tempSize));
+    const readFd = fs.openSync("footwear_temp.txt", "r");
+    let pos = 0;
+    while (pos < tempSize) {
+        const bytesRead = fs.readSync(readFd, buf, 0, Math.min(CHUNK, tempSize - pos), pos);
+        fs.writeSync(finalFd, buf, 0, bytesRead);
+        pos += bytesRead;
+    }
+    fs.closeSync(readFd);
+
     fs.writeSync(finalFd, "}}");
-    
+
     fs.closeSync(finalFd);
     fs.unlinkSync("footwear_temp.txt");
 

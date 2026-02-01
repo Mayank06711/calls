@@ -37,6 +37,7 @@ export interface UserNotificationPayload {
   extLink?: string | null;
   stickyTime?: number;
   sentBy?: { adminId: string; position: string };
+  wardrobe?: INotification["wardrobe"];
 }
 
 class NotificationService {
@@ -129,6 +130,7 @@ class NotificationService {
       extLink: payload.extLink,
       stickyTime: payload.stickyTime,
       sentBy: payload.sentBy,
+      wardrobe: payload.wardrobe,
     });
 
     const userNotifId = (notification._id as any).toString();

@@ -1,25 +1,9 @@
 import * as fs from "fs";
-
-// --- 1. THE PARAMETER UNIVERSE ---
-
-const GENDERS = ["Male", "Female"] as const;
-
-const OCCASIONS = [
-    "Wedding: Haldi (Day)", "Wedding: Mehendi (Afternoon)", "Wedding: Sangeet (Night)", 
-    "Wedding: Main Pheras (Guest)", "Wedding: Reception (Night)",
-    "Office: Daily Wear", "Office: Board Meeting", "Office: Friday Casuals",
-    "Social: Clubbing", "Social: Dinner Date", "Social: Brunch", 
-    "Travel: Airport Look", "Travel: Beach Vacation"
-] as const;
-
-const STYLE_VIBES = ["Classic", "Trendy", "Desi", "Fusion", "Old Money"] as const;
-const AGE_GROUPS = ["GenZ (16-25)", "Young Adult (26-35)", "Mid-Aged (36-50)", "Senior (50+)"] as const;
-const FIT_PREFS = ["Slim Fit", "Regular Fit", "Oversized"] as const;
-const UNDERTONES = ["Warm", "Cool", "Olive", "Neutral"] as const;
-const SKIN_TONES = ["Fair", "Wheatish", "Dusky", "Dark Brown"] as const;
-const SEASONS = ["Summer", "Winter", "Monsoon"] as const;
-const BODY_SHAPES = ["Trapezoid", "Rectangle", "Triangle", "Inverted_Triangle", "Oval", "Hourglass", "Pear", "Apple"] as const;
-const HEIGHTS = ["Short", "Medium", "Tall"] as const;
+import {
+    GENDERS, OCCASIONS, STYLE_VIBES, AGE_GROUPS, FIT_PREFS,
+    UNDERTONES, SKIN_TONES, SEASONS, BODY_SHAPES, HEIGHTS,
+    getTopColorSuggestion,
+} from "./shared";
 
 // --- 2. THE MASTER WARDROBE (Base Options) ---
 const WARDROBE_DB: any = {
@@ -113,39 +97,8 @@ function selectItem(params: any): string {
 
 function selectColor(params: any): string {
     const { occasion, undertone, skin, season, age } = params;
-    const isDark = (skin.includes("Dusky") || skin.includes("Dark"));
-    
-    // 8. UNDERTONE LOGIC (Hue)
-    let color = "Navy";
-    
-    if (undertone === "Olive") {
-        if (occasion.includes("Haldi")) color = "Mustard"; // Olive skins look green in Lemon yellow
-        else if (occasion.includes("Wedding")) color = "Deep Wine / Teal";
-        else color = "Olive Green / Rust";
-    } 
-    else if (undertone === "Warm") {
-        if (occasion.includes("Haldi")) color = "Marigold Orange";
-        else color = isDark ? "Rich Maroon" : "Peach / Cream";
-    } 
-    else if (undertone === "Cool") {
-        if (occasion.includes("Haldi")) color = "Lemon Yellow";
-        else color = "Royal Blue / Baby Pink";
-    }
-
-    // 9. SKIN TONE & SEASON LOGIC (Brightness)
-    if (season === "Winter") {
-        // Darker shades for winter
-        if (color.includes("Pink")) color = "Dusty Rose";
-        if (color.includes("Blue")) color = "Midnight Blue";
-    }
-    
-    // 10. AGE LOGIC (Safety Check)
-    if (age.includes("Senior") && occasion.includes("Wedding")) {
-        // Seniors usually prefer dignified colors over loud ones
-        if (color.includes("Neon")) color = "Beige / Gold";
-    }
-
-    return color;
+    // Uses shared canonical color helper — returns OUTPUT_COLORS values only
+    return getTopColorSuggestion(undertone, occasion, skin, season, age);
 }
 
 // --- 4. THE BUILDER ENGINE ---

@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from "mongoose";
 
-export type NotificationType = "suggestion" | "social" | "promotion" | "system";
+export type NotificationType = "suggestion" | "social" | "promotion" | "system" | "wardrobe";
 export type NotificationSeverity = "info" | "warning" | "critical";
 
 export interface INotification extends Document {
@@ -34,6 +34,15 @@ export interface INotification extends Document {
   // System fields
   severity?: NotificationSeverity;
 
+  // Wardrobe fields
+  wardrobe?: {
+    pairingCount?: number;
+    occasion?: string;
+    season?: string;
+    thumbnails?: string[];
+    actionType?: "new_item" | "pairings_generated";
+  };
+
   // Metadata
   extLink?: string | null;
   stickyTime?: number;
@@ -56,7 +65,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["suggestion", "social", "promotion", "system"],
+      enum: ["suggestion", "social", "promotion", "system", "wardrobe"],
       required: true,
       index: true,
     },
@@ -95,6 +104,18 @@ const NotificationSchema = new Schema<INotification>(
     severity: {
       type: String,
       enum: ["info", "warning", "critical"],
+    },
+
+    // Wardrobe data
+    wardrobe: {
+      type: {
+        pairingCount: Number,
+        occasion: String,
+        season: String,
+        thumbnails: [String],
+        actionType: { type: String, enum: ["new_item", "pairings_generated"] },
+      },
+      default: undefined,
     },
 
     // Metadata

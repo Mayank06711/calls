@@ -1,27 +1,9 @@
 import * as fs from "fs";
-
-// --- 1. THE 11 INPUT FACTORS ---
-
-const GENDERS = ["Male", "Female"] as const;
-const OCCASIONS = [
-    "Wedding: Haldi (Day)", "Wedding: Mehendi (Afternoon)", "Wedding: Sangeet (Night)", 
-    "Wedding: Main Pheras (Guest)", "Wedding: Reception (Night)",
-    "Office: Daily Wear", "Office: Board Meeting", "Office: Friday Casuals",
-    "Social: Clubbing", "Social: Dinner Date", "Social: Brunch", 
-    "Travel: Airport Look", "Travel: Beach Vacation"
-] as const;
-
-const STYLE_VIBES = ["Classic", "Trendy", "Desi", "Fusion", "Old Money"] as const;
-const AGE_GROUPS = ["GenZ (16-25)", "Young Adult (26-35)", "Mid-Aged (36-50)", "Senior (50+)"] as const;
-const FIT_PREFS = ["Slim Fit", "Regular Fit", "Oversized"] as const;
-const SEASONS = ["Summer", "Winter", "Monsoon"] as const;
-const BODY_SHAPES = ["Trapezoid", "Rectangle", "Triangle", "Inverted_Triangle", "Oval", "Hourglass", "Pear", "Apple"] as const;
-const HEIGHTS = ["Short", "Medium", "Tall"] as const;
-const UNDERTONES = ["Warm", "Cool", "Olive", "Neutral"] as const;
-const SKIN_TONES = ["Fair", "Wheatish", "Dusky", "Dark Brown"] as const;
-
-// THE BRIDGE FACTOR: Categories the previous engine's output falls into
-const TOP_CATEGORIES = ["Ethnic Top", "Western Shirt", "T-Shirt/Top", "Dress/Saree"] as const;
+import {
+    GENDERS, OCCASIONS, STYLE_VIBES, AGE_GROUPS,
+    SEASONS, BODY_SHAPES, HEIGHTS,
+    TOP_CATEGORIES, getOccasionContext,
+} from "./shared";
 
 // --- 2. THE MASTER LAYERING WARDROBE ---
 
@@ -90,15 +72,9 @@ const LAYER_DB: any = {
 
 // --- 3. THE 11-FACTOR LOGIC ---
 
-function getContext(occasion: string): string {
-    if (occasion.includes("Wedding") || occasion.includes("Festival")) return "Wedding";
-    if (occasion.includes("Office") || occasion.includes("Board")) return "Office";
-    return "Social";
-}
-
 function selectThreeLayers(params: any): string[] {
     const { gender, topCat, occasion, season, vibe, height, body, age } = params;
-    const context = getContext(occasion);
+    const context = getOccasionContext(occasion);
     
     // 1. Get Base List safely
     const genderDb = LAYER_DB[gender];
@@ -169,7 +145,7 @@ function buildLayeringDB() {
     let count = 0;
     let isFirst = true;
 
-    // THE 11-DIMENSIONAL LOOP
+    // THE 8-DIMENSIONAL LOOP (removed undertone, skin, fit - they don't affect layer selection)
     GENDERS.forEach(gender => {
     OCCASIONS.forEach(occasion => {
     SEASONS.forEach(season => {
@@ -178,18 +154,14 @@ function buildLayeringDB() {
     AGE_GROUPS.forEach(age => {
     BODY_SHAPES.forEach(body => {
     HEIGHTS.forEach(height => {
-        // Undertone, Skin, Fit are part of key but used for consistency (logic handled in runtime color calc)
-        UNDERTONES.forEach(undertone => {
-        SKIN_TONES.forEach(skin => {
-        FIT_PREFS.forEach(fit => {
 
             // 1. Generate Key
-            // Order: Gender|Occasion|Season|Vibe|TopCategory|Age|Body|Height|Undertone|Skin|Fit
-            const key = `${gender}|${occasion}|${season}|${vibe}|${topCat}|${age}|${body}|${height}|${undertone}|${skin}|${fit}`;
-            
+            // Order: Gender|Occasion|Season|Vibe|TopCategory|Age|Body|Height
+            const key = `${gender}|${occasion}|${season}|${vibe}|${topCat}|${age}|${body}|${height}`;
+
             // 2. Get 3 Options
             const [opt1, opt2, opt3] = selectThreeLayers({ gender, occasion, season, vibe, topCat, age, body, height });
-            
+
             // 3. Compress
             const id1 = getOrAddId(opt1);
             const id2 = getOrAddId(opt2);
@@ -201,24 +173,34 @@ function buildLayeringDB() {
             isFirst = false;
             count++;
 
-            // GC
-            if (count % 500000 === 0) {
+            if (count % 50000 === 0) {
                 console.log(`  ...Generated ${count} Layering Rules`);
-                if (global.gc) global.gc();
             }
 
-        }); }); }); 
     }); }); }); }); }); }); }); });
 
     fs.closeSync(tempFd);
 
     console.log("💾 Saving Layering Master JSON...");
     const finalFd = fs.openSync("layering_master_db.json", "w");
-    
+
     fs.writeSync(finalFd, `{"dicts":{"items":${JSON.stringify(LAYER_DICT)}}, "data":{`);
-    fs.writeSync(finalFd, fs.readFileSync("layering_temp.txt").toString());
+
+    // Stream temp file in chunks to avoid ERR_STRING_TOO_LONG
+    const CHUNK = 64 * 1024 * 1024; // 64MB chunks
+    const tempSize = fs.statSync("layering_temp.txt").size;
+    const buf = new Uint8Array(Math.min(CHUNK, tempSize));
+    const readFd = fs.openSync("layering_temp.txt", "r");
+    let pos = 0;
+    while (pos < tempSize) {
+        const bytesRead = fs.readSync(readFd, buf, 0, Math.min(CHUNK, tempSize - pos), pos);
+        fs.writeSync(finalFd, buf, 0, bytesRead);
+        pos += bytesRead;
+    }
+    fs.closeSync(readFd);
+
     fs.writeSync(finalFd, "}}");
-    
+
     fs.closeSync(finalFd);
     fs.unlinkSync("layering_temp.txt");
 

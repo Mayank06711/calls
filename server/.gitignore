@@ -29,5 +29,11 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Generated AI engine databases (rebuild via: npm run build:engines)
+consultant_master_db.json
+fashion_master_db.json
+layering_master_db.json
+footwear_master_db.json
+
 # Claude
 .claude/

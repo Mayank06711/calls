@@ -4,8 +4,15 @@ import * as path from 'path';
 // --- CONFIGURATION ---
 const DB_FILE = 'fashion_master_db.json';
 
-// --- INTERFACE ---
-interface UserRequest {
+// --- INTERFACES ---
+
+interface FashionDB {
+    dicts: { items: string[], colors: string[], patterns: string[] };
+    data: { [key: string]: [number, number, number, number, number, number] };
+    // Value layout: [classicItemId, trendyItemId, classicColorId, trendyColorId, classicPatternId, trendyPatternId]
+}
+
+export interface UserRequest {
     gender: "Male" | "Female";
     category: "Top" | "Bottom";     // What does the user HAVE?
     type: string;                   // e.g., "Short Kurta"
@@ -13,34 +20,43 @@ interface UserRequest {
     pattern: string;                // e.g., "Solid"
     season: "Summer" | "Winter" | "Monsoon";
     skinTone: "Fair" | "Wheatish" | "Dusky" | "Dark Brown";
-    bodyShape: "Trapezoid" | "Rectangle" | "Triangle" | "Inverted_Triangle" | "Oval" | "Hourglass";
+    bodyShape: "Trapezoid" | "Rectangle" | "Triangle" | "Inverted_Triangle" | "Oval" | "Hourglass" | "Pear" | "Apple";
     height: "Short" | "Medium" | "Tall";
 }
 
 // --- THE ENGINE CLASS ---
-class FashionEngine {
-    private db: any;
+export class FashionEngine {
+    private db: FashionDB;
 
     constructor() {
         try {
             console.log("⚙️  Loading Fashion Database...");
-            const raw = fs.readFileSync(path.join(__dirname, DB_FILE), 'utf-8');
+            const raw = fs.readFileSync(DB_FILE, 'utf-8');
             this.db = JSON.parse(raw);
             console.log("✅ Engine Online.");
         } catch (e) {
-            console.error("❌ Fatal Error: Database file not found. Run builder.ts first.");
+            console.error("❌ Fatal Error: Database file not found. Run builder_pair.ts first.");
+            throw e;
         }
     }
 
     public getAdvice(input: UserRequest) {
-        // 1. Construct the Key (Order must match builder.ts)
+        // 1. Construct the Key (Order must match builder_pair.ts)
+        // Format: Gender|Category|Type|Color|Pattern|Season|Body|Skin|Height
         const key = `${input.gender}|${input.category}|${input.type}|${input.color}|${input.pattern}|${input.season}|${input.bodyShape}|${input.skinTone}|${input.height}`;
 
         // 2. O(1) Lookup
-        const result = this.db[key];
+        const ids = this.db.data[key];
 
-        // 3. Response
-        if (result) {
+        // 3. Decode & Response
+        if (ids) {
+            const classicItem = this.db.dicts.items[ids[0]];
+            const trendyItem = this.db.dicts.items[ids[1]];
+            const classicColor = this.db.dicts.colors[ids[2]];
+            const trendyColor = this.db.dicts.colors[ids[3]];
+            const classicPattern = this.db.dicts.patterns[ids[4]];
+            const trendyPattern = this.db.dicts.patterns[ids[5]];
+
             return {
                 status: "success",
                 match_found: true,
@@ -49,7 +65,22 @@ class FashionEngine {
                     skin: input.skinTone,
                     body: input.bodyShape
                 },
-                recommendations: result.suggestions
+                recommendations: [
+                    {
+                        vibe: "Classic / Safe",
+                        item: classicItem,
+                        color: classicColor,
+                        pattern: classicPattern,
+                        note: `Timeless ${input.gender === 'Female' ? 'chic' : 'classic'}. Safe bet.`
+                    },
+                    {
+                        vibe: "Trendy / Modern",
+                        item: trendyItem,
+                        color: trendyColor,
+                        pattern: trendyPattern,
+                        note: "Modern pairing. Popular in current fashion trends."
+                    }
+                ]
             };
         } else {
             // Fallback for edge cases (Safety net)
@@ -61,6 +92,7 @@ class FashionEngine {
                         vibe: "Universal Safe",
                         item: input.category === "Top" ? "Blue Jeans / Black Trousers" : "White Shirt",
                         color: "Neutral (Black/Navy/White)",
+                        pattern: "Solid",
                         note: "We couldn't match your exact inputs, but neutrals always work."
                     }
                 ]
@@ -68,37 +100,3 @@ class FashionEngine {
         }
     }
 }
-
-// --- TEST ZONE (Verify Logic) ---
-
-const engine = new FashionEngine();
-
-// Test 1: North Indian Male (Pathani)
-console.log("\n🔎 Test 1: Male, Pathani Kurta (White), Dark Skin");
-const query1: UserRequest = {
-    gender: "Male",
-    category: "Top",
-    type: "Pathani Kurta",
-    color: "White",
-    pattern: "Solid",
-    season: "Summer",
-    skinTone: "Dark Brown",
-    bodyShape: "Trapezoid",
-    height: "Medium"
-};
-console.log(JSON.stringify(engine.getAdvice(query1), null, 2));
-
-// Test 2: North Indian Female (Sharara)
-console.log("\n🔎 Test 2: Female, Sharara Top (Green), Short Height");
-const query2: UserRequest = {
-    gender: "Female",
-    category: "Top",
-    type: "Sharara Top (Short)",
-    color: "Emerald",
-    pattern: "Embroidered",
-    season: "Summer",
-    skinTone: "Fair",
-    bodyShape: "Triangle",
-    height: "Short"
-};
-console.log(JSON.stringify(engine.getAdvice(query2), null, 2));

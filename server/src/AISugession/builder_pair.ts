@@ -1,80 +1,54 @@
 import * as fs from 'fs';
-import * as path from 'path';
+import {
+    SEASONS, BODY_SHAPES, SKIN_TONES, HEIGHTS, getPairColor,
+} from "./shared";
 
 // --- 1. THE UNIVERSE OF PARAMETERS ---
 
-// 1.1 CLOTHING LISTS (Comprehensive North Indian Wardrobe)
+// 1.1 CLOTHING LISTS (Comprehensive North Indian Wardrobe — specific to pair builder)
 const MEN_TOPS = [
-    "Short Kurta", "Long Kurta", "Pathani Kurta", "Nehru Jacket", 
-    "Formal Shirt", "Casual Shirt", "Polo T-Shirt", "Round Neck T-Shirt", 
+    "Short Kurta", "Long Kurta", "Pathani Kurta", "Nehru Jacket",
+    "Formal Shirt", "Casual Shirt", "Polo T-Shirt", "Round Neck T-Shirt",
     "Hoodie", "Sherwani", "Bandhgala Jacket", "Sweatshirt", "Winter Coat"
 ] as const;
 
 const MEN_BOTTOMS = [
-    "Jeans", "Chinos", "Formal Trousers", "Joggers", "Cargo Pants", 
+    "Jeans", "Chinos", "Formal Trousers", "Joggers", "Cargo Pants",
     "Pajama", "Churidar", "Dhoti Pants", "Salwar", "Shorts"
 ] as const;
 
 const WOMEN_TOPS = [
     // Ethnic
-    "Kurti (Short)", "Kurti (Long/Straight)", "Kurti (Frock Style)", 
+    "Kurti (Short)", "Kurti (Long/Straight)", "Kurti (Frock Style)",
     "Anarkali", "Saree Blouse", "Sharara Top (Short)", "Kaftan", "Ethnic Jacket",
     // Western
-    "Formal Shirt", "Casual Top/T-Shirt", "Crop Top", "Peplum Top", 
+    "Formal Shirt", "Casual Top/T-Shirt", "Crop Top", "Peplum Top",
     "Tube/Off-Shoulder Top", "Blazer", "Winter Long Coat", "Sweater"
 ] as const;
 
 const WOMEN_BOTTOMS = [
     // Ethnic
-    "Leggings", "Churidar", "Palazzo", "Sharara Pants", "Gharara Pants", 
+    "Leggings", "Churidar", "Palazzo", "Sharara Pants", "Gharara Pants",
     "Patiala Salwar", "Dhoti Pants", "Lehenga Skirt", "Saree (Drape)",
     // Western
     "Jeans", "Jeans (High-Waist)", "Cigarette Pants", "Formal Trousers",
     "Long Skirt", "Short Skirt/Shorts", "Joggers"
 ] as const;
 
-// 1.2 ATTRIBUTES
+// 1.2 ATTRIBUTES (INPUT colors for the garment the user already has — distinct from OUTPUT_COLORS)
 const COLORS = [
-    "Jet Black", "Charcoal", "White", "Ivory", "Navy", "Royal Blue", 
-    "Mustard", "Rust", "Olive", "Maroon", "Beige", "Grey", 
+    "Jet Black", "Charcoal", "White", "Ivory", "Navy", "Royal Blue",
+    "Mustard", "Rust", "Olive", "Maroon", "Beige", "Grey",
     "Pink", "Brown", "Emerald", "Teal", "Coral", "Peach", "Lavender", "Gold", "Silver"
 ] as const;
 
 const PATTERNS = ["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract"] as const;
-const SEASONS = ["Summer", "Winter", "Monsoon"] as const;
-
-// 1.3 USER PROFILE
-const BODY_SHAPES = ["Trapezoid", "Rectangle", "Triangle", "Inverted_Triangle", "Oval", "Hourglass"] as const; // Added Hourglass for women
-const SKIN_TONES = ["Fair", "Wheatish", "Dusky", "Dark Brown"] as const;
-const HEIGHTS = ["Short", "Medium", "Tall"] as const;
 
 // --- 2. LOGIC FUNCTIONS (The "Expert" Rules) ---
 
-// A. COLOR LOGIC (North Indian Aesthetics)
+// A. COLOR LOGIC — uses shared canonical color helper (returns OUTPUT_COLORS values only)
 function getMatchingColors(baseColor: string, skin: string): { classic: string, trendy: string } {
-    let classic = "Navy";
-    let trendy = "Grey";
-
-    const isDarkSkin = (skin === "Dark Brown" || skin === "Dusky");
-
-    // Specific Pairings
-    if (baseColor === "Mustard") { classic = "Navy"; trendy = "Charcoal"; }
-    else if (baseColor === "Navy") { classic = "Beige"; trendy = isDarkSkin ? "Rust" : "Grey"; }
-    else if (baseColor === "White") { classic = "Blue/Black"; trendy = "Olive"; }
-    else if (baseColor === "Black") { classic = isDarkSkin ? "Cream" : "Khaki"; trendy = isDarkSkin ? "Rust" : "Monotone Black"; }
-    else if (baseColor === "Maroon") { classic = "Beige"; trendy = "Black"; }
-    else if (baseColor === "Olive") { classic = "Navy"; trendy = "Cream/White"; }
-    else if (baseColor === "Beige" || baseColor === "Ivory") { classic = "Maroon"; trendy = "Coffee Brown"; }
-    else if (baseColor === "Rust") { classic = "Navy"; trendy = "Off-White"; }
-    else if (baseColor === "Emerald") { classic = "Black"; trendy = "Beige"; }
-    else if (baseColor === "Pink" || baseColor === "Peach") { classic = "White"; trendy = "Grey"; }
-    else if (baseColor === "Teal") { classic = "Beige"; trendy = "Mustard"; }
-    else if (baseColor === "Royal Blue") { classic = "White"; trendy = "Black"; }
-    else if (baseColor === "Gold") { classic = "Red/Maroon"; trendy = "Black"; }
-    else if (baseColor === "Silver") { classic = "Black"; trendy = "Navy"; }
-    else if (baseColor === "Grey") { classic = "Black"; trendy = "Navy"; }
-    
-    return { classic, trendy };
+    return getPairColor(baseColor, skin);
 }
 
 // B. ITEM PAIRING LOGIC (Gender Aware & Bi-Directional)
@@ -189,12 +163,28 @@ function applyModifiers(gender: "Male" | "Female", item: string, body: string, h
     return modified;
 }
 
-// --- 3. THE BUILDER ENGINE ---
+// --- 3. THE BUILDER ENGINE (Indexed — same {dicts, data} format as other builders) ---
+
+const ITEM_DICT: string[] = [];
+const COLOR_DICT: string[] = [];
+const PATTERN_DICT: string[] = [];
+const itemToId = new Map<string, number>();
+const colorToId = new Map<string, number>();
+const patternToId = new Map<string, number>();
+
+function getOrAddId(val: string, dict: string[], map: Map<string, number>): number {
+    if (!map.has(val)) {
+        map.set(val, dict.length);
+        dict.push(val);
+    }
+    return map.get(val)!;
+}
 
 function generateMasterFile() {
-    console.log("🚀 Initializing North India Fashion Generator...");
-    const database: Record<string, any> = {};
+    console.log("🚀 Initializing North India Fashion Generator (Indexed)...");
+    const tempFd = fs.openSync("fashion_temp.txt", "w");
     let count = 0;
+    let isFirst = true;
 
     const runGenerationLoop = (gender: "Male" | "Female", category: "Top" | "Bottom", typeList: readonly string[]) => {
         typeList.forEach(type => {
@@ -204,14 +194,14 @@ function generateMasterFile() {
                         BODY_SHAPES.forEach(body => {
                             SKIN_TONES.forEach(skin => {
                                 HEIGHTS.forEach(height => {
-                                    
+
                                     // 1. UNIQUE KEY
                                     // Format: Gender|Category|Type|Color|Pattern|Season|Body|Skin|Height
                                     const key = `${gender}|${category}|${type}|${color}|${pattern}|${season}|${body}|${skin}|${height}`;
 
                                     // 2. GET PAIRING ITEM
                                     const items = getPairing(gender, category, type, season);
-                                    
+
                                     // 3. GET COLOR MATCH
                                     const colors = getMatchingColors(color, skin);
 
@@ -222,27 +212,25 @@ function generateMasterFile() {
                                     const classicItem = applyModifiers(gender, items.classic, body, height);
                                     const trendyItem = applyModifiers(gender, items.trendy, body, height);
 
-                                    // 6. SAVE TO DB
-                                    database[key] = {
-                                        input: { gender, category, type, color, season },
-                                        suggestions: [
-                                            {
-                                                vibe: "Classic / Safe",
-                                                item: classicItem,
-                                                color: colors.classic,
-                                                pattern: "Solid",
-                                                note: `Timeless ${gender === 'Female' ? 'chic' : 'classic'}. Safe bet.`
-                                            },
-                                            {
-                                                vibe: "Trendy / Modern",
-                                                item: trendyItem,
-                                                color: colors.trendy,
-                                                pattern: outPattern,
-                                                note: "Modern pairing. Popular in current fashion trends."
-                                            }
-                                        ]
-                                    };
+                                    // 6. COMPRESS — store 6 numeric IDs per key
+                                    // [classicItemId, trendyItemId, classicColorId, trendyColorId, classicPatternId, trendyPatternId]
+                                    const classicItemId = getOrAddId(classicItem, ITEM_DICT, itemToId);
+                                    const trendyItemId = getOrAddId(trendyItem, ITEM_DICT, itemToId);
+                                    const classicColorId = getOrAddId(colors.classic, COLOR_DICT, colorToId);
+                                    const trendyColorId = getOrAddId(colors.trendy, COLOR_DICT, colorToId);
+                                    const classicPatternId = getOrAddId("Solid", PATTERN_DICT, patternToId);
+                                    const trendyPatternId = getOrAddId(outPattern, PATTERN_DICT, patternToId);
+
+                                    // 7. STREAM WRITE
+                                    const sep = isFirst ? "" : ",";
+                                    fs.writeSync(tempFd, `${sep}"${key}":[${classicItemId},${trendyItemId},${classicColorId},${trendyColorId},${classicPatternId},${trendyPatternId}]`);
+                                    isFirst = false;
                                     count++;
+
+                                    if (count % 500000 === 0) {
+                                        console.log(`  ...Generated ${count} Fashion Rules`);
+                                        if (global.gc) global.gc();
+                                    }
                                 });
                             });
                         });
@@ -260,9 +248,21 @@ function generateMasterFile() {
     runGenerationLoop("Female", "Top", WOMEN_TOPS);
     runGenerationLoop("Female", "Bottom", WOMEN_BOTTOMS);
 
-    // Save
-    fs.writeFileSync('fashion_master_db.json', JSON.stringify(database));
-    console.log(`✅ Success! Generated ${count} unique fashion rules.`);
+    fs.closeSync(tempFd);
+
+    // Save Final DB — same {dicts, data} format as other builders
+    console.log("💾 Saving Fashion Master JSON...");
+    const finalFd = fs.openSync("fashion_master_db.json", "w");
+
+    const dictsObj = { items: ITEM_DICT, colors: COLOR_DICT, patterns: PATTERN_DICT };
+    fs.writeSync(finalFd, `{"dicts":${JSON.stringify(dictsObj)},"data":{`);
+    fs.writeSync(finalFd, fs.readFileSync("fashion_temp.txt").toString());
+    fs.writeSync(finalFd, "}}");
+
+    fs.closeSync(finalFd);
+    fs.unlinkSync("fashion_temp.txt");
+
+    console.log(`✅ Success! Generated ${count} unique fashion rules (indexed).`);
     console.log(`📂 Saved to 'fashion_master_db.json'`);
 }
 
