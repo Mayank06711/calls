@@ -1,0 +1,11 @@
+# Windows command artifacts
+_
+appx
+bin
+cls
+dir
+nul
+tools
+
+# Claude
+.claude/

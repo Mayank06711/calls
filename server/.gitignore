@@ -35,5 +35,8 @@ fashion_master_db.json
 layering_master_db.json
 footwear_master_db.json
 
+# Internal analysis docs
+src/AISugession/wardrobe-sugg.md
+
 # Claude
 .claude/
