@@ -44,10 +44,10 @@ class CLOUDINARY_SERVICES {
           folder: folder,
           public_id: publicId,
         },
-        process.env.CLOUDINARY_API_SECRET!
+        process.env.CLOUDINARY_API_SECRET_KEY!
       );
 
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/auto/upload`;
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_NAME}/auto/upload`;
 
       return {
         uploadUrl,

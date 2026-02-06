@@ -5,6 +5,7 @@ import {
   CloudinaryUploadOptions,
 } from "../interface/interface";
 import { getCloudinary } from "../db";
+import { AWS_SERVICES } from "./aws";
 
 class FileHandler {
   // Type-specific allowed MIME types
@@ -199,6 +200,36 @@ class FileHandler {
     if (promises.length > 0) {
       await Promise.allSettled(promises);
     }
+  }
+
+  /**
+   * Delete a file from cloud storage given its full URL.
+   * Detects whether the URL is Cloudinary or S3 and calls the appropriate API.
+   */
+  public static async deleteFromUrl(url: string): Promise<boolean> {
+    if (!url || typeof url !== "string") return false;
+
+    try {
+      // Cloudinary URL
+      if (url.includes("res.cloudinary.com")) {
+        const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+        if (!match) return false;
+        const publicId = match[1];
+        return this.deleteFromCloudinary(publicId, "image");
+      }
+
+      // S3 URL
+      if (url.includes(".s3.") || url.includes("s3.amazonaws.com")) {
+        const urlObj = new URL(url);
+        const key = urlObj.pathname.slice(1); // remove leading /
+        const bucket = process.env.AWS_S3_BUCKET_NAME!;
+        return AWS_SERVICES.deleteObject(bucket, key);
+      }
+    } catch (error) {
+      console.error(`Cloud delete error for URL ${url}:`, error);
+    }
+
+    return false;
   }
 
   public static async handleFileUpload({

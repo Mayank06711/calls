@@ -1,4 +1,4 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import {
@@ -113,8 +113,24 @@ class AWS_SERVICES {
     }
   }
 
+  private static async deleteObjectFromS3(
+    bucket: string,
+    key: string
+  ): Promise<boolean> {
+    try {
+      await s3Client.send(
+        new DeleteObjectCommand({ Bucket: bucket, Key: key })
+      );
+      return true;
+    } catch (error: any) {
+      console.error(`S3 delete error for ${key}:`, error);
+      return false;
+    }
+  }
+
   static putObjectToS3 = AWS_SERVICES.putObjectTos3;
   static multipartUpload = AWS_SERVICES.multipartUploadToS3;
+  static deleteObject = AWS_SERVICES.deleteObjectFromS3;
 }
 
 export { AWS_SERVICES };
