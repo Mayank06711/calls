@@ -181,10 +181,34 @@ const AddClothSchema = z.object({
   pattern: z.enum(["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract", "Printed"]).optional(),
   fabric: z.enum(["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Chiffon", "Velvet", "Satin", "Leather", "Georgette", "Crepe", "Khadi", "Other"]).optional(),
   brand: z.string().trim().optional(),
+  notes: z.string().trim().max(500, "Notes must be under 500 characters").optional(),
   season: z.enum(["Summer", "Winter", "Monsoon", "All"]).default("All"),
   occasions: z.array(z.enum(["Wedding", "Office", "Casual", "Party", "Travel", "Festive", "Date Night", "Sports", "Lounge"])).optional(),
   price: z.number().min(0).optional(),
   purchaseDate: z.string().datetime().optional(),
+
+  // ─── Phase 7: Python AI Service (all optional) ───────────────────────
+  hasPersonInPhoto: z.boolean().default(false),
+  processingStatus: z.enum(["pending", "completed", "failed"]).optional(),
+  nobgUrl: z.string().url("Invalid nobg URL").optional(),
+  dominantColors: z.array(z.object({
+    hex: z.string(),
+    rgb: z.tuple([z.number(), z.number(), z.number()]),
+    name: z.string(),
+    colorFamily: z.string().optional(),
+    colorType: z.string().optional(),
+    percentage: z.number()
+  })).optional(),
+  processingMeta: z.object({
+    method: z.string(),
+    originalDimensions: z.object({ width: z.number(), height: z.number() }),
+    croppedDimensions: z.object({ width: z.number(), height: z.number() }),
+    skinDetected: z.object({
+      toneHex: z.string(),
+      ratio: z.number()
+    }).optional(),
+    processedAt: z.string().datetime()
+  }).optional(),
 });
 
 const UpdateClothSchema = AddClothSchema.partial();
@@ -196,6 +220,18 @@ const CreateOutfitSchema = z.object({
   season: z.string().trim().optional(),
   tags: z.array(z.string().trim()).default([]),
   notes: z.string().trim().optional(),
+
+  // ─── Phase 7: Python AI Service (all optional) ───────────────────────
+  flatlayUrl: z.string().url("Invalid flatlay URL").optional(),
+  colorPalette: z.array(z.object({
+    hex: z.string(),
+    rgb: z.tuple([z.number(), z.number(), z.number()]),
+    name: z.string(),
+    colorFamily: z.string().optional(),
+    colorType: z.string().optional(),
+    slot: z.string()
+  })).optional(),
+  generatedAt: z.string().datetime().optional(),
 });
 
 const UpdateOutfitSchema = CreateOutfitSchema.partial();
@@ -295,6 +331,15 @@ const SavePairingSchema = z.object({
   name: z.string().trim().optional(),
   tags: z.array(z.string().trim()).default([]),
   notes: z.string().trim().optional(),
+  flatlayUrl: z.string().url().optional(),
+  colorPalette: z.array(z.object({
+    hex: z.string(),
+    rgb: z.tuple([z.number(), z.number(), z.number()]),
+    name: z.string(),
+    colorFamily: z.string().optional(),
+    colorType: z.string().optional(),
+    slot: z.string(),
+  })).optional(),
 });
 
 const LogWearSchema = z.object({
@@ -303,6 +348,40 @@ const LogWearSchema = z.object({
   occasion: z.string().trim().optional(),
   notes: z.string().trim().optional(),
   weather: z.string().trim().optional(),
+});
+
+// ─── Batch Schemas ──────────────────────────────────────────────────────────
+
+const BatchUploadSchema = z.object({
+  files: z.array(
+    z.object({
+      fileName: z.string().min(1, "fileName is required"),
+      contentType: z.string().min(1, "contentType is required"),
+    })
+  ).min(1, "At least one file is required").max(10, "Maximum 10 files per batch"),
+});
+
+const AddClothBatchSchema = z.object({
+  items: z.array(
+    z.object({
+      type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear"], {
+        required_error: "Clothing type is required",
+      }),
+      subcategory: z.string().min(1, "Subcategory is required").trim(),
+      photoUrl: z.string().url("Invalid photo URL"),
+      thumbnailUrl: z.string().url("Invalid thumbnail URL").optional(),
+      color: z.string().trim().optional(),
+      pattern: z.enum(["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract", "Printed"]).optional(),
+      fabric: z.enum(["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Chiffon", "Velvet", "Satin", "Leather", "Georgette", "Crepe", "Khadi", "Other"]).optional(),
+      brand: z.string().trim().optional(),
+      notes: z.string().trim().max(500, "Notes must be under 500 characters").optional(),
+      season: z.enum(["Summer", "Winter", "Monsoon", "All"]).default("All"),
+      occasions: z.array(z.enum(["Wedding", "Office", "Casual", "Party", "Travel", "Festive", "Date Night", "Sports", "Lounge"])).optional(),
+      price: z.number().min(0).optional(),
+      purchaseDate: z.string().datetime().optional(),
+      hasPersonInPhoto: z.boolean().optional(),
+    })
+  ).min(1, "At least one item is required").max(10, "Maximum 10 items per batch"),
 });
 
 // ─── Exports ────────────────────────────────────────────────────────────────
@@ -338,4 +417,7 @@ export {
   GeneratePairingsSchema,
   SavePairingSchema,
   LogWearSchema,
+  // Batch
+  BatchUploadSchema,
+  AddClothBatchSchema,
 };
