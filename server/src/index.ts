@@ -99,6 +99,18 @@ class ServerManager {
       })
     );
     this.app.use(Middleware.platformDetector);
+
+    // Request logger with timing
+    this.app.use((req, res, next) => {
+      const start = Date.now();
+      res.on("finish", () => {
+        const ms = Date.now() - start;
+        const status = res.statusCode;
+        const icon = status >= 500 ? "💥" : status >= 400 ? "⚠️" : status >= 300 ? "↩️" : "✅";
+        console.log(`\n${icon} ${req.method} ${req.originalUrl} → ${status} (${ms}ms)\n`);
+      });
+      next();
+    });
   }
   // initialize routes
   private initializeRoutes() {
