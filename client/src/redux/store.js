@@ -13,6 +13,7 @@ import {
   settingsReducer,
   isOpenFeedbackReducer,
   sessionReducer,
+  wardrobeReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -30,6 +31,7 @@ const store = configureStore({
     settings:settingsReducer,
     isOpenFeedback:isOpenFeedbackReducer,
     sessions: sessionReducer,
+    wardrobe: wardrobeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

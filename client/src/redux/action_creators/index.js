@@ -6,3 +6,4 @@ export * from "./subscription.action_creators";
 export * from "./loader.action_creators";
 export * from "./settings.action_creators";
 export * from "./feedback.action_creatrors";
+export * from "./wardrobe.action_creators";

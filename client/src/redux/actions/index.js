@@ -10,4 +10,5 @@ export * from "./logout.actions";
 export * from "./loader.actions";
 export * from "./Settings.actions";
 export * from "./feedback.actions";
+export * from "./wardrobe.actions";
 
