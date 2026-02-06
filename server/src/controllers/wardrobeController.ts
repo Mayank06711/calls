@@ -10,8 +10,10 @@ import { MasterEngine, StyleProfileInput } from "../AISugession/masterEngine";
 import { OCCASIONS, OUTPUT_COLORS, SEASONS } from "../AISugession/shared";
 import { resolveSeason } from "../utils/seasonResolver";
 import NotificationService from "../services/notifications";
+import { FileHandler } from "../helper/fileHandler";
 import * as fs from "fs";
 import * as path from "path";
+import axios from "axios";
 
 // Lazy-init: engines load 1GB+ JSON files, only do it when first needed
 let engine: MasterEngine | null = null;
@@ -236,7 +238,7 @@ class Wardrobe {
 
   private static async AddCloth(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { type, subcategory, photoUrl, thumbnailUrl, color, pattern, fabric, brand, season, occasions, price, purchaseDate } = req.body;
+    const { type, subcategory, photoUrl, thumbnailUrl, color, pattern, fabric, brand, notes, season, occasions, price, purchaseDate } = req.body;
 
     const newCloth = new ClothingItemModel({
       user: userId,
@@ -248,6 +250,7 @@ class Wardrobe {
       pattern,
       fabric,
       brand,
+      notes,
       season: season || "All",
       occasions,
       price,
@@ -276,6 +279,54 @@ class Wardrobe {
         } catch (_) { /* notification failure should never break flow */ }
       });
     }
+  }
+
+  private static async AddClothBatch(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { items } = req.body; // validated by AddClothBatchSchema
+
+    const docsToInsert = items.map((item: any) => ({
+      user: userId,
+      type: item.type,
+      subcategory: item.subcategory,
+      photoUrl: item.photoUrl,
+      thumbnailUrl: item.thumbnailUrl,
+      color: item.color,
+      pattern: item.pattern,
+      fabric: item.fabric,
+      brand: item.brand,
+      notes: item.notes,
+      season: item.season || "All",
+      occasions: item.occasions,
+      price: item.price,
+      purchaseDate: item.purchaseDate,
+      hasPersonInPhoto: item.hasPersonInPhoto || false,
+    }));
+
+    const savedItems = await ClothingItemModel.insertMany(docsToInsert);
+    res.status(201).json({ success: true, count: savedItems.length, data: savedItems });
+
+    // Fire-and-forget: single notification for the batch
+    setImmediate(async () => {
+      try {
+        const typeCount: Record<string, number> = {};
+        for (const item of savedItems) {
+          typeCount[item.type] = (typeCount[item.type] || 0) + 1;
+        }
+        const summary = Object.entries(typeCount)
+          .map(([t, c]) => `${c} ${t.toLowerCase()}${c > 1 ? "s" : ""}`)
+          .join(", ");
+
+        await NotificationService.getInstance().emitUserNotification({
+          recipientId: String(userId),
+          type: "wardrobe",
+          title: "Items added to closet!",
+          message: `Added ${savedItems.length} item${savedItems.length > 1 ? "s" : ""} to your closet: ${summary}.`,
+          wardrobe: { pairingCount: savedItems.length, actionType: "batch_add" },
+          stickyTime: 5000,
+        });
+      } catch (_) { /* notification failure should never break flow */ }
+    });
   }
 
   private static async GetYourCloths(req: Request, res: Response) {
@@ -326,8 +377,19 @@ class Wardrobe {
     if (!cloth) throw new ApiError(404, "Clothing item not found");
     if (userId?.toString() !== cloth.user.toString()) throw new ApiError(403, "Not authorized");
 
+    const { photoUrl, thumbnailUrl } = cloth;
     await ClothingItemModel.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: "Clothing item deleted" });
+
+    // Fire-and-forget: clean up cloud storage
+    setImmediate(async () => {
+      try {
+        await Promise.allSettled([
+          FileHandler.deleteFromUrl(photoUrl),
+          thumbnailUrl ? FileHandler.deleteFromUrl(thumbnailUrl) : Promise.resolve(),
+        ]);
+      } catch (_) {}
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -336,7 +398,7 @@ class Wardrobe {
 
   private static async CreateOutfit(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { name, itemIds, occasion, season, tags, notes } = req.body;
+    const { name, itemIds, occasion, season, tags, notes, screenshotUrl } = req.body;
 
     const items = await ClothingItemModel.find({ _id: { $in: itemIds }, user: userId });
     if (items.length !== itemIds.length) throw new ApiError(400, "One or more clothing items not found or not yours");
@@ -350,6 +412,7 @@ class Wardrobe {
       tags: tags || [],
       source: "manual",
       notes,
+      screenshotUrl: screenshotUrl || undefined,
     });
 
     const saved = await outfit.save();
@@ -492,7 +555,21 @@ class Wardrobe {
     }
 
     const enriched = await Wardrobe.enrichFullSuggestion(userId, result, userDoc.gender);
-    res.status(200).json({ success: true, data: enriched });
+
+    // Generate flat-lay from wardrobe matches (if >= 2 items have nobgUrl)
+    const flatlayPayload = Wardrobe.buildFlatlayFromSuggestion(enriched);
+    let flatlayData: { flatlayUrl: string; colorPalette: any[] } | null = null;
+    if (flatlayPayload) {
+      flatlayData = await Wardrobe.callPythonFlatlay(flatlayPayload);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...enriched,
+        ...(flatlayData && { flatlayUrl: flatlayData.flatlayUrl, colorPalette: flatlayData.colorPalette }),
+      },
+    });
   }
 
   private static async SuggestFromItem(req: Request, res: Response) {
@@ -543,7 +620,7 @@ class Wardrobe {
     const wardrobeMatches: Record<string, any[]> = {};
     for (const m of matched) {
       wardrobeMatches[m.suggestion.item] = m.matches.map(c => ({
-        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, pattern: c.pattern,
+        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
     }
 
@@ -574,7 +651,7 @@ class Wardrobe {
     const wardrobeMatches: Record<string, any[]> = {};
     for (const m of matched) {
       wardrobeMatches[m.suggestion.item] = m.matches.map(c => ({
-        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, pattern: c.pattern,
+        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
     }
 
@@ -612,7 +689,7 @@ class Wardrobe {
       const key = opt.item;
       const matches = allOuterwear.filter(ow => Wardrobe.isSubcategoryMatch(ow.subcategory, opt.item));
       wardrobeMatches[key] = matches.map(c => ({
-        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, pattern: c.pattern,
+        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
 
       if (matches.length === 0) {
@@ -665,7 +742,7 @@ class Wardrobe {
       const key = opt.item;
       const matches = allShoes.filter(sh => Wardrobe.isSubcategoryMatch(sh.subcategory, opt.item));
       wardrobeMatches[key] = matches.map(c => ({
-        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, pattern: c.pattern,
+        _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
 
       if (matches.length === 0) {
@@ -755,6 +832,8 @@ class Wardrobe {
         color: c.color,
         photoUrl: c.photoUrl,
         thumbnailUrl: c.thumbnailUrl,
+        nobgUrl: c.nobgUrl,
+        dominantColors: c.dominantColors,
         pattern: c.pattern,
       }));
     }
@@ -1026,7 +1105,7 @@ class Wardrobe {
     const allItems = await ClothingItemModel.find({
       user: userId,
       isArchived: false,
-    }).select("type subcategory color pattern photoUrl thumbnailUrl").lean();
+    }).select("type subcategory color pattern photoUrl thumbnailUrl nobgUrl dominantColors").lean();
 
     const tops = allItems.filter(i => i.type === "Top");
     const bottoms = allItems.filter(i => i.type === "Bottom");
@@ -1056,6 +1135,7 @@ class Wardrobe {
           if (Wardrobe.isSubcategoryMatch(ow.subcategory, opt.item)) {
             owned.push({
               _id: ow._id, subcategory: ow.subcategory, color: ow.color, photoUrl: ow.photoUrl, thumbnailUrl: ow.thumbnailUrl,
+              nobgUrl: ow.nobgUrl, dominantColors: ow.dominantColors,
               matchedSuggestion: opt.type, // "Classic" | "Contrast" | "Statement"
             });
           }
@@ -1073,6 +1153,7 @@ class Wardrobe {
           if (Wardrobe.isSubcategoryMatch(sh.subcategory, opt.item)) {
             owned.push({
               _id: sh._id, subcategory: sh.subcategory, color: sh.color, photoUrl: sh.photoUrl, thumbnailUrl: sh.thumbnailUrl,
+              nobgUrl: sh.nobgUrl, dominantColors: sh.dominantColors,
               matchedSuggestion: opt.type, // "Classic" | "Trendy" | "Comfort"
             });
           }
@@ -1101,14 +1182,14 @@ class Wardrobe {
     // Helper: build unified items array for a pairing
     const buildItems = (top: any, bot: any, ownedLayers: any[], ownedFootwear: any[]) => {
       const items: any[] = [
-        { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl, role: assignRole(top, "Top", top.subcategory, bot.subcategory) },
-        { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl, role: assignRole(bot, "Bottom", top.subcategory, bot.subcategory) },
+        { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl, nobgUrl: top.nobgUrl, dominantColors: top.dominantColors, role: assignRole(top, "Top", top.subcategory, bot.subcategory) },
+        { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl, nobgUrl: bot.nobgUrl, dominantColors: bot.dominantColors, role: assignRole(bot, "Bottom", top.subcategory, bot.subcategory) },
       ];
       for (const l of ownedLayers) {
-        items.push({ _id: l._id, subcategory: l.subcategory, color: l.color, photoUrl: l.photoUrl, thumbnailUrl: l.thumbnailUrl, role: "outer_layer" });
+        items.push({ _id: l._id, subcategory: l.subcategory, color: l.color, photoUrl: l.photoUrl, thumbnailUrl: l.thumbnailUrl, nobgUrl: l.nobgUrl, dominantColors: l.dominantColors, role: "outer_layer" });
       }
       for (const f of ownedFootwear) {
-        items.push({ _id: f._id, subcategory: f.subcategory, color: f.color, photoUrl: f.photoUrl, thumbnailUrl: f.thumbnailUrl, role: "footwear" });
+        items.push({ _id: f._id, subcategory: f.subcategory, color: f.color, photoUrl: f.photoUrl, thumbnailUrl: f.thumbnailUrl, nobgUrl: f.nobgUrl, dominantColors: f.dominantColors, role: "footwear" });
       }
       return items;
     };
@@ -1148,8 +1229,8 @@ class Wardrobe {
           pairings.push({
             id: `pairing_${pairings.length}`,
             vibe: sugg.vibe,
-            top: { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl },
-            bottom: { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl },
+            top: { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl, nobgUrl: top.nobgUrl, dominantColors: top.dominantColors },
+            bottom: { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl, nobgUrl: bot.nobgUrl, dominantColors: bot.dominantColors },
             items: buildItems(top, bot, layers.owned, footwear.owned),
             layers,
             footwear,
@@ -1197,8 +1278,8 @@ class Wardrobe {
           pairings.push({
             id: `pairing_${pairings.length}`,
             vibe: sugg.vibe,
-            top: { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl },
-            bottom: { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl },
+            top: { _id: top._id, subcategory: top.subcategory, color: top.color, photoUrl: top.photoUrl, thumbnailUrl: top.thumbnailUrl, nobgUrl: top.nobgUrl, dominantColors: top.dominantColors },
+            bottom: { _id: bot._id, subcategory: bot.subcategory, color: bot.color, photoUrl: bot.photoUrl, thumbnailUrl: bot.thumbnailUrl, nobgUrl: bot.nobgUrl, dominantColors: bot.dominantColors },
             items: buildItems(top, bot, layers.owned, footwear.owned),
             layers,
             footwear,
@@ -1242,18 +1323,41 @@ class Wardrobe {
       },
     });
 
-    // Fire-and-forget: notify user about generated pairings
+    // Fire-and-forget: generate flat-lays for top pairings + notify user
     if (totalPairings > 0) {
       setImmediate(async () => {
         try {
           const resolvedSeason = profileInput.season;
-          // Collect up to 4 thumbnails from pairings for preview
-          const thumbnails: string[] = [];
-          for (const p of pairings) {
-            if (p.top.thumbnailUrl && thumbnails.length < 4) thumbnails.push(p.top.thumbnailUrl);
-            if (p.bottom.thumbnailUrl && thumbnails.length < 4) thumbnails.push(p.bottom.thumbnailUrl);
-            if (thumbnails.length >= 4) break;
+
+          // Attempt to generate flat-lays for up to 3 pairings that have nobgUrl items
+          const flatlayPayloads = paginatedPairings
+            .slice(0, 3)
+            .map(p => Wardrobe.buildFlatlayPayload(p))
+            .filter((p): p is NonNullable<typeof p> => p !== null);
+
+          let flatlayThumbnails: string[] = [];
+          if (flatlayPayloads.length > 0) {
+            const results = await Promise.allSettled(
+              flatlayPayloads.map(payload => Wardrobe.callPythonFlatlay(payload))
+            );
+            flatlayThumbnails = results
+              .filter((r): r is PromiseFulfilledResult<NonNullable<Awaited<ReturnType<typeof Wardrobe.callPythonFlatlay>>>> =>
+                r.status === "fulfilled" && r.value?.flatlayUrl != null
+              )
+              .map(r => r.value.flatlayUrl);
           }
+
+          // Fallback to individual item thumbnails if no flat-lays generated
+          const thumbnails = flatlayThumbnails.length > 0 ? flatlayThumbnails : (() => {
+            const thumbs: string[] = [];
+            for (const p of pairings) {
+              if (p.top.thumbnailUrl && thumbs.length < 4) thumbs.push(p.top.thumbnailUrl);
+              if (p.bottom.thumbnailUrl && thumbs.length < 4) thumbs.push(p.bottom.thumbnailUrl);
+              if (thumbs.length >= 4) break;
+            }
+            return thumbs;
+          })();
+
           await NotificationService.getInstance().emitUserNotification({
             recipientId: String(userId),
             type: "wardrobe",
@@ -1268,7 +1372,7 @@ class Wardrobe {
             },
             stickyTime: 5000,
           });
-        } catch (_) { /* notification failure should never break flow */ }
+        } catch (_) { /* background failure should never break flow */ }
       });
     }
   }
@@ -1279,11 +1383,28 @@ class Wardrobe {
    */
   private static async SavePairing(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { itemIds, occasion, season, name, tags, notes } = req.body;
+    const { itemIds, occasion, season, name, tags, notes, flatlayUrl: providedFlatlayUrl, colorPalette: providedColorPalette } = req.body;
 
     // Validate all items exist and belong to user
     const items = await ClothingItemModel.find({ _id: { $in: itemIds }, user: userId });
     if (items.length !== itemIds.length) throw new ApiError(400, "One or more clothing items not found or not yours");
+
+    // Generate flat-lay: use provided URL, or generate from items with nobgUrl
+    let flatlayUrl = providedFlatlayUrl || undefined;
+    let colorPalette = providedColorPalette || undefined;
+    let generatedAt: Date | undefined;
+
+    if (!flatlayUrl) {
+      const payload = Wardrobe.buildFlatlayFromItems(items);
+      if (payload) {
+        const result = await Wardrobe.callPythonFlatlay(payload);
+        if (result) {
+          flatlayUrl = result.flatlayUrl;
+          colorPalette = result.colorPalette;
+          generatedAt = new Date();
+        }
+      }
+    }
 
     const outfit = new OutfitModel({
       user: userId,
@@ -1294,6 +1415,9 @@ class Wardrobe {
       tags: tags || [],
       source: "engine_suggested",
       notes,
+      ...(flatlayUrl && { flatlayUrl }),
+      ...(colorPalette && { colorPalette }),
+      ...(generatedAt && { generatedAt }),
     });
 
     const saved = await outfit.save();
@@ -1407,11 +1531,305 @@ class Wardrobe {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  //  FLAT-LAY GENERATION HELPERS
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Builds a Python flat-lay request payload from a pairing object.
+   * Collects items that have nobgUrl (background-removed image).
+   * Returns null if fewer than 2 items have nobgUrl.
+   */
+  private static buildFlatlayPayload(pairing: any): { items: any[]; canvasSize: number } | null {
+    const flatlayItems: any[] = [];
+
+    // Top
+    if (pairing.top?.nobgUrl) {
+      flatlayItems.push({
+        itemId: String(pairing.top._id),
+        nobgUrl: pairing.top.nobgUrl,
+        itemType: "Top",
+        dominantColors: pairing.top.dominantColors || [],
+      });
+    }
+
+    // Bottom
+    if (pairing.bottom?.nobgUrl) {
+      flatlayItems.push({
+        itemId: String(pairing.bottom._id),
+        nobgUrl: pairing.bottom.nobgUrl,
+        itemType: "Bottom",
+        dominantColors: pairing.bottom.dominantColors || [],
+      });
+    }
+
+    // Layer — first owned outerwear with nobgUrl
+    const layer = pairing.layers?.owned?.find((l: any) => l.nobgUrl);
+    if (layer) {
+      flatlayItems.push({
+        itemId: String(layer._id),
+        nobgUrl: layer.nobgUrl,
+        itemType: "Outerwear",
+        dominantColors: layer.dominantColors || [],
+      });
+    }
+
+    // Footwear — first owned shoes with nobgUrl
+    const shoe = pairing.footwear?.owned?.find((f: any) => f.nobgUrl);
+    if (shoe) {
+      flatlayItems.push({
+        itemId: String(shoe._id),
+        nobgUrl: shoe.nobgUrl,
+        itemType: "Shoes",
+        dominantColors: shoe.dominantColors || [],
+      });
+    }
+
+    if (flatlayItems.length < 2) return null;
+    return { items: flatlayItems, canvasSize: 1080 };
+  }
+
+  /**
+   * Builds a flat-lay request from an enriched suggestion (SuggestFullOutfit).
+   * Picks the first wardrobe match with nobgUrl for each slot.
+   * The engine result has: top.item, bottom[].item, layers.options[].item, footwear.options[].item
+   * wardrobeMatches maps those names to actual user items.
+   */
+  private static buildFlatlayFromSuggestion(enriched: any): { items: any[]; canvasSize: number } | null {
+    const wm = enriched.wardrobeMatches || {};
+    const items: any[] = [];
+
+    // Top
+    if (enriched.top?.item) {
+      const match = (wm[enriched.top.item] || []).find((m: any) => m.nobgUrl);
+      if (match) {
+        items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Top", dominantColors: match.dominantColors || [] });
+      }
+    }
+
+    // Bottom — first suggestion with a wardrobe match that has nobgUrl
+    if (Array.isArray(enriched.bottom)) {
+      for (const b of enriched.bottom) {
+        const match = (wm[b.item] || []).find((m: any) => m.nobgUrl);
+        if (match) {
+          items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Bottom", dominantColors: match.dominantColors || [] });
+          break;
+        }
+      }
+    }
+
+    // Layer — first option with a wardrobe match that has nobgUrl
+    if (enriched.layers?.options) {
+      for (const opt of enriched.layers.options) {
+        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl);
+        if (match) {
+          items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Outerwear", dominantColors: match.dominantColors || [] });
+          break;
+        }
+      }
+    }
+
+    // Footwear — first option with a wardrobe match that has nobgUrl
+    if (enriched.footwear?.options) {
+      for (const opt of enriched.footwear.options) {
+        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl);
+        if (match) {
+          items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Shoes", dominantColors: match.dominantColors || [] });
+          break;
+        }
+      }
+    }
+
+    if (items.length < 2) return null;
+    return { items, canvasSize: 1080 };
+  }
+
+  /**
+   * Builds flat-lay payload from a plain array of ClothingItem documents.
+   * Used by SavePairing where we have full item documents.
+   */
+  private static buildFlatlayFromItems(
+    clothingItems: any[]
+  ): { items: any[]; canvasSize: number } | null {
+    const flatlayItems = clothingItems
+      .filter((i) => i.nobgUrl)
+      .map((i) => ({
+        itemId: String(i._id),
+        nobgUrl: i.nobgUrl,
+        itemType: i.type,
+        dominantColors: i.dominantColors || [],
+      }));
+
+    if (flatlayItems.length < 2) return null;
+    return { items: flatlayItems, canvasSize: 1080 };
+  }
+
+  /**
+   * Calls Python AI service to generate a flat-lay image.
+   * Returns flatlayUrl + colorPalette, or null on failure.
+   */
+  private static async callPythonFlatlay(
+    payload: { items: any[]; canvasSize: number }
+  ): Promise<{ flatlayUrl: string; colorPalette: any[] } | null> {
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8001";
+    const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+    if (!INTERNAL_SERVICE_KEY) return null;
+
+    try {
+      const response = await axios.post(
+        `${PYTHON_SERVICE_URL}/api/v1/generate-flatlay`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Service-Key": INTERNAL_SERVICE_KEY,
+          },
+          timeout: 45000,
+        }
+      );
+      return {
+        flatlayUrl: response.data?.flatlayUrl,
+        colorPalette: response.data?.colorPalette || [],
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  PYTHON AI SERVICE PROXY (Phase 7)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Proxy endpoint: Process single clothing item via Python AI service.
+   *
+   * Security:
+   * - Authenticated via JWT (handled by middleware)
+   * - Adds X-Internal-Service-Key header for Python service
+   *
+   * Flow:
+   * 1. Receives request from client with itemId, photoUrl, itemType, hasPersonInPhoto
+   * 2. Forwards to Python service with security header
+   * 3. Python service removes background, extracts colors, uploads to Cloudinary
+   * 4. Returns nobgUrl, dominantColors, processingMeta to client
+   * 5. Client updates MongoDB with received data
+   */
+  private static async ProcessItem(req: Request, res: Response) {
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8001";
+    const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+
+    if (!INTERNAL_SERVICE_KEY) {
+      throw new ApiError(500, "INTERNAL_SERVICE_KEY not configured");
+    }
+
+    try {
+      // Forward request to Python service with security header
+      const response = await axios.post(
+        `${PYTHON_SERVICE_URL}/api/v1/process-item`,
+        req.body,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Service-Key": INTERNAL_SERVICE_KEY,
+          },
+          timeout: 30000, // 30s timeout (processing can take 8-15s for person photos)
+        }
+      );
+
+      const result = response.data;
+
+      // Persist processing results to MongoDB and auto-set color from AI
+      let updatedItem = null;
+      if (result.itemId && result.dominantColors) {
+        const updateFields: Record<string, any> = {
+          nobgUrl: result.nobgUrl,
+          dominantColors: result.dominantColors,
+          processingMeta: result.processingMeta,
+          processingStatus: "completed",
+        };
+        // Auto-set color to the AI-detected primary color name (e.g. "navy" instead of user-entered "blue")
+        if (result.dominantColors.length > 0 && result.dominantColors[0].name) {
+          updateFields.color = result.dominantColors[0].name;
+        }
+        // Return the updated document so frontend gets complete item state
+        updatedItem = await ClothingItemModel.findByIdAndUpdate(
+          result.itemId,
+          updateFields,
+          { new: true }
+        ).lean();
+      }
+
+      res.status(200).json({
+        success: true,
+        data: updatedItem || result,
+      });
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status || 500;
+        const message = error.response?.data?.detail || "Python service error";
+        throw new ApiError(status, message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Proxy endpoint: Generate flat-lay preview via Python AI service.
+   *
+   * Security:
+   * - Authenticated via JWT (handled by middleware)
+   * - Adds X-Internal-Service-Key header for Python service
+   *
+   * Flow:
+   * 1. Receives request from client with items[], canvasSize, includePalette
+   * 2. Forwards to Python service with security header
+   * 3. Python service downloads nobg images, composes flat-lay, uploads to Cloudinary
+   * 4. Returns flatlayUrl, colorPalette to client
+   * 5. Client can save to outfit document in MongoDB
+   */
+  private static async GenerateFlatlay(req: Request, res: Response) {
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8001";
+    const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+
+    if (!INTERNAL_SERVICE_KEY) {
+      throw new ApiError(500, "INTERNAL_SERVICE_KEY not configured");
+    }
+
+    try {
+      // Forward request to Python service with security header
+      const response = await axios.post(
+        `${PYTHON_SERVICE_URL}/api/v1/generate-flatlay`,
+        req.body,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Service-Key": INTERNAL_SERVICE_KEY,
+          },
+          timeout: 45000, // 45s timeout (flat-lay can take longer with multiple items)
+        }
+      );
+
+      // Return Python service response
+      res.status(200).json({
+        success: true,
+        data: response.data,
+      });
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status || 500;
+        const message = error.response?.data?.detail || "Python service error";
+        throw new ApiError(status, message);
+      }
+      throw error;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   //  PUBLIC WRAPPED HANDLERS
   // ═══════════════════════════════════════════════════════════════════
 
   // Clothing
   public static addCloth = AsyncHandler.wrap(Wardrobe.AddCloth);
+  public static addClothBatch = AsyncHandler.wrap(Wardrobe.AddClothBatch);
   public static getYourCloths = AsyncHandler.wrap(Wardrobe.GetYourCloths);
   public static getYourClothById = AsyncHandler.wrap(Wardrobe.GetYourClothById);
   public static updateCloth = AsyncHandler.wrap(Wardrobe.UpdateCloth);
@@ -1454,6 +1872,10 @@ class Wardrobe {
   public static suggestTop = AsyncHandler.wrap(Wardrobe.SuggestTop);
   public static suggestLayer = AsyncHandler.wrap(Wardrobe.SuggestLayer);
   public static suggestFootwear = AsyncHandler.wrap(Wardrobe.SuggestFootwear);
+
+  // Phase 7: Python AI Service Proxy
+  public static processItem = AsyncHandler.wrap(Wardrobe.ProcessItem);
+  public static generateFlatlay = AsyncHandler.wrap(Wardrobe.GenerateFlatlay);
 }
 
 export default Wardrobe;
