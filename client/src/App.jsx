@@ -26,7 +26,18 @@ import UserInfoForm from "./Components/Login/UserInfoForm";
 import Chats from "./Components/Home/Sidebar/Chats/Chats";
 import Reels from "./Components/Home/Sidebar/Reels/Reels";
 import Subscriptions from "./Components/Home/Sidebar/Subscriptions/Subscriptions";
-import Settings from "./Components/Home/Sidebar/Settings/Settings";
+import WardrobeHub from "./Components/Home/Sidebar/Wardrobe/WardrobeHub";
+import StyleProfile from "./Components/Home/Sidebar/Wardrobe/StyleProfile";
+import MyCloset from "./Components/Home/Sidebar/Wardrobe/MyCloset/MyCloset";
+import FullOutfit from "./Components/Home/Sidebar/Wardrobe/Suggestions/FullOutfit";
+import FromItem from "./Components/Home/Sidebar/Wardrobe/Suggestions/FromItem";
+import SuggestHub from "./Components/Home/Sidebar/Wardrobe/Suggestions/SuggestHub";
+import Pairings from "./Components/Home/Sidebar/Wardrobe/Pairings/Pairings";
+import OutfitBuilder from "./Components/Home/Sidebar/Wardrobe/Builder/OutfitBuilder";
+import OutfitList from "./Components/Home/Sidebar/Wardrobe/Outfits/OutfitList";
+import OutfitDetail from "./Components/Home/Sidebar/Wardrobe/Outfits/OutfitDetail";
+import WearLogPage from "./Components/Home/Sidebar/Wardrobe/WearLog/WearLog";
+import ShopPage from "./Components/Home/Sidebar/Wardrobe/Shop/Shop";
 import UserProfile from "./Components/Home/Hearders/UserProfile/UserProfile";
 import NotificationPanel from "./Components/Home/Hearders/Notifications/NotificationPanel";
 import { NotificationProvider } from "./hooks/useNotifications";
@@ -236,7 +247,18 @@ const App = () => {
                   <Route path='platinum' element={isExpert ? <Navigate to='/chats' replace /> : <PlatinumSubscription />} />
                 </Route>
 
-                <Route path='/settings' element={<Settings />} />
+                <Route path='wardrobe' element={<WardrobeHub />} />
+                <Route path='wardrobe/style-profile' element={<StyleProfile />} />
+                <Route path='wardrobe/my-closet' element={<MyCloset />} />
+                <Route path='wardrobe/suggest' element={<SuggestHub />} />
+                <Route path='wardrobe/suggest/full-outfit' element={<FullOutfit />} />
+                <Route path='wardrobe/suggest/from-item' element={<FromItem />} />
+                <Route path='wardrobe/pairings' element={<Pairings />} />
+                <Route path='wardrobe/outfit-builder' element={<OutfitBuilder />} />
+                <Route path='wardrobe/outfits' element={<OutfitList />} />
+                <Route path='wardrobe/outfits/:outfitId' element={<OutfitDetail />} />
+                <Route path='wardrobe/outfit-log' element={<WearLogPage />} />
+                <Route path='wardrobe/shop' element={<ShopPage />} />
                 <Route path='/notifications' element={<NotificationPanel />} />
                 <Route path='/profile' element={<UserProfile />}>
                   <Route index element={<Navigate to='posts' />} />
