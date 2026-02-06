@@ -15,6 +15,8 @@ import {
   GeneratePairingsSchema,
   SavePairingSchema,
   LogWearSchema,
+  BatchUploadSchema,
+  AddClothBatchSchema,
 } from "../validation/zodSchema";
 import { Router } from "express";
 
@@ -30,6 +32,7 @@ router.get("/cloth-options", Wardrobe.getClothOptions);
 // ─── Clothing Items ─────────────────────────────────────────────────────────
 
 router.post("/cloths", validate(AddClothSchema), Wardrobe.addCloth);
+router.post("/cloths/batch", validate(AddClothBatchSchema), Wardrobe.addClothBatch);
 router.get("/cloths", Wardrobe.getYourCloths);
 router.get("/cloths/:id", Wardrobe.getYourClothById);
 router.put("/cloths/:id", validate(UpdateClothSchema), Wardrobe.updateCloth);
@@ -74,8 +77,14 @@ router.post("/wear-log", validate(LogWearSchema), Wardrobe.logWear);
 router.get("/wear-log", Wardrobe.getWearHistory);
 router.get("/wear-stats", Wardrobe.getWearStats);
 
+// ─── Phase 7: Python AI Service (proxied) ─────────────────────────────────────
+
+router.post("/process-item", Wardrobe.processItem);
+router.post("/generate-flatlay", Wardrobe.generateFlatlay);
+
 // ─── Upload ─────────────────────────────────────────────────────────────────
 
 router.post("/generate-upload-url", UploadController.generateUploadUrl);
+router.post("/generate-upload-urls", validate(BatchUploadSchema), UploadController.generateUploadUrls);
 
 export default router;
