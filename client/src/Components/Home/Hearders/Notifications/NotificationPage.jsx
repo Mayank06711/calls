@@ -12,6 +12,7 @@ import SuggestionCard from './cards/SuggestionCard';
 import SystemCard from './cards/SystemCard';
 import SocialCard from './cards/SocialCard';
 import PromotionCard from './cards/PromotionCard';
+import WardrobeCard from './cards/WardrobeCard';
 
 const TAB_LABELS = {
   all: 'All',
@@ -19,6 +20,7 @@ const TAB_LABELS = {
   social: 'Social',
   promotion: 'Promotions',
   system: 'System',
+  wardrobe: 'Wardrobe',
 };
 
 const CARD_COMPONENTS = {
@@ -26,6 +28,7 @@ const CARD_COMPONENTS = {
   social: SocialCard,
   promotion: PromotionCard,
   system: SystemCard,
+  wardrobe: WardrobeCard,
 };
 
 function NotificationPage() {
