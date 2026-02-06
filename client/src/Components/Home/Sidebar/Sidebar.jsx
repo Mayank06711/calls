@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { IoMdLogOut } from "react-icons/io";
-import { IoSettings } from "react-icons/io5";
+import { IoShirtOutline } from "react-icons/io5";
 import { BsChatLeftTextFill } from "react-icons/bs";
 import { PiFilmReelFill } from "react-icons/pi";
 import { BiSolidBadgeDollar } from "react-icons/bi";
@@ -21,7 +21,7 @@ const MENU_ITEMS = [
     hideForExpert: true,
   },
   { icon: <PiFilmReelFill />, label: "Reels", path: "/reels" },
-  { icon: <IoSettings />, label: "Settings", path: "/settings" },
+  { icon: <IoShirtOutline />, label: "Wardrobe", path: "/wardrobe" },
 ];
 
 function Sidebar({ isDarkMode }) {
