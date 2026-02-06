@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IMedia, MediaItem } from "../interface/IMedia";
+import { FileHandler } from "../helper/fileHandler";
 
 const MediaItemSchema = new Schema({
   public_id: { type: String, required: true },
@@ -103,6 +104,8 @@ MediaSchema.methods.removePhoto = async function (
     (photo: MediaItem) => photo.public_id !== publicId
   );
   await this.save();
+  // Fire-and-forget: remove from Cloudinary
+  FileHandler.deleteFromCloudinary(publicId, "image").catch(() => {});
 };
 
 MediaSchema.methods.removeVideo = async function (
@@ -112,6 +115,8 @@ MediaSchema.methods.removeVideo = async function (
     (video: MediaItem) => video.public_id !== publicId
   );
   await this.save();
+  // Fire-and-forget: remove from Cloudinary
+  FileHandler.deleteFromCloudinary(publicId, "video").catch(() => {});
 };
 
 MediaSchema.methods.addReel = async function (

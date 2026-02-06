@@ -40,7 +40,7 @@ export interface INotification extends Document {
     occasion?: string;
     season?: string;
     thumbnails?: string[];
-    actionType?: "new_item" | "pairings_generated";
+    actionType?: "new_item" | "pairings_generated" | "batch_add";
   };
 
   // Metadata
@@ -113,7 +113,7 @@ const NotificationSchema = new Schema<INotification>(
         occasion: String,
         season: String,
         thumbnails: [String],
-        actionType: { type: String, enum: ["new_item", "pairings_generated"] },
+        actionType: { type: String, enum: ["new_item", "pairings_generated", "batch_add"] },
       },
       default: undefined,
     },

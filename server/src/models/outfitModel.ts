@@ -16,6 +16,19 @@ export interface IOutfit extends Document {
   source: OutfitSource;
   isFavorite: boolean;
   notes?: string;
+  screenshotUrl?: string;
+
+  // ─── Phase 7: Python AI Service Integration ──────────────────────────
+  flatlayUrl?: string;
+  colorPalette?: Array<{
+    hex: string;
+    rgb: [number, number, number];
+    name: string;
+    colorFamily?: string;
+    colorType?: string;
+    slot: string;
+  }>;
+  generatedAt?: Date;
 }
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
@@ -39,6 +52,19 @@ const outfitSchema = new Schema<IOutfit>(
     },
     isFavorite: { type: Boolean, default: false },
     notes: { type: String, trim: true },
+    screenshotUrl: { type: String, trim: true },
+
+    // ─── Phase 7: Python AI Service Integration ──────────────────────────
+    flatlayUrl: { type: String, trim: true },
+    colorPalette: [{
+      hex: { type: String },
+      rgb: [{ type: Number }],
+      name: { type: String },
+      colorFamily: { type: String },
+      colorType: { type: String },
+      slot: { type: String }
+    }],
+    generatedAt: { type: Date },
   },
   { timestamps: true }
 );

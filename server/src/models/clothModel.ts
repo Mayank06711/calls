@@ -26,9 +26,33 @@ export interface IClothingItem extends Document {
   brand?: string;
   season?: SeasonType;
   occasions?: OccasionTag[];
+  notes?: string;
   price?: number;
   purchaseDate?: Date;
   isArchived: boolean;
+
+  // ─── Phase 7: Python AI Service Integration ──────────────────────────
+  hasPersonInPhoto: boolean;
+  processingStatus?: 'pending' | 'completed' | 'failed';
+  nobgUrl?: string;
+  dominantColors?: Array<{
+    hex: string;
+    rgb: [number, number, number];
+    name: string;
+    colorFamily?: string;
+    colorType?: string;
+    percentage: number;
+  }>;
+  processingMeta?: {
+    method: string;
+    originalDimensions: { width: number; height: number };
+    croppedDimensions: { width: number; height: number };
+    skinDetected?: {
+      toneHex: string;
+      ratio: number;
+    };
+    processedAt: Date;
+  };
 }
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
@@ -67,9 +91,42 @@ const clothingItemSchema = new Schema<IClothingItem>(
       type: String,
       enum: ['Wedding', 'Office', 'Casual', 'Party', 'Travel', 'Festive', 'Date Night', 'Sports', 'Lounge'],
     }],
+    notes: { type: String, trim: true, maxlength: 500 },
     price: { type: Number, min: 0 },
     purchaseDate: { type: Date },
     isArchived: { type: Boolean, default: false },
+
+    // ─── Phase 7: Python AI Service Integration ──────────────────────────
+    hasPersonInPhoto: { type: Boolean, default: false },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'completed', 'failed'],
+    },
+    nobgUrl: { type: String },
+    dominantColors: [{
+      hex: { type: String },
+      rgb: [{ type: Number }],
+      name: { type: String },
+      colorFamily: { type: String },
+      colorType: { type: String },
+      percentage: { type: Number }
+    }],
+    processingMeta: {
+      method: { type: String },
+      originalDimensions: {
+        width: { type: Number },
+        height: { type: Number }
+      },
+      croppedDimensions: {
+        width: { type: Number },
+        height: { type: Number }
+      },
+      skinDetected: {
+        toneHex: { type: String },
+        ratio: { type: Number }
+      },
+      processedAt: { type: Date }
+    },
   },
   { timestamps: true }
 );
