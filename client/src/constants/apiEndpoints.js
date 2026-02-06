@@ -119,4 +119,48 @@ export const ENDPOINTS = {
     EXPERT_COMPLAINTS: `/api/${API_CONFIG.VERSION}/history/expert/complaints`, // GET ?page=&limit=
     EXPERT_SUMMARY: `/api/${API_CONFIG.VERSION}/history/expert/summary`, // GET
   },
+
+  WARDROBE: {
+    // Style Profile
+    STYLE_PROFILE: `/api/${API_CONFIG.VERSION}/wardrobe/style-profile`, // PUT (upsert) / GET (fetch)
+    PROFILE_OPTIONS: `/api/${API_CONFIG.VERSION}/wardrobe/profile-options`, // GET
+
+    // Clothing Items
+    CLOTHS: `/api/${API_CONFIG.VERSION}/wardrobe/cloths`, // GET (list) / POST (add)
+    CLOTH_BY_ID: `/api/${API_CONFIG.VERSION}/wardrobe/cloths`, // GET /:id / PUT /:id / DELETE /:id
+    CLOTH_OPTIONS: `/api/${API_CONFIG.VERSION}/wardrobe/cloth-options`, // GET
+
+    // Outfits
+    OUTFITS: `/api/${API_CONFIG.VERSION}/wardrobe/outfits`, // GET (list) / POST (create)
+    OUTFIT_BY_ID: `/api/${API_CONFIG.VERSION}/wardrobe/outfits`, // GET /:id / PUT /:id / DELETE /:id
+
+    // Suggestions
+    SUGGEST_FULL_OUTFIT: `/api/${API_CONFIG.VERSION}/wardrobe/suggest/full-outfit`, // POST
+    SUGGEST_FROM_ITEM: `/api/${API_CONFIG.VERSION}/wardrobe/suggest/from-item`, // POST
+    SUGGEST_TOP: `/api/${API_CONFIG.VERSION}/wardrobe/suggest/top`, // POST
+    SUGGEST_LAYER: `/api/${API_CONFIG.VERSION}/wardrobe/suggest/layer`, // POST
+    SUGGEST_FOOTWEAR: `/api/${API_CONFIG.VERSION}/wardrobe/suggest/footwear`, // POST
+
+    // Pairings
+    GENERATE_PAIRINGS: `/api/${API_CONFIG.VERSION}/wardrobe/generate-pairings`, // POST
+    SAVE_PAIRING: `/api/${API_CONFIG.VERSION}/wardrobe/save-pairing`, // POST
+
+    // Wear Tracking
+    WEAR_LOG: `/api/${API_CONFIG.VERSION}/wardrobe/wear-log`, // POST (log) / GET (history)
+    WEAR_STATS: `/api/${API_CONFIG.VERSION}/wardrobe/wear-stats`, // GET
+
+    // Upload
+    GENERATE_UPLOAD_URL: `/api/${API_CONFIG.VERSION}/wardrobe/generate-upload-url`, // POST
+    GENERATE_UPLOAD_URLS: `/api/${API_CONFIG.VERSION}/wardrobe/generate-upload-urls`, // POST (batch)
+
+    // Batch
+    CLOTHS_BATCH: `/api/${API_CONFIG.VERSION}/wardrobe/cloths/batch`, // POST (batch add)
+
+    // Python AI Service (proxied)
+    PROCESS_ITEM: `/api/${API_CONFIG.VERSION}/wardrobe/process-item`, // POST
+    GENERATE_FLATLAY: `/api/${API_CONFIG.VERSION}/wardrobe/generate-flatlay`, // POST
+
+    // Product Catalog
+    PRODUCT_CATALOG: `/api/${API_CONFIG.VERSION}/wardrobe/product-catalog`, // GET
+  },
 };
