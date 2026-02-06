@@ -80,8 +80,8 @@ const createAxiosInstance = (config = {}) => {
           return instance(failedConfig);
         });
 
-        // If processedError is actually a successful response only for refreshToken case it would work
-        if (processedError?.status === 200) {
+        // If processedError is actually a successful response (any 2xx status) after retry
+        if (processedError?.status >= 200 && processedError?.status < 300) {
           return processedError;
         }
 

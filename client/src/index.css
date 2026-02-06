@@ -14,12 +14,11 @@
 
 
 
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar Styles — theme-aware (light/dark) */
 .custom-scrollbar {
-  /* For Webkit browsers (Chrome, Safari) */
   &::-webkit-scrollbar {
-    width: 8px;  /* vertical scrollbar width */
-    height: 8px; /* horizontal scrollbar height */
+    width: 6px;
+    height: 6px;
   }
 
   &::-webkit-scrollbar-track {
@@ -29,26 +28,21 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-primary-500), 0.2);
+    background: rgba(156, 163, 175, 0.35);
     border-radius: 4px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--color-primary-500), 0.3);
-    border: 1px solid transparent;
+    background: rgba(156, 163, 175, 0.55);
   }
 
-  /* For Firefox */
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--color-primary-500), 0.2) transparent;
+  scrollbar-color: rgba(156, 163, 175, 0.35) transparent;
 
-  /* Hide scrollbar when not hovering (optional) */
   &:not(:hover) {
     &::-webkit-scrollbar-thumb {
-      background: rgba(var(--color-primary-500), 0.1);
+      background: rgba(156, 163, 175, 0.15);
     }
   }
 }
@@ -56,16 +50,18 @@
 /* Dark mode adjustments */
 .dark .custom-scrollbar {
   &::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-primary-500), 0.3);
+    background: rgba(209, 213, 219, 0.2);
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(var(--color-primary-500), 0.4);
+    background: rgba(209, 213, 219, 0.35);
   }
+
+  scrollbar-color: rgba(209, 213, 219, 0.2) transparent;
 
   &:not(:hover) {
     &::-webkit-scrollbar-thumb {
-      background: rgba(var(--color-primary-500), 0.2);
+      background: rgba(209, 213, 219, 0.1);
     }
   }
 }
@@ -80,7 +76,7 @@
   }
 }
 
-/* Optional: Custom scrollbar for specific elements */
+/* Thin scrollbar variant */
 .thin-scrollbar {
   &::-webkit-scrollbar {
     width: 4px;
@@ -88,8 +84,20 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(var(--color-primary-500), 0.15);
+    background: rgba(156, 163, 175, 0.25);
+    border-radius: 4px;
   }
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.25) transparent;
+}
+
+.dark .thin-scrollbar {
+  &::-webkit-scrollbar-thumb {
+    background: rgba(209, 213, 219, 0.15);
+  }
+
+  scrollbar-color: rgba(209, 213, 219, 0.15) transparent;
 }
 
 
