@@ -1,4 +1,4 @@
-# Know Your Style — robots.txt
+# Know Your Fashion — robots.txt
 # Allow all search engines and AI crawlers
 
 User-agent: *

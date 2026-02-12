@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { ArrowBack, Add, Visibility, VisibilityOff } from "@mui/icons-material";
+import { ArrowBack, Add, Visibility, VisibilityOff, FilterList, ExpandMore } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
 import { fetchClosetThunk, processItemThunk } from "../../../../../redux/thunks/wardrobe.thunks";
@@ -29,8 +29,8 @@ function MyCloset() {
   const [droppedImage, setDroppedImage] = useState(null);
   const [lightboxItem, setLightboxItem] = useState(null);
   const [showNobgGlobal, setShowNobgGlobal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const containerRef = useRef(null);
-  const [lightboxScrollTop, setLightboxScrollTop] = useState(0);
   const reprocessedRef = useRef(new Set()); // Track items already queued for reprocessing
 
   useEffect(() => {
@@ -71,10 +71,6 @@ function MyCloset() {
   };
 
   const handleOpenLightbox = useCallback((item) => {
-    // Capture current scroll position before opening lightbox
-    if (containerRef.current) {
-      setLightboxScrollTop(containerRef.current.scrollTop);
-    }
     setLightboxItem(item);
   }, []);
 
@@ -108,93 +104,135 @@ function MyCloset() {
   };
 
   return (
-    <div ref={containerRef} className="relative p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 pr-12">
-        <div className="flex items-center gap-2">
-          <IconButton onClick={() => navigate("/wardrobe")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            My Closet
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Global nobg toggle - only show if any item has nobgUrl */}
-          {items.some((i) => i.nobgUrl) && (
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden flex flex-col">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 dark:bg-dark-primary bg-light-secondary px-2 sm:px-4 pt-2 sm:pt-4 pb-2 border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center justify-between pr-10 sm:pr-12 mb-1 sm:mb-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <IconButton onClick={() => navigate("/wardrobe")} size="small">
+              <ArrowBack style={{ color: colors.fourth, fontSize: 20 }} />
+            </IconButton>
+            <h2 className="text-base sm:text-lg font-semibold dark:text-dark-text text-light-text">
+              My Closet
+            </h2>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Global nobg toggle - icon only on mobile */}
+            {items.some((i) => i.nobgUrl) && (
+              <button
+                onClick={() => setShowNobgGlobal((p) => !p)}
+                className={`flex items-center justify-center gap-1.5 w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  showNobgGlobal ? "text-white" : "dark:text-dark-text/70 text-light-text/70"
+                }`}
+                style={{
+                  backgroundColor: showNobgGlobal ? colors.fourth : "transparent",
+                  borderColor: showNobgGlobal ? colors.fourth : `${colors.fourth}40`,
+                }}
+                title={showNobgGlobal ? "Show original photos" : "Show processed (no background)"}
+              >
+                {showNobgGlobal ? <VisibilityOff style={{ fontSize: 16 }} /> : <Visibility style={{ fontSize: 16 }} />}
+                <span className="hidden sm:inline">{showNobgGlobal ? "Original" : "No BG"}</span>
+              </button>
+            )}
+            {/* Add button - icon only on mobile */}
             <button
-              onClick={() => setShowNobgGlobal((p) => !p)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                showNobgGlobal ? "text-white" : "dark:text-dark-text/70 text-light-text/70"
-              }`}
-              style={{
-                backgroundColor: showNobgGlobal ? colors.fourth : "transparent",
-                borderColor: showNobgGlobal ? colors.fourth : `${colors.fourth}40`,
-              }}
-              title={showNobgGlobal ? "Show original photos" : "Show processed (no background)"}
+              onClick={() => { setDroppedImage(null); setShowAddModal(true); }}
+              className="flex items-center justify-center gap-1 w-8 h-8 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: colors.fourth }}
+              title="Add item"
             >
-              {showNobgGlobal ? <VisibilityOff style={{ fontSize: 16 }} /> : <Visibility style={{ fontSize: 16 }} />}
-              {showNobgGlobal ? "Original" : "No BG"}
+              <Add style={{ fontSize: 18 }} />
+              <span className="hidden sm:inline">Add Item</span>
             </button>
-          )}
+          </div>
+        </div>
+
+        {/* Drop zone - hidden on mobile (no drag/drop support) */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => { setDroppedImage(null); setShowAddModal(true); }}
+          className={`hidden sm:block rounded-lg border-2 border-dashed px-3 py-2 text-center cursor-pointer transition-all
+            ${isDragOver
+              ? "border-solid bg-opacity-20"
+              : "dark:border-dark-text/20 border-light-text/20"
+            }`}
+          style={{
+            borderColor: isDragOver ? colors.fourth : undefined,
+            backgroundColor: isDragOver ? `${colors.fourth}10` : undefined,
+          }}
+        >
+          <p className="text-xs dark:text-dark-text/50 text-light-text/50">
+            Drag & drop photos here, or click to add items
+          </p>
+        </div>
+
+        {/* Category filter toggle */}
+        <div className="mt-1 sm:mt-2">
+          {/* Filter toggle button */}
           <button
-            onClick={() => { setDroppedImage(null); setShowAddModal(true); }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: colors.fourth }}
+            onClick={() => setShowFilters((p) => !p)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+            style={{
+              backgroundColor: filter !== "All" ? `${colors.fourth}15` : "transparent",
+              borderColor: `${colors.fourth}40`,
+            }}
           >
-            <Add style={{ fontSize: 18 }} />
-            Add Item
-          </button>
-        </div>
-      </div>
-
-      {/* Drop zone with tips */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => { setDroppedImage(null); setShowAddModal(true); }}
-        className={`rounded-xl border-2 border-dashed p-4 mb-4 text-center cursor-pointer transition-all
-          ${isDragOver
-            ? "border-solid bg-opacity-20"
-            : "dark:border-dark-text/20 border-light-text/20"
-          }`}
-        style={{
-          borderColor: isDragOver ? colors.fourth : undefined,
-          backgroundColor: isDragOver ? `${colors.fourth}10` : undefined,
-        }}
-      >
-        <p className="text-sm dark:text-dark-text/50 text-light-text/50">
-          Drag & drop photos of your clothes, or click to add
-        </p>
-        <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] dark:text-dark-text/30 text-light-text/30">
-          <span>✓ Flat-lay or hanger shots work best</span>
-          <span>✓ Photos with person? We'll extract the clothing</span>
-          <span>✓ Good lighting = better color detection</span>
-        </div>
-      </div>
-
-      {/* Category tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-        {CATEGORY_TABS.map((tab) => {
-          const isActive = filter === tab.value;
-          return (
-            <button
-              key={tab.value}
-              onClick={() => handleTabChange(tab.value)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
-                ${isActive ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
+            <FilterList style={{ fontSize: 16, color: colors.fourth }} />
+            <span className="dark:text-dark-text text-light-text">
+              {filter === "All" ? "All Items" : CATEGORY_TABS.find((t) => t.value === filter)?.label}
+            </span>
+            <span className="dark:text-dark-text/50 text-light-text/50">
+              ({tabCount(filter)})
+            </span>
+            <ExpandMore
               style={{
-                backgroundColor: isActive ? colors.fourth : "transparent",
-                borderColor: isActive ? colors.fourth : `${colors.fourth}30`,
+                fontSize: 16,
+                color: colors.fourth,
+                transition: "transform 0.3s ease-out",
+                transform: showFilters ? "rotate(180deg)" : "rotate(0deg)",
               }}
-            >
-              {tab.label} ({tabCount(tab.value)})
-            </button>
-          );
-        })}
+            />
+          </button>
+
+          {/* Expanded filter options - animated container */}
+          <div
+            className="overflow-hidden transition-all duration-300 ease-out"
+            style={{
+              maxHeight: showFilters ? "120px" : "0px",
+              opacity: showFilters ? 1 : 0,
+              marginTop: showFilters ? "8px" : "0px",
+            }}
+          >
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              {CATEGORY_TABS.map((tab) => {
+                const isActive = filter === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => {
+                      handleTabChange(tab.value);
+                      setShowFilters(false);
+                    }}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
+                      ${isActive ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
+                    style={{
+                      backgroundColor: isActive ? colors.fourth : "transparent",
+                      borderColor: isActive ? colors.fourth : `${colors.fourth}30`,
+                    }}
+                  >
+                    {tab.label} ({tabCount(tab.value)})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
       {/* Items grid — fills available width */}
       {loading ? (
         <div className="flex items-center justify-center h-40">
@@ -214,23 +252,40 @@ function MyCloset() {
           ))}
         </div>
       )}
+      </div>
 
-      {/* Add item modal */}
+      {/* Add item drawer - backdrop */}
       {showAddModal && (
-        <AddItemModal
-          onClose={() => { setShowAddModal(false); setDroppedImage(null); }}
-          preloadedImage={droppedImage}
+        <div
+          className="absolute inset-0 z-30 bg-black/30"
+          onClick={() => { setShowAddModal(false); setDroppedImage(null); }}
         />
       )}
 
-      {/* Lightbox — positioned at current scroll to stay in view */}
+      {/* Add item drawer - slide-in panel */}
+      <div
+        className={`absolute z-40 backdrop-blur-xl dark:bg-dark-primary/95 bg-light-secondary/95 shadow-2xl transition-transform duration-300 ease-out
+          max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:h-[85vh] max-sm:rounded-t-2xl max-sm:border-t
+          sm:top-0 sm:right-0 sm:bottom-0 sm:w-96 sm:border-l ${
+          showAddModal
+            ? "max-sm:translate-y-0 sm:translate-x-0"
+            : "max-sm:translate-y-full sm:translate-x-full"
+        }`}
+        style={{ borderColor: `${colors.fourth}20` }}
+      >
+        {showAddModal && (
+          <AddItemModal
+            onClose={() => { setShowAddModal(false); setDroppedImage(null); }}
+            preloadedImage={droppedImage}
+            isDrawer
+          />
+        )}
+      </div>
+
+      {/* Lightbox — full coverage within this component */}
       {lightboxItem && lightboxItem.photoUrl && (
         <div
-          className="absolute left-0 right-0 z-[60] flex items-center justify-center bg-black/90 cursor-pointer"
-          style={{
-            top: lightboxScrollTop,
-            height: containerRef.current?.clientHeight || "100%",
-          }}
+          className="absolute inset-0 z-[60] flex items-center justify-center bg-black/90 cursor-pointer"
           onClick={handleCloseLightbox}
         >
           <ImageLightbox

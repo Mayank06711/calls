@@ -398,7 +398,7 @@ class Wardrobe {
 
   private static async CreateOutfit(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { name, itemIds, occasion, season, tags, notes, screenshotUrl } = req.body;
+    const { name, itemIds, occasion, season, tags, notes, screenshotUrl, source, flatlayUrl, colorPalette } = req.body;
 
     const items = await ClothingItemModel.find({ _id: { $in: itemIds }, user: userId });
     if (items.length !== itemIds.length) throw new ApiError(400, "One or more clothing items not found or not yours");
@@ -410,9 +410,11 @@ class Wardrobe {
       occasion,
       season,
       tags: tags || [],
-      source: "manual",
+      source: source || "manual",
       notes,
       screenshotUrl: screenshotUrl || undefined,
+      flatlayUrl: flatlayUrl || undefined,
+      colorPalette: colorPalette || undefined,
     });
 
     const saved = await outfit.save();
@@ -766,7 +768,7 @@ class Wardrobe {
    */
   private static async matchWardrobe(
     userId: any,
-    suggestions: Array<{ item: string; color?: string; type?: "Top" | "Bottom" }>
+    suggestions: Array<{ item: string; color?: string; type?: string }>
   ): Promise<Array<{ suggestion: { item: string; color?: string }; matches: IClothingItem[] }>> {
     // Fetch all non-archived items for this user in one query
     const allItems = await ClothingItemModel.find({ user: userId, isArchived: false });
@@ -806,7 +808,7 @@ class Wardrobe {
    * from the demo catalog so the frontend can show "Buy this" options.
    */
   private static async enrichFullSuggestion(userId: any, result: any, gender?: string) {
-    const toMatch: Array<{ item: string; color?: string; type?: "Top" | "Bottom" }> = [];
+    const toMatch: Array<{ item: string; color?: string; type?: string }> = [];
 
     // Top
     if (result.top) {
@@ -818,6 +820,18 @@ class Wardrobe {
       for (const b of result.bottom) {
         toMatch.push({ item: b.item, color: b.color, type: "Bottom" });
       }
+    }
+
+    // Layer options
+    const layerOptions = result.layers?.options || [];
+    for (const l of layerOptions) {
+      toMatch.push({ item: l.item, color: l.color, type: "Outerwear" });
+    }
+
+    // Footwear options
+    const footwearOptions = result.footwear?.options || [];
+    for (const f of footwearOptions) {
+      toMatch.push({ item: f.item, color: f.color, type: "Shoes" });
     }
 
     const matched = await Wardrobe.matchWardrobe(userId, toMatch);
@@ -838,7 +852,36 @@ class Wardrobe {
       }));
     }
 
-    // Attach product recommendations where wardrobe matches are empty
+    // Type-based fallback: if no exact subcategory match, find ANY item of same type with nobgUrl
+    const fallbackItems = await ClothingItemModel.find({
+      user: userId,
+      isArchived: false,
+      nobgUrl: { $exists: true, $ne: null },
+    }).select("_id subcategory color photoUrl thumbnailUrl nobgUrl dominantColors pattern type").lean();
+
+    for (const m of matched) {
+      const key = m.suggestion.item;
+      if (wardrobeMatches[key] && wardrobeMatches[key].length > 0) continue;
+
+      const type = toMatch.find(t => t.item === key)?.type;
+      if (!type) continue;
+
+      const fallback = fallbackItems.find((item: any) => item.type === type);
+      if (fallback) {
+        wardrobeMatches[key] = [{
+          _id: fallback._id,
+          subcategory: fallback.subcategory,
+          color: fallback.color,
+          photoUrl: fallback.photoUrl,
+          thumbnailUrl: fallback.thumbnailUrl,
+          nobgUrl: fallback.nobgUrl,
+          dominantColors: fallback.dominantColors,
+          pattern: fallback.pattern,
+        }];
+      }
+    }
+
+    // Attach product recommendations where wardrobe matches are still empty
     const productRecommendations: Record<string, any[]> = {};
     const catalog = getProductCatalog();
     const gen = gender || "Male";

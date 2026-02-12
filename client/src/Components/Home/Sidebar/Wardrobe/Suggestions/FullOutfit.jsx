@@ -1,42 +1,226 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { ArrowBack, Refresh, GridView, ViewList } from "@mui/icons-material";
+import {
+  ArrowBack,
+  Shuffle,
+  BookmarkBorder,
+  Bookmark,
+  History,
+  ExpandMore,
+  ShoppingBag,
+  OpenInNew,
+} from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
-import { fetchSuggestionThunk } from "../../../../../redux/thunks/wardrobe.thunks";
+import {
+  fetchSuggestionThunk,
+  saveOutfitThunk,
+  fetchOutfitsThunk,
+} from "../../../../../redux/thunks/wardrobe.thunks";
 import { clearSuggestion } from "../../../../../redux/actions/wardrobe.actions";
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
-import SuggestionCard from "../shared/SuggestionCard";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
+import OutfitCard from "../Outfits/OutfitCard";
+import { ColorDots } from "../shared/ColorDots";
 
-const CATEGORIES = [
-  { key: "top", label: "Top", emoji: "👕" },
-  { key: "bottom", label: "Bottom", emoji: "👖" },
-  { key: "layers", label: "Layers", emoji: "🧥" },
-  { key: "footwear", label: "Footwear", emoji: "👟" },
-];
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────────────
 
-const TIER_LEVEL = { Free: 0, Silver: 1, Gold: 2, Platinum: 3 };
+function getItemName(item) {
+  if (!item) return "";
+  return item.name || item.subcategory || item.item || "";
+}
+
+function getItemEmoji(name) {
+  const n = (name || "").toLowerCase();
+  if (/shirt|top|kurta|tee|blouse|polo/.test(n)) return "👕";
+  if (/jean|trouser|pant|chino|short|skirt/.test(n)) return "👖";
+  if (/jacket|blazer|coat|layer|cardigan|hoodie|sweater/.test(n)) return "🧥";
+  if (/shoe|sneaker|boot|loafer|heel|sandal|footwear|derby|oxford/.test(n)) return "👟";
+  return "👔";
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sub-components
+// ──────────────────────────────────────────────────────────────────────────────
+
+function OutfitItemRow({ item, wardrobeMatches, productRecommendations, colors }) {
+  const name = getItemName(item);
+  const color = item?.color || item?.shade || "";
+  const matches = wardrobeMatches[name] || [];
+  const owned = matches.length > 0;
+  const photo = matches[0]?.thumbnailUrl || matches[0]?.photoUrl;
+  const recs = productRecommendations[name] || [];
+  const rec = recs[0];
+
+  return (
+    <div className="flex items-center gap-2.5 py-1.5 px-1">
+      {/* 36x36 thumbnail */}
+      <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-dark-secondary">
+        {photo ? (
+          <img src={photo} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="flex items-center justify-center w-full h-full text-base">
+            {getItemEmoji(name)}
+          </span>
+        )}
+      </div>
+      {/* Name + color */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-medium dark:text-dark-text/90 text-light-text/90 truncate">
+          {name}
+        </p>
+        <div className="flex items-center gap-1 mt-0.5">
+          {matches[0]?.dominantColors && (
+            <ColorDots colors={matches[0].dominantColors} max={2} size="sm" />
+          )}
+          {(matches[0]?.dominantColors?.[0]?.name || color) && (
+            <span className="text-[9px] dark:text-dark-text/50 text-light-text/50 truncate">
+              {matches[0]?.dominantColors?.[0]?.name || color}
+            </span>
+          )}
+        </div>
+      </div>
+      {/* Status: owned label or shop link */}
+      {owned ? (
+        <span className="text-[9px] font-medium text-green-600 dark:text-green-400 flex-shrink-0 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+          Owned
+        </span>
+      ) : rec ? (
+        <a
+          href={rec.link || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-0.5 text-[9px] font-medium flex-shrink-0 hover:underline"
+          style={{ color: colors.fourth }}
+          onClick={(e) => { if (!rec.link) e.preventDefault(); }}
+        >
+          <ShoppingBag style={{ fontSize: 11 }} />
+          {rec.price ? `₹${rec.price}` : "Shop"}
+        </a>
+      ) : (
+        <span className="text-[9px] dark:text-dark-text/30 text-light-text/30 flex-shrink-0">
+          Suggested
+        </span>
+      )}
+    </div>
+  );
+}
+
+function AltChipRow({ label, items, category, wardrobeMatches, activeIndex, onSwap, colors }) {
+  return (
+    <div className="mb-2.5">
+      <p className="text-[9px] font-medium dark:text-dark-text/40 text-light-text/40 mb-1 uppercase tracking-wider">
+        {label}
+      </p>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {items.map((item, idx) => {
+          const name = getItemName(item);
+          const matches = wardrobeMatches[name] || [];
+          const photo = matches[0]?.thumbnailUrl || matches[0]?.photoUrl;
+          const owned = matches.length > 0;
+          const isActive = activeIndex === idx;
+
+          return (
+            <button
+              key={idx}
+              onClick={() => onSwap(category, idx)}
+              className="relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all hover:shadow-sm"
+              style={{
+                borderColor: isActive ? colors.fourth : "transparent",
+                boxShadow: isActive ? `0 0 0 1px ${colors.fourth}` : undefined,
+              }}
+              title={name}
+            >
+              {photo ? (
+                <img src={photo} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-dark-secondary">
+                  <span className="text-sm">{getItemEmoji(name)}</span>
+                </div>
+              )}
+              {owned && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-green-500" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MiniProductRec({ product, colors }) {
+  return (
+    <a
+      href={product.link || "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex-shrink-0 w-28 rounded-lg border overflow-hidden hover:shadow-sm transition-shadow dark:bg-dark-primary bg-light-secondary"
+      style={{ borderColor: `${colors.fourth}20` }}
+      onClick={(e) => { if (!product.link) e.preventDefault(); }}
+    >
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover" />
+      ) : (
+        <div className="w-full h-20 flex items-center justify-center" style={{ backgroundColor: `${colors.fourth}08` }}>
+          <ShoppingBag style={{ fontSize: 20, opacity: 0.2 }} className="dark:text-dark-text text-light-text" />
+        </div>
+      )}
+      <div className="p-1.5">
+        <p className="text-[9px] font-medium dark:text-dark-text/80 text-light-text/80 truncate">
+          {product.name}
+        </p>
+        <div className="flex items-center justify-between mt-0.5">
+          {product.brand && (
+            <span className="text-[8px] dark:text-dark-text/40 text-light-text/40 truncate">
+              {product.brand}
+            </span>
+          )}
+          {product.price && (
+            <span className="text-[9px] font-bold" style={{ color: colors.fourth }}>
+              ₹{product.price}
+            </span>
+          )}
+        </div>
+        {product.link && (
+          <div className="flex items-center gap-0.5 mt-1" style={{ color: colors.fourth }}>
+            <OpenInNew style={{ fontSize: 9 }} />
+            <span className="text-[8px] font-medium">Shop</span>
+          </div>
+        )}
+      </div>
+    </a>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Main Component
+// ──────────────────────────────────────────────────────────────────────────────
 
 function FullOutfit() {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { loading, result, error } = useSelector((state) => state.wardrobe.suggestions);
-  const subscriptionType = useSelector(
-    (state) => state.auth.userInfo?.subscription?.type || "Free"
-  );
-  const isSilverPlus = (TIER_LEVEL[subscriptionType] ?? 0) >= 1;
+  const { loading, result, error } = useSelector((s) => s.wardrobe.suggestions);
+  const { saving: savingOutfit, saved: savedOutfits } = useSelector((s) => s.wardrobe.outfits);
 
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
   const [description, setDescription] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
-  const [activeCategories, setActiveCategories] = useState(
-    new Set(["top", "bottom", "layers", "footwear"])
-  );
+  const [showDescription, setShowDescription] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [swappedItems, setSwappedItems] = useState({});
+
+  // Fetch saved outfits on mount
+  useEffect(() => {
+    dispatch(fetchOutfitsThunk());
+  }, [dispatch]);
 
   // Auto-dismiss error after 5 seconds
   useEffect(() => {
@@ -46,36 +230,31 @@ function FullOutfit() {
     }
   }, [error, dispatch]);
 
-  const toggleCategory = (key) => {
-    if (!isSilverPlus) return;
-    setActiveCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        if (next.size <= 1) return prev;
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
+  // Reset saved/swap state when result changes
+  useEffect(() => {
+    setSaved(false);
+    setSwappedItems({});
+  }, [result]);
 
   const handleGenerate = () => {
-    if (!occasion || !season) return;
+    if (!occasion || !season || loading) return;
     const params = { occasion, season };
     if (description.trim()) params.description = description.trim();
     dispatch(fetchSuggestionThunk("full-outfit", params));
   };
 
-  const handleShuffle = () => {
-    handleGenerate();
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleGenerate();
+    }
   };
 
   const handleClear = () => {
     dispatch(clearSuggestion());
   };
 
-  // Parse result structure from server
+  // ── Parse result ──────────────────────────────────────────────────────────
   const suggestion = result?.suggestion || result;
   const wardrobeMatches = result?.wardrobeMatches || {};
   const productRecommendations = result?.productRecommendations || {};
@@ -87,285 +266,340 @@ function FullOutfit() {
 
   const vibeNote = suggestion?.overallVibe || suggestion?.note || suggestion?.stylingTip || "";
 
-  // Primary items for flat-lay (first of each category)
   const primaryBottom = bottomItems[0] || null;
   const primaryLayer = layerItems[0] || null;
   const primaryFootwear = footwearItems[0] || null;
 
-  // Alternative items (extras beyond the first)
+  // Alt items
+  const altBottoms = bottomItems.slice(1);
   const altLayers = layerItems.slice(1);
   const altFootwear = footwearItems.slice(1);
+  const hasAlts = altBottoms.length > 0 || altLayers.length > 0 || altFootwear.length > 0;
+
+  // ── Effective items after swaps ───────────────────────────────────────────
+  const effectiveBottom = swappedItems.bottom != null ? bottomItems[swappedItems.bottom + 1] : primaryBottom;
+  const effectiveLayer = swappedItems.layer != null ? layerItems[swappedItems.layer + 1] : primaryLayer;
+  const effectiveFootwear = swappedItems.footwear != null ? footwearItems[swappedItems.footwear + 1] : primaryFootwear;
+  const effectivePrimaryItems = [topItem, effectiveBottom, effectiveLayer, effectiveFootwear].filter(Boolean);
+  const hasAnySwap = Object.values(swappedItems).some((v) => v != null);
+
+  const handleSwap = useCallback((category, altIndex) => {
+    setSwappedItems((prev) => ({
+      ...prev,
+      [category]: prev[category] === altIndex ? undefined : altIndex,
+    }));
+    setSaved(false);
+  }, []);
+
+  // ── Save outfit ───────────────────────────────────────────────────────────
+  const handleSaveOutfit = async () => {
+    const itemIds = [];
+    for (const item of effectivePrimaryItems) {
+      const name = getItemName(item);
+      const matches = wardrobeMatches[name] || [];
+      if (matches[0]?._id) itemIds.push(matches[0]._id);
+    }
+    if (itemIds.length === 0) return;
+
+    const outfitData = {
+      name: `AI: ${occasion} - ${season}`,
+      itemIds,
+      occasion: occasion || undefined,
+      season: season || undefined,
+      tags: ["ai-generated"],
+      source: "ai_suggested",
+    };
+    if (vibeNote) outfitData.notes = vibeNote;
+    if (!hasAnySwap && suggestion?.flatlayUrl) outfitData.flatlayUrl = suggestion.flatlayUrl;
+    if (suggestion?.colorPalette?.length > 0) outfitData.colorPalette = suggestion.colorPalette;
+
+    const res = await dispatch(saveOutfitThunk(outfitData));
+    if (res) setSaved(true);
+  };
+
+  // ── Product recommendations for un-owned items ────────────────────────────
+  const unownedWithRecs = effectivePrimaryItems
+    .map((item) => {
+      const name = getItemName(item);
+      const owned = (wardrobeMatches[name] || []).length > 0;
+      const recs = productRecommendations[name] || [];
+      return !owned && recs.length > 0 ? { item, recs } : null;
+    })
+    .filter(Boolean);
+
+  // ── AI-saved outfits for history ──────────────────────────────────────────
+  const aiSavedOutfits = (savedOutfits || []).filter(
+    (o) => o.source === "ai_suggested" || o.source === "engine_suggested"
+  );
+
+  // Count of owned items (for save button state)
+  const ownedCount = effectivePrimaryItems.filter((item) => {
+    const name = getItemName(item);
+    return (wardrobeMatches[name] || []).length > 0;
+  }).length;
 
   return (
     <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 pr-12">
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-3 pr-12">
         <div className="flex items-center gap-2">
           <IconButton onClick={() => { handleClear(); navigate("/wardrobe"); }} size="small">
             <ArrowBack style={{ color: colors.fourth }} />
           </IconButton>
           <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            AI Suggest
+            AI Stylist
           </h2>
         </div>
         <div className="flex items-center gap-1">
+          {aiSavedOutfits.length > 0 && (
+            <IconButton
+              onClick={() => setShowHistory((p) => !p)}
+              size="small"
+              title="Saved outfits"
+            >
+              <History style={{ color: showHistory ? colors.fourth : `${colors.fourth}80`, fontSize: 20 }} />
+            </IconButton>
+          )}
           {result && (
-            <>
-              <IconButton
-                onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-                size="small"
-                title={viewMode === "grid" ? "List view" : "Grid view"}
-              >
-                {viewMode === "grid" ? (
-                  <ViewList style={{ color: colors.fourth, fontSize: 20 }} />
-                ) : (
-                  <GridView style={{ color: colors.fourth, fontSize: 20 }} />
-                )}
-              </IconButton>
-              <IconButton onClick={handleShuffle} disabled={loading} size="small">
-                <Refresh style={{ color: colors.fourth }} />
-              </IconButton>
-            </>
+            <IconButton onClick={handleGenerate} disabled={loading} size="small" title="Shuffle">
+              <Shuffle style={{ color: colors.fourth, fontSize: 20 }} />
+            </IconButton>
           )}
         </div>
       </div>
 
-      {/* Controls */}
-      <div
-        className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-        style={{ borderColor: `${colors.fourth}30` }}
-      >
-        <OccasionSeasonPicker
-          occasion={occasion}
-          season={season}
-          onOccasionChange={setOccasion}
-          onSeasonChange={setSeason}
-        />
-
-        {/* Category chips */}
-        <div className="mt-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-xs font-medium dark:text-dark-text/60 text-light-text/60">
-              Categories
-            </span>
-            {!isSilverPlus && (
-              <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">
-                (Silver+ to customize)
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => {
-              const active = activeCategories.has(cat.key);
-              return (
-                <button
-                  key={cat.key}
-                  onClick={() => toggleCategory(cat.key)}
-                  disabled={!isSilverPlus}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5
-                    ${!isSilverPlus ? "cursor-default" : "cursor-pointer"}
-                    ${active ? "text-white" : "dark:text-dark-text/60 text-light-text/60"}`}
-                  style={{
-                    backgroundColor: active ? colors.fourth : `${colors.fourth}15`,
-                    borderWidth: 1,
-                    borderColor: active ? colors.fourth : `${colors.fourth}30`,
-                  }}
-                >
-                  <span>{cat.emoji}</span>
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Description textarea */}
-        <div className="mt-3">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe what you're looking for... (optional)"
-            rows={2}
-            className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none"
-            style={{ borderColor: `${colors.fourth}30`, focusRingColor: colors.fourth }}
+      {/* ── Inline Controls ───────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex-1 min-w-0">
+          <OccasionSeasonPicker
+            occasion={occasion}
+            season={season}
+            onOccasionChange={setOccasion}
+            onSeasonChange={setSeason}
+            compact
           />
         </div>
-
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={handleGenerate}
-            disabled={!occasion || !season || loading}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            style={{ backgroundColor: colors.fourth }}
-          >
-            {loading && <CircularProgress size={14} style={{ color: "white" }} />}
-            Generate
-          </button>
-        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={!occasion || !season || loading}
+          className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          style={{ backgroundColor: colors.fourth }}
+        >
+          {loading && <CircularProgress size={14} style={{ color: "white" }} />}
+          Go
+        </button>
       </div>
 
-      {/* Error */}
+      {/* Optional description toggle */}
+      <button
+        onClick={() => setShowDescription((p) => !p)}
+        className="text-[10px] font-medium mb-2 flex items-center gap-0.5 transition-colors"
+        style={{ color: `${colors.fourth}aa` }}
+      >
+        <ExpandMore
+          style={{
+            fontSize: 14,
+            transform: showDescription ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+          }}
+        />
+        {showDescription ? "Hide description" : "Add description"}
+      </button>
+
+      <div
+        className="overflow-hidden transition-all duration-200"
+        style={{ maxHeight: showDescription ? "100px" : "0px", opacity: showDescription ? 1 : 0 }}
+      >
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Describe what you're looking for..."
+          rows={2}
+          className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none mb-2"
+          style={{ borderColor: `${colors.fourth}30` }}
+        />
+      </div>
+
+      {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 mb-4">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2.5 mb-3">
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
-      {/* Result — Grid (flat-lay) view */}
-      {suggestion && viewMode === "grid" && (
-        <div className="space-y-4">
-          {/* Main flat-lay */}
-          <div
-            className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-            style={{ borderColor: `${colors.fourth}30` }}
-          >
-            <div className="flex justify-center">
+      {/* ── Result ────────────────────────────────────────────────────────── */}
+      {suggestion && (
+        <div className="space-y-3">
+          {/* Magazine spread: flat-lay + item list */}
+          <div className="flex gap-3 items-start">
+            {/* Left: Flat-lay */}
+            <div className="flex-shrink-0">
               <OutfitFlatLay
-                top={activeCategories.has("top") ? topItem : null}
-                bottom={activeCategories.has("bottom") ? primaryBottom : null}
-                layer={activeCategories.has("layers") ? primaryLayer : null}
-                footwear={activeCategories.has("footwear") ? primaryFootwear : null}
-                flatlayUrl={activeCategories.size === 4 ? suggestion?.flatlayUrl : undefined}
-                size="lg"
-                showOverlay
+                top={topItem}
+                bottom={effectiveBottom}
+                layer={effectiveLayer}
+                footwear={effectiveFootwear}
+                flatlayUrl={hasAnySwap ? null : suggestion?.flatlayUrl}
+                size="md"
                 wardrobeMatches={wardrobeMatches}
-                productRecommendations={productRecommendations}
               />
             </div>
 
-            {/* Vibe note */}
-            {vibeNote && (
-              <p className="text-xs dark:text-dark-text/50 text-light-text/50 text-center mt-3 italic leading-relaxed">
-                {vibeNote}
-              </p>
-            )}
+            {/* Right: Item list */}
+            <div className="flex-1 min-w-0">
+              <div className="divide-y dark:divide-dark-text/5 divide-light-text/5">
+                {effectivePrimaryItems.map((item, idx) => (
+                  <OutfitItemRow
+                    key={idx}
+                    item={item}
+                    wardrobeMatches={wardrobeMatches}
+                    productRecommendations={productRecommendations}
+                    colors={colors}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Alternatives */}
-          {(altLayers.length > 0 || altFootwear.length > 0) && (
-            <div
-              className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+          {/* Vibe note */}
+          {vibeNote && (
+            <p className="text-[10px] dark:text-dark-text/40 text-light-text/40 italic text-center leading-relaxed">
+              {vibeNote}
+            </p>
+          )}
+
+          {/* Action bar */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={handleSaveOutfit}
+              disabled={savingOutfit || saved || ownedCount === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: saved ? "#22c55e" : colors.fourth }}
             >
-              <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
-                Alternatives
-              </h4>
-
-              {activeCategories.has("layers") && altLayers.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-[10px] font-medium dark:text-dark-text/50 text-light-text/50 mb-2">
-                    Layers
-                  </p>
-                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-                    {altLayers.map((item, idx) => (
-                      <div key={idx} className="snap-start">
-                        <SuggestionCard
-                          item={item}
-                          wardrobeMatches={wardrobeMatches}
-                          productRecommendations={productRecommendations}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {savingOutfit ? (
+                <CircularProgress size={12} style={{ color: "white" }} />
+              ) : saved ? (
+                <Bookmark style={{ fontSize: 14 }} />
+              ) : (
+                <BookmarkBorder style={{ fontSize: 14 }} />
               )}
+              {saved ? "Saved!" : "Save Outfit"}
+            </button>
 
-              {activeCategories.has("footwear") && altFootwear.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-medium dark:text-dark-text/50 text-light-text/50 mb-2">
-                    Footwear
-                  </p>
-                  <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-                    {altFootwear.map((item, idx) => (
-                      <div key={idx} className="snap-start">
-                        <SuggestionCard
-                          item={item}
-                          wardrobeMatches={wardrobeMatches}
-                          productRecommendations={productRecommendations}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            <div className="flex items-center gap-1 ml-auto">
+              {occasion && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full dark:bg-dark-secondary bg-gray-100 dark:text-dark-text/60 text-light-text/60">
+                  {occasion}
+                </span>
               )}
+              {season && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full dark:bg-dark-secondary bg-gray-100 dark:text-dark-text/60 text-light-text/60">
+                  {season}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ── Swap Alternatives ─────────────────────────────────────────── */}
+          {hasAlts && (
+            <div className="pt-2 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+              <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider mb-2">
+                Swap Alternatives
+              </p>
+
+              {altBottoms.length > 0 && (
+                <AltChipRow
+                  label="Bottoms"
+                  items={altBottoms}
+                  category="bottom"
+                  wardrobeMatches={wardrobeMatches}
+                  activeIndex={swappedItems.bottom}
+                  onSwap={handleSwap}
+                  colors={colors}
+                />
+              )}
+              {altLayers.length > 0 && (
+                <AltChipRow
+                  label="Layers"
+                  items={altLayers}
+                  category="layer"
+                  wardrobeMatches={wardrobeMatches}
+                  activeIndex={swappedItems.layer}
+                  onSwap={handleSwap}
+                  colors={colors}
+                />
+              )}
+              {altFootwear.length > 0 && (
+                <AltChipRow
+                  label="Footwear"
+                  items={altFootwear}
+                  category="footwear"
+                  wardrobeMatches={wardrobeMatches}
+                  activeIndex={swappedItems.footwear}
+                  onSwap={handleSwap}
+                  colors={colors}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ── Product Recommendations ───────────────────────────────────── */}
+          {unownedWithRecs.length > 0 && (
+            <div className="pt-2 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <ShoppingBag style={{ fontSize: 13, color: colors.fourth }} />
+                <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider">
+                  Complete Your Look
+                </p>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {unownedWithRecs.flatMap(({ recs }) => recs).map((rec, idx) => (
+                  <MiniProductRec key={idx} product={rec} colors={colors} />
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Result — List view (original sections) */}
-      {suggestion && viewMode === "list" && (
-        <div className="space-y-4">
-          {activeCategories.has("top") && topItem && (
-            <OutfitSection
-              label="Top"
-              items={[topItem]}
-              wardrobeMatches={wardrobeMatches}
-              productRecommendations={productRecommendations}
-              colors={colors}
-            />
-          )}
-          {activeCategories.has("bottom") && bottomItems.length > 0 && (
-            <OutfitSection
-              label="Bottom"
-              items={bottomItems}
-              wardrobeMatches={wardrobeMatches}
-              productRecommendations={productRecommendations}
-              colors={colors}
-            />
-          )}
-          {activeCategories.has("layers") && layerItems.length > 0 && (
-            <OutfitSection
-              label="Layers"
-              items={layerItems}
-              wardrobeMatches={wardrobeMatches}
-              productRecommendations={productRecommendations}
-              colors={colors}
-              scrollable
-            />
-          )}
-          {activeCategories.has("footwear") && footwearItems.length > 0 && (
-            <OutfitSection
-              label="Footwear"
-              items={footwearItems}
-              wardrobeMatches={wardrobeMatches}
-              productRecommendations={productRecommendations}
-              colors={colors}
-              scrollable
-            />
-          )}
-
-          {vibeNote && (
-            <p className="text-xs dark:text-dark-text/50 text-light-text/50 text-center italic leading-relaxed">
-              {vibeNote}
+      {/* ── Saved AI Outfits History ──────────────────────────────────────── */}
+      {((showHistory && aiSavedOutfits.length > 0) ||
+        (!suggestion && !loading && aiSavedOutfits.length > 0)) && (
+        <div className="mt-4 pt-3 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold dark:text-dark-text/60 text-light-text/60">
+              Saved AI Outfits ({aiSavedOutfits.length})
             </p>
-          )}
+            <button
+              onClick={() => navigate("/wardrobe/outfits")}
+              className="text-[10px] font-medium hover:underline"
+              style={{ color: colors.fourth }}
+            >
+              View All
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {aiSavedOutfits.slice(0, 4).map((outfit) => (
+              <OutfitCard
+                key={outfit._id}
+                outfit={outfit}
+                onClick={() => navigate(`/wardrobe/outfits/${outfit._id}`)}
+              />
+            ))}
+          </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function OutfitSection({ label, items, wardrobeMatches, productRecommendations, colors, scrollable }) {
-  return (
-    <div
-      className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-      style={{ borderColor: `${colors.fourth}30` }}
-    >
-      <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
-        {label}
-      </h4>
-      <div className={`flex gap-3 ${scrollable ? "overflow-x-auto pb-2 snap-x snap-mandatory" : "flex-wrap"}`}>
-        {items.map((item, idx) => (
-          <div key={idx} className={scrollable ? "snap-start" : ""}>
-            <SuggestionCard
-              item={item}
-              wardrobeMatches={wardrobeMatches}
-              productRecommendations={productRecommendations}
-            />
-          </div>
-        ))}
-      </div>
+      {/* ── Empty state (no result, no history) ──────────────────────────── */}
+      {!suggestion && !loading && aiSavedOutfits.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <span className="text-4xl mb-3 opacity-20">✨</span>
+          <p className="text-sm dark:text-dark-text/40 text-light-text/40 text-center">
+            Pick occasion & season, then hit Go
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,21 +1,41 @@
 import React from "react";
 import { CheckCircleOutline, ShoppingCartOutlined } from "@mui/icons-material";
 
-function WardrobeMatchBadge({ type, price, brand }) {
+function WardrobeMatchBadge({ type, price, brand, size = "default" }) {
   if (type === "owned") {
+    if (size === "dot") {
+      return (
+        <span
+          className="inline-block w-2.5 h-2.5 rounded-full bg-green-500"
+          title="In your closet"
+        />
+      );
+    }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+      <span
+        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/90 text-white"
+        title="In your closet"
+      >
         <CheckCircleOutline style={{ fontSize: 12 }} />
-        In Closet
       </span>
     );
   }
 
   if (type === "shop") {
+    if (size === "dot") {
+      return (
+        <span
+          className="inline-block w-2.5 h-2.5 rounded-full bg-orange-500"
+          title={price ? `Shop ₹${price}` : "Shop"}
+        />
+      );
+    }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded-full">
+      <span
+        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-500/90 text-white"
+        title={price ? `Shop ${brand ? brand + " " : ""}₹${price}` : "Shop"}
+      >
         <ShoppingCartOutlined style={{ fontSize: 12 }} />
-        {price ? `Shop ${brand ? brand + " " : ""}₹${price}` : "Shop"}
       </span>
     );
   }

@@ -1,4 +1,8 @@
 import * as fs from "fs";
+import * as path from "path";
+
+// Resolve path relative to compiled dist directory: dist/AISugession/ → server/
+const DB_FILE = path.resolve(__dirname, '../..', 'consultant_master_db.json');
 
 interface ConsultantDB {
     dicts: { items: string[], colors: string[] };
@@ -31,10 +35,11 @@ export class ConsultantEngine {
     constructor() {
         console.log("⚙️  Loading 10-Factor Consultant Brain...");
         try {
-            const raw = fs.readFileSync("consultant_master_db.json", "utf-8");
+            const raw = fs.readFileSync(DB_FILE, "utf-8");
             this.db = JSON.parse(raw);
+            console.log("✅ Consultant Engine Online.");
         } catch (e) {
-            console.error("❌ Error: DB not found. Run builder first.");
+            console.error("❌ Error: DB not found at", DB_FILE, "Run builder first.");
             throw e;
         }
     }

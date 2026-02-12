@@ -18,6 +18,7 @@ import {
 } from "react-router-dom";
 
 import Login from "./Components/Login/Login";
+import LandingPage from "./Components/Landing/LandingPage";
 import Home from "./Components/Home/Home";
 import Missing from "./Components/Missing";
 import Toast from "./Components/Notification/Toast";
@@ -202,7 +203,7 @@ const App = () => {
         <NotificationProvider>
         <Router>
           <NavigationListener />
-          <div className='relative flex justify-center items-center h-[100vh]'>
+          <div className='relative min-h-screen'>
             <Toast />
             {/* <div
               className="absolute inset-0"
@@ -230,7 +231,7 @@ const App = () => {
                       <Home />
                     )
                   ) : (
-                    <Navigate to='/login' />
+                    <LandingPage />
                   )
                 }
               >
@@ -291,13 +292,19 @@ const App = () => {
 
               <Route
                 path='/login'
-                element={!userId ? <Login /> : <Navigate to='/' />}
+                element={!userId ? (
+                  <div className="flex items-center justify-center min-h-screen">
+                    <Login />
+                  </div>
+                ) : <Navigate to='/' />}
               />
               <Route
                 path='/complete-profile'
                 element={
                   userId && isAlreadyVerified === false ? (
-                    <UserInfoForm />
+                    <div className="flex items-center justify-center min-h-screen">
+                      <UserInfoForm />
+                    </div>
                   ) : (
                     <Navigate to='/' />
                   )

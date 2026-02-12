@@ -105,10 +105,11 @@
 .modal {
   width: 450px;
   height: 80vh;
-  background: linear-gradient(180deg, #04d001bd 0%, #FFFFFF 60.21%);
+  background: linear-gradient(180deg, #86efac 0%, #FFFFFF 50%);
   /* box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.01), 0px 5px 5px rgba(0, 0, 0, 0.05), 0px 20px 20px rgba(0, 0, 0, 0.09), 0px 6px 10px rgba(0, 0, 0, 0.1), 0px 0px 0px rgba(0, 0, 0, 0.1); */
   box-shadow: 0px 20px 20px rgba(0, 0, 0, 0.05);
   border-radius: 16px;
+  overflow: hidden;
 }
 
 .banner {
@@ -320,6 +321,54 @@
   text-align: center;
   font-size: 18px;
   margin-bottom: 10px;
+}
+
+/* Login card (modal mode) — responsive */
+.login-card {
+  width: 450px;
+  max-width: calc(100vw - 32px);
+  max-height: 700px;
+  background: linear-gradient(180deg, #86efac 0%, #FFFFFF 50%);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+@media (max-width: 480px) {
+  .login-card {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+  }
+  .modal {
+    width: 100%;
+    max-width: calc(100vw - 16px);
+    max-height: 90vh;
+    border-radius: 12px;
+  }
+}
+
+/* Phone input overrides for react-international-phone */
+.react-international-phone-input {
+  width: 100% !important;
+  color: #059212 !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+}
+.react-international-phone-country-selector-dropdown {
+  z-index: 99999 !important;
+  max-height: 200px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  overflow-y: auto !important;
+}
+.react-international-phone-country-selector-dropdown__list-item:hover {
+  background-color: #f0fdf4 !important;
+}
+.react-international-phone-country-selector-dropdown__list-item {
+  padding: 6px 10px !important;
 }
 
 /* date range picker style *************/

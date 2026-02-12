@@ -68,7 +68,7 @@ function OutfitList() {
         <FilterChip
           label="Favorites"
           active={filters.favorite}
-          onClick={() => dispatch(setOutfitFilters({ favorite: !filters.favorite }))}
+          onClick={() => dispatch(setOutfitFilters({ favorite: !filters.favorite, occasion: "" }))}
           colors={colors}
         />
         {["Casual", "Office: Daily Wear", "Party: Night Out", "Date Night", "Wedding"].map((occ) => (
@@ -76,7 +76,7 @@ function OutfitList() {
             key={occ}
             label={occ}
             active={filters.occasion === occ}
-            onClick={() => dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ }))}
+            onClick={() => dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ, favorite: false }))}
             colors={colors}
           />
         ))}

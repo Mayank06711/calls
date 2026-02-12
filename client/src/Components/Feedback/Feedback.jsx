@@ -14,12 +14,17 @@ import {
   IconButton,
   Typography,
   Box,
+  Slide,
 } from "@mui/material";
 import { Close, CloudUpload } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { feedbackClick } from "../../redux/actions";
 import { fetchUserLocation } from "../../helper/locatonPicker";
 import { submitBugFeedbackThunk } from "../../redux/thunks/feedback.thunks";
+
+const SlideUp = React.forwardRef(function SlideUp(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 const Feedback = () => {
   const [category, setCategory] = useState("");
@@ -238,6 +243,9 @@ const Feedback = () => {
       maxWidth="sm"
       fullWidth
       scroll="body"
+      TransitionComponent={SlideUp}
+      transitionDuration={{ enter: 300, exit: 200 }}
+      sx={{ zIndex: 10000 }}
       PaperProps={{
         sx: {
           backgroundColor: isDarkMode
@@ -287,6 +295,11 @@ const Feedback = () => {
             <InputLabel
               id="category-label"
               className="dark:text-dark-text text-light-text"
+              sx={{
+                "&.Mui-focused": {
+                  color: isDarkMode ? "#93c5fd" : "#2563eb",
+                },
+              }}
             >
               Category
             </InputLabel>
@@ -309,6 +322,9 @@ const Feedback = () => {
                   borderColor: isDarkMode
                     ? "rgba(249, 250, 251, 0.3)"
                     : "rgba(17, 24, 39, 0.3)",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: isDarkMode ? "#93c5fd" : "#2563eb",
                 },
               }}
             >
@@ -347,11 +363,17 @@ const Feedback = () => {
                       ? "rgba(249, 250, 251, 0.3)"
                       : "rgba(17, 24, 39, 0.3)",
                   },
+                  "&.Mui-focused fieldset": {
+                    borderColor: isDarkMode ? "#93c5fd" : "#2563eb",
+                  },
                 },
                 "& .MuiInputLabel-root": {
                   color: isDarkMode
                     ? "rgba(249, 250, 251, 0.7)"
                     : "rgba(17, 24, 39, 0.7)",
+                  "&.Mui-focused": {
+                    color: isDarkMode ? "#93c5fd" : "#2563eb",
+                  },
                 },
                 "& .MuiInputBase-input": {
                   color: isDarkMode
@@ -390,11 +412,17 @@ const Feedback = () => {
                     ? "rgba(249, 250, 251, 0.3)"
                     : "rgba(17, 24, 39, 0.3)",
                 },
+                "&.Mui-focused fieldset": {
+                  borderColor: isDarkMode ? "#93c5fd" : "#2563eb",
+                },
               },
               "& .MuiInputLabel-root": {
                 color: isDarkMode
                   ? "rgba(249, 250, 251, 0.7)"
                   : "rgba(17, 24, 39, 0.7)",
+                "&.Mui-focused": {
+                  color: isDarkMode ? "#93c5fd" : "#2563eb",
+                },
               },
               "& .MuiInputBase-input": {
                 color: isDarkMode

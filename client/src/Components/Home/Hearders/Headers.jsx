@@ -60,7 +60,7 @@ function Headers({ isDarkMode, setIsDarkMode }) {
           className="text-base sm:text-xl font-bold" 
           style={{ color: colors.third }}
         >
-          Know Your Style
+          Know Your Fashion
         </h1>
       </div>
 

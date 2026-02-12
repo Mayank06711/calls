@@ -44,8 +44,20 @@ function getMatchPhoto(item, wardrobeMatches) {
   if (!item || !wardrobeMatches) return null;
   const name = getItemName(item);
   const matches = wardrobeMatches[name] || [];
-  const match = matches[0];
-  return match?.thumbnailUrl || match?.photoUrl || null;
+  for (const m of matches) {
+    if (m?.thumbnailUrl || m?.photoUrl) return m.thumbnailUrl || m.photoUrl;
+  }
+  return null;
+}
+
+function getMatchNobgUrl(item, wardrobeMatches) {
+  if (!item || !wardrobeMatches) return null;
+  const name = getItemName(item);
+  const matches = wardrobeMatches[name] || [];
+  for (const m of matches) {
+    if (m?.nobgUrl) return m.nobgUrl;
+  }
+  return null;
 }
 
 function getProductRec(item, productRecommendations) {
@@ -86,41 +98,85 @@ function OutfitFlatLay({
     );
   }
 
-  // ──── Mode 2: CSS flat-lay with nobgUrl (md/lg only) ─────────────────────
-  const nobgSlots = [
+  // ──── Build all slots with best available image ───────────────────────────
+  const allSlots = [
     { key: "top", item: top },
     { key: "bottom", item: bottom },
     { key: "layer", item: layer },
     { key: "footwear", item: footwear },
-  ].filter(({ item }) => item?.nobgUrl);
+  ]
+    .filter(({ item }) => item)
+    .map(({ key, item }) => ({
+      key,
+      item,
+      nobgUrl: item?.nobgUrl || getMatchNobgUrl(item, wardrobeMatches),
+      photoUrl: item?.thumbnailUrl || item?.photoUrl || getMatchPhoto(item, wardrobeMatches),
+    }));
 
-  if (nobgSlots.length >= 2 && size !== "sm") {
+  const hasAnyImage = allSlots.some(({ nobgUrl, photoUrl }) => nobgUrl || photoUrl);
+
+  // ──── Mode 2: CSS flat-lay (md/lg, at least 1 item has an image) ─────────
+  if (hasAnyImage && size !== "sm") {
     return (
       <div
         className={`${s.container} rounded-xl overflow-hidden relative`}
         style={{ backgroundColor: "#f5f5f0" }}
       >
-        {nobgSlots.map(({ key, item }) => {
+        {allSlots.map(({ key, item, nobgUrl, photoUrl }) => {
           const pos = FLATLAY_SLOTS[key];
+
+          if (nobgUrl) {
+            return (
+              <img
+                key={key}
+                src={nobgUrl}
+                alt={getItemName(item) || key}
+                className="absolute object-contain"
+                style={{
+                  ...pos,
+                  filter: "drop-shadow(2px 4px 6px rgba(0,0,0,0.15))",
+                }}
+                loading="lazy"
+              />
+            );
+          }
+
+          if (photoUrl) {
+            return (
+              <div
+                key={key}
+                className="absolute rounded-lg overflow-hidden shadow-md"
+                style={{ ...pos, border: "2px solid rgba(255,255,255,0.6)" }}
+              >
+                <img
+                  src={photoUrl}
+                  alt={getItemName(item) || key}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            );
+          }
+
+          // No image — styled placeholder in the slot
           return (
-            <img
+            <div
               key={key}
-              src={item.nobgUrl}
-              alt={getItemName(item) || key}
-              className="absolute object-contain"
-              style={{
-                ...pos,
-                filter: "drop-shadow(2px 4px 6px rgba(0,0,0,0.15))",
-              }}
-              loading="lazy"
-            />
+              className="absolute flex flex-col items-center justify-center rounded-lg"
+              style={{ ...pos, backgroundColor: "#e8e8e4" }}
+            >
+              <span className={size === "lg" ? "text-2xl" : "text-lg"}>{CELL_EMOJI[key]}</span>
+              <span className="text-[8px] text-gray-500 text-center px-1 truncate max-w-full">
+                {getItemName(item) || CELL_LABELS[key]}
+              </span>
+            </div>
           );
         })}
       </div>
     );
   }
 
-  // ──── Mode 3: 2x2 grid fallback (original behavior) ─────────────────────
+  // ──── Mode 3: 2x2 grid fallback ──────────────────────────────────────────
   const cells = [
     { key: "top", item: top },
     { key: "layer", item: layer },
@@ -143,7 +199,6 @@ function OutfitFlatLay({
             className="relative flex items-center justify-center overflow-hidden"
             style={{ backgroundColor: `${colors.fourth}08` }}
           >
-            {/* Photo or emoji */}
             {photo ? (
               <img src={photo} alt={getItemName(item)} className="w-full h-full object-cover" />
             ) : (
@@ -157,7 +212,6 @@ function OutfitFlatLay({
               </div>
             )}
 
-            {/* Overlay with info — shows for md/lg sizes automatically, or when showOverlay is passed */}
             {(showOverlay || s.overlay) && item && (
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 pb-1 pt-3">
                 <p className={`${s.text} text-white font-medium truncate`}>
@@ -171,7 +225,6 @@ function OutfitFlatLay({
               </div>
             )}
 
-            {/* Badge */}
             {s.badge && item && (
               <div className="absolute top-1 right-1">
                 {isOwned ? (
@@ -182,7 +235,6 @@ function OutfitFlatLay({
               </div>
             )}
 
-            {/* Empty state label for sm */}
             {!item && size === "sm" && (
               <span className="text-[6px] dark:text-dark-text/30 text-light-text/30">
                 {CELL_LABELS[key][0]}

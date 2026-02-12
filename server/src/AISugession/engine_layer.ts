@@ -1,5 +1,9 @@
 import * as fs from "fs";
+import * as path from "path";
 import { getTopCategory, getLayerColorSuggestion } from "./shared";
+
+// Resolve path relative to compiled dist directory: dist/AISugession/ → server/
+const DB_FILE = path.resolve(__dirname, '../..', 'layering_master_db.json');
 
 // --- 1. INTERFACES ---
 
@@ -45,10 +49,11 @@ export class LayeringEngine {
     constructor() {
         console.log("🧥 Loading 11-Factor Layering Brain...");
         try {
-            const raw = fs.readFileSync("layering_master_db.json", "utf-8");
+            const raw = fs.readFileSync(DB_FILE, "utf-8");
             this.db = JSON.parse(raw);
+            console.log("✅ Layering Engine Online.");
         } catch (e) {
-            console.error("❌ Error: DB not found. Run layering_builder.ts first!");
+            console.error("❌ Error: DB not found at", DB_FILE, "Run layering_builder.ts first!");
             throw e;
         }
     }

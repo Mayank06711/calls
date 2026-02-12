@@ -1,4 +1,4 @@
-# Know Your Style (KYS)
+# Know Your Fashion (KYF)
 
 A fashion and styling consultation platform that connects users with expert stylists through real-time video calls, chat, and personalized recommendations.
 

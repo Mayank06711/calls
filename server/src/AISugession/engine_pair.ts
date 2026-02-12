@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // --- CONFIGURATION ---
-const DB_FILE = 'fashion_master_db.json';
+// Resolve path relative to compiled dist directory: dist/AISugession/ → server/
+const DB_FILE = path.resolve(__dirname, '../..', 'fashion_master_db.json');
 
 // --- INTERFACES ---
 
@@ -31,11 +32,47 @@ export class FashionEngine {
     constructor() {
         try {
             console.log("⚙️  Loading Fashion Database...");
+            console.log(`   📁 Path: ${DB_FILE}`);
+
+            // Check if file exists
+            if (!fs.existsSync(DB_FILE)) {
+                console.error(`   ❌ File does NOT exist at: ${DB_FILE}`);
+                console.error(`   📂 __dirname = ${__dirname}`);
+                throw new Error(`Database file not found: ${DB_FILE}`);
+            }
+
+            // Get file size
+            const stats = fs.statSync(DB_FILE);
+            const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            console.log(`   📊 File size: ${sizeMB} MB`);
+
+            // Log memory before + heap limit
+            const memBefore = process.memoryUsage();
+            const v8 = require('v8');
+            const heapStats = v8.getHeapStatistics();
+            const heapLimitMB = (heapStats.heap_size_limit / 1024 / 1024).toFixed(0);
+            console.log(`   🧠 Memory before: heap=${(memBefore.heapUsed / 1024 / 1024).toFixed(0)}MB, limit=${heapLimitMB}MB`);
+
+            // Read file
+            console.log(`   📖 Reading file...`);
             const raw = fs.readFileSync(DB_FILE, 'utf-8');
+            console.log(`   ✅ File read complete (${raw.length} chars)`);
+
+            // Parse JSON
+            console.log(`   🔄 Parsing JSON...`);
             this.db = JSON.parse(raw);
-            console.log("✅ Engine Online.");
-        } catch (e) {
-            console.error("❌ Fatal Error: Database file not found. Run builder_pair.ts first.");
+            console.log(`   ✅ JSON parsed successfully`);
+
+            // Log memory after
+            const memAfter = process.memoryUsage();
+            console.log(`   🧠 Memory after: heap=${(memAfter.heapUsed / 1024 / 1024).toFixed(0)}MB`);
+
+            console.log("✅ Fashion Engine Online.");
+        } catch (e: any) {
+            console.error("❌ Fatal Error loading Fashion Database:");
+            console.error(`   Error type: ${e.name}`);
+            console.error(`   Message: ${e.message}`);
+            if (e.code) console.error(`   Code: ${e.code}`);
             throw e;
         }
     }

@@ -214,24 +214,25 @@ const AddClothSchema = z.object({
 const UpdateClothSchema = AddClothSchema.partial();
 
 const CreateOutfitSchema = z.object({
-  name: z.string().trim().optional(),
+  name: z.string().trim().nullable().optional(),
   itemIds: z.array(mongoId).min(1, "At least one item is required"),
-  occasion: z.string().trim().optional(),
-  season: z.string().trim().optional(),
+  occasion: z.string().trim().nullable().optional(),
+  season: z.string().trim().nullable().optional(),
   tags: z.array(z.string().trim()).default([]),
-  notes: z.string().trim().optional(),
+  notes: z.string().trim().nullable().optional(),
+  source: z.enum(["manual", "ai_suggested", "engine_suggested"]).default("manual"),
 
   // ─── Phase 7: Python AI Service (all optional) ───────────────────────
-  flatlayUrl: z.string().url("Invalid flatlay URL").optional(),
+  flatlayUrl: z.string().url("Invalid flatlay URL").nullable().optional(),
   colorPalette: z.array(z.object({
     hex: z.string(),
     rgb: z.tuple([z.number(), z.number(), z.number()]),
     name: z.string(),
-    colorFamily: z.string().optional(),
-    colorType: z.string().optional(),
+    colorFamily: z.string().nullable().optional(),
+    colorType: z.string().nullable().optional(),
     slot: z.string()
-  })).optional(),
-  generatedAt: z.string().datetime().optional(),
+  })).nullable().optional(),
+  generatedAt: z.string().datetime().nullable().optional(),
 });
 
 const UpdateOutfitSchema = CreateOutfitSchema.partial();

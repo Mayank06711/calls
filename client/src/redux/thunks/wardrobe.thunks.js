@@ -425,9 +425,9 @@ export const toggleOutfitFavoriteThunk = (outfitId) => async (dispatch) => {
   try {
     dispatch(toggleOutfitFavoriteRequest(outfitId));
     const { data, error } = await makeRequest(
-      HTTP_METHODS.PUT,
-      `${ENDPOINTS.WARDROBE.OUTFIT_BY_ID}/${outfitId}`,
-      { toggleFavorite: true }
+      HTTP_METHODS.PATCH,
+      `${ENDPOINTS.WARDROBE.OUTFIT_BY_ID}/${outfitId}/favorite`,
+      {}
     );
     if (error) {
       dispatch(toggleOutfitFavoriteFailure(error.message));

@@ -25,7 +25,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
 
   return (
     <div
-      className={`relative group rounded-xl overflow-hidden border transition-all hover:shadow-md ${fillParent ? "w-full" : "flex-shrink-0 w-36"}`}
+      className={`relative group rounded-xl overflow-hidden border transition-all hover:shadow-md ${fillParent ? "w-full" : "flex-shrink-0 w-36 h-[200px]"}`}
       style={{ borderColor: `${colors.fourth}30` }}
     >
       {/* Image area */}
@@ -91,7 +91,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
       </div>
 
       {/* Info */}
-      <div className="p-2 dark:bg-dark-primary bg-light-secondary">
+      <div className="p-2 dark:bg-dark-primary bg-light-secondary overflow-hidden">
         <p className="text-xs font-semibold dark:text-dark-text/90 text-light-text/90 truncate">
           {itemName}
         </p>
@@ -109,7 +109,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
           )}
         </div>
         {itemNote && (
-          <p className="text-[9px] dark:text-dark-text/40 text-light-text/40 mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-[9px] dark:text-dark-text/40 text-light-text/40 mt-1 truncate" title={itemNote}>
             {itemNote}
           </p>
         )}

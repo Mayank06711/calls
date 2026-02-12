@@ -198,6 +198,7 @@ const Toast = () => {
       autoHideDuration={isChatRequest ? 10000 : 5000}
       onClose={handleClose}
       anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      sx={{ zIndex: 10001 }}
     >
       <Alert
         onClose={handleClose}

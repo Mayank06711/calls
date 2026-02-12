@@ -154,8 +154,33 @@ function CustomSelect({ value, onChange, options, placeholder, colors }) {
 
 export { CustomSelect };
 
-function OccasionSeasonPicker({ occasion, season, onOccasionChange, onSeasonChange }) {
+function OccasionSeasonPicker({ occasion, season, onOccasionChange, onSeasonChange, compact = false }) {
   const colors = useSubscriptionColors();
+
+  if (compact) {
+    return (
+      <div className="flex gap-2 w-full">
+        <div className="flex-1 min-w-0">
+          <CustomSelect
+            value={occasion}
+            onChange={onOccasionChange}
+            options={OCCASIONS}
+            placeholder="Occasion"
+            colors={colors}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <CustomSelect
+            value={season}
+            onChange={onSeasonChange}
+            options={SEASONS}
+            placeholder="Season"
+            colors={colors}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-wrap gap-3">
