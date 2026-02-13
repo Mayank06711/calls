@@ -6,7 +6,7 @@ import {
   Visibility, Close, Checkroom, Tune, DeleteOutline, GridView, Gesture,
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   fetchClosetThunk,
   saveOutfitThunk,
@@ -311,7 +311,7 @@ function OutfitBuilder() {
             <button
               onClick={() => { dispatch(clearBuilder()); navigate("/wardrobe"); }}
               className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md dark:bg-dark-primary/80 bg-light-secondary/80 shadow-md border transition-all hover:scale-105"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <ArrowBack style={{ color: colors.fourth, fontSize: 16 }} />
             </button>
@@ -325,7 +325,7 @@ function OutfitBuilder() {
             <button
               onClick={() => dispatch(setBuilderMode(isSlotMode ? "canvas" : "slots"))}
               className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md dark:bg-dark-primary/80 bg-light-secondary/80 shadow-md border transition-all hover:scale-105"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
               title={isSlotMode ? "Switch to Canvas" : "Switch to Slots"}
             >
               {isSlotMode ? (
@@ -339,7 +339,7 @@ function OutfitBuilder() {
               <button
                 onClick={() => setShowSaveModal(true)}
                 className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md dark:bg-dark-primary/80 bg-light-secondary/80 shadow-md border transition-all hover:scale-105"
-                style={{ borderColor: `${colors.fourth}30` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.3) }}
                 title="Save Outfit"
               >
                 <Save style={{ color: colors.fourth, fontSize: 16 }} />
@@ -449,13 +449,13 @@ function OutfitBuilder() {
               ? "max-sm:translate-y-0 sm:translate-x-0"
               : "max-sm:translate-y-full sm:-translate-x-full"
           }`}
-          style={{ borderColor: `${colors.fourth}20` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.2) }}
           onMouseLeave={() => {
             if (window.innerWidth >= 640) setClosetDrawerOpen(false);
           }}
         >
           {/* Drawer header */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: `${colors.fourth}15` }}>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
             {/* Mobile drag handle */}
             <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-gray-400/30 sm:hidden" />
             <div className="flex items-center gap-2">
@@ -466,14 +466,14 @@ function OutfitBuilder() {
             <button
               onClick={() => setClosetDrawerOpen(false)}
               className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md border shadow-sm dark:bg-dark-primary/60 bg-light-secondary/60 dark:text-dark-text/60 text-light-text/60 hover:dark:text-dark-text hover:text-light-text transition-colors"
-              style={{ borderColor: `${colors.fourth}20` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.2) }}
             >
               <Close style={{ fontSize: 14 }} />
             </button>
           </div>
 
           {/* Filter tabs */}
-          <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: `${colors.fourth}10` }}>
+          <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: toRgba(colors.fourth, 0.1) }}>
             {TYPE_TABS.map((t) => (
               <button
                 key={t}
@@ -483,7 +483,7 @@ function OutfitBuilder() {
                 }`}
                 style={{
                   backgroundColor: typeFilter === t ? colors.fourth : "transparent",
-                  border: typeFilter === t ? "none" : `1px solid ${colors.fourth}30`,
+                  border: typeFilter === t ? "none" : `1px solid ${toRgba(colors.fourth, 0.3)}`,
                 }}
               >
                 {t}
@@ -505,12 +505,12 @@ function OutfitBuilder() {
                     <button
                       onClick={() => addToCanvas(item)}
                       className="w-full rounded-lg overflow-hidden border transition-all hover:shadow-md"
-                      style={{ borderColor: `${colors.fourth}25` }}
+                      style={{ borderColor: toRgba(colors.fourth, 0.25) }}
                     >
                       {hasPhoto ? (
                         <img src={imgSrc} alt={item.subcategory} className="w-full h-24 object-cover" />
                       ) : (
-                        <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: `${colors.fourth}08` }}>
+                        <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                           {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "👔"}
                         </div>
                       )}
@@ -522,7 +522,7 @@ function OutfitBuilder() {
                       <button
                         onClick={(e) => { e.stopPropagation(); setLightboxItem(item); }}
                         className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ backgroundColor: `${colors.fourth}cc` }}
+                        style={{ backgroundColor: toRgba(colors.fourth, 0.8) }}
                         title="View larger"
                       >
                         <Visibility style={{ fontSize: 12 }} />
@@ -547,7 +547,7 @@ function OutfitBuilder() {
             <div className="absolute inset-0 z-30" onClick={() => setSettingsOpen(false)} />
             <div
               className="absolute top-12 right-14 z-40 w-72 rounded-xl backdrop-blur-xl dark:bg-dark-primary/70 bg-light-secondary/70 border shadow-2xl p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-semibold dark:text-dark-text text-light-text flex items-center gap-1.5">
@@ -579,7 +579,7 @@ function OutfitBuilder() {
                   placeholder="Describe what you want..."
                   rows={2}
                   className="w-full px-3 py-2 rounded-lg border text-xs dark:bg-dark-secondary bg-white dark:text-dark-text text-light-text focus:outline-none transition-all resize-none"
-                  style={{ borderColor: `${colors.fourth}30` }}
+                  style={{ borderColor: toRgba(colors.fourth, 0.3) }}
                 />
               </div>
 
@@ -599,7 +599,7 @@ function OutfitBuilder() {
         {!settingsOpen && (builder.meta.occasion || builder.meta.season) && settingsCardVisible && (
           <div
             className="absolute top-12 right-14 z-20 rounded-lg backdrop-blur-xl dark:bg-dark-primary/50 bg-light-secondary/50 border shadow-lg px-3 py-2 flex items-center gap-2"
-            style={{ borderColor: `${colors.fourth}25` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.25) }}
           >
             <div className="flex items-center gap-1.5 flex-wrap">
               {builder.meta.occasion && (
@@ -608,12 +608,12 @@ function OutfitBuilder() {
                 </span>
               )}
               {builder.meta.season && (
-                <span className="text-[9px] px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: `${colors.fourth}bb` }}>
+                <span className="text-[9px] px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: toRgba(colors.fourth, 0.73) }}>
                   {builder.meta.season}
                 </span>
               )}
               {aiDescription.trim() && (
-                <span className="text-[9px] px-2 py-0.5 rounded-full dark:text-dark-text/60 text-light-text/60 border truncate max-w-[100px]" style={{ borderColor: `${colors.fourth}30` }}>
+                <span className="text-[9px] px-2 py-0.5 rounded-full dark:text-dark-text/60 text-light-text/60 border truncate max-w-[100px]" style={{ borderColor: toRgba(colors.fourth, 0.3) }}>
                   {aiDescription.trim()}
                 </span>
               )}
@@ -637,7 +637,7 @@ function OutfitBuilder() {
         {feedbackMsg && (
           <div
             className="absolute top-14 left-1/2 -translate-x-1/2 z-20 rounded-lg backdrop-blur-sm px-4 py-2 shadow-lg"
-            style={{ backgroundColor: `${colors.fourth}ee` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.93) }}
           >
             <p className="text-xs text-white font-medium">{feedbackMsg}</p>
           </div>
@@ -646,7 +646,7 @@ function OutfitBuilder() {
         {/* ═══════════════ LAYER 8: Save Modal ═══════════════ */}
         {showSaveModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-md rounded-2xl dark:bg-dark-primary bg-light-secondary border p-6" style={{ borderColor: `${colors.fourth}30` }}>
+            <div className="w-full max-w-md rounded-2xl dark:bg-dark-primary bg-light-secondary border p-6" style={{ borderColor: toRgba(colors.fourth, 0.3) }}>
               <h3 className="text-base font-semibold dark:text-dark-text text-light-text mb-3">Save Outfit</h3>
 
               {/* Items info */}
@@ -680,12 +680,12 @@ function OutfitBuilder() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs dark:text-dark-text/60 text-light-text/60 mb-1 block">Name</label>
-                  <input value={builder.meta.name} onChange={(e) => dispatch(setBuilderMeta({ name: e.target.value }))} placeholder="e.g. Office Monday" className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-secondary bg-white dark:text-dark-text text-light-text" style={{ borderColor: `${colors.fourth}30` }} />
+                  <input value={builder.meta.name} onChange={(e) => dispatch(setBuilderMeta({ name: e.target.value }))} placeholder="e.g. Office Monday" className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-secondary bg-white dark:text-dark-text text-light-text" style={{ borderColor: toRgba(colors.fourth, 0.3) }} />
                 </div>
                 <OccasionSeasonPicker occasion={builder.meta.occasion} season={builder.meta.season} onOccasionChange={(v) => dispatch(setBuilderMeta({ occasion: v }))} onSeasonChange={(v) => dispatch(setBuilderMeta({ season: v }))} />
                 <div>
                   <label className="text-xs dark:text-dark-text/60 text-light-text/60 mb-1 block">Notes</label>
-                  <textarea value={builder.meta.notes} onChange={(e) => dispatch(setBuilderMeta({ notes: e.target.value }))} placeholder="Optional notes..." rows={2} className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-secondary bg-white dark:text-dark-text text-light-text resize-none" style={{ borderColor: `${colors.fourth}30` }} />
+                  <textarea value={builder.meta.notes} onChange={(e) => dispatch(setBuilderMeta({ notes: e.target.value }))} placeholder="Optional notes..." rows={2} className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-secondary bg-white dark:text-dark-text text-light-text resize-none" style={{ borderColor: toRgba(colors.fourth, 0.3) }} />
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-4">
@@ -721,7 +721,7 @@ function FabAction({ icon, label, onClick, colors, danger }) {
       <button
         onClick={onClick}
         className="w-10 h-10 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:scale-105"
-        style={{ backgroundColor: danger ? "#ef4444" : `${colors.fourth}dd` }}
+        style={{ backgroundColor: danger ? "#ef4444" : toRgba(colors.fourth, 0.87) }}
       >
         {icon}
       </button>

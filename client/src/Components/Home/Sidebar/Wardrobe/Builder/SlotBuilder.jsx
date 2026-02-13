@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   Checkroom, Close, Add, Visibility, ChevronLeft, ChevronRight, GridViewRounded, ViewCozy,
 } from "@mui/icons-material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   updateBuilderSlotItem,
   addBuilderSlot,
@@ -149,12 +149,12 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
         className={`hidden sm:flex flex-col flex-shrink-0 transition-all duration-300 ease-out border-r backdrop-blur-xl dark:bg-dark-primary/95 bg-light-secondary/95 ${
           closetOpen ? "w-72" : "w-0 overflow-hidden"
         }`}
-        style={{ borderColor: `${colors.fourth}20` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.2) }}
       >
         {closetOpen && (
           <>
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: `${colors.fourth}15` }}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
               <div className="flex items-center gap-2">
                 <Checkroom style={{ color: colors.fourth, fontSize: 18 }} />
                 <h3 className="text-sm font-semibold dark:text-dark-text text-light-text">My Closet</h3>
@@ -163,14 +163,14 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
               <button
                 onClick={() => setClosetOpen(false)}
                 className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md border shadow-sm dark:bg-dark-primary/60 bg-light-secondary/60 dark:text-dark-text/60 text-light-text/60"
-                style={{ borderColor: `${colors.fourth}20` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.2) }}
               >
                 <Close style={{ fontSize: 14 }} />
               </button>
             </div>
 
             {/* Filter tabs */}
-            <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: `${colors.fourth}10` }}>
+            <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b" style={{ borderColor: toRgba(colors.fourth, 0.1) }}>
               {TYPE_TABS.map((t) => (
                 <button
                   key={t}
@@ -180,7 +180,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                   }`}
                   style={{
                     backgroundColor: typeFilter === t ? colors.fourth : "transparent",
-                    border: typeFilter === t ? "none" : `1px solid ${colors.fourth}30`,
+                    border: typeFilter === t ? "none" : `1px solid ${toRgba(colors.fourth, 0.3)}`,
                   }}
                 >
                   {t}
@@ -201,12 +201,12 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                         onDragStart={(e) => handleDragStart(e, item)}
                         onClick={() => handleClosetItemClick(item)}
                         className="w-full rounded-lg overflow-hidden border transition-all hover:shadow-md"
-                        style={{ borderColor: `${colors.fourth}25` }}
+                        style={{ borderColor: toRgba(colors.fourth, 0.25) }}
                       >
                         {hasPhoto ? (
                           <img src={imgSrc} alt={item.subcategory} className="w-full h-24 object-cover" draggable={false} />
                         ) : (
-                          <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: `${colors.fourth}08` }}>
+                          <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                             {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
                           </div>
                         )}
@@ -218,7 +218,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                         <button
                           onClick={(e) => { e.stopPropagation(); setLightboxItem(item); }}
                           className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ backgroundColor: `${colors.fourth}cc` }}
+                          style={{ backgroundColor: toRgba(colors.fourth, 0.8) }}
                         >
                           <Visibility style={{ fontSize: 12 }} />
                         </button>
@@ -247,13 +247,13 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
         className={`sm:hidden fixed z-40 bottom-0 left-0 right-0 h-[60vh] rounded-t-2xl border-t backdrop-blur-xl dark:bg-dark-primary/95 bg-light-secondary/95 shadow-2xl transition-transform duration-300 ease-out ${
           closetOpen ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ borderColor: `${colors.fourth}20` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.2) }}
       >
         {/* Drag handle */}
         <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-gray-400/30" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: `${colors.fourth}15` }}>
+        <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
           <div className="flex items-center gap-2">
             <Checkroom style={{ color: colors.fourth, fontSize: 18 }} />
             <h3 className="text-sm font-semibold dark:text-dark-text text-light-text">My Closet</h3>
@@ -277,7 +277,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
               }`}
               style={{
                 backgroundColor: typeFilter === t ? colors.fourth : "transparent",
-                border: typeFilter === t ? "none" : `1px solid ${colors.fourth}30`,
+                border: typeFilter === t ? "none" : `1px solid ${toRgba(colors.fourth, 0.3)}`,
               }}
             >
               {t}
@@ -298,14 +298,14 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                   onClick={() => handleClosetItemClick(item)}
                   className={`rounded-lg overflow-hidden border transition-all ${isSelected ? "ring-2" : ""}`}
                   style={{
-                    borderColor: isSelected ? colors.fourth : `${colors.fourth}25`,
+                    borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.25),
                     ringColor: colors.fourth,
                   }}
                 >
                   {hasPhoto ? (
                     <img src={imgSrc} alt={item.subcategory} className="w-full h-20 object-cover" />
                   ) : (
-                    <div className="w-full h-20 flex items-center justify-center text-xl" style={{ backgroundColor: `${colors.fourth}08` }}>
+                    <div className="w-full h-20 flex items-center justify-center text-xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                       {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
                     </div>
                   )}
@@ -330,7 +330,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
             }`}
             style={{
               backgroundColor: viewMode === "grid" ? colors.fourth : "transparent",
-              borderColor: viewMode === "grid" ? colors.fourth : `${colors.fourth}30`,
+              borderColor: viewMode === "grid" ? colors.fourth : toRgba(colors.fourth, 0.3),
             }}
             title="Grid View"
           >
@@ -343,7 +343,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
             }`}
             style={{
               backgroundColor: viewMode === "flatlay" ? colors.fourth : "transparent",
-              borderColor: viewMode === "flatlay" ? colors.fourth : `${colors.fourth}30`,
+              borderColor: viewMode === "flatlay" ? colors.fourth : toRgba(colors.fourth, 0.3),
             }}
             title="Flat-lay View"
           >
@@ -355,7 +355,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
         {selectedItem && (
           <div
             className="sm:hidden flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border"
-            style={{ borderColor: colors.fourth, backgroundColor: `${colors.fourth}10` }}
+            style={{ borderColor: colors.fourth, backgroundColor: toRgba(colors.fourth, 0.1) }}
           >
             <span className="text-[10px] font-medium" style={{ color: colors.fourth }}>
               Tap a slot to place: {selectedItem.subcategory}
@@ -363,7 +363,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
             <button
               onClick={() => setSelectedItem(null)}
               className="ml-auto w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: `${colors.fourth}20` }}
+              style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
             >
               <Close style={{ fontSize: 12, color: colors.fourth }} />
             </button>
@@ -396,7 +396,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
               <button
                 onClick={() => setShowAddSlot((p) => !p)}
                 className="w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all hover:shadow-sm"
-                style={{ borderColor: `${colors.fourth}25`, height: 220 }}
+                style={{ borderColor: toRgba(colors.fourth, 0.25), height: 220 }}
               >
                 <Add style={{ color: colors.fourth, fontSize: 24, opacity: 0.4 }} />
                 <span className="text-[10px] dark:text-dark-text/30 text-light-text/30">Add Slot</span>
@@ -408,7 +408,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                   <div className="fixed inset-0 z-30" onClick={() => setShowAddSlot(false)} />
                   <div
                     className="absolute top-full left-0 right-0 mt-1 z-40 rounded-xl border shadow-lg backdrop-blur-xl dark:bg-dark-primary/95 bg-light-secondary/95 p-2 max-h-48 overflow-y-auto"
-                    style={{ borderColor: `${colors.fourth}30` }}
+                    style={{ borderColor: toRgba(colors.fourth, 0.3) }}
                   >
                     <p className="text-[9px] font-medium dark:text-dark-text/40 text-light-text/40 px-2 py-1">
                       Accessories
@@ -435,8 +435,8 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
             <div
               className="absolute inset-0 rounded-2xl border"
               style={{
-                borderColor: `${colors.fourth}10`,
-                backgroundColor: `${colors.fourth}03`,
+                borderColor: toRgba(colors.fourth, 0.1),
+                backgroundColor: toRgba(colors.fourth, 0.03),
               }}
             >
               {slots.map((slot) => {
@@ -469,7 +469,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                         {/* Slot label on hover */}
                         <div
                           className="absolute top-0 left-0 text-[8px] font-semibold px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ backgroundColor: `${colors.fourth}90`, color: "white" }}
+                          style={{ backgroundColor: toRgba(colors.fourth, 0.9), color: "white" }}
                         >
                           {slot.label}
                         </div>
@@ -479,8 +479,8 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                       <div
                         className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 backdrop-blur-sm p-3 transition-all hover:shadow-md"
                         style={{
-                          borderColor: `${colors.fourth}30`,
-                          backgroundColor: `${colors.fourth}08`,
+                          borderColor: toRgba(colors.fourth, 0.3),
+                          backgroundColor: toRgba(colors.fourth, 0.08),
                           aspectRatio: "1",
                         }}
                       >
@@ -498,7 +498,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
               <button
                 onClick={() => setShowAddSlot((p) => !p)}
                 className="absolute bottom-4 right-4 w-10 h-10 rounded-full border-2 border-dashed flex items-center justify-center transition-all hover:shadow-md z-50"
-                style={{ borderColor: `${colors.fourth}40`, backgroundColor: `${colors.fourth}10` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.4), backgroundColor: toRgba(colors.fourth, 0.1) }}
               >
                 <Add style={{ color: colors.fourth, fontSize: 20, opacity: 0.6 }} />
               </button>
@@ -509,7 +509,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                   <div className="fixed inset-0 z-[51]" onClick={() => setShowAddSlot(false)} />
                   <div
                     className="absolute bottom-16 right-4 z-[52] rounded-xl border shadow-lg backdrop-blur-xl dark:bg-dark-primary/95 bg-light-secondary/95 p-2 max-h-48 overflow-y-auto"
-                    style={{ borderColor: `${colors.fourth}30`, minWidth: "150px" }}
+                    style={{ borderColor: toRgba(colors.fourth, 0.3), minWidth: "150px" }}
                   >
                     <p className="text-[9px] font-medium dark:text-dark-text/40 text-light-text/40 px-2 py-1">
                       Accessories
@@ -536,7 +536,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
           <button
             onClick={() => setClosetOpen(true)}
             className="mt-4 w-full py-2.5 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all hover:shadow-sm dark:text-dark-text/70 text-light-text/70"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <Checkroom style={{ fontSize: 16, color: colors.fourth }} />
             Open Closet

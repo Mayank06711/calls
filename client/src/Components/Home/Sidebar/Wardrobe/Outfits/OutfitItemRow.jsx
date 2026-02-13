@@ -1,5 +1,5 @@
 import React from "react";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { ColorDots } from "../shared/ColorDots";
 
 const TYPE_EMOJI = {
@@ -20,7 +20,7 @@ function OutfitItemRow({ item, type }) {
   return (
     <div
       className="flex items-center gap-3 rounded-xl border p-2.5 transition-all"
-      style={{ borderColor: `${colors.fourth}20` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.2) }}
     >
       {/* Photo */}
       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
@@ -29,7 +29,7 @@ function OutfitItemRow({ item, type }) {
         ) : (
           <div
             className="w-full h-full flex items-center justify-center text-2xl"
-            style={{ backgroundColor: `${colors.fourth}08` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
           >
             {TYPE_EMOJI[item.type] || "👔"}
           </div>
@@ -41,7 +41,7 @@ function OutfitItemRow({ item, type }) {
         <div className="flex items-center gap-2">
           <span
             className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full"
-            style={{ backgroundColor: `${colors.fourth}15`, color: colors.fourth }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.15), color: colors.fourth }}
           >
             {displayType}
           </span>

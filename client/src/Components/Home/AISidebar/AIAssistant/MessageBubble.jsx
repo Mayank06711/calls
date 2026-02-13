@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import CycloneIcon from "@mui/icons-material/Cyclone";
 import ReplayIcon from "@mui/icons-material/Replay";
 import TypingEffect from "../../../Animation/TypingEffect";
@@ -198,7 +198,7 @@ const MessageBubble = React.memo(
                       onClick={onRetry}
                       className="mt-2 flex items-center gap-1 text-xs px-2.5 py-1 rounded-full transition-colors hover:opacity-80"
                       style={{
-                        backgroundColor: `${colors.fourth}20`,
+                        backgroundColor: toRgba(colors.fourth, 0.2),
                         color: colors.fourth,
                       }}
                     >

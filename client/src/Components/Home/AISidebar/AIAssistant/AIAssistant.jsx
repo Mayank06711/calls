@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import { IconButton, TextField, Tooltip } from "@mui/material";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -402,7 +402,7 @@ function AIAssistant() {
               <IconButton
                 disabled
                 size="small"
-                sx={{ color: `${colors.fourth}60`, mb: '2px' }}
+                sx={{ color: toRgba(colors.fourth, 0.6), mb: '2px' }}
               >
                 <ImageOutlinedIcon fontSize="small" />
               </IconButton>
@@ -429,7 +429,7 @@ function AIAssistant() {
               "& .MuiOutlinedInput-root": {
                 color: 'inherit',
                 "& fieldset": {
-                  borderColor: `${colors.fourth}60`,
+                  borderColor: toRgba(colors.fourth, 0.6),
                 },
                 "&:hover fieldset": {
                   borderColor: colors.fourth,

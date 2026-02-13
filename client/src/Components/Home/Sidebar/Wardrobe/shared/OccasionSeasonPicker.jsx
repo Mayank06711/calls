@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { KeyboardArrowDown } from "@mui/icons-material";
 
 const SEASONS = [
@@ -91,8 +91,8 @@ function CustomSelect({ value, onChange, options, placeholder, colors }) {
         onClick={() => setOpen((p) => !p)}
         className="w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text transition-all text-left"
         style={{
-          borderColor: open ? colors.fourth : `${colors.fourth}40`,
-          boxShadow: open ? `0 0 0 2px ${colors.fourth}30` : "none",
+          borderColor: open ? colors.fourth : toRgba(colors.fourth, 0.4),
+          boxShadow: open ? `0 0 0 2px ${toRgba(colors.fourth, 0.3)}` : "none",
         }}
       >
         <span className={value ? "" : "dark:text-dark-text/40 text-light-text/40"}>
@@ -112,7 +112,7 @@ function CustomSelect({ value, onChange, options, placeholder, colors }) {
         <div
           ref={menuRef}
           className="rounded-lg border shadow-xl dark:bg-dark-primary bg-light-secondary max-h-52 overflow-y-auto custom-scrollbar"
-          style={{ ...menuStyle, borderColor: `${colors.fourth}30` }}
+          style={{ ...menuStyle, borderColor: toRgba(colors.fourth, 0.3) }}
         >
           {options.map((opt, idx) => {
             const optValue = typeof opt === "string" ? opt : opt.value;
@@ -129,11 +129,11 @@ function CustomSelect({ value, onChange, options, placeholder, colors }) {
                 }}
                 className="w-full text-left px-3 py-2 text-sm transition-colors"
                 style={{
-                  backgroundColor: isSelected ? `${colors.fourth}20` : "transparent",
+                  backgroundColor: isSelected ? toRgba(colors.fourth, 0.2) : "transparent",
                   color: isSelected ? colors.fourth : undefined,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.backgroundColor = `${colors.fourth}10`;
+                  if (!isSelected) e.currentTarget.style.backgroundColor = toRgba(colors.fourth, 0.1);
                 }}
                 onMouseLeave={(e) => {
                   if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";

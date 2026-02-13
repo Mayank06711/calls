@@ -8,7 +8,7 @@ import {
   History,
   Palette
 } from '@mui/icons-material';
-import { useSubscriptionColors } from '../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../utils/getSubscriptionColors';
 
 /**
  * ComingSoon Component - A reusable placeholder for pages under development
@@ -40,8 +40,8 @@ function ComingSoon({
                 key={i} 
                 className="aspect-square rounded-lg animate-pulse"
                 style={{ 
-                  background: `linear-gradient(135deg, ${colors.fourth}20, ${colors.fourth}10)`,
-                  border: `1px dashed ${colors.fourth}40`
+                  background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.2)}, ${toRgba(colors.fourth, 0.1)})`,
+                  border: `1px dashed ${toRgba(colors.fourth, 0.4)}`
                 }}
               >
                 <div className="h-full flex items-center justify-center">
@@ -60,25 +60,25 @@ function ComingSoon({
                 key={i}
                 className="flex items-center gap-4 p-4 rounded-lg animate-pulse"
                 style={{ 
-                  background: `linear-gradient(90deg, ${colors.fourth}15, transparent)`,
-                  border: `1px dashed ${colors.fourth}30`
+                  background: `linear-gradient(90deg, ${toRgba(colors.fourth, 0.15)}, transparent)`,
+                  border: `1px dashed ${toRgba(colors.fourth, 0.3)}`
                 }}
               >
                 <div 
                   className="w-12 h-12 rounded-full"
-                  style={{ backgroundColor: `${colors.fourth}30` }}
+                  style={{ backgroundColor: toRgba(colors.fourth, 0.3) }}
                 />
                 <div className="flex-1 space-y-2">
                   <div 
                     className="h-4 rounded w-3/4"
-                    style={{ backgroundColor: `${colors.fourth}20` }}
+                    style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
                   />
-                  <div 
+                  <div
                     className="h-3 rounded w-1/2"
-                    style={{ backgroundColor: `${colors.fourth}15` }}
+                    style={{ backgroundColor: toRgba(colors.fourth, 0.15) }}
                   />
                 </div>
-                <Favorite style={{ color: `${colors.fourth}50` }} />
+                <Favorite style={{ color: toRgba(colors.fourth, 0.5) }} />
               </div>
             ))}
           </div>
@@ -96,22 +96,22 @@ function ComingSoon({
                 key={i}
                 className="p-4 rounded-lg animate-pulse flex items-center gap-3"
                 style={{ 
-                  background: `${colors.fourth}10`,
-                  borderLeft: `3px solid ${colors.fourth}60`
+                  background: toRgba(colors.fourth, 0.1),
+                  borderLeft: `3px solid ${toRgba(colors.fourth, 0.6)}`
                 }}
               >
                 <div 
                   className="w-10 h-10 rounded"
-                  style={{ backgroundColor: `${colors.fourth}25` }}
+                  style={{ backgroundColor: toRgba(colors.fourth, 0.25) }}
                 />
                 <div className="flex-1 space-y-2">
                   <div 
                     className="h-3 rounded w-2/3"
-                    style={{ backgroundColor: `${colors.fourth}20` }}
+                    style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
                   />
-                  <div 
+                  <div
                     className="h-2 rounded w-1/3"
-                    style={{ backgroundColor: `${colors.fourth}15` }}
+                    style={{ backgroundColor: toRgba(colors.fourth, 0.15) }}
                   />
                 </div>
               </div>
@@ -128,8 +128,8 @@ function ComingSoon({
                   key={i}
                   className="aspect-square rounded-lg animate-pulse flex items-center justify-center"
                   style={{ 
-                    background: `linear-gradient(${45 + i * 30}deg, ${colors.fourth}30, ${colors.fourth}10)`,
-                    border: `2px dashed ${colors.fourth}40`
+                    background: `linear-gradient(${45 + i * 30}deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
+                    border: `2px dashed ${toRgba(colors.fourth, 0.4)}`
                   }}
                 >
                   <Palette className="opacity-40" style={{ color: colors.fourth }} />
@@ -147,8 +147,8 @@ function ComingSoon({
                 key={i}
                 className="h-16 rounded-lg animate-pulse"
                 style={{ 
-                  background: `linear-gradient(90deg, ${colors.fourth}${20 - i * 5}, transparent)`,
-                  border: `1px dashed ${colors.fourth}30`
+                  background: `linear-gradient(90deg, ${toRgba(colors.fourth, (20 - i * 5) / 100)}, transparent)`,
+                  border: `1px dashed ${toRgba(colors.fourth, 0.3)}`
                 }}
               />
             ))}
@@ -161,8 +161,8 @@ function ComingSoon({
     <div 
       className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
       style={{ 
-        background: `linear-gradient(135deg, ${colors.fourth}30, ${colors.fourth}10)`,
-        border: `2px solid ${colors.fourth}50`
+        background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
+        border: `2px solid ${toRgba(colors.fourth, 0.5)}`
       }}
     >
       {icon || <RocketLaunch className="text-4xl" style={{ color: colors.fourth }} />}
@@ -196,8 +196,8 @@ function ComingSoon({
       <div 
         className="flex items-center justify-center gap-2 py-2 px-4 rounded-full w-fit mx-auto mb-6"
         style={{ 
-          backgroundColor: `${colors.fourth}15`,
-          border: `1px solid ${colors.fourth}40`
+          backgroundColor: toRgba(colors.fourth, 0.15),
+          border: `1px solid ${toRgba(colors.fourth, 0.4)}`
         }}
       >
         <Construction className="text-sm animate-bounce" style={{ color: colors.fourth }} />
@@ -219,9 +219,9 @@ function ComingSoon({
                 key={i}
                 className="text-xs px-3 py-1 rounded-full"
                 style={{ 
-                  backgroundColor: `${colors.fourth}15`,
+                  backgroundColor: toRgba(colors.fourth, 0.15),
                   color: colors.fourth,
-                  border: `1px solid ${colors.fourth}30`
+                  border: `1px solid ${toRgba(colors.fourth, 0.3)}`
                 }}
               >
                 {feature}

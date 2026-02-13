@@ -7,7 +7,7 @@ import {
   Construction,
   AutoAwesome
 } from '@mui/icons-material';
-import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 
 function Reels() {
   const colors = useSubscriptionColors();
@@ -15,12 +15,12 @@ function Reels() {
   const SkeletonCard = ({ icon: Icon, title, items }) => (
     <div
       className="p-4 rounded-xl border-2 border-dashed"
-      style={{ borderColor: `${colors.fourth}40` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.4) }}
     >
       <div className="flex items-center gap-3 mb-4">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${colors.fourth}20` }}
+          style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
         >
           <Icon style={{ color: colors.fourth }} />
         </div>
@@ -32,12 +32,12 @@ function Reels() {
             key={i}
             className="h-8 rounded-lg animate-pulse flex items-center px-3 gap-2"
             style={{
-              background: `linear-gradient(90deg, ${colors.fourth}${15 - i * 3}, ${colors.fourth}05)`,
+              background: `linear-gradient(90deg, ${toRgba(colors.fourth, (15 - i * 3) / 100)}, ${toRgba(colors.fourth, 0.05)})`,
             }}
           >
             <div
               className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: `${colors.fourth}30` }}
+              style={{ backgroundColor: toRgba(colors.fourth, 0.3) }}
             />
             <span className="text-sm opacity-60 dark:text-gray-400 text-gray-500">{item}</span>
           </div>
@@ -47,14 +47,14 @@ function Reels() {
   );
 
   return (
-    <div className="flex flex-col items-center justify-start h-full p-4 md:p-6 overflow-auto">
+    <div className="flex flex-col items-center justify-start h-full p-4 md:p-6 overflow-y-auto scrollbar-hide">
       {/* Header */}
       <div className="text-center mb-8">
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
           style={{
-            background: `linear-gradient(135deg, ${colors.fourth}30, ${colors.fourth}10)`,
-            border: `2px solid ${colors.fourth}50`
+            background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
+            border: `2px solid ${toRgba(colors.fourth, 0.5)}`
           }}
         >
           <VideoLibrary className="text-4xl" style={{ color: colors.fourth }} />
@@ -79,8 +79,8 @@ function Reels() {
         <div
           className="flex items-center justify-center gap-2 py-2 px-4 rounded-full w-fit mx-auto mt-4"
           style={{
-            backgroundColor: `${colors.fourth}15`,
-            border: `1px solid ${colors.fourth}40`
+            backgroundColor: toRgba(colors.fourth, 0.15),
+            border: `1px solid ${toRgba(colors.fourth, 0.4)}`
           }}
         >
           <Construction className="text-sm animate-bounce" style={{ color: colors.fourth }} />

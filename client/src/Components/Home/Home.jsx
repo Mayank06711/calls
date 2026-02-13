@@ -268,7 +268,7 @@ function Home() {
   return (
     <AIContextProvider>
     <div
-      className={`min-h-screen w-full ${
+      className={`h-screen w-full overflow-hidden ${
         isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
       }`}
     >
@@ -338,7 +338,7 @@ function Home() {
       <Sidebar isDarkMode={isDarkMode} />
 
       {/* Main Content */}
-      <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100vw-64px)] ml-16 mt-16 overflow-y-scroll scrollbar-hide"
+      <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100%-64px)] ml-16 mt-16 overflow-y-auto overflow-x-hidden scrollbar-hide"
         style={{ scrollBehavior: 'instant' }}
       >
         <Outlet />

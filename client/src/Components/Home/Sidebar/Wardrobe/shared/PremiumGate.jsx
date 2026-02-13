@@ -1,7 +1,7 @@
 import React from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { LockOutlined } from "@mui/icons-material";
 
 const TIER_LEVEL = { Free: 0, Silver: 1, Gold: 2, Platinum: 3 };
@@ -29,7 +29,7 @@ function PremiumGate({ requiredTier = "Silver", children, message }) {
       <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-black/10 dark:bg-black/30 rounded-xl">
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
-          style={{ backgroundColor: `${colors.fourth}20` }}
+          style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
         >
           <LockOutlined style={{ color: colors.fourth, fontSize: 28 }} />
         </div>

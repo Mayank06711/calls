@@ -1,6 +1,15 @@
 import { useSelector } from 'react-redux';
 import { COLORS } from '../constants/colorPalettes';
 
+/**
+ * Convert an "rgb(r, g, b)" string to "rgba(r, g, b, alpha)".
+ * Needed because appending hex like `${rgb}30` produces invalid CSS.
+ */
+export const toRgba = (rgbStr, alpha) => {
+  const m = rgbStr.match(/(\d+),\s*(\d+),\s*(\d+)/);
+  return m ? `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})` : rgbStr;
+};
+
 export const SUBSCRIPTION_TYPES = {
   GOLD: 'GOLD',
   PLATINUM: 'PLATINUM',

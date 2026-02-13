@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowBack, Favorite, FavoriteBorder, DeleteOutline, CalendarMonth, Edit } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   fetchOutfitsThunk,
   toggleOutfitFavoriteThunk,
@@ -68,35 +68,39 @@ function OutfitDetail() {
   };
 
   return (
-    <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+    <div className="w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <IconButton onClick={() => navigate("/wardrobe/outfits")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text truncate">
-            {outfit.name || "Untitled Outfit"}
-          </h2>
-        </div>
-        <div className="flex items-center gap-1">
-          <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
-            {outfit.isFavorite ? (
-              <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
-            ) : (
-              <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-            )}
-          </IconButton>
-          <IconButton onClick={handleDelete} size="small">
-            <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-          </IconButton>
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => navigate("/wardrobe/outfits")} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
+            </IconButton>
+            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text truncate">
+              {outfit.name || "Untitled Outfit"}
+            </h2>
+          </div>
+          <div className="flex items-center gap-1">
+            <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
+              {outfit.isFavorite ? (
+                <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
+              ) : (
+                <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+              )}
+            </IconButton>
+            <IconButton onClick={handleDelete} size="small">
+              <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+            </IconButton>
+          </div>
         </div>
       </div>
 
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
       {/* Quick preview + metadata row */}
       <div
         className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-3 mb-4 flex items-start gap-3"
-        style={{ borderColor: `${colors.fourth}30` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
       >
         <OutfitFlatLay
           top={resolveItem(topItem)}
@@ -109,12 +113,12 @@ function OutfitDetail() {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap gap-2 text-sm">
             {outfit.occasion && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.fourth}15`, color: colors.fourth }}>
+              <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: toRgba(colors.fourth, 0.15), color: colors.fourth }}>
                 {outfit.occasion}
               </span>
             )}
             {outfit.season && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.fourth}10`, color: colors.fourth }}>
+              <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ backgroundColor: toRgba(colors.fourth, 0.1), color: colors.fourth }}>
                 {outfit.season}
               </span>
             )}
@@ -189,11 +193,12 @@ function OutfitDetail() {
         <button
           onClick={() => navigate("/wardrobe/outfit-builder")}
           className="px-4 py-2.5 rounded-lg text-sm font-medium border flex items-center gap-2 dark:text-dark-text/70 text-light-text/70"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
         >
           <Edit style={{ fontSize: 16 }} />
           Edit
         </button>
+      </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Close, Favorite, PersonAdd, ChatBubble, AlternateEmail } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 const ACTION_CONFIG = {
   like: {
@@ -44,7 +45,7 @@ function SocialCard({ notification, onDismiss, colors }) {
     <div
       className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
       style={{
-        border: `1px solid ${colors.fourth}20`,
+        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
         borderLeft: `3px solid ${colors.fourth}`,
       }}
     >
@@ -55,7 +56,7 @@ function SocialCard({ notification, onDismiss, colors }) {
         className="!absolute !top-2 !right-2"
         sx={{
           color: 'gray',
-          '&:hover': { color: colors.fourth, backgroundColor: `${colors.fourth}15` },
+          '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
         }}
       >
         <Close fontSize="small" />

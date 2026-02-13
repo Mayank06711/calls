@@ -1,5 +1,5 @@
 import React from "react";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import WardrobeMatchBadge from "../shared/WardrobeMatchBadge";
 import { ColorDots } from "../shared/ColorDots";
 
@@ -49,7 +49,7 @@ function PairingCard({ pairing, index, closetItems = [] }) {
   return (
     <div
       className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 transition-all hover:shadow-md"
-      style={{ borderColor: `${colors.fourth}30` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.3) }}
     >
       {/* Header */}
       <p className="text-[10px] font-medium dark:text-dark-text/40 text-light-text/40 mb-2">
@@ -127,7 +127,7 @@ function ItemBlock({ label, color, dominantColors, photoUrl, emoji, colors }) {
   return (
     <div
       className="flex-1 rounded-lg overflow-hidden"
-      style={{ backgroundColor: `${colors.fourth}08` }}
+      style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
     >
       {photoUrl ? (
         <img src={photoUrl} alt={label} className="w-full h-24 object-cover" />

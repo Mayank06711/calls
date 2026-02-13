@@ -7,7 +7,7 @@ import PostAddIcon from "@mui/icons-material/PostAdd";
 import StyleIcon from "@mui/icons-material/Style";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 
 function UserActivity() {
   const navigate = useNavigate();
@@ -62,10 +62,10 @@ function UserActivity() {
               label={tab.label}
               onClick={() => navigate(tab.path)}
               sx={{
-                backgroundColor: isActive ? `${colors.fourth}20` : "transparent",
-                border: `1px solid ${isActive ? colors.fourth : colors.third}40`,
+                backgroundColor: isActive ? toRgba(colors.fourth, 0.2) : "transparent",
+                border: `1px solid ${toRgba(isActive ? colors.fourth : colors.third, 0.4)}`,
                 "&:hover": {
-                  backgroundColor: `${colors.fourth}30`,
+                  backgroundColor: toRgba(colors.fourth, 0.3),
                   borderColor: colors.fourth,
                 },
                 transition: "all 0.1s ease",

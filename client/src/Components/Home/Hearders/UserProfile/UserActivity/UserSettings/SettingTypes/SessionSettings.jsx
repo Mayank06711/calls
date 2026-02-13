@@ -12,7 +12,7 @@ import {
   Schedule
 } from '@mui/icons-material';
 import SettingTemplate from '../SettingTemplate';
-import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../../../../utils/getSubscriptionColors';
 import { logoutThunk } from '../../../../../../../redux/thunks/login.thunks';
 import { fetchSessionsThunk, revokeSessionThunk, revokeAllSessionsThunk } from '../../../../../../../redux/thunks/session.thunks';
 import { useAIContext } from '../../../../../../../context/AIContext';
@@ -232,7 +232,7 @@ function SessionSettings() {
                     <div className="flex items-center gap-2 mt-1">
                       <span 
                         className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
-                        style={{ backgroundColor: `${colors.fourth}20`, color: colors.fourth }}
+                        style={{ backgroundColor: toRgba(colors.fourth, 0.2), color: colors.fourth }}
                       >
                         <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: colors.fourth }}></span>
                         Current Session
@@ -350,7 +350,7 @@ function SessionSettings() {
             <div className="flex items-center justify-center mb-4">
               <div 
                 className="w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${colors.fourth}20` }}
+                style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
               >
                 <Warning className="text-3xl text-red-500" />
               </div>

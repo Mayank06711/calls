@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack, Close, Visibility } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { fetchClosetThunk, fetchSuggestionThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { clearSuggestion } from "../../../../../redux/actions/wardrobe.actions";
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
@@ -19,7 +19,7 @@ function SkeletonCards({ count = 4, colors }) {
         <div
           key={idx}
           className="w-full rounded-xl overflow-hidden border animate-pulse"
-          style={{ borderColor: `${colors.fourth}20` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.2) }}
         >
           <div className="w-full h-32 dark:bg-dark-text/5 bg-light-text/5" />
           <div className="p-2 space-y-2">
@@ -102,21 +102,26 @@ function FromItem() {
   };
 
   return (
-    <div className="relative p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+    <div className="relative w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4 pr-12">
-        <IconButton onClick={() => { dispatch(clearSuggestion()); navigate("/wardrobe"); }} size="small">
-          <ArrowBack style={{ color: colors.fourth }} />
-        </IconButton>
-        <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-          Mix & Match
-        </h2>
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center gap-2 pr-12">
+          <IconButton onClick={() => { dispatch(clearSuggestion()); navigate("/wardrobe"); }} size="small">
+            <ArrowBack style={{ color: colors.fourth }} />
+          </IconButton>
+          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+            Mix & Match
+          </h2>
+        </div>
       </div>
+
+      {/* ── Scrollable Content ─────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
 
       {/* Occasion + Season + Description */}
       <div
         className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-        style={{ borderColor: `${colors.fourth}30` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
       >
         <OccasionSeasonPicker
           occasion={occasion}
@@ -131,7 +136,7 @@ function FromItem() {
             placeholder="Describe what you're looking for... (optional)"
             rows={2}
             className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           />
         </div>
       </div>
@@ -139,7 +144,7 @@ function FromItem() {
       {/* Item picker */}
       <div
         className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-        style={{ borderColor: `${colors.fourth}30` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
       >
         <p className="text-xs font-medium mb-2 dark:text-dark-text/60 text-light-text/60">
           Pick a Top or Bottom from your closet
@@ -157,7 +162,7 @@ function FromItem() {
                   ${isActive ? "text-white" : "dark:text-dark-text/60 text-light-text/60"}`}
                 style={{
                   backgroundColor: isActive ? colors.fourth : "transparent",
-                  borderColor: isActive ? colors.fourth : `${colors.fourth}30`,
+                  borderColor: isActive ? colors.fourth : toRgba(colors.fourth, 0.3),
                 }}
               >
                 {tab}
@@ -178,7 +183,7 @@ function FromItem() {
                   className="w-full rounded-xl border-2 p-1.5 text-center transition-all"
                   style={{
                     borderColor: isSelected ? colors.fourth : "transparent",
-                    backgroundColor: isSelected ? `${colors.fourth}10` : undefined,
+                    backgroundColor: isSelected ? toRgba(colors.fourth, 0.1) : undefined,
                   }}
                 >
                   {/* Deselect indicator */}
@@ -195,7 +200,7 @@ function FromItem() {
                   ) : (
                     <div
                       className="w-full h-28 rounded-lg mb-1 flex items-center justify-center text-xl"
-                      style={{ backgroundColor: `${colors.fourth}10` }}
+                      style={{ backgroundColor: toRgba(colors.fourth, 0.1) }}
                     >
                       {item.type === "Top" ? "👕" : "👖"}
                     </div>
@@ -209,7 +214,7 @@ function FromItem() {
                   <button
                     onClick={(e) => { e.stopPropagation(); setLightboxData({ src: item.photoUrl, alt: item.subcategory, item }); }}
                     className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    style={{ backgroundColor: `${colors.fourth}cc` }}
+                    style={{ backgroundColor: toRgba(colors.fourth, 0.8) }}
                     title="View larger"
                   >
                     <Visibility style={{ fontSize: 13 }} />
@@ -247,7 +252,7 @@ function FromItem() {
         <div className="space-y-4">
           <div
             className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <div className="h-4 w-32 rounded dark:bg-dark-text/10 bg-light-text/10 mb-3 animate-pulse" />
             <SkeletonCards colors={colors} />
@@ -261,7 +266,7 @@ function FromItem() {
           {matchedItems.length > 0 && (
             <div
               className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
                 Matching {selectedItem?.type === "Top" ? "Bottoms" : "Tops"}
@@ -278,7 +283,7 @@ function FromItem() {
                   />
                 ))}
                 {Array.from({ length: skeletonCount(matchedItems) }).map((_, i) => (
-                  <div key={`sk-m-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: `${colors.fourth}15` }}>
+                  <div key={`sk-m-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
                     <div className="w-full h-32 dark:bg-dark-text/5 bg-light-text/5" />
                     <div className="p-2 space-y-2">
                       <div className="h-3 rounded dark:bg-dark-text/8 bg-light-text/8 w-3/4" />
@@ -293,7 +298,7 @@ function FromItem() {
           {layers.length > 0 && (
             <div
               className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
                 Layers
@@ -310,7 +315,7 @@ function FromItem() {
                   />
                 ))}
                 {Array.from({ length: skeletonCount(layers) }).map((_, i) => (
-                  <div key={`sk-l-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: `${colors.fourth}15` }}>
+                  <div key={`sk-l-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
                     <div className="w-full h-32 dark:bg-dark-text/5 bg-light-text/5" />
                     <div className="p-2 space-y-2">
                       <div className="h-3 rounded dark:bg-dark-text/8 bg-light-text/8 w-3/4" />
@@ -325,7 +330,7 @@ function FromItem() {
           {footwear.length > 0 && (
             <div
               className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
                 Footwear
@@ -342,7 +347,7 @@ function FromItem() {
                   />
                 ))}
                 {Array.from({ length: skeletonCount(footwear) }).map((_, i) => (
-                  <div key={`sk-f-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: `${colors.fourth}15` }}>
+                  <div key={`sk-f-${i}`} className="w-full rounded-xl overflow-hidden border opacity-30" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
                     <div className="w-full h-32 dark:bg-dark-text/5 bg-light-text/5" />
                     <div className="p-2 space-y-2">
                       <div className="h-3 rounded dark:bg-dark-text/8 bg-light-text/8 w-3/4" />
@@ -357,7 +362,7 @@ function FromItem() {
           {matchedItems.length === 0 && layers.length === 0 && footwear.length === 0 && (
             <div
               className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               <p className="text-sm dark:text-dark-text/50 text-light-text/50 text-center py-4">
                 No suggestions found. Try a different occasion or season.
@@ -382,6 +387,7 @@ function FromItem() {
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import {
   BarChartOutlined
 } from "@mui/icons-material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useSubscriptionColors } from "../../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../../utils/getSubscriptionColors";
 
 function UserSettings() {
   const colors = useSubscriptionColors();
@@ -104,10 +104,10 @@ function UserSettings() {
                 ease-in-out
                 cursor-pointer hover:shadow-lg"
               style={{
-                borderColor: `${colors.fourth}30`,
+                borderColor: toRgba(colors.fourth, 0.3),
               }}
               onMouseEnter={(e) => e.currentTarget.style.borderColor = colors.fourth}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = `${colors.fourth}30`}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = toRgba(colors.fourth, 0.3)}
               onClick={() => handleSettingClick(card.path)}
             >
               {/* Background gradient overlay */}
@@ -123,7 +123,7 @@ function UserSettings() {
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all duration-300"
                   style={{ 
-                    backgroundColor: `${colors.fourth}20`,
+                    backgroundColor: toRgba(colors.fourth, 0.2),
                   }}
                 >
                   {React.cloneElement(card.icon, { 

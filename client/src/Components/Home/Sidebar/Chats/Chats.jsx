@@ -13,7 +13,7 @@ import {
   CircularProgress,
   Badge,
 } from "@mui/material";
-import { useSubscriptionColors, selectSubscriptionType } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, selectSubscriptionType, toRgba } from "../../../../utils/getSubscriptionColors";
 import ChatArea from "./ChatArea";
 import ExpertChatRequest from "./ExpertChatRequest";
 import { LOADER_TYPES } from "../../../../redux/action_creators";
@@ -918,7 +918,7 @@ function ChatSection() {
                           <IconButton
                             size="small"
                             onClick={(e) => { e.stopPropagation(); handleAcceptRequest(req._id); }}
-                            sx={{ color: colors.third, "&:hover": { bgcolor: `${colors.third}22` } }}
+                            sx={{ color: colors.third, "&:hover": { bgcolor: toRgba(colors.third, 0.22) } }}
                           >
                             <Check sx={{ fontSize: 18 }} />
                           </IconButton>

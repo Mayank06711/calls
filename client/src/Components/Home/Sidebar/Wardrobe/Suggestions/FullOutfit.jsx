@@ -12,7 +12,7 @@ import {
   OpenInNew,
 } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   fetchSuggestionThunk,
   saveOutfitThunk,
@@ -160,13 +160,13 @@ function MiniProductRec({ product, colors }) {
       target="_blank"
       rel="noopener noreferrer"
       className="flex-shrink-0 w-28 rounded-lg border overflow-hidden hover:shadow-sm transition-shadow dark:bg-dark-primary bg-light-secondary"
-      style={{ borderColor: `${colors.fourth}20` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.2) }}
       onClick={(e) => { if (!product.link) e.preventDefault(); }}
     >
       {product.imageUrl ? (
         <img src={product.imageUrl} alt={product.name} className="w-full h-20 object-cover" />
       ) : (
-        <div className="w-full h-20 flex items-center justify-center" style={{ backgroundColor: `${colors.fourth}08` }}>
+        <div className="w-full h-20 flex items-center justify-center" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
           <ShoppingBag style={{ fontSize: 20, opacity: 0.2 }} className="dark:text-dark-text text-light-text" />
         </div>
       )}
@@ -339,34 +339,39 @@ function FullOutfit() {
   }).length;
 
   return (
-    <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+    <div className="w-full h-full overflow-hidden flex flex-col">
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-3 pr-12">
-        <div className="flex items-center gap-2">
-          <IconButton onClick={() => { handleClear(); navigate("/wardrobe"); }} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            AI Stylist
-          </h2>
-        </div>
-        <div className="flex items-center gap-1">
-          {aiSavedOutfits.length > 0 && (
-            <IconButton
-              onClick={() => setShowHistory((p) => !p)}
-              size="small"
-              title="Saved outfits"
-            >
-              <History style={{ color: showHistory ? colors.fourth : `${colors.fourth}80`, fontSize: 20 }} />
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center justify-between pr-12">
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => { handleClear(); navigate("/wardrobe"); }} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
             </IconButton>
-          )}
-          {result && (
-            <IconButton onClick={handleGenerate} disabled={loading} size="small" title="Shuffle">
-              <Shuffle style={{ color: colors.fourth, fontSize: 20 }} />
-            </IconButton>
-          )}
+            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+              AI Stylist
+            </h2>
+          </div>
+          <div className="flex items-center gap-1">
+            {aiSavedOutfits.length > 0 && (
+              <IconButton
+                onClick={() => setShowHistory((p) => !p)}
+                size="small"
+                title="Saved outfits"
+              >
+                <History style={{ color: showHistory ? colors.fourth : toRgba(colors.fourth, 0.8), fontSize: 20 }} />
+              </IconButton>
+            )}
+            {result && (
+              <IconButton onClick={handleGenerate} disabled={loading} size="small" title="Shuffle">
+                <Shuffle style={{ color: colors.fourth, fontSize: 20 }} />
+              </IconButton>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Scrollable Content ─────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
 
       {/* ── Inline Controls ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-2">
@@ -394,7 +399,7 @@ function FullOutfit() {
       <button
         onClick={() => setShowDescription((p) => !p)}
         className="text-[10px] font-medium mb-2 flex items-center gap-0.5 transition-colors"
-        style={{ color: `${colors.fourth}aa` }}
+        style={{ color: toRgba(colors.fourth, 0.67) }}
       >
         <ExpandMore
           style={{
@@ -417,7 +422,7 @@ function FullOutfit() {
           placeholder="Describe what you're looking for..."
           rows={2}
           className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none mb-2"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
         />
       </div>
 
@@ -503,7 +508,7 @@ function FullOutfit() {
 
           {/* ── Swap Alternatives ─────────────────────────────────────────── */}
           {hasAlts && (
-            <div className="pt-2 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+            <div className="pt-2 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
               <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider mb-2">
                 Swap Alternatives
               </p>
@@ -546,7 +551,7 @@ function FullOutfit() {
 
           {/* ── Product Recommendations ───────────────────────────────────── */}
           {unownedWithRecs.length > 0 && (
-            <div className="pt-2 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+            <div className="pt-2 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
               <div className="flex items-center gap-1.5 mb-2">
                 <ShoppingBag style={{ fontSize: 13, color: colors.fourth }} />
                 <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider">
@@ -566,7 +571,7 @@ function FullOutfit() {
       {/* ── Saved AI Outfits History ──────────────────────────────────────── */}
       {((showHistory && aiSavedOutfits.length > 0) ||
         (!suggestion && !loading && aiSavedOutfits.length > 0)) && (
-        <div className="mt-4 pt-3 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+        <div className="mt-4 pt-3 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold dark:text-dark-text/60 text-light-text/60">
               Saved AI Outfits ({aiSavedOutfits.length})
@@ -600,6 +605,7 @@ function FullOutfit() {
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }

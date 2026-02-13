@@ -1,5 +1,5 @@
 import React from "react";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import WardrobeMatchBadge from "./WardrobeMatchBadge";
 
 const CELL_EMOJI = {
@@ -197,7 +197,7 @@ function OutfitFlatLay({
           <div
             key={key}
             className="relative flex items-center justify-center overflow-hidden"
-            style={{ backgroundColor: `${colors.fourth}08` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
           >
             {photo ? (
               <img src={photo} alt={getItemName(item)} className="w-full h-full object-cover" />

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import { Close, ContentCopy, Check } from "@mui/icons-material";
 import { format } from "date-fns";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 
 const MessageDetailsDialog = ({ open, onClose, message, currentUserId, otherUserName }) => {
   const colors = useSubscriptionColors();
@@ -49,7 +49,7 @@ const MessageDetailsDialog = ({ open, onClose, message, currentUserId, otherUser
             bgcolor: "var(--color-dark-primary, #1e1e2e)",
             color: "var(--color-dark-text, #cdd6f4)",
             borderRadius: "16px",
-            border: `1px solid ${colors.fourth}33`,
+            border: `1px solid ${toRgba(colors.fourth, 0.33)}`,
           },
         },
       }}

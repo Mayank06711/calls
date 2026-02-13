@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Close, OpenInNew, Store } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 import ProductDetailModal from './ProductDetailModal';
 
 const PLATFORM_COLORS = {
@@ -37,7 +38,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
       <div
         className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white cursor-pointer"
         style={{
-          border: `1px solid ${colors.fourth}20`,
+          border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
           borderLeft: `3px solid ${colors.fourth}`,
         }}
         onClick={handleProductClick}
@@ -52,7 +53,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
           className="!absolute !top-2 !right-2"
           sx={{
             color: 'gray',
-            '&:hover': { color: colors.fourth, backgroundColor: `${colors.fourth}15` },
+            '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
           }}
         >
           <Close fontSize="small" />
@@ -62,7 +63,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
           {/* Product Image */}
           <div
             className="w-[60px] h-[60px] rounded-lg overflow-hidden flex-shrink-0"
-            style={{ border: `1px solid ${colors.fourth}20` }}
+            style={{ border: `1px solid ${toRgba(colors.fourth, 0.2)}` }}
           >
             <img
               src={product.image}
@@ -70,7 +71,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.target.style.display = 'none';
-                e.target.parentElement.style.background = `linear-gradient(135deg, ${colors.fourth}30, ${colors.fourth}10)`;
+                e.target.parentElement.style.background = `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`;
               }}
             />
           </div>
@@ -100,7 +101,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{
-                    backgroundColor: `${colors.fourth}15`,
+                    backgroundColor: `${toRgba(colors.fourth, 0.15)}`,
                     color: colors.fourth,
                   }}
                 >
@@ -112,7 +113,7 @@ function SuggestionCard({ notification, onDismiss, colors }) {
                 <span
                   className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
                   style={{
-                    backgroundColor: `${colors.fourth}15`,
+                    backgroundColor: `${toRgba(colors.fourth, 0.15)}`,
                     color: colors.fourth,
                   }}
                 >
@@ -129,9 +130,9 @@ function SuggestionCard({ notification, onDismiss, colors }) {
                 <span
                   className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium"
                   style={{
-                    backgroundColor: `${platformColor}18`,
+                    backgroundColor: `${toRgba(platformColor, 0.18)}`,
                     color: platformColor,
-                    border: `1px solid ${platformColor}30`,
+                    border: `1px solid ${toRgba(platformColor, 0.3)}`,
                   }}
                 >
                   <Store sx={{ fontSize: 12 }} />

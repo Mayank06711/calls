@@ -148,6 +148,180 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
   }
 };
 
+export const generateEmailOtpThunk = (email) => async (dispatch) => {
+  try {
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.GENERATE_EMAIL_OTP,
+      {
+        email,
+        isTesting: true,
+      }
+    );
+    if (error) {
+      dispatch(otpGenerationFailure());
+      dispatch(showNotification(error.message, error.statusCode));
+      return null;
+    }
+
+    if (data.success) {
+      dispatch(generateOtp(data));
+      dispatch(otpGenerationSuccess(true));
+      dispatch(resetTimer());
+      dispatch(setTimerActive(true));
+      dispatch(
+        showNotification(data.message || "OTP sent to email!", statusCode)
+      );
+    } else {
+      dispatch(otpGenerationFailure());
+      dispatch(
+        showNotification(
+          "Failed to send OTP, please try again",
+          statusCode || 400
+        )
+      );
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    dispatch(otpGenerationFailure());
+    dispatch(
+      showNotification(
+        "Unable to connect to server. Please check your internet connection.",
+        500
+      )
+    );
+    console.error("Error generating email OTP:", error);
+    return null;
+  }
+};
+
+export const verifyEmailOtpThunk = (verificationData) => async (dispatch) => {
+  try {
+    dispatch(otpVerificationStart());
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.VERIFY_EMAIL_OTP,
+      verificationData
+    );
+
+    if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed,
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          email: verificationData.email,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData
+        }));
+        dispatch(otpVerificationFailure(false));
+        return;
+      }
+
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
+      dispatch(initializeSettingsThunk());
+      dispatch(otpVerificationSuccess(true));
+      dispatch(setUserId(userId));
+      dispatch(setAlreadyVerified(isAlreadyVerified));
+      if (isAlreadyVerified) {
+        dispatch(fetchUserInfoThunk());
+      }
+
+      dispatch(
+        showNotification(
+          data.message || "Email verified successfully!",
+          statusCode
+        )
+      );
+    } else {
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification("Invalid OTP", statusCode || 400));
+    }
+    return data;
+  } catch (error) {
+    console.error("Error verifying email OTP:", error);
+    dispatch(otpVerificationFailure(true));
+    dispatch(showNotification(error.message || "Failed to verify OTP", 400));
+  }
+};
+
+export const googleAuthThunk = (idToken) => async (dispatch) => {
+  try {
+    dispatch(otpVerificationStart());
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.GOOGLE_AUTH,
+      { idToken }
+    );
+
+    if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed,
+          partialToken: data.data.partialToken,
+          idToken: idToken,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: { idToken }
+        }));
+        dispatch(otpVerificationFailure(false));
+        return;
+      }
+
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
+      dispatch(initializeSettingsThunk());
+      dispatch(otpVerificationSuccess(true));
+      dispatch(setUserId(userId));
+      dispatch(setAlreadyVerified(isAlreadyVerified));
+      if (isAlreadyVerified) {
+        dispatch(fetchUserInfoThunk());
+      }
+
+      dispatch(
+        showNotification(
+          data.message || "Login successful!",
+          statusCode
+        )
+      );
+    } else {
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification("Google login failed", statusCode || 400));
+    }
+    return data;
+  } catch (error) {
+    console.error("Error with Google auth:", error);
+    dispatch(otpVerificationFailure(true));
+    dispatch(showNotification(error.message || "Google login failed", 400));
+  }
+};
+
 export const logoutThunk = () => async (dispatch) => {
   dispatch({ type: 'LOGOUT_REQUEST' });
   try {

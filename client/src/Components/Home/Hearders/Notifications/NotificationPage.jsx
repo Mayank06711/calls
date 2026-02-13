@@ -5,7 +5,7 @@ import {
   NotificationsNone,
   KeyboardArrowDown,
 } from '@mui/icons-material';
-import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 import { useNotifications } from '../../../../hooks/useNotifications';
 import { useAIContext } from '../../../../context/AIContext';
 import SuggestionCard from './cards/SuggestionCard';
@@ -88,7 +88,7 @@ function NotificationPage() {
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center"
             style={{
-              background: `linear-gradient(135deg, ${colors.fourth}30, ${colors.fourth}10)`,
+              background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
             }}
           >
             <Notifications style={{ color: colors.fourth, fontSize: 20 }} />
@@ -119,7 +119,7 @@ function NotificationPage() {
               onClick={clearAll}
               className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-all hover:opacity-80"
               style={{
-                border: `1px solid ${colors.fourth}40`,
+                border: `1px solid ${toRgba(colors.fourth, 0.4)}`,
                 color: colors.fourth,
               }}
             >
@@ -158,7 +158,7 @@ function NotificationPage() {
                 </span>
                 <div
                   className="flex-1 h-px"
-                  style={{ backgroundColor: `${colors.fourth}30` }}
+                  style={{ backgroundColor: `${toRgba(colors.fourth, 0.3)}` }}
                 />
               </div>
 
@@ -191,9 +191,9 @@ function CategoryDropdown({ categories, activeCategory, setActiveCategory, count
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
         style={{
-          backgroundColor: `${colors.fourth}12`,
+          backgroundColor: `${toRgba(colors.fourth, 0.12)}`,
           color: colors.fourth,
-          border: `1px solid ${colors.fourth}30`,
+          border: `1px solid ${toRgba(colors.fourth, 0.3)}`,
         }}
       >
         {TAB_LABELS[activeCategory]}
@@ -214,7 +214,7 @@ function CategoryDropdown({ categories, activeCategory, setActiveCategory, count
       {open && (
         <div
           className="absolute top-full left-0 mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[180px] dark:bg-dark-secondary bg-white"
-          style={{ border: `1px solid ${colors.fourth}20` }}
+          style={{ border: `1px solid ${toRgba(colors.fourth, 0.2)}` }}
         >
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
@@ -227,11 +227,11 @@ function CategoryDropdown({ categories, activeCategory, setActiveCategory, count
                 }}
                 className="w-full text-left px-4 py-2 text-sm flex items-center justify-between transition-colors"
                 style={{
-                  backgroundColor: isActive ? `${colors.fourth}15` : 'transparent',
+                  backgroundColor: isActive ? `${toRgba(colors.fourth, 0.15)}` : 'transparent',
                   color: isActive ? colors.fourth : undefined,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) e.target.style.backgroundColor = `${colors.fourth}08`;
+                  if (!isActive) e.target.style.backgroundColor = `${toRgba(colors.fourth, 0.08)}`;
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) e.target.style.backgroundColor = 'transparent';
@@ -246,7 +246,7 @@ function CategoryDropdown({ categories, activeCategory, setActiveCategory, count
                   <span
                     className="text-xs px-1.5 py-0.5 rounded-full"
                     style={{
-                      backgroundColor: isActive ? colors.fourth : `${colors.fourth}20`,
+                      backgroundColor: isActive ? colors.fourth : `${toRgba(colors.fourth, 0.2)}`,
                       color: isActive ? '#fff' : colors.fourth,
                     }}
                   >
@@ -268,11 +268,11 @@ function EmptyState({ colors }) {
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
         style={{
-          background: `linear-gradient(135deg, ${colors.fourth}20, ${colors.fourth}08)`,
-          border: `2px dashed ${colors.fourth}40`,
+          background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.2)}, ${toRgba(colors.fourth, 0.08)})`,
+          border: `2px dashed ${toRgba(colors.fourth, 0.4)}`,
         }}
       >
-        <NotificationsNone style={{ color: `${colors.fourth}60`, fontSize: 28 }} />
+        <NotificationsNone style={{ color: `${toRgba(colors.fourth, 0.6)}`, fontSize: 28 }} />
       </div>
 
       <h3

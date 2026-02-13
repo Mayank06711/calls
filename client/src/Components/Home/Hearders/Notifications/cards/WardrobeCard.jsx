@@ -1,6 +1,7 @@
 import React from 'react';
 import { Close, Checkroom, AutoAwesome } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 function WardrobeCard({ notification, onDismiss, colors }) {
   const { id, title, message, createdAt, wardrobe } = notification;
@@ -18,7 +19,7 @@ function WardrobeCard({ notification, onDismiss, colors }) {
     <div
       className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
       style={{
-        border: `1px solid ${colors.fourth}20`,
+        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
         borderLeft: `3px solid ${accentColor}`,
       }}
     >
@@ -29,7 +30,7 @@ function WardrobeCard({ notification, onDismiss, colors }) {
         className="!absolute !top-2 !right-2"
         sx={{
           color: 'gray',
-          '&:hover': { color: colors.fourth, backgroundColor: `${colors.fourth}15` },
+          '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
         }}
       >
         <Close fontSize="small" />
@@ -39,7 +40,7 @@ function WardrobeCard({ notification, onDismiss, colors }) {
         {/* Icon */}
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${accentColor}20` }}
+          style={{ backgroundColor: `${toRgba(accentColor, 0.2)}` }}
         >
           <Icon style={{ color: accentColor, fontSize: 20 }} />
         </div>
@@ -62,7 +63,7 @@ function WardrobeCard({ notification, onDismiss, colors }) {
                   src={url}
                   alt=""
                   className="w-10 h-10 rounded-lg object-cover"
-                  style={{ border: `1px solid ${colors.fourth}20` }}
+                  style={{ border: `1px solid ${toRgba(colors.fourth, 0.2)}` }}
                 />
               ))}
             </div>
@@ -73,7 +74,7 @@ function WardrobeCard({ notification, onDismiss, colors }) {
             <span
               className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
               style={{
-                backgroundColor: `${accentColor}15`,
+                backgroundColor: `${toRgba(accentColor, 0.15)}`,
                 color: accentColor,
               }}
             >

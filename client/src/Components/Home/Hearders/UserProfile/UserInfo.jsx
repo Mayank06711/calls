@@ -4,7 +4,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import { useSelector, useDispatch } from "react-redux";
 import "ldrs/ripples";
 import { uploadImage } from "../../../../socket/handleImageUpload";
@@ -450,7 +450,7 @@ function UserInfo() {
                   color: colors.fourth,
                   "&:hover": {
                     borderColor: colors.fourth,
-                    backgroundColor: `${colors.fourth}10`,
+                    backgroundColor: toRgba(colors.fourth, 0.1),
                   },
                 }}
               >
@@ -476,7 +476,7 @@ function UserInfo() {
                 helperText={emailError}
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    "& fieldset": { borderColor: colors.fourth + "80" },
+                    "& fieldset": { borderColor: toRgba(colors.fourth, 0.5) },
                     "&:hover fieldset": { borderColor: colors.fourth },
                     "&.Mui-focused fieldset": { borderColor: colors.fourth },
                     "& input": { color: isDarkMode ? "#ffffff" : "#000000" },
@@ -511,10 +511,10 @@ function UserInfo() {
                   sx={{
                     backgroundColor: colors.fourth,
                     "&:hover": {
-                      backgroundColor: colors.fourth + "dd",
+                      backgroundColor: toRgba(colors.fourth, 0.87),
                     },
                     "&.Mui-disabled": {
-                      backgroundColor: colors.fourth + "80",
+                      backgroundColor: toRgba(colors.fourth, 0.5),
                     },
                   }}
                 >

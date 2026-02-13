@@ -1,6 +1,7 @@
 import React from 'react';
 import { Close, LocalOffer, Schedule } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 function PromotionCard({ notification, onDismiss, colors }) {
   const { id, title, description, discount, expiresIn, createdAt } = notification;
@@ -11,7 +12,7 @@ function PromotionCard({ notification, onDismiss, colors }) {
     <div
       className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
       style={{
-        border: `1px solid ${colors.fourth}20`,
+        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
         borderLeft: `3px solid ${colors.fourth}`,
       }}
     >
@@ -22,7 +23,7 @@ function PromotionCard({ notification, onDismiss, colors }) {
         className="!absolute !top-2 !right-2"
         sx={{
           color: 'gray',
-          '&:hover': { color: colors.fourth, backgroundColor: `${colors.fourth}15` },
+          '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
         }}
       >
         <Close fontSize="small" />
@@ -33,7 +34,7 @@ function PromotionCard({ notification, onDismiss, colors }) {
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
-            background: `linear-gradient(135deg, ${colors.fourth}30, ${colors.fourth}10)`,
+            background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
           }}
         >
           <LocalOffer style={{ color: colors.fourth, fontSize: 20 }} />

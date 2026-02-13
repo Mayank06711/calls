@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack, Add, GridView, ViewList } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { fetchOutfitsThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { setOutfitFilters } from "../../../../../redux/actions/wardrobe.actions";
 import OutfitCard from "./OutfitCard";
@@ -30,58 +30,62 @@ function OutfitList() {
   });
 
   return (
-    <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+    <div className="w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <IconButton onClick={() => navigate("/wardrobe")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            My Outfits
-          </h2>
-          {saved.length > 0 && (
-            <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">({filtered.length})</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          {/* View mode toggle */}
-          <IconButton
-            onClick={() => setViewMode((v) => (v === "grid" ? "list" : "grid"))}
-            size="small"
-            title={viewMode === "grid" ? "List view" : "Grid view"}
-          >
-            {viewMode === "grid" ? (
-              <ViewList style={{ color: colors.fourth, fontSize: 20 }} />
-            ) : (
-              <GridView style={{ color: colors.fourth, fontSize: 20 }} />
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => navigate("/wardrobe")} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
+            </IconButton>
+            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+              My Outfits
+            </h2>
+            {saved.length > 0 && (
+              <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">({filtered.length})</span>
             )}
-          </IconButton>
-          <IconButton onClick={() => navigate("/wardrobe/outfit-builder")} size="small" title="New Outfit">
-            <Add style={{ color: colors.fourth }} />
-          </IconButton>
+          </div>
+          <div className="flex items-center gap-1">
+            {/* View mode toggle */}
+            <IconButton
+              onClick={() => setViewMode((v) => (v === "grid" ? "list" : "grid"))}
+              size="small"
+              title={viewMode === "grid" ? "List view" : "Grid view"}
+            >
+              {viewMode === "grid" ? (
+                <ViewList style={{ color: colors.fourth, fontSize: 20 }} />
+              ) : (
+                <GridView style={{ color: colors.fourth, fontSize: 20 }} />
+              )}
+            </IconButton>
+            <IconButton onClick={() => navigate("/wardrobe/outfit-builder")} size="small" title="New Outfit">
+              <Add style={{ color: colors.fourth }} />
+            </IconButton>
+          </div>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <FilterChip
-          label="Favorites"
-          active={filters.favorite}
-          onClick={() => dispatch(setOutfitFilters({ favorite: !filters.favorite, occasion: "" }))}
-          colors={colors}
-        />
-        {["Casual", "Office: Daily Wear", "Party: Night Out", "Date Night", "Wedding"].map((occ) => (
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2">
           <FilterChip
-            key={occ}
-            label={occ}
-            active={filters.occasion === occ}
-            onClick={() => dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ, favorite: false }))}
+            label="Favorites"
+            active={filters.favorite}
+            onClick={() => dispatch(setOutfitFilters({ favorite: !filters.favorite, occasion: "" }))}
             colors={colors}
           />
-        ))}
+          {["Casual", "Office: Daily Wear", "Party: Night Out", "Date Night", "Wedding"].map((occ) => (
+            <FilterChip
+              key={occ}
+              label={occ}
+              active={filters.occasion === occ}
+              onClick={() => dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ, favorite: false }))}
+              colors={colors}
+            />
+          ))}
+        </div>
       </div>
 
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-12">
@@ -103,7 +107,7 @@ function OutfitList() {
           <button
             onClick={() => navigate("/wardrobe/outfit-builder")}
             className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 py-12 transition-all hover:shadow-sm"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <Add style={{ color: colors.fourth, fontSize: 28, opacity: 0.5 }} />
             <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
@@ -125,7 +129,7 @@ function OutfitList() {
           <button
             onClick={() => navigate("/wardrobe/outfit-builder")}
             className="w-full rounded-xl border-2 border-dashed flex items-center justify-center gap-2 py-4 transition-all hover:shadow-sm"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <Add style={{ color: colors.fourth, fontSize: 20, opacity: 0.5 }} />
             <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
@@ -149,6 +153,7 @@ function OutfitList() {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -161,9 +166,9 @@ function FilterChip({ label, active, onClick, colors }) {
         active ? "text-white" : "dark:text-dark-text/60 text-light-text/60"
       }`}
       style={{
-        backgroundColor: active ? colors.fourth : `${colors.fourth}10`,
+        backgroundColor: active ? colors.fourth : toRgba(colors.fourth, 0.1),
         borderWidth: 1,
-        borderColor: active ? colors.fourth : `${colors.fourth}20`,
+        borderColor: active ? colors.fourth : toRgba(colors.fourth, 0.2),
       }}
     >
       {label}

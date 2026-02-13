@@ -50,6 +50,7 @@
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^7.4.0",
     "geoip-lite": "^1.4.10",
+    "google-auth-library": "^10.5.0",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
     "ioredis": "^5.4.1",

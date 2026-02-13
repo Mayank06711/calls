@@ -20,7 +20,7 @@ import {
   ExpandLess,
   Refresh,
 } from '@mui/icons-material';
-import { useSubscriptionColors } from '../../../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../../../utils/getSubscriptionColors';
 import { makeRequest } from '../../../../../../utils/apiHandlers';
 import { ENDPOINTS } from '../../../../../../constants/apiEndpoints';
 import { useAIContext } from '../../../../../../context/AIContext';
@@ -212,7 +212,7 @@ function LoadingState({ colors }) {
     <div className="flex flex-col items-center justify-center py-12 gap-3">
       <div
         className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-        style={{ borderColor: `${colors.fourth}60`, borderTopColor: 'transparent' }}
+        style={{ borderColor: toRgba(colors.fourth, 0.6), borderTopColor: 'transparent' }}
       />
       <p className="text-sm dark:text-gray-400 text-gray-500">Loading...</p>
     </div>
@@ -238,7 +238,7 @@ function ErrorState({ message, onRetry, colors }) {
 function EmptyState({ colors }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-3">
-      <History sx={{ fontSize: 40 }} style={{ color: `${colors.fourth}60` }} />
+      <History sx={{ fontSize: 40 }} style={{ color: toRgba(colors.fourth, 0.6) }} />
       <p className="text-sm dark:text-gray-400 text-gray-500">No data available yet</p>
     </div>
   );
@@ -383,7 +383,7 @@ function SubscriptionHistory({ data, colors }) {
       {current && (
         <div
           className="p-4 rounded-lg mb-4 border"
-          style={{ borderColor: `${colors.fourth}40`, backgroundColor: `${colors.fourth}10` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.4), backgroundColor: toRgba(colors.fourth, 0.1) }}
         >
           <div className="flex items-center gap-2 mb-2">
             <CreditCard sx={{ fontSize: 20 }} style={{ color: colors.fourth }} />
@@ -424,7 +424,7 @@ function SubscriptionHistory({ data, colors }) {
             <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 dark:bg-gray-700/20">
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${colors.fourth}20` }}
+                style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
               >
                 <CreditCard sx={{ fontSize: 18 }} style={{ color: colors.fourth }} />
               </div>
@@ -574,12 +574,12 @@ function ExpertSummary({ data, colors }) {
     <div>
       <div
         className="p-4 rounded-lg mb-4 border"
-        style={{ borderColor: `${colors.fourth}40`, backgroundColor: `${colors.fourth}08` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.4), backgroundColor: toRgba(colors.fourth, 0.08) }}
       >
         <div className="flex items-center gap-3">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${colors.fourth}20` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
           >
             <Dashboard sx={{ fontSize: 24 }} style={{ color: colors.fourth }} />
           </div>
@@ -642,7 +642,7 @@ function ExpertPerformance({ data, colors }) {
 
   return (
     <div>
-      <div className="flex items-center gap-4 p-4 rounded-lg mb-4" style={{ backgroundColor: `${colors.fourth}08` }}>
+      <div className="flex items-center gap-4 p-4 rounded-lg mb-4" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
         <div className="text-center">
           <p className="text-3xl font-bold" style={{ color: colors.fourth }}>
             {(ratingStats.averageRating || 0).toFixed(1)}

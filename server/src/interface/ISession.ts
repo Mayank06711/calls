@@ -64,7 +64,7 @@ export interface ISession extends Document {
   expiresAt: Date;
   
   // Session metadata
-  loginMethod?: "password" | "otp" | "social" | "mfa";
+  loginMethod?: "password" | "otp" | "email_otp" | "social" | "mfa";
   
   // For security
   revokedAt?: Date;

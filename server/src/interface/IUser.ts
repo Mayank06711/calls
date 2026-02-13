@@ -8,7 +8,9 @@ export interface IUser extends Document {
   username: string;
   email: string;
   emailToken:string;
-  phoneNumber: string;
+  phoneNumber?: string;
+  googleId?: string;
+  authProvider?: "phone" | "email" | "google" | "multiple";
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   password: string;

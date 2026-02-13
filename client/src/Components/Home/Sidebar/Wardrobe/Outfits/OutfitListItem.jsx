@@ -1,7 +1,7 @@
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FavoriteBorder, Favorite, DeleteOutline } from "@mui/icons-material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { toggleOutfitFavoriteThunk, deleteOutfitThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 
@@ -29,7 +29,7 @@ function OutfitListItem({ outfit, onClick }) {
   return (
     <div
       className="flex items-center gap-3 rounded-xl border p-2.5 transition-all hover:shadow-md cursor-pointer dark:bg-dark-primary bg-light-secondary"
-      style={{ borderColor: `${colors.fourth}20` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.2) }}
       onClick={() => onClick?.(outfit)}
     >
       {/* Mini flat-lay */}

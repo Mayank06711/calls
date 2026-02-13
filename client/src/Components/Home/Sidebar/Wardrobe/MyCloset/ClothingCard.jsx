@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { DeleteOutline } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { deleteClothThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { ColorDots } from "../shared/ColorDots";
 
@@ -41,7 +41,7 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
   return (
     <div
       className="group relative rounded-xl overflow-hidden transition-all hover:shadow-lg cursor-pointer"
-      style={{ border: `1px solid ${colors.fourth}25` }}
+      style={{ border: `1px solid ${toRgba(colors.fourth, 0.25)}` }}
       onMouseEnter={() => setShowDelete(true)}
       onMouseLeave={() => setShowDelete(false)}
       onClick={handleClick}
@@ -71,7 +71,7 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
       ) : (
         <div
           className="w-full h-52 flex items-center justify-center text-3xl"
-          style={{ backgroundColor: `${colors.fourth}10` }}
+          style={{ backgroundColor: toRgba(colors.fourth, 0.1) }}
         >
           {item.type === "Top" && "👕"}
           {item.type === "Bottom" && "👖"}

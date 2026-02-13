@@ -1,6 +1,7 @@
 import React from 'react';
 import { Close, OpenInNew, Store, ShoppingBag } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 function ProductDetailModal({ product, onClose, colors }) {
   if (!product) return null;
@@ -29,7 +30,7 @@ function ProductDetailModal({ product, onClose, colors }) {
       {/* Modal */}
       <div
         className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl dark:bg-dark-secondary bg-white"
-        style={{ border: `1px solid ${colors.fourth}30` }}
+        style={{ border: `1px solid ${toRgba(colors.fourth, 0.3)}` }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -68,8 +69,8 @@ function ProductDetailModal({ product, onClose, colors }) {
               />
             </>
           ) : (
-            <div className="flex items-center justify-center h-full" style={{ background: `linear-gradient(135deg, ${colors.fourth}20, ${colors.fourth}08)` }}>
-              <ShoppingBag sx={{ fontSize: 64, color: `${colors.fourth}60` }} />
+            <div className="flex items-center justify-center h-full" style={{ background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.2)}, ${toRgba(colors.fourth, 0.08)})` }}>
+              <ShoppingBag sx={{ fontSize: 64, color: `${toRgba(colors.fourth, 0.6)}` }} />
             </div>
           )}
         </div>
@@ -82,9 +83,9 @@ function ProductDetailModal({ product, onClose, colors }) {
               <span
                 className="text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-medium"
                 style={{
-                  backgroundColor: `${platformColor}18`,
+                  backgroundColor: `${toRgba(platformColor, 0.18)}`,
                   color: platformColor,
-                  border: `1px solid ${platformColor}30`,
+                  border: `1px solid ${toRgba(platformColor, 0.3)}`,
                 }}
               >
                 <Store sx={{ fontSize: 12 }} />
@@ -94,7 +95,7 @@ function ProductDetailModal({ product, onClose, colors }) {
             <span
               className="text-xs px-2.5 py-1 rounded-full font-medium"
               style={{
-                backgroundColor: `${colors.fourth}15`,
+                backgroundColor: `${toRgba(colors.fourth, 0.15)}`,
                 color: colors.fourth,
               }}
             >

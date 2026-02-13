@@ -2,7 +2,7 @@ import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { hideSessionLimit } from '../../redux/actions/auth.actions';
 import { revokeSessionThunk, revokeAllSessionsThunk } from '../../redux/thunks/session.thunks';
-import { verifyOtpThunk } from '../../redux/thunks/login.thunks';
+import { verifyOtpThunk, verifyEmailOtpThunk, googleAuthThunk } from '../../redux/thunks/login.thunks';
 import { IconButton, Button } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -17,11 +17,21 @@ const SessionLimitModal = () => {
 
   const { activeSessions, maxAllowed, partialToken, verificationData, subscriptionType } = data;
 
+  const retryLogin = () => {
+    if (verificationData?.idToken) {
+      dispatch(googleAuthThunk(verificationData.idToken));
+    } else if (verificationData?.email) {
+      dispatch(verifyEmailOtpThunk(verificationData));
+    } else {
+      dispatch(verifyOtpThunk(verificationData));
+    }
+  };
+
   const handleRevoke = async (sessionId) => {
     const result = await dispatch(revokeSessionThunk(sessionId, partialToken));
     if (result.success) {
        dispatch(hideSessionLimit());
-       dispatch(verifyOtpThunk(verificationData));
+       retryLogin();
     }
   };
 
@@ -29,7 +39,7 @@ const SessionLimitModal = () => {
     const result = await dispatch(revokeAllSessionsThunk(false, partialToken));
     if (result.success) {
        dispatch(hideSessionLimit());
-       dispatch(verifyOtpThunk(verificationData));
+       retryLogin();
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, Close } from "@mui/icons-material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 
 function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
   const colors = useSubscriptionColors();
@@ -62,7 +62,7 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
         dragOver ? "scale-[1.02] ring-2" : ""
       } ${item ? "dark:bg-dark-primary bg-light-secondary" : "dark:bg-dark-primary/50 bg-light-secondary/50"}`}
       style={{
-        borderColor: dragOver ? colors.fourth : `${colors.fourth}25`,
+        borderColor: dragOver ? colors.fourth : toRgba(colors.fourth, 0.25),
         ringColor: colors.fourth,
         height: 220,
       }}
@@ -73,7 +73,7 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
       {/* Slot label badge */}
       <div
         className="absolute top-2 left-2 z-10 text-[9px] font-semibold px-2 py-0.5 rounded-full"
-        style={{ backgroundColor: `${colors.fourth}20`, color: colors.fourth }}
+        style={{ backgroundColor: toRgba(colors.fourth, 0.2), color: colors.fourth }}
       >
         {slot.label}
       </div>
@@ -110,7 +110,7 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
                 />
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: `${colors.fourth}08` }}>
+              <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                 {slot.emoji}
               </div>
             )}
@@ -189,14 +189,14 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
               <button
                 onClick={handlePrev}
                 className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors"
-                style={{ borderColor: `${colors.fourth}30` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.3) }}
               >
                 <ChevronLeft style={{ fontSize: 16 }} className="dark:text-dark-text/40 text-light-text/40" />
               </button>
               <button
                 onClick={handleNext}
                 className="w-7 h-7 rounded-full flex items-center justify-center border transition-colors"
-                style={{ borderColor: `${colors.fourth}30` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.3) }}
               >
                 <ChevronRight style={{ fontSize: 16 }} className="dark:text-dark-text/40 text-light-text/40" />
               </button>
@@ -209,7 +209,7 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
       {dragOver && (
         <div
           className="absolute inset-0 flex items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${colors.fourth}15` }}
+          style={{ backgroundColor: toRgba(colors.fourth, 0.15) }}
         >
           <span className="text-xs font-medium" style={{ color: colors.fourth }}>
             Drop here

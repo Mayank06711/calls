@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { verifyOtpThunk } from "../../redux/thunks/login.thunks";
+import { verifyOtpThunk, verifyEmailOtpThunk } from "../../redux/thunks/login.thunks";
 import { decrementTimer, setTimerActive } from "../../redux/actions/login.actions";
 import { useNavigate } from 'react-router-dom';
 
-function OTPInput({ 
-  phoneNumber, 
-  referenceId, 
-  smsId, 
+function OTPInput({
+  identifier,
+  identifierType = "phone",
+  referenceId,
+  smsId,
   setShowUserInfo,
   timer,
   isTimerActive,
-  onResend 
+  onResend
 }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const dispatch = useDispatch();
@@ -55,12 +56,12 @@ function OTPInput({
 
       // Auto-submit when all 6 digits are filled
       if (value && newOtp.every(d => d !== '')) {
-        const verificationData = {
-          referenceId,
-          mobNum: phoneNumber,
-          otp: newOtp.join('')
-        };
-        dispatch(verifyOtpThunk(verificationData));
+        const otpString = newOtp.join('');
+        if (identifierType === "email") {
+          dispatch(verifyEmailOtpThunk({ referenceId, email: identifier, otp: otpString }));
+        } else {
+          dispatch(verifyOtpThunk({ referenceId, mobNum: identifier, otp: otpString }));
+        }
       }
     }
   };
@@ -82,13 +83,12 @@ function OTPInput({
 
   const handleVerify = async () => {
     try {
-      const verificationData = {
-        referenceId,
-        mobNum: phoneNumber,
-        otp: otp.join('')
-      };
-      console.log(verificationData)
-       dispatch(verifyOtpThunk(verificationData));
+      const otpString = otp.join('');
+      if (identifierType === "email") {
+        dispatch(verifyEmailOtpThunk({ referenceId, email: identifier, otp: otpString }));
+      } else {
+        dispatch(verifyOtpThunk({ referenceId, mobNum: identifier, otp: otpString }));
+      }
     } catch (error) {
       console.error('Error verifying OTP:', error);
     }

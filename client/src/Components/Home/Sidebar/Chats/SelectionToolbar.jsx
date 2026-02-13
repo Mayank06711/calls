@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { Delete, DeleteForever, Close } from '@mui/icons-material';
-import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 
 const SelectionToolbar = ({
   selectedCount,
@@ -46,7 +46,7 @@ const SelectionToolbar = ({
                      disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               color: canDeleteForEveryone ? colors.third : undefined,
-              backgroundColor: canDeleteForEveryone ? `${colors.third}15` : undefined,
+              backgroundColor: canDeleteForEveryone ? toRgba(colors.third, 0.15) : undefined,
             }}
           >
             <DeleteForever sx={{ fontSize: 18 }} />

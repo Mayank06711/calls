@@ -25,6 +25,9 @@ export const ENDPOINTS = {
     SIGNUP: `/api/${API_CONFIG.VERSION}/users/signup`,
     GENERATE_OTP: `/api/${API_CONFIG.VERSION}/auth/generate_otp`,
     VERIFY_OTP: `/api/${API_CONFIG.VERSION}/auth/verify_otp`,
+    GENERATE_EMAIL_OTP: `/api/${API_CONFIG.VERSION}/auth/generate_email_otp`,
+    VERIFY_EMAIL_OTP: `/api/${API_CONFIG.VERSION}/auth/verify_email_otp`,
+    GOOGLE_AUTH: `/api/${API_CONFIG.VERSION}/auth/google`,
     REFRESH_TOKEN: `/api/${API_CONFIG.VERSION}/auth/refresh_token`,
   },
   USERS: {

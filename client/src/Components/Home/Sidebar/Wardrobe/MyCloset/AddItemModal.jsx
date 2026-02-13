@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Close, ChevronLeft, ChevronRight, ExpandMore, HelpOutline } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { CustomSelect } from "../shared/OccasionSeasonPicker";
 import {
   generateBatchUploadUrlsThunk,
@@ -426,7 +426,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
       {pendingRecovery && !uploading && (
         <div
           className="rounded-lg border p-3 mb-4 text-xs"
-          style={{ borderColor: `${colors.fourth}60`, backgroundColor: `${colors.fourth}10` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.6), backgroundColor: toRgba(colors.fourth, 0.1) }}
         >
           <p className="font-medium dark:text-dark-text text-light-text mb-1.5">
             {pendingRecovery.length} item(s) from a previous upload weren't saved
@@ -442,7 +442,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
             <button
               onClick={dismissRecovery}
               className="px-3 py-1 rounded text-[11px] font-medium dark:text-dark-text/60 text-light-text/60 border"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               Dismiss
             </button>
@@ -454,7 +454,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
       {items.length === 0 ? (
         <div
           className="rounded-xl border-2 border-dashed p-6 mb-4 text-center cursor-pointer transition-all hover:opacity-80"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           onClick={() => fileInputRef.current?.click()}
         >
           <p className="text-sm dark:text-dark-text/40 text-light-text/40 mb-1">
@@ -468,7 +468,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
         <div className="mb-4">
           {/* Image with navigation */}
           <div className="relative rounded-xl border-2 border-dashed overflow-hidden"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <img
               src={current.preview}
@@ -557,7 +557,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
           {/* Photo type toggle + guidance */}
           <div
             className="mb-3 p-2.5 rounded-lg border relative"
-            style={{ borderColor: `${colors.fourth}20`, backgroundColor: `${colors.fourth}06` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.2), backgroundColor: toRgba(colors.fourth, 0.06) }}
           >
             {/* Help button */}
             <button
@@ -596,7 +596,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
 
             {/* Secondary toggle: Keep metal hardware (only when hasPersonInPhoto=true) */}
             {current.hasPersonInPhoto && (
-              <div className="flex items-center gap-2.5 mt-2.5 pt-2.5 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+              <div className="flex items-center gap-2.5 mt-2.5 pt-2.5 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
                 <button
                   type="button"
                   onClick={() => handleChange("preserveAccessories", !current.preserveAccessories)}
@@ -619,7 +619,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
             )}
 
             {/* Quick help tip */}
-            <div className="mt-2.5 pt-2 border-t text-[9px] dark:text-dark-text/30 text-light-text/30" style={{ borderColor: `${colors.fourth}10` }}>
+            <div className="mt-2.5 pt-2 border-t text-[9px] dark:text-dark-text/30 text-light-text/30" style={{ borderColor: toRgba(colors.fourth, 0.1) }}>
               {current.hasPersonInPhoto && !current.preserveAccessories && (
                 <span>Tip: Plain fabrics work best. For pants with chains, enable "Keep metal hardware" or use a product photo.</span>
               )}
@@ -663,7 +663,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                         ${isSelected ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
                       style={{
                         backgroundColor: isSelected ? colors.fourth : "transparent",
-                        borderColor: isSelected ? colors.fourth : `${colors.fourth}30`,
+                        borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.3),
                       }}
                     >
                       {sub}
@@ -677,7 +677,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                 onChange={(e) => handleChange("subcategory", e.target.value)}
                 placeholder="e.g. Polo T-Shirt"
                 className={selectClass}
-                style={{ borderColor: `${colors.fourth}40` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.4) }}
               />
             )}
           </div>
@@ -693,7 +693,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                 onChange={(e) => handleChange("color", e.target.value)}
                 placeholder="e.g. Navy Blue"
                 className={selectClass}
-                style={{ borderColor: `${colors.fourth}40` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.4) }}
               />
             </div>
             <div>
@@ -705,7 +705,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                 onChange={(e) => handleChange("brand", e.target.value)}
                 placeholder="Optional"
                 className={selectClass}
-                style={{ borderColor: `${colors.fourth}40` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.4) }}
               />
             </div>
           </div>
@@ -734,7 +734,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                     return (
                       <button key={opt} onClick={() => handleChange("pattern", sel ? "" : opt)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${sel ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
-                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : `${colors.fourth}30` }}
+                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : toRgba(colors.fourth, 0.3) }}
                       >{opt}</button>
                     );
                   })}
@@ -750,7 +750,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                     return (
                       <button key={opt} onClick={() => handleChange("fabric", sel ? "" : opt)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${sel ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
-                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : `${colors.fourth}30` }}
+                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : toRgba(colors.fourth, 0.3) }}
                       >{opt}</button>
                     );
                   })}
@@ -766,7 +766,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                     return (
                       <button key={opt} onClick={() => handleChange("season", opt)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${sel ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
-                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : `${colors.fourth}30` }}
+                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : toRgba(colors.fourth, 0.3) }}
                       >{opt}</button>
                     );
                   })}
@@ -784,7 +784,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                     return (
                       <button key={opt} onClick={() => toggleOccasion(opt)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${sel ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
-                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : `${colors.fourth}30` }}
+                        style={{ backgroundColor: sel ? colors.fourth : "transparent", borderColor: sel ? colors.fourth : toRgba(colors.fourth, 0.3) }}
                       >{opt}</button>
                     );
                   })}
@@ -803,7 +803,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
                   maxLength={500}
                   rows={2}
                   className={selectClass + " resize-none"}
-                  style={{ borderColor: `${colors.fourth}40` }}
+                  style={{ borderColor: toRgba(colors.fourth, 0.4) }}
                 />
                 <p className="text-[10px] mt-0.5 dark:text-dark-text/30 text-light-text/30 text-right">
                   {(current.notes || "").length}/500
@@ -839,7 +839,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
     return (
       <div className="flex flex-col h-full">
         {/* Drawer header with drag handle on mobile */}
-        <div className="flex-shrink-0 pl-4 pr-14 pt-3 pb-2 border-b" style={{ borderColor: `${colors.fourth}15` }}>
+        <div className="flex-shrink-0 pl-4 pr-14 pt-3 pb-2 border-b" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
           {/* Mobile drag handle */}
           <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-gray-400/30 sm:hidden" />
           <div className="flex items-center justify-between">
@@ -858,12 +858,12 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
         </div>
 
         {/* Fixed footer with actions */}
-        <div className="flex-shrink-0 px-4 py-3 border-t" style={{ borderColor: `${colors.fourth}15` }}>
+        <div className="flex-shrink-0 px-4 py-3 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
           <div className="flex justify-end gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-sm font-medium dark:text-dark-text/70 text-light-text/70 border transition-all hover:opacity-80"
-              style={{ borderColor: `${colors.fourth}30` }}
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
             >
               Cancel
             </button>
@@ -894,7 +894,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div
         className="w-full max-w-md rounded-2xl dark:bg-dark-primary bg-white border p-5 mx-4 shadow-2xl max-h-[90vh] overflow-y-auto"
-        style={{ borderColor: `${colors.fourth}30` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -914,7 +914,7 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-medium dark:text-dark-text/70 text-light-text/70 border transition-all hover:opacity-80"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             Cancel
           </button>

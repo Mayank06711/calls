@@ -1,6 +1,6 @@
 import React from "react";
 import { Visibility } from "@mui/icons-material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import WardrobeMatchBadge from "./WardrobeMatchBadge";
 import { ColorDots } from "./ColorDots";
 
@@ -26,7 +26,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
   return (
     <div
       className={`relative group rounded-xl overflow-hidden border transition-all hover:shadow-md ${fillParent ? "w-full" : "flex-shrink-0 w-36 h-[200px]"}`}
-      style={{ borderColor: `${colors.fourth}30` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.3) }}
     >
       {/* Image area */}
       <div className="relative w-full h-32">
@@ -39,7 +39,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
         ) : (
           <div
             className="w-full h-full flex flex-col items-center justify-center gap-1"
-            style={{ backgroundColor: `${colors.fourth}08` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
           >
             <span className="text-2xl">
               {itemName.toLowerCase().includes("shirt") || itemName.toLowerCase().includes("top") || itemName.toLowerCase().includes("kurta") || itemName.toLowerCase().includes("tee")
@@ -72,7 +72,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
           <button
             onClick={(e) => { e.stopPropagation(); onExpand(item, ownedMatch); }}
             className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ backgroundColor: `${colors.fourth}cc` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.8) }}
             title="View larger"
           >
             <Visibility style={{ fontSize: 14 }} />
@@ -83,7 +83,7 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
         {itemVibe && (
           <span
             className="absolute bottom-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white"
-            style={{ backgroundColor: `${colors.fourth}cc` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.8) }}
           >
             {itemVibe}
           </span>

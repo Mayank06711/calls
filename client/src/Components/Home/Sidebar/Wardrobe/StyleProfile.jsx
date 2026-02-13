@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import {
   fetchStyleProfileThunk,
   fetchProfileOptionsThunk,
@@ -94,22 +94,26 @@ function StyleProfile() {
   }
 
   return (
-    <div className="p-2 sm:p-4 w-full h-full overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <IconButton onClick={() => navigate("/wardrobe")} size="small">
-          <ArrowBack style={{ color: colors.fourth }} />
-        </IconButton>
-        <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-          Style Profile
-        </h2>
+    <div className="w-full h-full overflow-hidden flex flex-col">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center gap-2">
+          <IconButton onClick={() => navigate("/wardrobe")} size="small">
+            <ArrowBack style={{ color: colors.fourth }} />
+          </IconButton>
+          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+            Style Profile
+          </h2>
+        </div>
       </div>
 
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
       {/* First-time setup banner */}
       {!hasProfile && (
         <div
           className="rounded-xl border p-4 mb-4"
-          style={{ borderColor: `${colors.fourth}40`, backgroundColor: `${colors.fourth}08` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.4), backgroundColor: toRgba(colors.fourth, 0.08) }}
         >
           <p className="text-sm font-medium dark:text-dark-text/80 text-light-text/80 mb-1">
             Welcome! Let's set up your style profile.
@@ -123,7 +127,7 @@ function StyleProfile() {
       {/* Form card */}
       <div
         className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 sm:p-6"
-        style={{ borderColor: `${colors.fourth}30` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
       >
         <h3 className="text-base font-semibold mb-4 dark:text-dark-text/90 text-light-text/90">
           Your Style DNA
@@ -153,7 +157,7 @@ function StyleProfile() {
                         }`}
                       style={{
                         backgroundColor: isSelected ? colors.fourth : undefined,
-                        borderColor: isSelected ? colors.fourth : `${colors.fourth}30`,
+                        borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.3),
                       }}
                     >
                       {optValue}
@@ -211,7 +215,7 @@ function StyleProfile() {
                           }`}
                         style={{
                           backgroundColor: isSelected ? colors.fourth : undefined,
-                          borderColor: isSelected ? colors.fourth : `${colors.fourth}30`,
+                          borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.3),
                         }}
                       >
                         {optValue}
@@ -248,6 +252,7 @@ function StyleProfile() {
             {hasProfile ? "Update Profile" : "Save Profile"}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

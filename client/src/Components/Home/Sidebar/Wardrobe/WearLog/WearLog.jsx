@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   fetchWearHistoryThunk,
   fetchWearStatsThunk,
@@ -64,21 +64,24 @@ function WearLog() {
 
   return (
     <PremiumGate requiredTier="Silver" message="Outfit Log requires Silver or above">
-      <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+      <div className="w-full h-full overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <IconButton onClick={() => navigate("/wardrobe")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            Outfit Log
-          </h2>
+        <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => navigate("/wardrobe")} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
+            </IconButton>
+            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+              Outfit Log
+            </h2>
+          </div>
         </div>
 
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
         {/* Quick log */}
         <div
           className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
         >
           <p className="text-xs font-medium dark:text-dark-text/60 text-light-text/60 mb-2">Quick Log</p>
           <div className="flex gap-2 items-end">
@@ -106,7 +109,7 @@ function WearLog() {
         {/* Calendar */}
         <div
           className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
         >
           {loading ? (
             <div className="flex justify-center py-8">
@@ -128,7 +131,7 @@ function WearLog() {
         {stats && (
           <div
             className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <h4 className="text-sm font-semibold mb-3 dark:text-dark-text/80 text-light-text/80">
               Stats
@@ -147,6 +150,7 @@ function WearLog() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </PremiumGate>
   );

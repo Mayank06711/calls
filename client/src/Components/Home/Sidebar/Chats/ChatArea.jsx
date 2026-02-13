@@ -19,7 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useSelector, useDispatch } from "react-redux";
 import { showNotification } from "../../../../redux/actions/notification.actions"; // DEBUG — remove later
 import { useVideoCallActions } from "../../../../hooks/useVideoCall";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import { PersonAdd, HourglassEmpty, Check, Close } from "@mui/icons-material";
 import { playChatSound } from "../../../../utils/notificationSound";
 import { useAIContext } from "../../../../context/AIContext";
@@ -848,7 +848,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${colors.third}33, ${colors.fourth}33)` }}
+            style={{ background: `linear-gradient(135deg, ${toRgba(colors.third, 0.33)}, ${toRgba(colors.fourth, 0.33)})` }}
           >
             <PersonAdd sx={{ fontSize: 32, color: colors.third }} />
           </div>
@@ -871,7 +871,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${colors.third}33, ${colors.fourth}33)` }}
+            style={{ background: `linear-gradient(135deg, ${toRgba(colors.third, 0.33)}, ${toRgba(colors.fourth, 0.33)})` }}
           >
             <HourglassEmpty sx={{ fontSize: 32, color: colors.third }} />
           </div>
@@ -895,7 +895,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${colors.third}33, ${colors.fourth}33)` }}
+            style={{ background: `linear-gradient(135deg, ${toRgba(colors.third, 0.33)}, ${toRgba(colors.fourth, 0.33)})` }}
           >
             <PersonAdd sx={{ fontSize: 32, color: colors.third }} />
           </div>

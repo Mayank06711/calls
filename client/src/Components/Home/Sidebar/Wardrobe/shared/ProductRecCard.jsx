@@ -1,5 +1,5 @@
 import React from "react";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { ShoppingCartOutlined, OpenInNew } from "@mui/icons-material";
 
 function ProductRecCard({ product }) {
@@ -10,7 +10,7 @@ function ProductRecCard({ product }) {
   return (
     <div
       className="flex-shrink-0 w-44 rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border overflow-hidden transition-all hover:shadow-md group"
-      style={{ borderColor: `${colors.fourth}30` }}
+      style={{ borderColor: toRgba(colors.fourth, 0.3) }}
     >
       {/* Product image */}
       <div className="relative">
@@ -23,7 +23,7 @@ function ProductRecCard({ product }) {
         ) : (
           <div
             className="w-full h-36 flex items-center justify-center"
-            style={{ backgroundColor: `${colors.fourth}08` }}
+            style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
           >
             <ShoppingCartOutlined style={{ color: colors.fourth, fontSize: 32, opacity: 0.3 }} />
           </div>

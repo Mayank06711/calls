@@ -97,7 +97,7 @@ const SessionSchema = new Schema<ISession>(
     // Session metadata
     loginMethod: {
       type: String,
-      enum: ["password", "otp", "social", "mfa"],
+      enum: ["password", "otp", "email_otp", "social", "mfa"],
       default: "password",
     },
     

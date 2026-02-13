@@ -1,6 +1,7 @@
 import React from 'react';
 import { Close, Warning, Info, Security } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
+import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 const SEVERITY_CONFIG = {
   info: {
@@ -31,7 +32,7 @@ function SystemCard({ notification, onDismiss, colors }) {
     <div
       className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
       style={{
-        border: `1px solid ${colors.fourth}20`,
+        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
         borderLeft: `3px solid ${config.color}`,
       }}
     >
@@ -42,7 +43,7 @@ function SystemCard({ notification, onDismiss, colors }) {
         className="!absolute !top-2 !right-2"
         sx={{
           color: 'gray',
-          '&:hover': { color: colors.fourth, backgroundColor: `${colors.fourth}15` },
+          '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
         }}
       >
         <Close fontSize="small" />
@@ -52,7 +53,7 @@ function SystemCard({ notification, onDismiss, colors }) {
         {/* Severity Icon */}
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${config.color}20` }}
+          style={{ backgroundColor: `${toRgba(config.color, 0.2)}` }}
         >
           <SeverityIcon style={{ color: config.color, fontSize: 20 }} />
         </div>
@@ -67,7 +68,7 @@ function SystemCard({ notification, onDismiss, colors }) {
             <span
               className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
               style={{
-                backgroundColor: `${config.color}15`,
+                backgroundColor: `${toRgba(config.color, 0.15)}`,
                 color: config.color,
               }}
             >

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { generatePairingsThunk, fetchClosetThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import PairingCard from "./PairingCard";
@@ -42,22 +42,25 @@ function Pairings() {
   };
 
   return (
-    <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+    <div className="w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4 pr-12">
-        <IconButton onClick={() => navigate("/wardrobe")} size="small">
-          <ArrowBack style={{ color: colors.fourth }} />
-        </IconButton>
-        <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-          All Pairings
-        </h2>
+      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+        <div className="flex items-center gap-2 pr-12">
+          <IconButton onClick={() => navigate("/wardrobe")} size="small">
+            <ArrowBack style={{ color: colors.fourth }} />
+          </IconButton>
+          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+            All Pairings
+          </h2>
+        </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
       <PremiumGate requiredTier="Silver" message="Pairings require Silver or above">
         {/* Controls */}
         <div
           className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mb-4"
-          style={{ borderColor: `${colors.fourth}30` }}
+          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
         >
           <OccasionSeasonPicker
             occasion={occasion}
@@ -99,16 +102,16 @@ function Pairings() {
               <div
                 key={idx}
                 className="w-full rounded-xl border p-4 animate-pulse"
-                style={{ borderColor: `${colors.fourth}20` }}
+                style={{ borderColor: toRgba(colors.fourth, 0.2) }}
               >
                 <div className="h-2 w-16 rounded dark:bg-dark-text/10 bg-light-text/10 mb-3" />
                 <div className="flex items-stretch gap-3 mb-3">
-                  <div className="flex-1 rounded-lg overflow-hidden" style={{ backgroundColor: `${colors.fourth}08` }}>
+                  <div className="flex-1 rounded-lg overflow-hidden" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                     <div className="w-full h-24 dark:bg-dark-text/5 bg-light-text/5" />
                     <div className="p-2"><div className="h-3 rounded dark:bg-dark-text/10 bg-light-text/10 w-3/4 mx-auto" /></div>
                   </div>
                   <span className="text-lg dark:text-dark-text/10 text-light-text/10 self-center">+</span>
-                  <div className="flex-1 rounded-lg overflow-hidden" style={{ backgroundColor: `${colors.fourth}08` }}>
+                  <div className="flex-1 rounded-lg overflow-hidden" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
                     <div className="w-full h-24 dark:bg-dark-text/5 bg-light-text/5" />
                     <div className="p-2"><div className="h-3 rounded dark:bg-dark-text/10 bg-light-text/10 w-3/4 mx-auto" /></div>
                   </div>
@@ -135,7 +138,7 @@ function Pairings() {
         {pairings.length === 0 && !loading && !error && (
           <div
             className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-6 text-center"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <span className="text-3xl block mb-2 opacity-30">👔</span>
             <p className="text-sm dark:text-dark-text/50 text-light-text/50">
@@ -148,7 +151,7 @@ function Pairings() {
         {unpaired && (Array.isArray(unpaired) ? unpaired.length > 0 : (unpaired.tops?.length > 0 || unpaired.bottoms?.length > 0)) && (
           <div
             className="w-full rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 mt-4"
-            style={{ borderColor: `${colors.fourth}30` }}
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
           >
             <h4 className="text-sm font-semibold mb-2 dark:text-dark-text/70 text-light-text/70">
               Unpaired Items
@@ -170,6 +173,7 @@ function Pairings() {
           </div>
         )}
       </PremiumGate>
+      </div>
     </div>
   );
 }

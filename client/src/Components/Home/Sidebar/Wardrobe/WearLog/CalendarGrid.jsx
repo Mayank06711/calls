@@ -1,5 +1,5 @@
 import React from "react";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
 
@@ -41,7 +41,7 @@ function CalendarGrid({ year, month, wearHistory = [], onPrevMonth, onNextMonth,
         className={`aspect-square rounded-lg text-[10px] flex flex-col items-center justify-center gap-0.5 transition-all relative
           ${isToday ? "ring-2" : ""} ${hasEntries ? "cursor-pointer hover:shadow-sm" : ""}`}
         style={{
-          backgroundColor: hasEntries ? `${colors.fourth}15` : "transparent",
+          backgroundColor: hasEntries ? toRgba(colors.fourth, 0.15) : "transparent",
           ringColor: isToday ? colors.fourth : undefined,
         }}
       >

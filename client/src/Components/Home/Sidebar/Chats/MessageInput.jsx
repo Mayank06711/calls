@@ -3,7 +3,7 @@ import { Send, Image, Close } from '@mui/icons-material';
 import PropTypes from 'prop-types';
 import { useDispatch } from 'react-redux';
 import { uploadImage } from '../../../../socket/handleImageUpload';
-import { useSubscriptionColors } from '../../../../utils/getSubscriptionColors';
+import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 import { showNotification } from '../../../../redux/actions/notification.actions';
 
 const MessageInput = ({ onSendMessage, onTyping }) => {
@@ -214,7 +214,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
           <div
             className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
-              background: `linear-gradient(0deg, ${colors.fourth}80, transparent)`
+              background: `linear-gradient(0deg, ${toRgba(colors.fourth, 0.8)}, transparent)`
             }}
           />
         </div>

@@ -4,7 +4,7 @@ import Image1 from "../../assets/image2.png";
 import Image2 from "../../assets/image3.png";
 import QRGenerator from "../QRGenerator/QRGenerator";
 import OTPInput from "./OTPInput";
-import { generateOtpThunk } from "../../redux/thunks/login.thunks";
+import { generateOtpThunk, generateEmailOtpThunk, googleAuthThunk } from "../../redux/thunks/login.thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { resetTimer, setTimerActive } from "../../redux/actions/login.actions";
 import { resetOtpStates } from "../../redux/actions/auth.actions";
@@ -28,9 +28,11 @@ const GoogleIcon = () => (
 
 function Login({ asModal = false, onClose }) {
   const [activeTab, setActiveTab] = useState(1);
+  const [loginMethod, setLoginMethod] = useState("phone"); // "phone" or "email"
   const [phone, setPhone] = useState("");
   const [dialCode, setDialCode] = useState("");
   const [defaultCountry, setDefaultCountry] = useState("in");
+  const [emailInput, setEmailInput] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [referenceId, setReferenceId] = useState(null);
   const [smsId, setSmsId] = useState(null);
@@ -80,15 +82,24 @@ function Login({ asModal = false, onClose }) {
   const localDigits = dialCode ? digitsOnly.slice(dialCode.length) : digitsOnly;
   const isPhoneValid = localDigits.length >= 10 && localDigits.length <= 12;
 
+  // Email validation
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput);
+
+  const isInputValid = loginMethod === "phone" ? isPhoneValid : isEmailValid;
+
   const handleTabClick = (tabNumber) => {
     setActiveTab(tabNumber);
   };
 
   const handleSubmit = async () => {
-    if (!isPhoneValid) return;
+    if (!isInputValid) return;
     try {
-      const result = await dispatch(generateOtpThunk(phone));
-      console.log(result);
+      let result;
+      if (loginMethod === "email") {
+        result = await dispatch(generateEmailOtpThunk(emailInput));
+      } else {
+        result = await dispatch(generateOtpThunk(phone));
+      }
       if (result?.success) {
         setReferenceId(result.data?.reference_id);
         setSmsId(result.data?.sms_id);
@@ -100,11 +111,44 @@ function Login({ asModal = false, onClose }) {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && isPhoneValid) {
+    if (e.key === "Enter" && isInputValid) {
       e.preventDefault();
       handleSubmit();
     }
   };
+
+  // Google Sign-In
+  const handleGoogleLogin = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("[Login] VITE_GOOGLE_CLIENT_ID not set");
+      return;
+    }
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => {
+          if (response.credential) {
+            dispatch(googleAuthThunk(response.credential));
+          }
+        },
+      });
+      window.google.accounts.id.prompt();
+    }
+  };
+
+  // Load Google Sign-In SDK
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+    if (document.getElementById("google-signin-script")) return;
+    const script = document.createElement("script");
+    script.id = "google-signin-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
 
   const handleFeedbackClick = () => {
     if (asModal && onClose) {
@@ -170,57 +214,89 @@ function Login({ asModal = false, onClose }) {
           <div className="flex flex-col pt-6 sm:pt-10 gap-3 items-center justify-center bg-transparent px-5 sm:px-6 pb-6 z-10 animate__animated animate__fadeIn">
             {!otpGenerated ? (
               <>
-                {/* International Phone Input */}
-                <div className="w-full max-w-[340px]" onKeyDown={handleKeyDown}>
-                  <PhoneInput
-                    key={defaultCountry}
-                    defaultCountry={defaultCountry}
-                    value={phone}
-                    forceDialCode
-                    onChange={(ph, meta) => {
-                      setPhone(ph);
-                      if (meta?.country?.dialCode) setDialCode(meta.country.dialCode);
-                    }}
-                    inputStyle={{ width: "100%", color: "#059212", fontSize: "16px" }}
-                    countrySelectorStyleProps={{
-                      buttonStyle: {
-                        borderRadius: "12px 0 0 12px",
-                        borderColor: "rgba(5, 146, 18, 0.3)",
-                        backgroundColor: "rgba(155, 236, 0, 0.08)",
-                      },
-                      dropdownStyleProps: {
-                        style: { zIndex: 9999 },
-                      },
-                    }}
-                    style={{
-                      "--react-international-phone-border-radius": "12px",
-                      "--react-international-phone-border-color": "rgba(5, 146, 18, 0.3)",
-                      "--react-international-phone-background-color": "rgba(155, 236, 0, 0.08)",
-                      "--react-international-phone-text-color": "#059212",
-                      "--react-international-phone-font-size": "16px",
-                      "--react-international-phone-height": "46px",
-                      "--react-international-phone-country-selector-background-color-hover": "rgba(5, 146, 18, 0.1)",
-                      width: "100%",
-                    }}
-                  />
-                  {localDigits.length > 0 && localDigits.length < 10 && (
-                    <p className="text-[11px] text-red-500 mt-1 ml-1">
-                      Enter at least 10 digits
-                    </p>
-                  )}
-                </div>
+                {/* Phone Input */}
+                {loginMethod === "phone" && (
+                  <div className="w-full max-w-[340px]" onKeyDown={handleKeyDown}>
+                    <PhoneInput
+                      key={defaultCountry}
+                      defaultCountry={defaultCountry}
+                      value={phone}
+                      forceDialCode
+                      onChange={(ph, meta) => {
+                        setPhone(ph);
+                        if (meta?.country?.dialCode) setDialCode(meta.country.dialCode);
+                      }}
+                      inputStyle={{ width: "100%", color: "#059212", fontSize: "16px" }}
+                      countrySelectorStyleProps={{
+                        buttonStyle: {
+                          borderRadius: "12px 0 0 12px",
+                          borderColor: "rgba(5, 146, 18, 0.3)",
+                          backgroundColor: "rgba(155, 236, 0, 0.08)",
+                        },
+                        dropdownStyleProps: {
+                          style: { zIndex: 9999 },
+                        },
+                      }}
+                      style={{
+                        "--react-international-phone-border-radius": "12px",
+                        "--react-international-phone-border-color": "rgba(5, 146, 18, 0.3)",
+                        "--react-international-phone-background-color": "rgba(155, 236, 0, 0.08)",
+                        "--react-international-phone-text-color": "#059212",
+                        "--react-international-phone-font-size": "16px",
+                        "--react-international-phone-height": "46px",
+                        "--react-international-phone-country-selector-background-color-hover": "rgba(5, 146, 18, 0.1)",
+                        width: "100%",
+                      }}
+                    />
+                    {localDigits.length > 0 && localDigits.length < 10 && (
+                      <p className="text-[11px] text-red-500 mt-1 ml-1">
+                        Enter at least 10 digits
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Email Input */}
+                {loginMethod === "email" && (
+                  <div className="w-full max-w-[340px]" onKeyDown={handleKeyDown}>
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="Enter your email"
+                      className="w-full h-[46px] px-4 text-[16px] rounded-xl border border-[rgba(5,146,18,0.3)] bg-[rgba(155,236,0,0.08)] text-[#059212] placeholder-gray-400 focus:outline-none focus:border-[#059212] focus:ring-1 focus:ring-[#059212] transition-colors"
+                    />
+                    {emailInput.length > 0 && !isEmailValid && (
+                      <p className="text-[11px] text-red-500 mt-1 ml-1">
+                        Enter a valid email address
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <button
                   type="button"
                   className={`w-full max-w-[340px] py-2.5 rounded-xl text-sm font-bold text-white transition-all ${
-                    isPhoneValid
+                    isInputValid
                       ? "bg-[#059212] hover:bg-[#047a0d] cursor-pointer shadow-md"
                       : "bg-gray-400 cursor-not-allowed"
                   }`}
-                  disabled={!isPhoneValid}
+                  disabled={!isInputValid}
                   onClick={handleSubmit}
                 >
                   Submit
+                </button>
+
+                {/* Phone/Email toggle */}
+                <button
+                  type="button"
+                  className="text-xs text-[#059212] hover:underline font-medium"
+                  onClick={() => {
+                    setLoginMethod(loginMethod === "phone" ? "email" : "phone");
+                    dispatch(resetOtpStates());
+                  }}
+                >
+                  {loginMethod === "phone" ? "Use email instead" : "Use phone instead"}
                 </button>
 
                 {/* Divider */}
@@ -230,15 +306,11 @@ function Login({ asModal = false, onClose }) {
                   <div className="flex-1 h-px bg-gray-300"></div>
                 </div>
 
-                {/* Google Login Placeholder */}
+                {/* Google Login */}
                 <button
                   type="button"
                   className="w-full max-w-[340px] flex items-center justify-center gap-2.5 py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 transition-colors shadow-sm"
-                  onClick={() => {
-                    // TODO: Implement Google OAuth — needs backend endpoint
-                    console.log("[Login] Google login clicked — not yet implemented");
-                  }}
-                  title="Coming soon"
+                  onClick={handleGoogleLogin}
                 >
                   <GoogleIcon />
                   <span className="text-sm font-medium text-gray-700">
@@ -249,7 +321,8 @@ function Login({ asModal = false, onClose }) {
             ) : (
               !otpVerified && (
                 <OTPInput
-                  phoneNumber={phone}
+                  identifier={loginMethod === "email" ? emailInput : phone}
+                  identifierType={loginMethod}
                   referenceId={referenceId}
                   smsId={smsId}
                   setShowUserInfo={setShowUserInfo}

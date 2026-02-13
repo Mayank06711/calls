@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { fetchProductCatalogThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import PremiumGate from "../shared/PremiumGate";
 import ProductRecCard from "../shared/ProductRecCard";
@@ -37,22 +37,25 @@ function Shop() {
 
   return (
     <PremiumGate requiredTier="Silver" message="Shop requires Silver or above">
-      <div className="p-2 sm:p-4 w-full h-full overflow-y-auto custom-scrollbar">
+      <div className="w-full h-full overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-1">
-          <IconButton onClick={() => navigate("/wardrobe")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <div>
-            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-              Shop
-            </h2>
-            <p className="text-[10px] dark:text-dark-text/40 text-light-text/40">
-              Based on your closet gaps
-            </p>
+        <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => navigate("/wardrobe")} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
+            </IconButton>
+            <div>
+              <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
+                Shop
+              </h2>
+              <p className="text-[10px] dark:text-dark-text/40 text-light-text/40">
+                Based on your closet gaps
+              </p>
+            </div>
           </div>
         </div>
 
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
         {/* Category tabs */}
         <div className="flex gap-2 mb-4 mt-3 overflow-x-auto pb-1">
           {CATEGORY_TABS.map((tab) => (
@@ -63,9 +66,9 @@ function Shop() {
                 category === tab.key ? "text-white" : "dark:text-dark-text/60 text-light-text/60"
               }`}
               style={{
-                backgroundColor: category === tab.key ? colors.fourth : `${colors.fourth}10`,
+                backgroundColor: category === tab.key ? colors.fourth : toRgba(colors.fourth, 0.1),
                 borderWidth: 1,
-                borderColor: category === tab.key ? colors.fourth : `${colors.fourth}20`,
+                borderColor: category === tab.key ? colors.fourth : toRgba(colors.fourth, 0.2),
               }}
             >
               {tab.label}
@@ -101,6 +104,7 @@ function Shop() {
             </p>
           </div>
         )}
+        </div>
       </div>
     </PremiumGate>
   );

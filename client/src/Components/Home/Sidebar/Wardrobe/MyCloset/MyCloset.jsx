@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ArrowBack, Add, Visibility, VisibilityOff, FilterList, ExpandMore } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
-import { useSubscriptionColors } from "../../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import { fetchClosetThunk, processItemThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { setClosetFilter } from "../../../../../redux/actions/wardrobe.actions";
 import ClothingCard from "./ClothingCard";
@@ -126,7 +126,7 @@ function MyCloset() {
                 }`}
                 style={{
                   backgroundColor: showNobgGlobal ? colors.fourth : "transparent",
-                  borderColor: showNobgGlobal ? colors.fourth : `${colors.fourth}40`,
+                  borderColor: showNobgGlobal ? colors.fourth : toRgba(colors.fourth, 0.4),
                 }}
                 title={showNobgGlobal ? "Show original photos" : "Show processed (no background)"}
               >
@@ -160,7 +160,7 @@ function MyCloset() {
             }`}
           style={{
             borderColor: isDragOver ? colors.fourth : undefined,
-            backgroundColor: isDragOver ? `${colors.fourth}10` : undefined,
+            backgroundColor: isDragOver ? toRgba(colors.fourth, 0.1) : undefined,
           }}
         >
           <p className="text-xs dark:text-dark-text/50 text-light-text/50">
@@ -175,8 +175,8 @@ function MyCloset() {
             onClick={() => setShowFilters((p) => !p)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
             style={{
-              backgroundColor: filter !== "All" ? `${colors.fourth}15` : "transparent",
-              borderColor: `${colors.fourth}40`,
+              backgroundColor: filter !== "All" ? toRgba(colors.fourth, 0.15) : "transparent",
+              borderColor: toRgba(colors.fourth, 0.4),
             }}
           >
             <FilterList style={{ fontSize: 16, color: colors.fourth }} />
@@ -219,7 +219,7 @@ function MyCloset() {
                       ${isActive ? "text-white" : "dark:text-dark-text/70 text-light-text/70"}`}
                     style={{
                       backgroundColor: isActive ? colors.fourth : "transparent",
-                      borderColor: isActive ? colors.fourth : `${colors.fourth}30`,
+                      borderColor: isActive ? colors.fourth : toRgba(colors.fourth, 0.3),
                     }}
                   >
                     {tab.label} ({tabCount(tab.value)})
@@ -271,7 +271,7 @@ function MyCloset() {
             ? "max-sm:translate-y-0 sm:translate-x-0"
             : "max-sm:translate-y-full sm:translate-x-full"
         }`}
-        style={{ borderColor: `${colors.fourth}20` }}
+        style={{ borderColor: toRgba(colors.fourth, 0.2) }}
       >
         {showAddModal && (
           <AddItemModal

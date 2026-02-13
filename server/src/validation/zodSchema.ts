@@ -77,6 +77,21 @@ const VerifyOtpSchema = z.object({
   otp: z.string().min(1, "OTP is required"),
 });
 
+const GenerateEmailOtpSchema = z.object({
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  isTesting: z.boolean({ required_error: "isTesting must be a boolean" }),
+});
+
+const VerifyEmailOtpSchema = z.object({
+  referenceId: z.string().min(1, "Reference ID is required"),
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  otp: z.string().length(6, "OTP must be 6 digits"),
+});
+
+const GoogleAuthSchema = z.object({
+  idToken: z.string().min(1, "Google ID token is required"),
+});
+
 // ─── User Endpoint Schemas ──────────────────────────────────────────────────
 
 const SignUpSchema = z.object({
@@ -392,6 +407,9 @@ export {
   // Auth
   GenerateOtpSchema,
   VerifyOtpSchema,
+  GenerateEmailOtpSchema,
+  VerifyEmailOtpSchema,
+  GoogleAuthSchema,
   // User
   SignUpSchema,
   VerifyEmailSchema,

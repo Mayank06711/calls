@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
 import { MoreVert } from "@mui/icons-material";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 
 const MessageActionMenu = ({ items, iconSize = 18, iconColor }) => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -53,7 +53,7 @@ const MessageActionMenu = ({ items, iconSize = 18, iconColor }) => {
               bgcolor: "var(--color-dark-primary, #1e1e2e)",
               color: "var(--color-dark-text, #cdd6f4)",
               borderRadius: "12px",
-              border: `1px solid ${colors.fourth}33`,
+              border: `1px solid ${toRgba(colors.fourth, 0.33)}`,
               minWidth: 160,
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             },
@@ -69,7 +69,7 @@ const MessageActionMenu = ({ items, iconSize = 18, iconColor }) => {
             sx={{
               fontSize: "0.8rem",
               py: 1,
-              "&:hover": { bgcolor: `${colors.third}22` },
+              "&:hover": { bgcolor: toRgba(colors.third, 0.22) },
             }}
           >
             {item.icon && (

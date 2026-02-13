@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Typography, Container } from "@mui/material";
 import StyleIcon from "@mui/icons-material/Style";
-import { useSubscriptionColors } from "../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../utils/getSubscriptionColors";
 import "animate.css";
 
 function Missing() {
@@ -38,7 +38,7 @@ function Missing() {
             w-full max-w-2xl mx-auto
           "
           sx={{
-            borderColor: `${colors.fourth}30`,
+            borderColor: toRgba(colors.fourth, 0.3),
             position: "relative",
             "&::before": {
               content: '""',
@@ -47,7 +47,7 @@ function Missing() {
               left: -2,
               right: -2,
               bottom: -2,
-              background: `linear-gradient(45deg, ${colors.fourth}40, ${colors.fourth}20)`,
+              background: `linear-gradient(45deg, ${toRgba(colors.fourth, 0.4)}, ${toRgba(colors.fourth, 0.2)})`,
               borderRadius: "1rem",
               zIndex: -1,
               filter: "blur(12px)",

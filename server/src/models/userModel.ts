@@ -25,7 +25,26 @@ const UserSchema: Schema<IUser> = new Schema(
       },
     },
     emailToken:{type:String},
-    phoneNumber: { type: String, required: true, unique: true },
+    phoneNumber: {
+      type: String,
+      required: false,
+      default: undefined,
+      validate: {
+        validator: function (v: any) {
+          return v === undefined || v === null || v.length > 0;
+        },
+        message: "Phone number cannot be empty string",
+      },
+    },
+    googleId: {
+      type: String,
+      default: undefined,
+    },
+    authProvider: {
+      type: String,
+      enum: ["phone", "email", "google", "multiple"],
+      default: "phone",
+    },
     password: { type: String, required: true },
     gender: {
       type: String,
@@ -83,9 +102,29 @@ UserSchema.index(
   }
 );
 
-// if you will search with only phoneNumber it will still use indexing
-// Compound Indexes, order of fields in a compound index matter you have to search in same order as index
-UserSchema.index({ phoneNumber: 1, isPhoneVerified: 1, isActive: 1 }); // Compound index on phoneNumber and isActive
+// Partial unique index on phoneNumber (allows null/undefined, enforces unique on real values)
+UserSchema.index(
+  { phoneNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phoneNumber: { $exists: true, $ne: null } },
+  }
+);
+
+// Partial unique index on googleId
+UserSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { googleId: { $exists: true, $ne: null } },
+  }
+);
+
+// Compound index for email-based lookup
+UserSchema.index({ email: 1, isEmailVerified: 1, isActive: 1 });
+
+// Compound Indexes for phone-based lookup
+UserSchema.index({ phoneNumber: 1, isPhoneVerified: 1, isActive: 1 });
 
 UserSchema.index({
   phoneNumber: 1,

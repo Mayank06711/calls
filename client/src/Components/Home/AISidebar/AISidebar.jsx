@@ -2,7 +2,7 @@ import { IconButton, Tooltip } from "@mui/material";
 import React, { useState } from "react";
 import CycloneIcon from "@mui/icons-material/Cyclone";
 import DeleteSweepOutlined from "@mui/icons-material/DeleteSweepOutlined";
-import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../utils/getSubscriptionColors";
 import AIAssistant from "./AIAssistant/AIAssistant";
 import "ldrs/ping";
 
@@ -89,7 +89,7 @@ function AISidebar({ isDarkMode }) {
                     sx={{
                       color: colors.fourth,
                       opacity: 0.7,
-                      '&:hover': { opacity: 1, backgroundColor: `${colors.fourth}15` },
+                      '&:hover': { opacity: 1, backgroundColor: toRgba(colors.fourth, 0.15) },
                     }}
                   >
                     <DeleteSweepOutlined sx={{ fontSize: 20 }} />
