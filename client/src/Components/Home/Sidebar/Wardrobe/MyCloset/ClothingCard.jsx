@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { DeleteOutline } from "@mui/icons-material";
+import { DeleteOutline, FolderOutlined, Check } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
-import { deleteClothThunk } from "../../../../../redux/thunks/wardrobe.thunks";
+import { deleteClothThunk, addItemsToCollectionThunk, removeItemsFromCollectionThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { ColorDots } from "../shared/ColorDots";
 
-function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
+function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false, selectionMode = false, isSelected = false, onToggleSelect }) {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const deletingId = useSelector((state) => state.wardrobe.closet.deleting);
-  const [showDelete, setShowDelete] = useState(false);
+  const collections = useSelector((state) => state.wardrobe.collections.list);
+  const [showActions, setShowActions] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(false);
+  const [showCollectionMenu, setShowCollectionMenu] = useState(false);
 
   const isDeleting = deletingId === item._id;
   const hasNobg = !!item.nobgUrl;
@@ -20,6 +22,16 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
   const handleDelete = (e) => {
     e.stopPropagation();
     dispatch(deleteClothThunk(item._id));
+  };
+
+  const handleToggleCollection = (e, col) => {
+    e.stopPropagation();
+    const itemIds = col.itemIds.map((id) => (typeof id === "object" ? id._id : id));
+    if (itemIds.includes(item._id)) {
+      dispatch(removeItemsFromCollectionThunk(col._id, [item._id]));
+    } else {
+      dispatch(addItemsToCollectionThunk(col._id, [item._id]));
+    }
   };
 
   const toggleNotes = (e) => {
@@ -33,6 +45,10 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
   const hasNotes = item.notes && item.notes.trim().length > 0;
 
   const handleClick = () => {
+    if (selectionMode && onToggleSelect) {
+      onToggleSelect(item._id);
+      return;
+    }
     if (fullUrl && onOpenLightbox) {
       onOpenLightbox(item);
     }
@@ -40,10 +56,15 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
 
   return (
     <div
-      className="group relative rounded-xl overflow-hidden transition-all hover:shadow-lg cursor-pointer"
-      style={{ border: `1px solid ${toRgba(colors.fourth, 0.25)}` }}
-      onMouseEnter={() => setShowDelete(true)}
-      onMouseLeave={() => setShowDelete(false)}
+      className={`group relative rounded-xl overflow-hidden transition-all cursor-pointer ${
+        selectionMode && isSelected ? "ring-2 shadow-lg" : "hover:shadow-lg"
+      }`}
+      style={{
+        border: `1px solid ${toRgba(colors.fourth, 0.25)}`,
+        '--tw-ring-color': colors.fourth,
+      }}
+      onMouseEnter={() => !selectionMode && setShowActions(true)}
+      onMouseLeave={() => { setShowActions(false); setShowCollectionMenu(false); }}
       onClick={handleClick}
     >
       {/* Photo - fixed height, image contained and centered */}
@@ -78,6 +99,20 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
           {item.type === "Outerwear" && "🧥"}
           {item.type === "Shoes" && "👟"}
           {item.type === "Accessory" && "⌚"}
+        </div>
+      )}
+
+      {/* Selection checkbox */}
+      {selectionMode && (
+        <div className="absolute top-2 left-2 z-10">
+          <div
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              isSelected ? "border-transparent" : "bg-white/80 border-gray-400"
+            }`}
+            style={isSelected ? { backgroundColor: colors.fourth, borderColor: colors.fourth } : undefined}
+          >
+            {isSelected && <Check style={{ fontSize: 14, color: "white" }} />}
+          </div>
         </div>
       )}
 
@@ -122,9 +157,47 @@ function ClothingCard({ item, onOpenLightbox, showNobgGlobal = false }) {
         )}
       </div>
 
-      {/* Delete button on hover */}
-      {showDelete && (
-        <div className="absolute top-1.5 right-1.5">
+      {/* Action buttons on hover (hidden in selection mode) */}
+      {showActions && !selectionMode && (
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+          {/* Collection button */}
+          {collections.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowCollectionMenu((p) => !p); }}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-black/50 hover:bg-black/70 text-white transition-all"
+              >
+                <FolderOutlined style={{ fontSize: 14 }} />
+              </button>
+
+              {/* Collection dropdown */}
+              {showCollectionMenu && (
+                <div
+                  className="absolute top-full right-0 mt-1 z-30 rounded-lg shadow-lg border dark:bg-dark-primary bg-light-secondary py-1 min-w-[140px]"
+                  style={{ borderColor: toRgba(colors.fourth, 0.2) }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {collections.map((col) => {
+                    const colItemIds = col.itemIds.map((id) => (typeof id === "object" ? id._id : id));
+                    const isIn = colItemIds.includes(item._id);
+                    return (
+                      <button
+                        key={col._id}
+                        onClick={(e) => handleToggleCollection(e, col)}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs dark:text-dark-text text-light-text hover:bg-black/5 dark:hover:bg-white/5"
+                      >
+                        <span className="text-sm">{col.emoji || "📁"}</span>
+                        <span className="flex-1 text-left truncate">{col.name}</span>
+                        {isIn && <Check style={{ fontSize: 14, color: colors.fourth }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Delete button */}
           <button
             onClick={handleDelete}
             disabled={isDeleting}

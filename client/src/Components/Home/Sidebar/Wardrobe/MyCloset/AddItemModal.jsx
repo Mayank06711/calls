@@ -8,6 +8,7 @@ import {
   generateBatchUploadUrlsThunk,
   addClothBatchThunk,
   processItemThunk,
+  addItemsToCollectionThunk,
 } from "../../../../../redux/thunks/wardrobe.thunks";
 import { showNotification } from "../../../../../redux/actions/notification.actions";
 import { getCloudinaryThumbnail } from "../../../../../utils/cloudinaryUtils";
@@ -20,6 +21,7 @@ const PENDING_KEY = "wardrobe_pending_uploads";
 const CATEGORIES = [
   { label: "Top", value: "Top" },
   { label: "Bottom", value: "Bottom" },
+  { label: "Full Body (Dress/Saree/Jumpsuit)", value: "Full Body" },
   { label: "Layer / Outerwear", value: "Outerwear" },
   { label: "Footwear", value: "Shoes" },
   { label: "Accessory", value: "Accessory" },
@@ -28,6 +30,12 @@ const CATEGORIES = [
 const SUBCATEGORY_OPTIONS = {
   Top: ["Polo T-Shirt", "Round Neck T-Shirt", "Henley T-Shirt", "Formal Shirt", "Casual Shirt", "Denim Shirt", "Linen Shirt", "Kurta", "Tank Top", "Sweatshirt", "Hoodie"],
   Bottom: ["Chinos", "Jeans", "Trousers", "Joggers", "Shorts", "Formal Pants", "Cargo Pants", "Dhoti Pants", "Track Pants"],
+  "Full Body": [
+    "Saree", "Anarkali Suit", "Lehenga Set", "Salwar Kameez Set", "Co-ord Set",
+    "Gown", "Maxi Dress", "Midi Dress", "Mini Dress", "A-Line Dress",
+    "Bodycon Dress", "Wrap Dress", "Shift Dress", "Shirt Dress",
+    "Jumpsuit", "Romper", "Kaftan", "Sherwani Set", "Kurta Pajama Set",
+  ],
   Outerwear: ["Blazer", "Jacket", "Cardigan", "Bomber Jacket", "Denim Jacket", "Vest", "Windbreaker", "Overcoat", "Shawl"],
   Shoes: ["Sneakers", "Loafers", "Oxford Shoes", "Boots", "Sandals", "Slip-Ons", "Canvas Shoes", "Formal Shoes", "Sports Shoes"],
   Accessory: ["Watch", "Belt", "Sunglasses", "Bracelet", "Scarf", "Tie", "Pocket Square", "Cap"],
@@ -162,7 +170,7 @@ function PhotoHelpModal({ onClose }) {
   );
 }
 
-function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
+function AddItemModal({ onClose, preloadedImage = null, isDrawer = false, targetCollection = null }) {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const fileInputRef = useRef(null);
@@ -314,6 +322,12 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
             preserveAccessories: flags.preserveAccessories || false,
           }));
         });
+
+        // Auto-add to active collection if uploading within one
+        if (targetCollection?._id) {
+          const newIds = result.data.map((item) => item._id);
+          dispatch(addItemsToCollectionThunk(targetCollection._id, newIds));
+        }
       }
 
       onClose();
@@ -447,6 +461,19 @@ function AddItemModal({ onClose, preloadedImage = null, isDrawer = false }) {
               Dismiss
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Collection target indicator */}
+      {targetCollection && (
+        <div
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg mb-3 text-xs"
+          style={{ backgroundColor: toRgba(colors.fourth, 0.1), border: `1px solid ${toRgba(colors.fourth, 0.25)}` }}
+        >
+          <span>{targetCollection.emoji || "📁"}</span>
+          <span className="dark:text-dark-text/70 text-light-text/70">
+            Will be added to <span className="font-medium dark:text-dark-text text-light-text">{targetCollection.name}</span>
+          </span>
         </div>
       )}
 

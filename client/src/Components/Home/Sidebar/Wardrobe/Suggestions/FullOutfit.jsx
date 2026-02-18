@@ -10,6 +10,8 @@ import {
   ExpandMore,
   ShoppingBag,
   OpenInNew,
+  Save,
+  InfoOutlined,
 } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
@@ -17,12 +19,38 @@ import {
   fetchSuggestionThunk,
   saveOutfitThunk,
   fetchOutfitsThunk,
+  fetchStyleProfileThunk,
 } from "../../../../../redux/thunks/wardrobe.thunks";
 import { clearSuggestion } from "../../../../../redux/actions/wardrobe.actions";
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 import OutfitCard from "../Outfits/OutfitCard";
 import { ColorDots } from "../shared/ColorDots";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Auto-defaults
+// ──────────────────────────────────────────────────────────────────────────────
+
+function getAutoSeason() {
+  const m = new Date().getMonth();
+  if (m >= 2 && m <= 5) return "Summer";
+  if (m >= 6 && m <= 9) return "Monsoon";
+  return "Winter";
+}
+
+function getAutoOccasion(profile) {
+  if (!profile) return "Casual";
+  const lt = profile.lifestyleTypes || [];
+  if (lt.includes("Office Formal") || lt.includes("Office Casual")) return "Office: Daily Wear";
+  if (lt.includes("Social Events")) return "Date Night";
+  if (lt.includes("Casual")) return "Casual";
+  if (lt.includes("Work From Home")) return "Lounge";
+  const v = profile.styleVibe || "";
+  if (v === "Classic" || v === "Old Money") return "Office: Daily Wear";
+  if (v === "Trendy") return "Party: Night Out";
+  if (v === "Desi") return "Festive";
+  return "Casual";
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -208,19 +236,37 @@ function FullOutfit() {
 
   const { loading, result, error } = useSelector((s) => s.wardrobe.suggestions);
   const { saving: savingOutfit, saved: savedOutfits } = useSelector((s) => s.wardrobe.outfits);
+  const styleProfile = useSelector((s) => s.wardrobe.styleProfile?.data);
 
   const [occasion, setOccasion] = useState("");
   const [season, setSeason] = useState("");
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
   const [description, setDescription] = useState("");
   const [showDescription, setShowDescription] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [swappedItems, setSwappedItems] = useState({});
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [saveName, setSaveName] = useState("");
 
-  // Fetch saved outfits on mount
+  // Fetch saved outfits + style profile on mount
   useEffect(() => {
     dispatch(fetchOutfitsThunk());
+    dispatch(fetchStyleProfileThunk());
   }, [dispatch]);
+
+  // Auto-fill occasion & season from style DNA
+  useEffect(() => {
+    if (occasion && season) return; // already set
+    const autoSeason = getAutoSeason();
+    const autoOccasion = getAutoOccasion(styleProfile);
+    if (!season) setSeason(autoSeason);
+    if (!occasion) setOccasion(autoOccasion);
+    setDefaultsApplied(true);
+    const t = setTimeout(() => setDefaultsApplied(false), 4000);
+    return () => clearTimeout(t);
+  }, [styleProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-dismiss error after 5 seconds
   useEffect(() => {
@@ -292,6 +338,11 @@ function FullOutfit() {
   }, []);
 
   // ── Save outfit ───────────────────────────────────────────────────────────
+  const handleOpenSave = () => {
+    setSaveName(`AI: ${occasion || "Outfit"} - ${season || "Look"}`);
+    setShowSavePrompt(true);
+  };
+
   const handleSaveOutfit = async () => {
     const itemIds = [];
     for (const item of effectivePrimaryItems) {
@@ -302,7 +353,7 @@ function FullOutfit() {
     if (itemIds.length === 0) return;
 
     const outfitData = {
-      name: `AI: ${occasion} - ${season}`,
+      name: saveName.trim() || `AI: ${occasion} - ${season}`,
       itemIds,
       occasion: occasion || undefined,
       season: season || undefined,
@@ -313,6 +364,7 @@ function FullOutfit() {
     if (!hasAnySwap && suggestion?.flatlayUrl) outfitData.flatlayUrl = suggestion.flatlayUrl;
     if (suggestion?.colorPalette?.length > 0) outfitData.colorPalette = suggestion.colorPalette;
 
+    setShowSavePrompt(false);
     const res = await dispatch(saveOutfitThunk(outfitData));
     if (res) setSaved(true);
   };
@@ -341,15 +393,26 @@ function FullOutfit() {
   return (
     <div className="w-full h-full overflow-hidden flex flex-col">
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+      <div className="flex-shrink-0 relative z-10 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
         <div className="flex items-center justify-between pr-12">
           <div className="flex items-center gap-2">
-            <IconButton onClick={() => { handleClear(); navigate("/wardrobe"); }} size="small">
+            <IconButton onClick={() => {
+              if (result) {
+                handleClear();
+              } else {
+                navigate("/wardrobe");
+              }
+            }} size="small">
               <ArrowBack style={{ color: colors.fourth }} />
             </IconButton>
-            <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-              AI Stylist
-            </h2>
+            <div>
+              <h2 className="text-base font-bold dark:text-dark-text text-light-text">
+                AI Stylist
+              </h2>
+              <p className="text-[10px] dark:text-dark-text/40 text-light-text/40 leading-relaxed">
+                Get a complete outfit suggestion based on your wardrobe
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {aiSavedOutfits.length > 0 && (
@@ -368,63 +431,71 @@ function FullOutfit() {
             )}
           </div>
         </div>
+
+        {/* Auto-defaults hint */}
+        {defaultsApplied && (
+          <p className="text-[9px] mt-1 ml-10 animate-pulse" style={{ color: colors.fourth }}>
+            <InfoOutlined style={{ fontSize: 10, marginRight: 2, verticalAlign: "middle" }} />
+            {styleProfile ? "Pre-filled from your style profile" : "Pre-filled with defaults — set up your Style DNA for personalized picks"}
+          </p>
+        )}
+
+        {/* Inline Controls — pinned below title */}
+        <div className="flex items-center gap-2 mt-2">
+          <div className="flex-1 min-w-0">
+            <OccasionSeasonPicker
+              occasion={occasion}
+              season={season}
+              onOccasionChange={setOccasion}
+              onSeasonChange={setSeason}
+              compact
+            />
+          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={!occasion || !season || loading}
+            className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            style={{ backgroundColor: colors.fourth }}
+          >
+            {loading && <CircularProgress size={14} style={{ color: "white" }} />}
+            Go
+          </button>
+        </div>
+
+        {/* Optional description toggle */}
+        <button
+          onClick={() => setShowDescription((p) => !p)}
+          className="text-[10px] font-medium mt-1.5 flex items-center gap-0.5 transition-colors"
+          style={{ color: toRgba(colors.fourth, 0.67) }}
+        >
+          <ExpandMore
+            style={{
+              fontSize: 14,
+              transform: showDescription ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
+          />
+          {showDescription ? "Hide description" : "Add description"}
+        </button>
+
+        <div
+          className="overflow-hidden transition-all duration-200"
+          style={{ maxHeight: showDescription ? "100px" : "0px", opacity: showDescription ? 1 : 0 }}
+        >
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Describe what you're looking for..."
+            rows={2}
+            className="w-full px-3 py-2 mt-1.5 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none"
+            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+          />
+        </div>
       </div>
 
       {/* ── Scrollable Content ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
-
-      {/* ── Inline Controls ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <OccasionSeasonPicker
-            occasion={occasion}
-            season={season}
-            onOccasionChange={setOccasion}
-            onSeasonChange={setSeason}
-            compact
-          />
-        </div>
-        <button
-          onClick={handleGenerate}
-          disabled={!occasion || !season || loading}
-          className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-          style={{ backgroundColor: colors.fourth }}
-        >
-          {loading && <CircularProgress size={14} style={{ color: "white" }} />}
-          Go
-        </button>
-      </div>
-
-      {/* Optional description toggle */}
-      <button
-        onClick={() => setShowDescription((p) => !p)}
-        className="text-[10px] font-medium mb-2 flex items-center gap-0.5 transition-colors"
-        style={{ color: toRgba(colors.fourth, 0.67) }}
-      >
-        <ExpandMore
-          style={{
-            fontSize: 14,
-            transform: showDescription ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        />
-        {showDescription ? "Hide description" : "Add description"}
-      </button>
-
-      <div
-        className="overflow-hidden transition-all duration-200"
-        style={{ maxHeight: showDescription ? "100px" : "0px", opacity: showDescription ? 1 : 0 }}
-      >
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Describe what you're looking for..."
-          rows={2}
-          className="w-full px-3 py-2 rounded-lg border text-sm dark:bg-dark-primary bg-light-secondary dark:text-dark-text text-light-text focus:outline-none focus:ring-2 transition-all resize-none mb-2"
-          style={{ borderColor: toRgba(colors.fourth, 0.3) }}
-        />
-      </div>
 
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
@@ -435,11 +506,12 @@ function FullOutfit() {
 
       {/* ── Result ────────────────────────────────────────────────────────── */}
       {suggestion && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+
           {/* Magazine spread: flat-lay + item list */}
           <div className="flex gap-3 items-start">
             {/* Left: Flat-lay */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 cursor-pointer" onClick={() => setLightboxOpen(true)}>
               <OutfitFlatLay
                 top={topItem}
                 bottom={effectiveBottom}
@@ -450,18 +522,11 @@ function FullOutfit() {
                 wardrobeMatches={wardrobeMatches}
               />
             </div>
-
             {/* Right: Item list */}
             <div className="flex-1 min-w-0">
               <div className="divide-y dark:divide-dark-text/5 divide-light-text/5">
                 {effectivePrimaryItems.map((item, idx) => (
-                  <OutfitItemRow
-                    key={idx}
-                    item={item}
-                    wardrobeMatches={wardrobeMatches}
-                    productRecommendations={productRecommendations}
-                    colors={colors}
-                  />
+                  <OutfitItemRow key={idx} item={item} wardrobeMatches={wardrobeMatches} productRecommendations={productRecommendations} colors={colors} />
                 ))}
               </div>
             </div>
@@ -477,7 +542,7 @@ function FullOutfit() {
           {/* Action bar */}
           <div className="flex items-center gap-2 pt-1">
             <button
-              onClick={handleSaveOutfit}
+              onClick={saved ? undefined : handleOpenSave}
               disabled={savingOutfit || saved || ownedCount === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: saved ? "#22c55e" : colors.fourth }}
@@ -491,7 +556,6 @@ function FullOutfit() {
               )}
               {saved ? "Saved!" : "Save Outfit"}
             </button>
-
             <div className="flex items-center gap-1 ml-auto">
               {occasion && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full dark:bg-dark-secondary bg-gray-100 dark:text-dark-text/60 text-light-text/60">
@@ -506,10 +570,10 @@ function FullOutfit() {
             </div>
           </div>
 
-          {/* ── Swap Alternatives ─────────────────────────────────────────── */}
+          {/* ── Swap Alternatives ──────────────────────────────────────── */}
           {hasAlts && (
-            <div className="pt-2 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
-              <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider mb-2">
+            <div className="pt-3 border-t" style={{ borderColor: toRgba(colors.fourth, 0.12) }}>
+              <p className="text-[10px] font-semibold dark:text-dark-text/45 text-light-text/45 uppercase tracking-wider mb-2.5">
                 Swap Alternatives
               </p>
 
@@ -549,12 +613,12 @@ function FullOutfit() {
             </div>
           )}
 
-          {/* ── Product Recommendations ───────────────────────────────────── */}
+          {/* ── Product Recommendations ────────────────────────────────── */}
           {unownedWithRecs.length > 0 && (
-            <div className="pt-2 border-t" style={{ borderColor: toRgba(colors.fourth, 0.15) }}>
+            <div className="pt-3 border-t" style={{ borderColor: toRgba(colors.fourth, 0.12) }}>
               <div className="flex items-center gap-1.5 mb-2">
                 <ShoppingBag style={{ fontSize: 13, color: colors.fourth }} />
-                <p className="text-[10px] font-semibold dark:text-dark-text/50 text-light-text/50 uppercase tracking-wider">
+                <p className="text-[10px] font-semibold dark:text-dark-text/45 text-light-text/45 uppercase tracking-wider">
                   Complete Your Look
                 </p>
               </div>
@@ -584,8 +648,8 @@ function FullOutfit() {
               View All
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {aiSavedOutfits.slice(0, 4).map((outfit) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {aiSavedOutfits.slice(0, 6).map((outfit) => (
               <OutfitCard
                 key={outfit._id}
                 outfit={outfit}
@@ -606,6 +670,91 @@ function FullOutfit() {
         </div>
       )}
       </div>
+
+      {/* ── Save name prompt ────────────────────────────────────────────── */}
+      {showSavePrompt && (
+        <div
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50"
+          onClick={() => setShowSavePrompt(false)}
+        >
+          <div
+            className="rounded-2xl p-5 w-[320px] shadow-2xl dark:bg-dark-primary bg-light-secondary border"
+            style={{ borderColor: toRgba(colors.fourth, 0.2) }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold dark:text-dark-text text-light-text mb-3">
+              Name Your Outfit
+            </h3>
+            <input
+              type="text"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSaveOutfit()}
+              placeholder="e.g. Smart Casual Friday"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border text-xs dark:bg-dark-primary bg-white dark:text-dark-text text-light-text focus:outline-none focus:ring-1 transition-all"
+              style={{ borderColor: toRgba(colors.fourth, 0.3), outlineColor: colors.fourth }}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowSavePrompt(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border dark:text-dark-text/60 text-light-text/60 transition-all hover:shadow-sm"
+                style={{ borderColor: toRgba(colors.fourth, 0.2) }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveOutfit}
+                disabled={savingOutfit}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center gap-1"
+                style={{ backgroundColor: colors.fourth }}
+              >
+                {savingOutfit ? <CircularProgress size={10} style={{ color: "white" }} /> : <Save style={{ fontSize: 13 }} />}
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Lightbox ─────────────────────────────────────────────────────── */}
+      {lightboxOpen && suggestion && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div
+            className="relative w-[90vw] max-w-[400px] aspect-square rounded-2xl overflow-hidden shadow-2xl"
+            style={{ backgroundColor: "#f5f5f0" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!hasAnySwap && suggestion?.flatlayUrl ? (
+              <img
+                src={suggestion.flatlayUrl}
+                alt="Outfit flat-lay"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center p-4">
+                <OutfitFlatLay
+                  top={topItem}
+                  bottom={effectiveBottom}
+                  layer={effectiveLayer}
+                  footwear={effectiveFootwear}
+                  size="lg"
+                  wardrobeMatches={wardrobeMatches}
+                />
+              </div>
+            )}
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center text-sm font-bold transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

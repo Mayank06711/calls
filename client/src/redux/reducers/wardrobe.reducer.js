@@ -60,6 +60,11 @@ import {
   FETCH_WEAR_STATS_REQUEST,
   FETCH_WEAR_STATS_SUCCESS,
   FETCH_WEAR_STATS_FAILURE,
+  FETCH_PLANNED_WEARS_REQUEST,
+  FETCH_PLANNED_WEARS_SUCCESS,
+  FETCH_PLANNED_WEARS_FAILURE,
+  MARK_PLANNED_WORN_SUCCESS,
+  DELETE_PLANNED_WEAR_SUCCESS,
   FETCH_PRODUCT_CATALOG_REQUEST,
   FETCH_PRODUCT_CATALOG_SUCCESS,
   FETCH_PRODUCT_CATALOG_FAILURE,
@@ -73,6 +78,22 @@ import {
   CLEAR_PREVIEW_FLATLAY,
   SET_PROCESSING_ERROR,
   UPDATE_ITEM_PROCESSING_STATUS,
+  FETCH_COLLECTIONS_REQUEST,
+  FETCH_COLLECTIONS_SUCCESS,
+  FETCH_COLLECTIONS_FAILURE,
+  CREATE_COLLECTION_REQUEST,
+  CREATE_COLLECTION_SUCCESS,
+  CREATE_COLLECTION_FAILURE,
+  UPDATE_COLLECTION_REQUEST,
+  UPDATE_COLLECTION_SUCCESS,
+  UPDATE_COLLECTION_FAILURE,
+  DELETE_COLLECTION_REQUEST,
+  DELETE_COLLECTION_SUCCESS,
+  DELETE_COLLECTION_FAILURE,
+  ADD_ITEMS_TO_COLLECTION_SUCCESS,
+  REMOVE_ITEMS_FROM_COLLECTION_SUCCESS,
+  SET_ACTIVE_COLLECTION,
+  SHARE_OUTFIT_SUCCESS,
 } from "../action_creators";
 
 const initialState = {
@@ -132,6 +153,7 @@ const initialState = {
     slots: [
       { key: 'top', type: 'Top', label: 'Top', emoji: '👕', item: null },
       { key: 'bottom', type: 'Bottom', label: 'Bottom', emoji: '👖', item: null },
+      { key: 'full_body', type: 'Full Body', label: 'Full Body', emoji: '👗', item: null },
       { key: 'layer', type: 'Outerwear', label: 'Layer', emoji: '🧥', item: null },
       { key: 'footwear', type: 'Shoes', label: 'Shoes', emoji: '👟', item: null },
     ],
@@ -149,10 +171,22 @@ const initialState = {
     page: 1,
     totalPages: 1,
   },
+  plannedWears: {
+    loading: false,
+    error: null,
+    items: [],
+  },
   productCatalog: {
     loading: false,
     error: null,
     products: [],
+  },
+  collections: {
+    loading: false,
+    creating: false,
+    error: null,
+    list: [],
+    activeId: null,
   },
 };
 
@@ -255,6 +289,13 @@ const wardrobeReducer = (state = initialState, action) => {
           deleting: null,
           items: state.closet.items.filter((item) => item._id !== action.payload),
           totalCount: state.closet.totalCount - 1,
+        },
+        collections: {
+          ...state.collections,
+          list: state.collections.list.map((c) => ({
+            ...c,
+            itemIds: c.itemIds.filter((id) => (typeof id === "object" ? id._id : id) !== action.payload),
+          })),
         },
       };
     case DELETE_CLOTH_FAILURE:
@@ -469,6 +510,30 @@ const wardrobeReducer = (state = initialState, action) => {
     case FETCH_WEAR_STATS_FAILURE:
       return { ...state, wearLog: { ...state.wearLog, loading: false, error: action.payload } };
 
+    // ─── Planned Wears ──────────────────────────────────────────────
+    case FETCH_PLANNED_WEARS_REQUEST:
+      return { ...state, plannedWears: { ...state.plannedWears, loading: true, error: null } };
+    case FETCH_PLANNED_WEARS_SUCCESS:
+      return { ...state, plannedWears: { ...state.plannedWears, loading: false, items: action.payload } };
+    case FETCH_PLANNED_WEARS_FAILURE:
+      return { ...state, plannedWears: { ...state.plannedWears, loading: false, error: action.payload } };
+    case MARK_PLANNED_WORN_SUCCESS:
+      return {
+        ...state,
+        plannedWears: {
+          ...state.plannedWears,
+          items: state.plannedWears.items.filter((p) => p._id !== action.payload),
+        },
+      };
+    case DELETE_PLANNED_WEAR_SUCCESS:
+      return {
+        ...state,
+        plannedWears: {
+          ...state.plannedWears,
+          items: state.plannedWears.items.filter((p) => p._id !== action.payload),
+        },
+      };
+
     // ─── Product Catalog ────────────────────────────────────────────
     case FETCH_PRODUCT_CATALOG_REQUEST:
       return { ...state, productCatalog: { ...state.productCatalog, loading: true, error: null } };
@@ -506,6 +571,86 @@ const wardrobeReducer = (state = initialState, action) => {
                   ...action.payload.data,
                 }
               : item
+          ),
+        },
+      };
+
+    // ─── Collections ────────────────────────────────────────────
+    case FETCH_COLLECTIONS_REQUEST:
+      return { ...state, collections: { ...state.collections, loading: true, error: null } };
+    case FETCH_COLLECTIONS_SUCCESS:
+      return { ...state, collections: { ...state.collections, loading: false, list: action.payload } };
+    case FETCH_COLLECTIONS_FAILURE:
+      return { ...state, collections: { ...state.collections, loading: false, error: action.payload } };
+
+    case CREATE_COLLECTION_REQUEST:
+      return { ...state, collections: { ...state.collections, creating: true, error: null } };
+    case CREATE_COLLECTION_SUCCESS:
+      return {
+        ...state,
+        collections: {
+          ...state.collections,
+          creating: false,
+          list: [action.payload, ...state.collections.list],
+        },
+      };
+    case CREATE_COLLECTION_FAILURE:
+      return { ...state, collections: { ...state.collections, creating: false, error: action.payload } };
+
+    case UPDATE_COLLECTION_REQUEST:
+      return { ...state, collections: { ...state.collections, error: null } };
+    case UPDATE_COLLECTION_SUCCESS:
+      return {
+        ...state,
+        collections: {
+          ...state.collections,
+          list: state.collections.list.map((c) =>
+            c._id === action.payload._id ? action.payload : c
+          ),
+        },
+      };
+    case UPDATE_COLLECTION_FAILURE:
+      return { ...state, collections: { ...state.collections, error: action.payload } };
+
+    case DELETE_COLLECTION_REQUEST:
+      return { ...state, collections: { ...state.collections, error: null } };
+    case DELETE_COLLECTION_SUCCESS:
+      return {
+        ...state,
+        collections: {
+          ...state.collections,
+          list: state.collections.list.filter((c) => c._id !== action.payload),
+          activeId: state.collections.activeId === action.payload ? null : state.collections.activeId,
+        },
+      };
+    case DELETE_COLLECTION_FAILURE:
+      return { ...state, collections: { ...state.collections, error: action.payload } };
+
+    case ADD_ITEMS_TO_COLLECTION_SUCCESS:
+    case REMOVE_ITEMS_FROM_COLLECTION_SUCCESS:
+      return {
+        ...state,
+        collections: {
+          ...state.collections,
+          list: state.collections.list.map((c) =>
+            c._id === action.payload._id ? action.payload : c
+          ),
+        },
+      };
+
+    case SET_ACTIVE_COLLECTION:
+      return { ...state, collections: { ...state.collections, activeId: action.payload } };
+
+    // ─── Sharing ───────────────────────────────────────────────
+    case SHARE_OUTFIT_SUCCESS:
+      return {
+        ...state,
+        outfits: {
+          ...state.outfits,
+          saved: state.outfits.saved.map((o) =>
+            o._id === action.payload.outfitId
+              ? { ...o, shareToken: action.payload.shareToken, isPublic: true }
+              : o
           ),
         },
       };

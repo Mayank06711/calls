@@ -1,674 +1,674 @@
 {
   "Short Kurta": {
     "Male": [
-      { "name": "Manyavar Cotton Short Kurta", "image": "https://demo.kyf.app/catalog/m-short-kurta-1.jpg", "link": "https://www.manyavar.com", "price": 1999, "brand": "Manyavar", "platform": "Manyavar", "color": "White" },
-      { "name": "FabIndia Block Print Short Kurta", "image": "https://demo.kyf.app/catalog/m-short-kurta-2.jpg", "link": "https://www.fabindia.com", "price": 1490, "brand": "FabIndia", "platform": "FabIndia", "color": "Blue" },
-      { "name": "Peter England Festive Kurta", "image": "https://demo.kyf.app/catalog/m-short-kurta-3.jpg", "link": "https://www.peterengland.com", "price": 1299, "brand": "Peter England", "platform": "Myntra", "color": "Beige" }
+      { "name": "Manyavar Cotton Short Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/1.webp", "link": "https://www.manyavar.com", "price": 1999, "brand": "Manyavar", "platform": "Manyavar", "color": "White" },
+      { "name": "FabIndia Block Print Short Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/2.webp", "link": "https://www.fabindia.com", "price": 1490, "brand": "FabIndia", "platform": "FabIndia", "color": "Blue" },
+      { "name": "Peter England Festive Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/3.webp", "link": "https://www.peterengland.com", "price": 1299, "brand": "Peter England", "platform": "Myntra", "color": "Beige" }
     ],
     "Female": []
   },
   "Long Kurta": {
     "Male": [
-      { "name": "Manyavar Silk Blend Long Kurta", "image": "https://demo.kyf.app/catalog/m-long-kurta-1.jpg", "link": "https://www.manyavar.com", "price": 3499, "brand": "Manyavar", "platform": "Manyavar", "color": "Maroon" },
-      { "name": "FabIndia Handloom Long Kurta", "image": "https://demo.kyf.app/catalog/m-long-kurta-2.jpg", "link": "https://www.fabindia.com", "price": 2290, "brand": "FabIndia", "platform": "FabIndia", "color": "Olive" },
-      { "name": "Sojanya Cotton Long Kurta", "image": "https://demo.kyf.app/catalog/m-long-kurta-3.jpg", "link": "https://www.amazon.in", "price": 899, "brand": "Sojanya", "platform": "Amazon", "color": "White" }
+      { "name": "Manyavar Silk Blend Long Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/4.webp", "link": "https://www.manyavar.com", "price": 3499, "brand": "Manyavar", "platform": "Manyavar", "color": "Maroon" },
+      { "name": "FabIndia Handloom Long Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/men-check-shirt/1.webp", "link": "https://www.fabindia.com", "price": 2290, "brand": "FabIndia", "platform": "FabIndia", "color": "Olive" },
+      { "name": "Sojanya Cotton Long Kurta", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/men-check-shirt/2.webp", "link": "https://www.amazon.in", "price": 899, "brand": "Sojanya", "platform": "Amazon", "color": "White" }
     ],
     "Female": []
   },
   "Pathani Kurta": {
     "Male": [
-      { "name": "Manyavar Pathani Suit Set", "image": "https://demo.kyf.app/catalog/m-pathani-1.jpg", "link": "https://www.manyavar.com", "price": 4299, "brand": "Manyavar", "platform": "Manyavar", "color": "Navy" },
-      { "name": "Royal Kurta Pathani Set", "image": "https://demo.kyf.app/catalog/m-pathani-2.jpg", "link": "https://www.amazon.in", "price": 1199, "brand": "Royal Kurta", "platform": "Amazon", "color": "Black" }
+      { "name": "Manyavar Pathani Suit Set", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/men-check-shirt/3.webp", "link": "https://www.manyavar.com", "price": 4299, "brand": "Manyavar", "platform": "Manyavar", "color": "Navy" },
+      { "name": "Royal Kurta Pathani Set", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/men-check-shirt/4.webp", "link": "https://www.amazon.in", "price": 1199, "brand": "Royal Kurta", "platform": "Amazon", "color": "Black" }
     ],
     "Female": []
   },
   "Nehru Jacket": {
     "Male": [
-      { "name": "Manyavar Silk Nehru Jacket", "image": "https://demo.kyf.app/catalog/m-nehru-1.jpg", "link": "https://www.manyavar.com", "price": 3999, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
-      { "name": "Raymond Bandhgala Nehru Jacket", "image": "https://demo.kyf.app/catalog/m-nehru-2.jpg", "link": "https://www.raymond.in", "price": 5999, "brand": "Raymond", "platform": "Raymond", "color": "Charcoal Grey" },
-      { "name": "FabIndia Cotton Nehru Jacket", "image": "https://demo.kyf.app/catalog/m-nehru-3.jpg", "link": "https://www.fabindia.com", "price": 2490, "brand": "FabIndia", "platform": "FabIndia", "color": "Cream" }
+      { "name": "Manyavar Silk Nehru Jacket", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.manyavar.com", "price": 3999, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
+      { "name": "Raymond Bandhgala Nehru Jacket", "image": "https://i.imgur.com/IvxMPFr.jpeg", "link": "https://www.raymond.in", "price": 5999, "brand": "Raymond", "platform": "Raymond", "color": "Charcoal Grey" },
+      { "name": "FabIndia Cotton Nehru Jacket", "image": "https://i.imgur.com/7eW9nXP.jpeg", "link": "https://www.fabindia.com", "price": 2490, "brand": "FabIndia", "platform": "FabIndia", "color": "Cream" }
     ],
     "Female": []
   },
   "Formal Shirt": {
     "Male": [
-      { "name": "Van Heusen Slim Fit Formal Shirt", "image": "https://demo.kyf.app/catalog/m-formal-shirt-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Van Heusen", "platform": "Myntra", "color": "White" },
-      { "name": "Arrow Regular Fit Formal Shirt", "image": "https://demo.kyf.app/catalog/m-formal-shirt-2.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Arrow", "platform": "Myntra", "color": "Light Blue" },
-      { "name": "Raymond Premium Formal Shirt", "image": "https://demo.kyf.app/catalog/m-formal-shirt-3.jpg", "link": "https://www.raymond.in", "price": 2499, "brand": "Raymond", "platform": "Raymond", "color": "Pink" }
+      { "name": "Van Heusen Slim Fit Formal Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/1.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "Van Heusen", "platform": "Myntra", "color": "White" },
+      { "name": "Arrow Regular Fit Formal Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/1.webp", "link": "https://www.myntra.com", "price": 1799, "brand": "Arrow", "platform": "Myntra", "color": "Light Blue" },
+      { "name": "Raymond Premium Formal Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/1.webp", "link": "https://www.raymond.in", "price": 2499, "brand": "Raymond", "platform": "Raymond", "color": "Pink" }
     ],
     "Female": [
-      { "name": "Van Heusen Women Formal Shirt", "image": "https://demo.kyf.app/catalog/f-formal-shirt-1.jpg", "link": "https://www.myntra.com", "price": 1399, "brand": "Van Heusen", "platform": "Myntra", "color": "White" },
-      { "name": "Allen Solly Women Formal Shirt", "image": "https://demo.kyf.app/catalog/f-formal-shirt-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Allen Solly", "platform": "Myntra", "color": "Baby Blue" },
-      { "name": "Marks & Spencer Formal Blouse", "image": "https://demo.kyf.app/catalog/f-formal-shirt-3.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Marks & Spencer", "platform": "Myntra", "color": "Cream" }
+      { "name": "Van Heusen Women Formal Shirt", "image": "https://cdn.dummyjson.com/product-images/tops/gray-dress/1.webp", "link": "https://www.myntra.com", "price": 1399, "brand": "Van Heusen", "platform": "Myntra", "color": "White" },
+      { "name": "Allen Solly Women Formal Shirt", "image": "https://cdn.dummyjson.com/product-images/tops/blue-frock/1.webp", "link": "https://www.myntra.com", "price": 1299, "brand": "Allen Solly", "platform": "Myntra", "color": "Baby Blue" },
+      { "name": "Marks & Spencer Formal Blouse", "image": "https://cdn.dummyjson.com/product-images/tops/tartan-dress/1.webp", "link": "https://www.myntra.com", "price": 1999, "brand": "Marks & Spencer", "platform": "Myntra", "color": "Cream" }
     ]
   },
   "Casual Shirt": {
     "Male": [
-      { "name": "Levi's Checkered Casual Shirt", "image": "https://demo.kyf.app/catalog/m-casual-shirt-1.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Levi's", "platform": "Myntra", "color": "Red" },
-      { "name": "H&M Cotton Casual Shirt", "image": "https://demo.kyf.app/catalog/m-casual-shirt-2.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Navy" },
-      { "name": "USPA Oxford Casual Shirt", "image": "https://demo.kyf.app/catalog/m-casual-shirt-3.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "US Polo Assn", "platform": "Myntra", "color": "Olive" }
+      { "name": "Levi's Checkered Casual Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/2.webp", "link": "https://www.myntra.com", "price": 1799, "brand": "Levi's", "platform": "Myntra", "color": "Red" },
+      { "name": "H&M Cotton Casual Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/3.webp", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Navy" },
+      { "name": "USPA Oxford Casual Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/2.webp", "link": "https://www.myntra.com", "price": 1599, "brand": "US Polo Assn", "platform": "Myntra", "color": "Olive" }
     ],
     "Female": []
   },
   "Polo T-Shirt": {
     "Male": [
-      { "name": "US Polo Assn Classic Polo", "image": "https://demo.kyf.app/catalog/m-polo-1.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "US Polo Assn", "platform": "Myntra", "color": "Navy" },
-      { "name": "Lacoste Slim Fit Polo", "image": "https://demo.kyf.app/catalog/m-polo-2.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Lacoste", "platform": "Myntra", "color": "White" },
-      { "name": "Allen Solly Cotton Polo", "image": "https://demo.kyf.app/catalog/m-polo-3.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Allen Solly", "platform": "Myntra", "color": "Black" }
+      { "name": "US Polo Assn Classic Polo", "image": "https://i.imgur.com/QkIa5tT.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "US Polo Assn", "platform": "Myntra", "color": "Navy" },
+      { "name": "Lacoste Slim Fit Polo", "image": "https://i.imgur.com/jb5Yu0h.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Lacoste", "platform": "Myntra", "color": "White" },
+      { "name": "Allen Solly Cotton Polo", "image": "https://i.imgur.com/UlxxXyG.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "Allen Solly", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Round Neck T-Shirt": {
     "Male": [
-      { "name": "Bewakoof Graphic T-Shirt", "image": "https://demo.kyf.app/catalog/m-tshirt-1.jpg", "link": "https://www.bewakoof.com", "price": 499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
-      { "name": "H&M Basic Round Neck Tee", "image": "https://demo.kyf.app/catalog/m-tshirt-2.jpg", "link": "https://www.myntra.com", "price": 599, "brand": "H&M", "platform": "Myntra", "color": "White" },
-      { "name": "Jockey Cotton T-Shirt", "image": "https://demo.kyf.app/catalog/m-tshirt-3.jpg", "link": "https://www.myntra.com", "price": 699, "brand": "Jockey", "platform": "Myntra", "color": "Grey" }
+      { "name": "Bewakoof Graphic T-Shirt", "image": "https://i.imgur.com/9DqEOV5.jpeg", "link": "https://www.bewakoof.com", "price": 499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
+      { "name": "H&M Basic Round Neck Tee", "image": "https://i.imgur.com/axsyGpD.jpeg", "link": "https://www.myntra.com", "price": 599, "brand": "H&M", "platform": "Myntra", "color": "White" },
+      { "name": "Jockey Cotton T-Shirt", "image": "https://i.imgur.com/Y54Bt8J.jpeg", "link": "https://www.myntra.com", "price": 699, "brand": "Jockey", "platform": "Myntra", "color": "Grey" }
     ],
     "Female": []
   },
   "Hoodie": {
     "Male": [
-      { "name": "H&M Relaxed Fit Hoodie", "image": "https://demo.kyf.app/catalog/m-hoodie-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Black" },
-      { "name": "Bewakoof Oversized Hoodie", "image": "https://demo.kyf.app/catalog/m-hoodie-2.jpg", "link": "https://www.bewakoof.com", "price": 999, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Olive" },
-      { "name": "Nike Sportswear Club Hoodie", "image": "https://demo.kyf.app/catalog/m-hoodie-3.jpg", "link": "https://www.myntra.com", "price": 2995, "brand": "Nike", "platform": "Myntra", "color": "Navy" }
+      { "name": "H&M Relaxed Fit Hoodie", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Black" },
+      { "name": "Bewakoof Oversized Hoodie", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.bewakoof.com", "price": 999, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Olive" },
+      { "name": "Nike Sportswear Club Hoodie", "image": "https://i.imgur.com/1twoaDy.jpeg", "link": "https://www.myntra.com", "price": 2995, "brand": "Nike", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Sherwani": {
     "Male": [
-      { "name": "Manyavar Designer Sherwani", "image": "https://demo.kyf.app/catalog/m-sherwani-1.jpg", "link": "https://www.manyavar.com", "price": 12999, "brand": "Manyavar", "platform": "Manyavar", "color": "Ivory" },
-      { "name": "Raymond Wedding Sherwani", "image": "https://demo.kyf.app/catalog/m-sherwani-2.jpg", "link": "https://www.raymond.in", "price": 15999, "brand": "Raymond", "platform": "Raymond", "color": "Gold" },
-      { "name": "Vastramay Jacquard Sherwani", "image": "https://demo.kyf.app/catalog/m-sherwani-3.jpg", "link": "https://www.amazon.in", "price": 3999, "brand": "Vastramay", "platform": "Amazon", "color": "Maroon" }
+      { "name": "Manyavar Designer Sherwani", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/3.webp", "link": "https://www.manyavar.com", "price": 12999, "brand": "Manyavar", "platform": "Manyavar", "color": "Ivory" },
+      { "name": "Raymond Wedding Sherwani", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/4.webp", "link": "https://www.raymond.in", "price": 15999, "brand": "Raymond", "platform": "Raymond", "color": "Gold" },
+      { "name": "Vastramay Jacquard Sherwani", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/4.webp", "link": "https://www.amazon.in", "price": 3999, "brand": "Vastramay", "platform": "Amazon", "color": "Maroon" }
     ],
     "Female": []
   },
   "Bandhgala Jacket": {
     "Male": [
-      { "name": "Raymond Bandhgala Blazer", "image": "https://demo.kyf.app/catalog/m-bandhgala-1.jpg", "link": "https://www.raymond.in", "price": 7999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" },
-      { "name": "Manyavar Bandhgala Suit", "image": "https://demo.kyf.app/catalog/m-bandhgala-2.jpg", "link": "https://www.manyavar.com", "price": 6499, "brand": "Manyavar", "platform": "Manyavar", "color": "Black" }
+      { "name": "Raymond Bandhgala Blazer", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.raymond.in", "price": 7999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" },
+      { "name": "Manyavar Bandhgala Suit", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.manyavar.com", "price": 6499, "brand": "Manyavar", "platform": "Manyavar", "color": "Black" }
     ],
     "Female": []
   },
   "Sweatshirt": {
     "Male": [
-      { "name": "H&M Regular Fit Sweatshirt", "image": "https://demo.kyf.app/catalog/m-sweatshirt-1.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Grey" },
-      { "name": "Bewakoof Fleece Sweatshirt", "image": "https://demo.kyf.app/catalog/m-sweatshirt-2.jpg", "link": "https://www.bewakoof.com", "price": 799, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" }
+      { "name": "H&M Regular Fit Sweatshirt", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Grey" },
+      { "name": "Bewakoof Fleece Sweatshirt", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.bewakoof.com", "price": 799, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" }
     ],
     "Female": []
   },
   "Winter Coat": {
     "Male": [
-      { "name": "Roadster Wool Blend Overcoat", "image": "https://demo.kyf.app/catalog/m-coat-1.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Roadster", "platform": "Myntra", "color": "Charcoal Grey" },
-      { "name": "H&M Wool Coat", "image": "https://demo.kyf.app/catalog/m-coat-2.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "H&M", "platform": "Myntra", "color": "Camel" }
+      { "name": "Roadster Wool Blend Overcoat", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.myntra.com", "price": 2999, "brand": "Roadster", "platform": "Myntra", "color": "Charcoal Grey" },
+      { "name": "H&M Wool Coat", "image": "https://i.imgur.com/CFOjAgK.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "H&M", "platform": "Myntra", "color": "Camel" }
     ],
     "Female": []
   },
   "Kurti (Short)": {
     "Male": [],
     "Female": [
-      { "name": "Biba Cotton Short Kurti", "image": "https://demo.kyf.app/catalog/f-short-kurti-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Biba", "platform": "Myntra", "color": "Mustard" },
-      { "name": "W Printed Short Kurti", "image": "https://demo.kyf.app/catalog/f-short-kurti-2.jpg", "link": "https://www.myntra.com", "price": 849, "brand": "W", "platform": "Myntra", "color": "Teal" },
-      { "name": "FabIndia Block Print Kurti", "image": "https://demo.kyf.app/catalog/f-short-kurti-3.jpg", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "Red" }
+      { "name": "Biba Cotton Short Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/short-frock/1.webp", "link": "https://www.myntra.com", "price": 999, "brand": "Biba", "platform": "Myntra", "color": "Mustard" },
+      { "name": "W Printed Short Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/short-frock/2.webp", "link": "https://www.myntra.com", "price": 849, "brand": "W", "platform": "Myntra", "color": "Teal" },
+      { "name": "FabIndia Block Print Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/short-frock/3.webp", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "Red" }
     ]
   },
   "Kurti (Long/Straight)": {
     "Male": [],
     "Female": [
-      { "name": "Biba Straight Fit Long Kurti", "image": "https://demo.kyf.app/catalog/f-long-kurti-1.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Biba", "platform": "Myntra", "color": "Navy" },
-      { "name": "Aurelia Embroidered Kurti", "image": "https://demo.kyf.app/catalog/f-long-kurti-2.jpg", "link": "https://www.myntra.com", "price": 1099, "brand": "Aurelia", "platform": "Myntra", "color": "Maroon" },
-      { "name": "Global Desi Printed Kurti", "image": "https://demo.kyf.app/catalog/f-long-kurti-3.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Global Desi", "platform": "Myntra", "color": "Olive" }
+      { "name": "Biba Straight Fit Long Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/blue-frock/1.webp", "link": "https://www.myntra.com", "price": 1299, "brand": "Biba", "platform": "Myntra", "color": "Navy" },
+      { "name": "Aurelia Embroidered Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/blue-frock/2.webp", "link": "https://www.myntra.com", "price": 1099, "brand": "Aurelia", "platform": "Myntra", "color": "Maroon" },
+      { "name": "Global Desi Printed Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/blue-frock/3.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "Global Desi", "platform": "Myntra", "color": "Olive" }
     ]
   },
   "Kurti (Frock Style)": {
     "Male": [],
     "Female": [
-      { "name": "Biba Frock Style Kurti", "image": "https://demo.kyf.app/catalog/f-frock-kurti-1.jpg", "link": "https://www.myntra.com", "price": 1199, "brand": "Biba", "platform": "Myntra", "color": "Coral" },
-      { "name": "Libas A-Line Frock Kurti", "image": "https://demo.kyf.app/catalog/f-frock-kurti-2.jpg", "link": "https://www.myntra.com", "price": 899, "brand": "Libas", "platform": "Myntra", "color": "Dusty Rose" }
+      { "name": "Biba Frock Style Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/blue-frock/4.webp", "link": "https://www.myntra.com", "price": 1199, "brand": "Biba", "platform": "Myntra", "color": "Coral" },
+      { "name": "Libas A-Line Frock Kurti", "image": "https://cdn.dummyjson.com/product-images/tops/gray-dress/2.webp", "link": "https://www.myntra.com", "price": 899, "brand": "Libas", "platform": "Myntra", "color": "Dusty Rose" }
     ]
   },
   "Anarkali": {
     "Male": [],
     "Female": [
-      { "name": "Biba Anarkali Kurta Set", "image": "https://demo.kyf.app/catalog/f-anarkali-1.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Biba", "platform": "Myntra", "color": "Deep Wine" },
-      { "name": "Libas Embroidered Anarkali", "image": "https://demo.kyf.app/catalog/f-anarkali-2.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Libas", "platform": "Myntra", "color": "Emerald" },
-      { "name": "FabIndia Cotton Anarkali", "image": "https://demo.kyf.app/catalog/f-anarkali-3.jpg", "link": "https://www.fabindia.com", "price": 2790, "brand": "FabIndia", "platform": "FabIndia", "color": "Mustard" }
+      { "name": "Biba Anarkali Kurta Set", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/black-women's-gown/1.webp", "link": "https://www.myntra.com", "price": 2499, "brand": "Biba", "platform": "Myntra", "color": "Deep Wine" },
+      { "name": "Libas Embroidered Anarkali", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/dress-pea/1.webp", "link": "https://www.myntra.com", "price": 1999, "brand": "Libas", "platform": "Myntra", "color": "Emerald" },
+      { "name": "FabIndia Cotton Anarkali", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/dress-pea/2.webp", "link": "https://www.fabindia.com", "price": 2790, "brand": "FabIndia", "platform": "FabIndia", "color": "Mustard" }
     ]
   },
   "Saree Blouse": {
     "Male": [],
     "Female": [
-      { "name": "Satrani Readymade Saree Blouse", "image": "https://demo.kyf.app/catalog/f-blouse-1.jpg", "link": "https://www.amazon.in", "price": 599, "brand": "Satrani", "platform": "Amazon", "color": "Gold" },
-      { "name": "Elanic Designer Blouse", "image": "https://demo.kyf.app/catalog/f-blouse-2.jpg", "link": "https://www.myntra.com", "price": 899, "brand": "Elanic", "platform": "Myntra", "color": "Red" }
+      { "name": "Satrani Readymade Saree Blouse", "image": "https://cdn.dummyjson.com/product-images/tops/tartan-dress/2.webp", "link": "https://www.amazon.in", "price": 599, "brand": "Satrani", "platform": "Amazon", "color": "Gold" },
+      { "name": "Elanic Designer Blouse", "image": "https://cdn.dummyjson.com/product-images/tops/tartan-dress/3.webp", "link": "https://www.myntra.com", "price": 899, "brand": "Elanic", "platform": "Myntra", "color": "Red" }
     ]
   },
   "Casual Top/T-Shirt": {
     "Male": [],
     "Female": [
-      { "name": "H&M Cotton T-Shirt", "image": "https://demo.kyf.app/catalog/f-tshirt-1.jpg", "link": "https://www.myntra.com", "price": 599, "brand": "H&M", "platform": "Myntra", "color": "White" },
-      { "name": "ONLY Casual Top", "image": "https://demo.kyf.app/catalog/f-tshirt-2.jpg", "link": "https://www.myntra.com", "price": 799, "brand": "ONLY", "platform": "Myntra", "color": "Black" },
-      { "name": "Zara Ribbed T-Shirt", "image": "https://demo.kyf.app/catalog/f-tshirt-3.jpg", "link": "https://www.zara.com", "price": 1290, "brand": "Zara", "platform": "Zara", "color": "Beige" }
+      { "name": "H&M Cotton T-Shirt", "image": "https://cdn.dummyjson.com/product-images/tops/girl-summer-dress/1.webp", "link": "https://www.myntra.com", "price": 599, "brand": "H&M", "platform": "Myntra", "color": "White" },
+      { "name": "ONLY Casual Top", "image": "https://cdn.dummyjson.com/product-images/tops/girl-summer-dress/2.webp", "link": "https://www.myntra.com", "price": 799, "brand": "ONLY", "platform": "Myntra", "color": "Black" },
+      { "name": "Zara Ribbed T-Shirt", "image": "https://cdn.dummyjson.com/product-images/tops/girl-summer-dress/3.webp", "link": "https://www.zara.com", "price": 1290, "brand": "Zara", "platform": "Zara", "color": "Beige" }
     ]
   },
   "Crop Top": {
     "Male": [],
     "Female": [
-      { "name": "H&M Ribbed Crop Top", "image": "https://demo.kyf.app/catalog/f-croptop-1.jpg", "link": "https://www.myntra.com", "price": 499, "brand": "H&M", "platform": "Myntra", "color": "Black" },
-      { "name": "ONLY Crop Top", "image": "https://demo.kyf.app/catalog/f-croptop-2.jpg", "link": "https://www.myntra.com", "price": 699, "brand": "ONLY", "platform": "Myntra", "color": "White" }
+      { "name": "H&M Ribbed Crop Top", "image": "https://cdn.dummyjson.com/product-images/tops/gray-dress/3.webp", "link": "https://www.myntra.com", "price": 499, "brand": "H&M", "platform": "Myntra", "color": "Black" },
+      { "name": "ONLY Crop Top", "image": "https://cdn.dummyjson.com/product-images/tops/gray-dress/4.webp", "link": "https://www.myntra.com", "price": 699, "brand": "ONLY", "platform": "Myntra", "color": "White" }
     ]
   },
   "Blazer": {
     "Male": [
-      { "name": "Raymond Slim Fit Blazer", "image": "https://demo.kyf.app/catalog/m-blazer-1.jpg", "link": "https://www.raymond.in", "price": 5999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" },
-      { "name": "Van Heusen Formal Blazer", "image": "https://demo.kyf.app/catalog/m-blazer-2.jpg", "link": "https://www.myntra.com", "price": 4499, "brand": "Van Heusen", "platform": "Myntra", "color": "Charcoal Grey" }
+      { "name": "Raymond Slim Fit Blazer", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.raymond.in", "price": 5999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" },
+      { "name": "Van Heusen Formal Blazer", "image": "https://i.imgur.com/IvxMPFr.jpeg", "link": "https://www.myntra.com", "price": 4499, "brand": "Van Heusen", "platform": "Myntra", "color": "Charcoal Grey" }
     ],
     "Female": [
-      { "name": "Vero Moda Formal Blazer", "image": "https://demo.kyf.app/catalog/f-blazer-1.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Vero Moda", "platform": "Myntra", "color": "Black" },
-      { "name": "H&M Oversized Blazer", "image": "https://demo.kyf.app/catalog/f-blazer-2.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "H&M", "platform": "Myntra", "color": "Beige" }
+      { "name": "Vero Moda Formal Blazer", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/marni-red-&-black-suit/1.webp", "link": "https://www.myntra.com", "price": 2999, "brand": "Vero Moda", "platform": "Myntra", "color": "Black" },
+      { "name": "H&M Oversized Blazer", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/marni-red-&-black-suit/2.webp", "link": "https://www.myntra.com", "price": 2499, "brand": "H&M", "platform": "Myntra", "color": "Beige" }
     ]
   },
   "Jeans": {
     "Male": [
-      { "name": "Levi's 511 Slim Fit Jeans", "image": "https://demo.kyf.app/catalog/m-jeans-1.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
-      { "name": "Wrangler Regular Fit Jeans", "image": "https://demo.kyf.app/catalog/m-jeans-2.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Wrangler", "platform": "Myntra", "color": "Dark Brown" },
-      { "name": "H&M Skinny Jeans", "image": "https://demo.kyf.app/catalog/m-jeans-3.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Black" }
+      { "name": "Levi's 511 Slim Fit Jeans", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
+      { "name": "Wrangler Regular Fit Jeans", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 1799, "brand": "Wrangler", "platform": "Myntra", "color": "Dark Brown" },
+      { "name": "H&M Skinny Jeans", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Black" }
     ],
     "Female": [
-      { "name": "Levi's Women Skinny Jeans", "image": "https://demo.kyf.app/catalog/f-jeans-1.jpg", "link": "https://www.myntra.com", "price": 2299, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
-      { "name": "ONLY Women Straight Jeans", "image": "https://demo.kyf.app/catalog/f-jeans-2.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "ONLY", "platform": "Myntra", "color": "Black" },
-      { "name": "H&M Mom Jeans", "image": "https://demo.kyf.app/catalog/f-jeans-3.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Light Blue" }
+      { "name": "Levi's Women Skinny Jeans", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 2299, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
+      { "name": "ONLY Women Straight Jeans", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 1599, "brand": "ONLY", "platform": "Myntra", "color": "Black" },
+      { "name": "H&M Mom Jeans", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Light Blue" }
     ]
   },
   "Chinos": {
     "Male": [
-      { "name": "Allen Solly Cotton Chinos", "image": "https://demo.kyf.app/catalog/m-chinos-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Allen Solly", "platform": "Myntra", "color": "Khaki" },
-      { "name": "H&M Slim Fit Chinos", "image": "https://demo.kyf.app/catalog/m-chinos-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Olive" },
-      { "name": "Peter England Chinos", "image": "https://demo.kyf.app/catalog/m-chinos-3.jpg", "link": "https://www.myntra.com", "price": 1199, "brand": "Peter England", "platform": "Myntra", "color": "Navy" }
+      { "name": "Allen Solly Cotton Chinos", "image": "https://i.imgur.com/UsFIvYs.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "Allen Solly", "platform": "Myntra", "color": "Khaki" },
+      { "name": "H&M Slim Fit Chinos", "image": "https://i.imgur.com/YIq57b6.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "H&M", "platform": "Myntra", "color": "Olive" },
+      { "name": "Peter England Chinos", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 1199, "brand": "Peter England", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Formal Trousers": {
     "Male": [
-      { "name": "Raymond Formal Trousers", "image": "https://demo.kyf.app/catalog/m-formals-1.jpg", "link": "https://www.raymond.in", "price": 2499, "brand": "Raymond", "platform": "Raymond", "color": "Charcoal Grey" },
-      { "name": "Van Heusen Slim Trousers", "image": "https://demo.kyf.app/catalog/m-formals-2.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Van Heusen", "platform": "Myntra", "color": "Navy" },
-      { "name": "Arrow Regular Fit Trousers", "image": "https://demo.kyf.app/catalog/m-formals-3.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Arrow", "platform": "Myntra", "color": "Black" }
+      { "name": "Raymond Formal Trousers", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.raymond.in", "price": 2499, "brand": "Raymond", "platform": "Raymond", "color": "Charcoal Grey" },
+      { "name": "Van Heusen Slim Trousers", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1799, "brand": "Van Heusen", "platform": "Myntra", "color": "Navy" },
+      { "name": "Arrow Regular Fit Trousers", "image": "https://i.imgur.com/633Fqrz.jpeg", "link": "https://www.myntra.com", "price": 1999, "brand": "Arrow", "platform": "Myntra", "color": "Black" }
     ],
     "Female": [
-      { "name": "Van Heusen Women Trousers", "image": "https://demo.kyf.app/catalog/f-formals-1.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "Van Heusen", "platform": "Myntra", "color": "Black" },
-      { "name": "Allen Solly Women Trousers", "image": "https://demo.kyf.app/catalog/f-formals-2.jpg", "link": "https://www.myntra.com", "price": 1399, "brand": "Allen Solly", "platform": "Myntra", "color": "Navy" }
+      { "name": "Van Heusen Women Trousers", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 1599, "brand": "Van Heusen", "platform": "Myntra", "color": "Black" },
+      { "name": "Allen Solly Women Trousers", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1399, "brand": "Allen Solly", "platform": "Myntra", "color": "Navy" }
     ]
   },
   "Joggers": {
     "Male": [
-      { "name": "Nike Sportswear Club Joggers", "image": "https://demo.kyf.app/catalog/m-joggers-1.jpg", "link": "https://www.myntra.com", "price": 2495, "brand": "Nike", "platform": "Myntra", "color": "Black" },
-      { "name": "H&M Regular Fit Joggers", "image": "https://demo.kyf.app/catalog/m-joggers-2.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Grey" }
+      { "name": "Nike Sportswear Club Joggers", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 2495, "brand": "Nike", "platform": "Myntra", "color": "Black" },
+      { "name": "H&M Regular Fit Joggers", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Grey" }
     ],
     "Female": [
-      { "name": "H&M Women Joggers", "image": "https://demo.kyf.app/catalog/f-joggers-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Black" },
-      { "name": "Nike Women Sportswear Joggers", "image": "https://demo.kyf.app/catalog/f-joggers-2.jpg", "link": "https://www.myntra.com", "price": 2295, "brand": "Nike", "platform": "Myntra", "color": "Grey" }
+      { "name": "H&M Women Joggers", "image": "https://i.imgur.com/9LFjwpI.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Black" },
+      { "name": "Nike Women Sportswear Joggers", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 2295, "brand": "Nike", "platform": "Myntra", "color": "Grey" }
     ]
   },
   "Cargo Pants": {
     "Male": [
-      { "name": "Bewakoof Cargo Pants", "image": "https://demo.kyf.app/catalog/m-cargo-1.jpg", "link": "https://www.bewakoof.com", "price": 1199, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Olive" },
-      { "name": "H&M Regular Fit Cargo", "image": "https://demo.kyf.app/catalog/m-cargo-2.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Khaki" }
+      { "name": "Bewakoof Cargo Pants", "image": "https://i.imgur.com/UsFIvYs.jpeg", "link": "https://www.bewakoof.com", "price": 1199, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Olive" },
+      { "name": "H&M Regular Fit Cargo", "image": "https://i.imgur.com/YIq57b6.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Khaki" }
     ],
     "Female": []
   },
   "Pajama": {
     "Male": [
-      { "name": "Manyavar Cotton Pajama", "image": "https://demo.kyf.app/catalog/m-pajama-1.jpg", "link": "https://www.manyavar.com", "price": 999, "brand": "Manyavar", "platform": "Manyavar", "color": "White" },
-      { "name": "FabIndia Churidar Pajama", "image": "https://demo.kyf.app/catalog/m-pajama-2.jpg", "link": "https://www.fabindia.com", "price": 790, "brand": "FabIndia", "platform": "FabIndia", "color": "Off-White" }
+      { "name": "Manyavar Cotton Pajama", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.manyavar.com", "price": 999, "brand": "Manyavar", "platform": "Manyavar", "color": "White" },
+      { "name": "FabIndia Churidar Pajama", "image": "https://i.imgur.com/JQRGIc2.jpeg", "link": "https://www.fabindia.com", "price": 790, "brand": "FabIndia", "platform": "FabIndia", "color": "Off-White" }
     ],
     "Female": []
   },
   "Churidar": {
     "Male": [
-      { "name": "Manyavar Cotton Churidar", "image": "https://demo.kyf.app/catalog/m-churidar-1.jpg", "link": "https://www.manyavar.com", "price": 899, "brand": "Manyavar", "platform": "Manyavar", "color": "White" }
+      { "name": "Manyavar Cotton Churidar", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.manyavar.com", "price": 899, "brand": "Manyavar", "platform": "Manyavar", "color": "White" }
     ],
     "Female": [
-      { "name": "Aurelia Stretch Churidar", "image": "https://demo.kyf.app/catalog/f-churidar-1.jpg", "link": "https://www.myntra.com", "price": 499, "brand": "Aurelia", "platform": "Myntra", "color": "Black" },
-      { "name": "W Cotton Churidar", "image": "https://demo.kyf.app/catalog/f-churidar-2.jpg", "link": "https://www.myntra.com", "price": 599, "brand": "W", "platform": "Myntra", "color": "White" }
+      { "name": "Aurelia Stretch Churidar", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 499, "brand": "Aurelia", "platform": "Myntra", "color": "Black" },
+      { "name": "W Cotton Churidar", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 599, "brand": "W", "platform": "Myntra", "color": "White" }
     ]
   },
   "Dhoti Pants": {
     "Male": [
-      { "name": "FabIndia Dhoti Pants", "image": "https://demo.kyf.app/catalog/m-dhoti-1.jpg", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "White" }
+      { "name": "FabIndia Dhoti Pants", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "White" }
     ],
     "Female": [
-      { "name": "Global Desi Dhoti Pants", "image": "https://demo.kyf.app/catalog/f-dhoti-1.jpg", "link": "https://www.myntra.com", "price": 899, "brand": "Global Desi", "platform": "Myntra", "color": "Gold" }
+      { "name": "Global Desi Dhoti Pants", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 899, "brand": "Global Desi", "platform": "Myntra", "color": "Gold" }
     ]
   },
   "Shorts": {
     "Male": [
-      { "name": "H&M Chino Shorts", "image": "https://demo.kyf.app/catalog/m-shorts-1.jpg", "link": "https://www.myntra.com", "price": 799, "brand": "H&M", "platform": "Myntra", "color": "Khaki" },
-      { "name": "Bewakoof Cotton Shorts", "image": "https://demo.kyf.app/catalog/m-shorts-2.jpg", "link": "https://www.bewakoof.com", "price": 599, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Navy" }
+      { "name": "H&M Chino Shorts", "image": "https://i.imgur.com/UsFIvYs.jpeg", "link": "https://www.myntra.com", "price": 799, "brand": "H&M", "platform": "Myntra", "color": "Khaki" },
+      { "name": "Bewakoof Cotton Shorts", "image": "https://i.imgur.com/YIq57b6.jpeg", "link": "https://www.bewakoof.com", "price": 599, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Navy" }
     ],
     "Female": []
   },
   "Leggings": {
     "Male": [],
     "Female": [
-      { "name": "W Ankle-Length Leggings", "image": "https://demo.kyf.app/catalog/f-leggings-1.jpg", "link": "https://www.myntra.com", "price": 399, "brand": "W", "platform": "Myntra", "color": "Black" },
-      { "name": "Aurelia Cotton Leggings", "image": "https://demo.kyf.app/catalog/f-leggings-2.jpg", "link": "https://www.myntra.com", "price": 349, "brand": "Aurelia", "platform": "Myntra", "color": "Navy" }
+      { "name": "W Ankle-Length Leggings", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 399, "brand": "W", "platform": "Myntra", "color": "Black" },
+      { "name": "Aurelia Cotton Leggings", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 349, "brand": "Aurelia", "platform": "Myntra", "color": "Navy" }
     ]
   },
   "Palazzo": {
     "Male": [],
     "Female": [
-      { "name": "Biba Cotton Palazzo", "image": "https://demo.kyf.app/catalog/f-palazzo-1.jpg", "link": "https://www.myntra.com", "price": 799, "brand": "Biba", "platform": "Myntra", "color": "Black" },
-      { "name": "W Printed Palazzo", "image": "https://demo.kyf.app/catalog/f-palazzo-2.jpg", "link": "https://www.myntra.com", "price": 699, "brand": "W", "platform": "Myntra", "color": "Mustard" },
-      { "name": "Global Desi Wide Palazzo", "image": "https://demo.kyf.app/catalog/f-palazzo-3.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Global Desi", "platform": "Myntra", "color": "Teal" }
+      { "name": "Biba Cotton Palazzo", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 799, "brand": "Biba", "platform": "Myntra", "color": "Black" },
+      { "name": "W Printed Palazzo", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 699, "brand": "W", "platform": "Myntra", "color": "Mustard" },
+      { "name": "Global Desi Wide Palazzo", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "Global Desi", "platform": "Myntra", "color": "Teal" }
     ]
   },
   "Sharara Pants": {
     "Male": [],
     "Female": [
-      { "name": "Biba Sharara Pants", "image": "https://demo.kyf.app/catalog/f-sharara-1.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Biba", "platform": "Myntra", "color": "Gold" },
-      { "name": "Libas Embroidered Sharara", "image": "https://demo.kyf.app/catalog/f-sharara-2.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "Libas", "platform": "Myntra", "color": "Maroon" }
+      { "name": "Biba Sharara Pants", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "Biba", "platform": "Myntra", "color": "Gold" },
+      { "name": "Libas Embroidered Sharara", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1599, "brand": "Libas", "platform": "Myntra", "color": "Maroon" }
     ]
   },
   "Lehenga Skirt": {
     "Male": [],
     "Female": [
-      { "name": "Biba Lehenga Skirt", "image": "https://demo.kyf.app/catalog/f-lehenga-1.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Biba", "platform": "Myntra", "color": "Red" },
-      { "name": "Libas Designer Lehenga", "image": "https://demo.kyf.app/catalog/f-lehenga-2.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Libas", "platform": "Myntra", "color": "Deep Wine" }
+      { "name": "Biba Lehenga Skirt", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/corset-leather-with-skirt/1.webp", "link": "https://www.myntra.com", "price": 3999, "brand": "Biba", "platform": "Myntra", "color": "Red" },
+      { "name": "Libas Designer Lehenga", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/corset-with-black-skirt/1.webp", "link": "https://www.myntra.com", "price": 4999, "brand": "Libas", "platform": "Myntra", "color": "Deep Wine" }
     ]
   },
   "Saree (Drape)": {
     "Male": [],
     "Female": [
-      { "name": "FabIndia Handloom Saree", "image": "https://demo.kyf.app/catalog/f-saree-1.jpg", "link": "https://www.fabindia.com", "price": 3490, "brand": "FabIndia", "platform": "FabIndia", "color": "Red" },
-      { "name": "Satya Paul Printed Saree", "image": "https://demo.kyf.app/catalog/f-saree-2.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Satya Paul", "platform": "Myntra", "color": "Emerald" },
-      { "name": "Mimosa Banarasi Silk Saree", "image": "https://demo.kyf.app/catalog/f-saree-3.jpg", "link": "https://www.amazon.in", "price": 1299, "brand": "Mimosa", "platform": "Amazon", "color": "Gold" }
+      { "name": "FabIndia Handloom Saree", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/black-women's-gown/2.webp", "link": "https://www.fabindia.com", "price": 3490, "brand": "FabIndia", "platform": "FabIndia", "color": "Red" },
+      { "name": "Satya Paul Printed Saree", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/black-women's-gown/3.webp", "link": "https://www.myntra.com", "price": 5999, "brand": "Satya Paul", "platform": "Myntra", "color": "Emerald" },
+      { "name": "Mimosa Banarasi Silk Saree", "image": "https://cdn.dummyjson.com/product-images/womens-dresses/dress-pea/3.webp", "link": "https://www.amazon.in", "price": 1299, "brand": "Mimosa", "platform": "Amazon", "color": "Gold" }
     ]
   },
   "Jeans (High-Waist)": {
     "Male": [],
     "Female": [
-      { "name": "Levi's High-Rise Skinny", "image": "https://demo.kyf.app/catalog/f-hw-jeans-1.jpg", "link": "https://www.myntra.com", "price": 2799, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
-      { "name": "ONLY High-Waist Mom Jeans", "image": "https://demo.kyf.app/catalog/f-hw-jeans-2.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "ONLY", "platform": "Myntra", "color": "Black" }
+      { "name": "Levi's High-Rise Skinny", "image": "https://i.imgur.com/ZKGofuB.jpeg", "link": "https://www.myntra.com", "price": 2799, "brand": "Levi's", "platform": "Myntra", "color": "Navy" },
+      { "name": "ONLY High-Waist Mom Jeans", "image": "https://i.imgur.com/mp3rUty.jpeg", "link": "https://www.myntra.com", "price": 1799, "brand": "ONLY", "platform": "Myntra", "color": "Black" }
     ]
   },
   "Cigarette Pants": {
     "Male": [],
     "Female": [
-      { "name": "Van Heusen Cigarette Pants", "image": "https://demo.kyf.app/catalog/f-cig-pants-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Van Heusen", "platform": "Myntra", "color": "Black" },
-      { "name": "W Ankle-Length Cigarette Pants", "image": "https://demo.kyf.app/catalog/f-cig-pants-2.jpg", "link": "https://www.myntra.com", "price": 899, "brand": "W", "platform": "Myntra", "color": "Navy" }
+      { "name": "Van Heusen Cigarette Pants", "image": "https://i.imgur.com/GJi73H0.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "Van Heusen", "platform": "Myntra", "color": "Black" },
+      { "name": "W Ankle-Length Cigarette Pants", "image": "https://i.imgur.com/633Fqrz.jpeg", "link": "https://www.myntra.com", "price": 899, "brand": "W", "platform": "Myntra", "color": "Navy" }
     ]
   },
   "Oxford Shoes": {
     "Male": [
-      { "name": "Hush Puppies Oxford Shoes", "image": "https://demo.kyf.app/catalog/m-oxford-1.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" },
-      { "name": "Arrow Formal Oxfords", "image": "https://demo.kyf.app/catalog/m-oxford-2.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Arrow", "platform": "Myntra", "color": "Black" }
+      { "name": "Hush Puppies Oxford Shoes", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 3999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" },
+      { "name": "Arrow Formal Oxfords", "image": "https://i.imgur.com/Jf9DL9R.jpeg", "link": "https://www.myntra.com", "price": 2999, "brand": "Arrow", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Loafers": {
     "Male": [
-      { "name": "Clarks Leather Loafers", "image": "https://demo.kyf.app/catalog/m-loafers-1.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
-      { "name": "Woodland Casual Loafers", "image": "https://demo.kyf.app/catalog/m-loafers-2.jpg", "link": "https://www.myntra.com", "price": 2995, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Leather Loafers", "image": "https://i.imgur.com/Au8J9sX.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
+      { "name": "Woodland Casual Loafers", "image": "https://i.imgur.com/gdr8BW2.jpeg", "link": "https://www.myntra.com", "price": 2995, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Mojaris": {
     "Male": [
-      { "name": "Mochi Embroidered Mojaris", "image": "https://demo.kyf.app/catalog/m-mojaris-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Mochi", "platform": "Myntra", "color": "Gold" },
-      { "name": "Metro Ethnic Mojaris", "image": "https://demo.kyf.app/catalog/m-mojaris-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Metro", "platform": "Myntra", "color": "Maroon" }
+      { "name": "Mochi Embroidered Mojaris", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/1.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "Mochi", "platform": "Myntra", "color": "Gold" },
+      { "name": "Metro Ethnic Mojaris", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/2.webp", "link": "https://www.myntra.com", "price": 1299, "brand": "Metro", "platform": "Myntra", "color": "Maroon" }
     ],
     "Female": []
   },
   "Sneakers": {
     "Male": [
-      { "name": "Nike Air Max 90", "image": "https://demo.kyf.app/catalog/m-sneakers-1.jpg", "link": "https://www.myntra.com", "price": 7495, "brand": "Nike", "platform": "Myntra", "color": "White" },
-      { "name": "Adidas Superstar", "image": "https://demo.kyf.app/catalog/m-sneakers-2.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
-      { "name": "Puma RS-X", "image": "https://demo.kyf.app/catalog/m-sneakers-3.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Puma", "platform": "Myntra", "color": "Black" }
+      { "name": "Nike Air Max 90", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-&-red/1.webp", "link": "https://www.myntra.com", "price": 7495, "brand": "Nike", "platform": "Myntra", "color": "White" },
+      { "name": "Adidas Superstar", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-red/1.webp", "link": "https://www.myntra.com", "price": 5999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
+      { "name": "Puma RS-X", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/1.webp", "link": "https://www.myntra.com", "price": 4999, "brand": "Puma", "platform": "Myntra", "color": "Black" }
     ],
     "Female": [
-      { "name": "Nike Air Force 1", "image": "https://demo.kyf.app/catalog/f-sneakers-1.jpg", "link": "https://www.myntra.com", "price": 6995, "brand": "Nike", "platform": "Myntra", "color": "White" },
-      { "name": "Adidas Stan Smith", "image": "https://demo.kyf.app/catalog/f-sneakers-2.jpg", "link": "https://www.myntra.com", "price": 5499, "brand": "Adidas", "platform": "Myntra", "color": "White" }
+      { "name": "Nike Air Force 1", "image": "https://i.imgur.com/mcW42Gi.jpeg", "link": "https://www.myntra.com", "price": 6995, "brand": "Nike", "platform": "Myntra", "color": "White" },
+      { "name": "Adidas Stan Smith", "image": "https://i.imgur.com/hKcMNJs.jpeg", "link": "https://www.myntra.com", "price": 5499, "brand": "Adidas", "platform": "Myntra", "color": "White" }
     ]
   },
   "Chelsea Boots": {
     "Male": [
-      { "name": "Clarks Chelsea Boots", "image": "https://demo.kyf.app/catalog/m-chelsea-1.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Dark Brown" },
-      { "name": "Woodland Chelsea Boots", "image": "https://demo.kyf.app/catalog/m-chelsea-2.jpg", "link": "https://www.myntra.com", "price": 3995, "brand": "Woodland", "platform": "Myntra", "color": "Black" }
+      { "name": "Clarks Chelsea Boots", "image": "https://i.imgur.com/HqYqLnW.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Dark Brown" },
+      { "name": "Woodland Chelsea Boots", "image": "https://i.imgur.com/RlDGnZw.jpeg", "link": "https://www.myntra.com", "price": 3995, "brand": "Woodland", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Heels": {
     "Male": [],
     "Female": [
-      { "name": "Inc.5 Block Heels", "image": "https://demo.kyf.app/catalog/f-heels-1.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Inc.5", "platform": "Myntra", "color": "Black" },
-      { "name": "Aldo Pointed Heels", "image": "https://demo.kyf.app/catalog/f-heels-2.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Aldo", "platform": "Myntra", "color": "Nude" }
+      { "name": "Inc.5 Block Heels", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/calvin-klein-heel-shoes/1.webp", "link": "https://www.myntra.com", "price": 1999, "brand": "Inc.5", "platform": "Myntra", "color": "Black" },
+      { "name": "Aldo Pointed Heels", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/calvin-klein-heel-shoes/2.webp", "link": "https://www.myntra.com", "price": 4999, "brand": "Aldo", "platform": "Myntra", "color": "Nude" }
     ]
   },
   "Kolhapuris": {
     "Male": [
-      { "name": "Metro Kolhapuri Chappals", "image": "https://demo.kyf.app/catalog/m-kolhapuri-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Metro", "platform": "Myntra", "color": "Tan" }
+      { "name": "Metro Kolhapuri Chappals", "image": "https://i.imgur.com/9qrmE1b.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "Metro", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": [
-      { "name": "Metro Women Kolhapuris", "image": "https://demo.kyf.app/catalog/f-kolhapuri-1.jpg", "link": "https://www.myntra.com", "price": 899, "brand": "Metro", "platform": "Myntra", "color": "Gold" }
+      { "name": "Metro Women Kolhapuris", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/3.webp", "link": "https://www.myntra.com", "price": 899, "brand": "Metro", "platform": "Myntra", "color": "Gold" }
     ]
   },
   "Juttis": {
     "Male": [],
     "Female": [
-      { "name": "Needledust Embroidered Juttis", "image": "https://demo.kyf.app/catalog/f-juttis-1.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Needledust", "platform": "Myntra", "color": "Gold" },
-      { "name": "Metro Ethnic Juttis", "image": "https://demo.kyf.app/catalog/f-juttis-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Metro", "platform": "Myntra", "color": "Red" }
+      { "name": "Needledust Embroidered Juttis", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/4.webp", "link": "https://www.myntra.com", "price": 1999, "brand": "Needledust", "platform": "Myntra", "color": "Gold" },
+      { "name": "Metro Ethnic Juttis", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/red-shoes/1.webp", "link": "https://www.myntra.com", "price": 1299, "brand": "Metro", "platform": "Myntra", "color": "Red" }
     ]
   },
   "Flats": {
     "Male": [],
     "Female": [
-      { "name": "Bata Women Ballet Flats", "image": "https://demo.kyf.app/catalog/f-flats-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Bata", "platform": "Myntra", "color": "Black" },
-      { "name": "Clarks Women Leather Flats", "image": "https://demo.kyf.app/catalog/f-flats-2.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Clarks", "platform": "Myntra", "color": "Nude" }
+      { "name": "Bata Women Ballet Flats", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/black-&-brown-slipper/1.webp", "link": "https://www.myntra.com", "price": 999, "brand": "Bata", "platform": "Myntra", "color": "Black" },
+      { "name": "Clarks Women Leather Flats", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/pampi-shoes/1.webp", "link": "https://www.myntra.com", "price": 2999, "brand": "Clarks", "platform": "Myntra", "color": "Nude" }
     ]
   },
 
   "Open Checkered Shirt": {
     "Male": [
-      { "name": "Levi's Checkered Open Shirt", "image": "https://demo.kyf.app/catalog/m-open-check-1.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Levi's", "platform": "Myntra", "color": "Red" },
-      { "name": "H&M Flannel Overshirt", "image": "https://demo.kyf.app/catalog/m-open-check-2.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Navy" }
+      { "name": "Levi's Checkered Open Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/1.webp", "link": "https://www.myntra.com", "price": 1799, "brand": "Levi's", "platform": "Myntra", "color": "Red" },
+      { "name": "H&M Flannel Overshirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-plaid-shirt/1.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Denim Vest": {
     "Male": [
-      { "name": "Levi's Denim Trucker Vest", "image": "https://demo.kyf.app/catalog/m-denim-vest-1.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
-      { "name": "Roadster Denim Vest", "image": "https://demo.kyf.app/catalog/m-denim-vest-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Roadster", "platform": "Myntra", "color": "Dark Blue" }
+      { "name": "Levi's Denim Trucker Vest", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
+      { "name": "Roadster Denim Vest", "image": "https://i.imgur.com/CFOjAgK.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "Roadster", "platform": "Myntra", "color": "Dark Blue" }
     ],
     "Female": []
   },
   "Asymmetric Layer": {
     "Male": [
-      { "name": "SKULT Asymmetric Shrug", "image": "https://demo.kyf.app/catalog/m-asym-layer-1.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "SKULT", "platform": "Myntra", "color": "Black" },
-      { "name": "Moda Rapido Asymmetric Layer", "image": "https://demo.kyf.app/catalog/m-asym-layer-2.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Moda Rapido", "platform": "Myntra", "color": "Charcoal" }
+      { "name": "SKULT Asymmetric Shrug", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "SKULT", "platform": "Myntra", "color": "Black" },
+      { "name": "Moda Rapido Asymmetric Layer", "image": "https://i.imgur.com/WwKucXb.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "Moda Rapido", "platform": "Myntra", "color": "Charcoal" }
     ],
     "Female": []
   },
   "Linen Blazer": {
     "Male": [
-      { "name": "Raymond Linen Blazer", "image": "https://demo.kyf.app/catalog/m-linen-blazer-1.jpg", "link": "https://www.raymond.in", "price": 5499, "brand": "Raymond", "platform": "Raymond", "color": "Beige" },
-      { "name": "Van Heusen Linen Blazer", "image": "https://demo.kyf.app/catalog/m-linen-blazer-2.jpg", "link": "https://www.myntra.com", "price": 4299, "brand": "Van Heusen", "platform": "Myntra", "color": "Light Blue" }
+      { "name": "Raymond Linen Blazer", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.raymond.in", "price": 5499, "brand": "Raymond", "platform": "Raymond", "color": "Beige" },
+      { "name": "Van Heusen Linen Blazer", "image": "https://i.imgur.com/IvxMPFr.jpeg", "link": "https://www.myntra.com", "price": 4299, "brand": "Van Heusen", "platform": "Myntra", "color": "Light Blue" }
     ],
     "Female": []
   },
   "Varsity Jacket": {
     "Male": [
-      { "name": "Bewakoof Varsity Jacket", "image": "https://demo.kyf.app/catalog/m-varsity-1.jpg", "link": "https://www.bewakoof.com", "price": 1499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
-      { "name": "H&M Varsity Bomber Jacket", "image": "https://demo.kyf.app/catalog/m-varsity-2.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "H&M", "platform": "Myntra", "color": "Navy" }
+      { "name": "Bewakoof Varsity Jacket", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.bewakoof.com", "price": 1499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
+      { "name": "H&M Varsity Bomber Jacket", "image": "https://i.imgur.com/1twoaDy.jpeg", "link": "https://www.myntra.com", "price": 2499, "brand": "H&M", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Lightweight Bomber": {
     "Male": [
-      { "name": "H&M Nylon Bomber Jacket", "image": "https://demo.kyf.app/catalog/m-bomber-1.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "H&M", "platform": "Myntra", "color": "Olive" },
-      { "name": "Roadster Lightweight Bomber", "image": "https://demo.kyf.app/catalog/m-bomber-2.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "Roadster", "platform": "Myntra", "color": "Black" }
+      { "name": "H&M Nylon Bomber Jacket", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.myntra.com", "price": 1999, "brand": "H&M", "platform": "Myntra", "color": "Olive" },
+      { "name": "Roadster Lightweight Bomber", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 1599, "brand": "Roadster", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Velvet Bandhgala": {
     "Male": [
-      { "name": "Manyavar Velvet Bandhgala", "image": "https://demo.kyf.app/catalog/m-velvet-band-1.jpg", "link": "https://www.manyavar.com", "price": 6999, "brand": "Manyavar", "platform": "Manyavar", "color": "Maroon" },
-      { "name": "Raymond Velvet Bandhgala Jacket", "image": "https://demo.kyf.app/catalog/m-velvet-band-2.jpg", "link": "https://www.raymond.in", "price": 8999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" }
+      { "name": "Manyavar Velvet Bandhgala", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.manyavar.com", "price": 6999, "brand": "Manyavar", "platform": "Manyavar", "color": "Maroon" },
+      { "name": "Raymond Velvet Bandhgala Jacket", "image": "https://i.imgur.com/IvxMPFr.jpeg", "link": "https://www.raymond.in", "price": 8999, "brand": "Raymond", "platform": "Raymond", "color": "Navy" }
     ],
     "Female": []
   },
   "Brocade Nehru Jacket": {
     "Male": [
-      { "name": "Manyavar Brocade Nehru Jacket", "image": "https://demo.kyf.app/catalog/m-brocade-nehru-1.jpg", "link": "https://www.manyavar.com", "price": 5499, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
-      { "name": "FabIndia Brocade Waistcoat", "image": "https://demo.kyf.app/catalog/m-brocade-nehru-2.jpg", "link": "https://www.fabindia.com", "price": 3490, "brand": "FabIndia", "platform": "FabIndia", "color": "Maroon" }
+      { "name": "Manyavar Brocade Nehru Jacket", "image": "https://i.imgur.com/7eW9nXP.jpeg", "link": "https://www.manyavar.com", "price": 5499, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
+      { "name": "FabIndia Brocade Waistcoat", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.fabindia.com", "price": 3490, "brand": "FabIndia", "platform": "FabIndia", "color": "Maroon" }
     ],
     "Female": []
   },
   "Leather Biker Jacket": {
     "Male": [
-      { "name": "Roadster Faux Leather Biker Jacket", "image": "https://demo.kyf.app/catalog/m-biker-1.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Roadster", "platform": "Myntra", "color": "Black" },
-      { "name": "H&M Biker Jacket", "image": "https://demo.kyf.app/catalog/m-biker-2.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "H&M", "platform": "Myntra", "color": "Brown" }
+      { "name": "Roadster Faux Leather Biker Jacket", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 2499, "brand": "Roadster", "platform": "Myntra", "color": "Black" },
+      { "name": "H&M Biker Jacket", "image": "https://i.imgur.com/WwKucXb.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "H&M", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Denim Jacket": {
     "Male": [
-      { "name": "Levi's Trucker Denim Jacket", "image": "https://demo.kyf.app/catalog/m-denim-jacket-1.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
-      { "name": "H&M Denim Jacket", "image": "https://demo.kyf.app/catalog/m-denim-jacket-2.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "H&M", "platform": "Myntra", "color": "Dark Blue" }
+      { "name": "Levi's Trucker Denim Jacket", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
+      { "name": "H&M Denim Jacket", "image": "https://i.imgur.com/CFOjAgK.jpeg", "link": "https://www.myntra.com", "price": 1999, "brand": "H&M", "platform": "Myntra", "color": "Dark Blue" }
     ],
     "Female": []
   },
   "Sleeveless Jacket": {
     "Male": [
-      { "name": "Wildcraft Sleeveless Puffer Jacket", "image": "https://demo.kyf.app/catalog/m-sleeveless-1.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Wildcraft", "platform": "Myntra", "color": "Navy" },
-      { "name": "HRX Sleeveless Jacket", "image": "https://demo.kyf.app/catalog/m-sleeveless-2.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "HRX", "platform": "Myntra", "color": "Black" }
+      { "name": "Wildcraft Sleeveless Puffer Jacket", "image": "https://i.imgur.com/1twoaDy.jpeg", "link": "https://www.myntra.com", "price": 1999, "brand": "Wildcraft", "platform": "Myntra", "color": "Navy" },
+      { "name": "HRX Sleeveless Jacket", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 1499, "brand": "HRX", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Contrast Cardigan": {
     "Male": [
-      { "name": "H&M Knit Cardigan", "image": "https://demo.kyf.app/catalog/m-cardigan-1.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "H&M", "platform": "Myntra", "color": "Grey" },
-      { "name": "Roadster Contrast Cardigan", "image": "https://demo.kyf.app/catalog/m-cardigan-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Roadster", "platform": "Myntra", "color": "Navy" }
+      { "name": "H&M Knit Cardigan", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.myntra.com", "price": 1799, "brand": "H&M", "platform": "Myntra", "color": "Grey" },
+      { "name": "Roadster Contrast Cardigan", "image": "https://i.imgur.com/cHddUCu.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "Roadster", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Open Shrug": {
     "Male": [
-      { "name": "SKULT Open Front Shrug", "image": "https://demo.kyf.app/catalog/m-shrug-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "SKULT", "platform": "Myntra", "color": "Black" },
-      { "name": "Moda Rapido Longline Shrug", "image": "https://demo.kyf.app/catalog/m-shrug-2.jpg", "link": "https://www.myntra.com", "price": 799, "brand": "Moda Rapido", "platform": "Myntra", "color": "Charcoal" }
+      { "name": "SKULT Open Front Shrug", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "SKULT", "platform": "Myntra", "color": "Black" },
+      { "name": "Moda Rapido Longline Shrug", "image": "https://i.imgur.com/WwKucXb.jpeg", "link": "https://www.myntra.com", "price": 799, "brand": "Moda Rapido", "platform": "Myntra", "color": "Charcoal" }
     ],
     "Female": []
   },
   "Cotton Blazer": {
     "Male": [
-      { "name": "Van Heusen Cotton Blazer", "image": "https://demo.kyf.app/catalog/m-cotton-blazer-1.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Van Heusen", "platform": "Myntra", "color": "Navy" },
-      { "name": "Peter England Cotton Blazer", "image": "https://demo.kyf.app/catalog/m-cotton-blazer-2.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Peter England", "platform": "Myntra", "color": "Beige" }
+      { "name": "Van Heusen Cotton Blazer", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.myntra.com", "price": 3999, "brand": "Van Heusen", "platform": "Myntra", "color": "Navy" },
+      { "name": "Peter England Cotton Blazer", "image": "https://i.imgur.com/IvxMPFr.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Peter England", "platform": "Myntra", "color": "Beige" }
     ],
     "Female": []
   },
   "Puffer Vest": {
     "Male": [
-      { "name": "Wildcraft Puffer Vest", "image": "https://demo.kyf.app/catalog/m-puffer-vest-1.jpg", "link": "https://www.myntra.com", "price": 1999, "brand": "Wildcraft", "platform": "Myntra", "color": "Navy" },
-      { "name": "HRX Puffer Gilet", "image": "https://demo.kyf.app/catalog/m-puffer-vest-2.jpg", "link": "https://www.myntra.com", "price": 1599, "brand": "HRX", "platform": "Myntra", "color": "Black" }
+      { "name": "Wildcraft Puffer Vest", "image": "https://i.imgur.com/1twoaDy.jpeg", "link": "https://www.myntra.com", "price": 1999, "brand": "Wildcraft", "platform": "Myntra", "color": "Navy" },
+      { "name": "HRX Puffer Gilet", "image": "https://i.imgur.com/cSytoSD.jpeg", "link": "https://www.myntra.com", "price": 1599, "brand": "HRX", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Silk Dupatta Layer": {
     "Male": [
-      { "name": "FabIndia Silk Stole", "image": "https://demo.kyf.app/catalog/m-dupatta-1.jpg", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "Maroon" }
+      { "name": "FabIndia Silk Stole", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/2.webp", "link": "https://www.fabindia.com", "price": 1290, "brand": "FabIndia", "platform": "FabIndia", "color": "Maroon" }
     ],
     "Female": []
   },
   "Embroidered Waistcoat": {
     "Male": [
-      { "name": "Manyavar Embroidered Waistcoat", "image": "https://demo.kyf.app/catalog/m-emb-waistcoat-1.jpg", "link": "https://www.manyavar.com", "price": 3999, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
-      { "name": "FabIndia Embroidered Waistcoat", "image": "https://demo.kyf.app/catalog/m-emb-waistcoat-2.jpg", "link": "https://www.fabindia.com", "price": 2490, "brand": "FabIndia", "platform": "FabIndia", "color": "Cream" }
+      { "name": "Manyavar Embroidered Waistcoat", "image": "https://i.imgur.com/R2PN9Wq.jpeg", "link": "https://www.manyavar.com", "price": 3999, "brand": "Manyavar", "platform": "Manyavar", "color": "Gold" },
+      { "name": "FabIndia Embroidered Waistcoat", "image": "https://i.imgur.com/7eW9nXP.jpeg", "link": "https://www.fabindia.com", "price": 2490, "brand": "FabIndia", "platform": "FabIndia", "color": "Cream" }
     ],
     "Female": []
   },
 
   "High-Top Sneakers": {
     "Male": [
-      { "name": "Nike Air Jordan 1 Mid", "image": "https://demo.kyf.app/catalog/m-hightop-1.jpg", "link": "https://www.myntra.com", "price": 8995, "brand": "Nike", "platform": "Myntra", "color": "Black/White" },
-      { "name": "Converse Chuck Taylor All Star", "image": "https://demo.kyf.app/catalog/m-hightop-2.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Converse", "platform": "Myntra", "color": "Black" }
+      { "name": "Nike Air Jordan 1 Mid", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/nike-air-jordan-1-red-and-black/1.webp", "link": "https://www.myntra.com", "price": 8995, "brand": "Nike", "platform": "Myntra", "color": "Black/White" },
+      { "name": "Converse Chuck Taylor All Star", "image": "https://i.imgur.com/npLfCGq.jpeg", "link": "https://www.myntra.com", "price": 3999, "brand": "Converse", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Chunky Dad Shoes": {
     "Male": [
-      { "name": "Nike Air Max 270", "image": "https://demo.kyf.app/catalog/m-chunky-1.jpg", "link": "https://www.myntra.com", "price": 9995, "brand": "Nike", "platform": "Myntra", "color": "White" },
-      { "name": "Puma RS-X3", "image": "https://demo.kyf.app/catalog/m-chunky-2.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Puma", "platform": "Myntra", "color": "White/Grey" }
+      { "name": "Nike Air Max 270", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-&-red/2.webp", "link": "https://www.myntra.com", "price": 9995, "brand": "Nike", "platform": "Myntra", "color": "White" },
+      { "name": "Puma RS-X3", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/2.webp", "link": "https://www.myntra.com", "price": 5999, "brand": "Puma", "platform": "Myntra", "color": "White/Grey" }
     ],
     "Female": []
   },
   "Canvas Vans": {
     "Male": [
-      { "name": "Vans Old Skool Canvas", "image": "https://demo.kyf.app/catalog/m-vans-1.jpg", "link": "https://www.myntra.com", "price": 4499, "brand": "Vans", "platform": "Myntra", "color": "Black/White" },
-      { "name": "Vans Authentic Canvas Sneakers", "image": "https://demo.kyf.app/catalog/m-vans-2.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Vans", "platform": "Myntra", "color": "Navy" }
+      { "name": "Vans Old Skool Canvas", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-red/2.webp", "link": "https://www.myntra.com", "price": 4499, "brand": "Vans", "platform": "Myntra", "color": "Black/White" },
+      { "name": "Vans Authentic Canvas Sneakers", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-red/3.webp", "link": "https://www.myntra.com", "price": 3999, "brand": "Vans", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Velvet Loafers": {
     "Male": [
-      { "name": "Hush Puppies Velvet Loafers", "image": "https://demo.kyf.app/catalog/m-velvet-loafer-1.jpg", "link": "https://www.myntra.com", "price": 4499, "brand": "Hush Puppies", "platform": "Myntra", "color": "Maroon" },
-      { "name": "Metro Velvet Slip-On Loafers", "image": "https://demo.kyf.app/catalog/m-velvet-loafer-2.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Metro", "platform": "Myntra", "color": "Navy" }
+      { "name": "Hush Puppies Velvet Loafers", "image": "https://i.imgur.com/Au8J9sX.jpeg", "link": "https://www.myntra.com", "price": 4499, "brand": "Hush Puppies", "platform": "Myntra", "color": "Maroon" },
+      { "name": "Metro Velvet Slip-On Loafers", "image": "https://i.imgur.com/KDCZxnJ.jpeg", "link": "https://www.myntra.com", "price": 2999, "brand": "Metro", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Embroidered Mojaris": {
     "Male": [
-      { "name": "Mochi Hand-Embroidered Mojaris", "image": "https://demo.kyf.app/catalog/m-emb-mojari-1.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "Mochi", "platform": "Myntra", "color": "Gold" },
-      { "name": "Metro Embroidered Ethnic Mojaris", "image": "https://demo.kyf.app/catalog/m-emb-mojari-2.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "Metro", "platform": "Myntra", "color": "Maroon" }
+      { "name": "Mochi Hand-Embroidered Mojaris", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/1.webp", "link": "https://www.myntra.com", "price": 1799, "brand": "Mochi", "platform": "Myntra", "color": "Gold" },
+      { "name": "Metro Embroidered Ethnic Mojaris", "image": "https://cdn.dummyjson.com/product-images/womens-shoes/golden-shoes-woman/2.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "Metro", "platform": "Myntra", "color": "Maroon" }
     ],
     "Female": []
   },
   "Suede Loafers": {
     "Male": [
-      { "name": "Clarks Suede Penny Loafers", "image": "https://demo.kyf.app/catalog/m-suede-loafer-1.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
-      { "name": "Hush Puppies Suede Loafers", "image": "https://demo.kyf.app/catalog/m-suede-loafer-2.jpg", "link": "https://www.myntra.com", "price": 4499, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Suede Penny Loafers", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
+      { "name": "Hush Puppies Suede Loafers", "image": "https://i.imgur.com/R1IN95T.jpeg", "link": "https://www.myntra.com", "price": 4499, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Derby Shoes": {
     "Male": [
-      { "name": "Clarks Derby Shoes", "image": "https://demo.kyf.app/catalog/m-derby-1.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Black" },
-      { "name": "Hush Puppies Derby Shoes", "image": "https://demo.kyf.app/catalog/m-derby-2.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Derby Shoes", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Black" },
+      { "name": "Hush Puppies Derby Shoes", "image": "https://i.imgur.com/Jf9DL9R.jpeg", "link": "https://www.myntra.com", "price": 3999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Penny Loafers": {
     "Male": [
-      { "name": "Clarks Penny Loafers", "image": "https://demo.kyf.app/catalog/m-penny-1.jpg", "link": "https://www.myntra.com", "price": 5499, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
-      { "name": "Cole Haan Penny Loafers", "image": "https://demo.kyf.app/catalog/m-penny-2.jpg", "link": "https://www.myntra.com", "price": 7999, "brand": "Cole Haan", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Penny Loafers", "image": "https://i.imgur.com/Au8J9sX.jpeg", "link": "https://www.myntra.com", "price": 5499, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
+      { "name": "Cole Haan Penny Loafers", "image": "https://i.imgur.com/gdr8BW2.jpeg", "link": "https://www.myntra.com", "price": 7999, "brand": "Cole Haan", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Brogues": {
     "Male": [
-      { "name": "Clarks Brogue Shoes", "image": "https://demo.kyf.app/catalog/m-brogues-1.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Brown" },
-      { "name": "Arrow Brogue Shoes", "image": "https://demo.kyf.app/catalog/m-brogues-2.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Arrow", "platform": "Myntra", "color": "Tan" }
+      { "name": "Clarks Brogue Shoes", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Brown" },
+      { "name": "Arrow Brogue Shoes", "image": "https://i.imgur.com/R1IN95T.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Arrow", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": []
   },
   "Monk Straps": {
     "Male": [
-      { "name": "Hush Puppies Monk Strap Shoes", "image": "https://demo.kyf.app/catalog/m-monk-1.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" },
-      { "name": "Clarks Double Monk Straps", "image": "https://demo.kyf.app/catalog/m-monk-2.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Black" }
+      { "name": "Hush Puppies Monk Strap Shoes", "image": "https://i.imgur.com/Jf9DL9R.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Brown" },
+      { "name": "Clarks Double Monk Straps", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Kolhapuri Chappals": {
     "Male": [
-      { "name": "Metro Leather Kolhapuri", "image": "https://demo.kyf.app/catalog/m-kolhapuri-ch-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "Metro", "platform": "Myntra", "color": "Tan" },
-      { "name": "Woodland Kolhapuri Sandals", "image": "https://demo.kyf.app/catalog/m-kolhapuri-ch-2.jpg", "link": "https://www.myntra.com", "price": 1299, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
+      { "name": "Metro Leather Kolhapuri", "image": "https://i.imgur.com/9qrmE1b.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "Metro", "platform": "Myntra", "color": "Tan" },
+      { "name": "Woodland Kolhapuri Sandals", "image": "https://i.imgur.com/wqKxBVH.jpeg", "link": "https://www.myntra.com", "price": 1299, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "White Sneakers": {
     "Male": [
-      { "name": "Adidas Stan Smith", "image": "https://demo.kyf.app/catalog/m-white-sneak-1.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
-      { "name": "Nike Court Vision Low", "image": "https://demo.kyf.app/catalog/m-white-sneak-2.jpg", "link": "https://www.myntra.com", "price": 3995, "brand": "Nike", "platform": "Myntra", "color": "White" }
+      { "name": "Adidas Stan Smith", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-&-red/3.webp", "link": "https://www.myntra.com", "price": 5999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
+      { "name": "Nike Court Vision Low", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-red/1.webp", "link": "https://www.myntra.com", "price": 3995, "brand": "Nike", "platform": "Myntra", "color": "White" }
     ],
     "Female": []
   },
   "Clean Minimal Sneakers": {
     "Male": [
-      { "name": "Adidas Advantage Sneakers", "image": "https://demo.kyf.app/catalog/m-minimal-sneak-1.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
-      { "name": "Puma Shuffle Sneakers", "image": "https://demo.kyf.app/catalog/m-minimal-sneak-2.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Puma", "platform": "Myntra", "color": "White" }
+      { "name": "Adidas Advantage Sneakers", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-&-red/4.webp", "link": "https://www.myntra.com", "price": 3999, "brand": "Adidas", "platform": "Myntra", "color": "White" },
+      { "name": "Puma Shuffle Sneakers", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/3.webp", "link": "https://www.myntra.com", "price": 2499, "brand": "Puma", "platform": "Myntra", "color": "White" }
     ],
     "Female": []
   },
   "Leather Sandals": {
     "Male": [
-      { "name": "Woodland Leather Sandals", "image": "https://demo.kyf.app/catalog/m-leather-sandal-1.jpg", "link": "https://www.myntra.com", "price": 1995, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
-      { "name": "Clarks Leather Sandals", "image": "https://demo.kyf.app/catalog/m-leather-sandal-2.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Clarks", "platform": "Myntra", "color": "Tan" }
+      { "name": "Woodland Leather Sandals", "image": "https://i.imgur.com/9qrmE1b.jpeg", "link": "https://www.myntra.com", "price": 1995, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
+      { "name": "Clarks Leather Sandals", "image": "https://i.imgur.com/sWSV6DK.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Clarks", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": []
   },
   "Espadrilles": {
     "Male": [
-      { "name": "H&M Canvas Espadrilles", "image": "https://demo.kyf.app/catalog/m-espadrilles-1.jpg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Navy" },
-      { "name": "ALDO Espadrilles", "image": "https://demo.kyf.app/catalog/m-espadrilles-2.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "ALDO", "platform": "Myntra", "color": "Tan" }
+      { "name": "H&M Canvas Espadrilles", "image": "https://i.imgur.com/9qrmE1b.jpeg", "link": "https://www.myntra.com", "price": 999, "brand": "H&M", "platform": "Myntra", "color": "Navy" },
+      { "name": "ALDO Espadrilles", "image": "https://i.imgur.com/wqKxBVH.jpeg", "link": "https://www.myntra.com", "price": 2999, "brand": "ALDO", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": []
   },
   "Boat Shoes": {
     "Male": [
-      { "name": "Woodland Boat Shoes", "image": "https://demo.kyf.app/catalog/m-boat-1.jpg", "link": "https://www.myntra.com", "price": 2495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
-      { "name": "US Polo Boat Shoes", "image": "https://demo.kyf.app/catalog/m-boat-2.jpg", "link": "https://www.myntra.com", "price": 1799, "brand": "US Polo Assn", "platform": "Myntra", "color": "Navy" }
+      { "name": "Woodland Boat Shoes", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 2495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
+      { "name": "US Polo Boat Shoes", "image": "https://i.imgur.com/Jf9DL9R.jpeg", "link": "https://www.myntra.com", "price": 1799, "brand": "US Polo Assn", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Slip-On Sneakers": {
     "Male": [
-      { "name": "Vans Classic Slip-On", "image": "https://demo.kyf.app/catalog/m-slipon-1.jpg", "link": "https://www.myntra.com", "price": 3999, "brand": "Vans", "platform": "Myntra", "color": "Black" },
-      { "name": "Skechers Slip-On Sneakers", "image": "https://demo.kyf.app/catalog/m-slipon-2.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Skechers", "platform": "Myntra", "color": "Navy" }
+      { "name": "Vans Classic Slip-On", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/sports-sneakers-off-white-red/4.webp", "link": "https://www.myntra.com", "price": 3999, "brand": "Vans", "platform": "Myntra", "color": "Black" },
+      { "name": "Skechers Slip-On Sneakers", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/4.webp", "link": "https://www.myntra.com", "price": 2999, "brand": "Skechers", "platform": "Myntra", "color": "Navy" }
     ],
     "Female": []
   },
   "Retro Runners": {
     "Male": [
-      { "name": "New Balance 574", "image": "https://demo.kyf.app/catalog/m-retro-1.jpg", "link": "https://www.myntra.com", "price": 6999, "brand": "New Balance", "platform": "Myntra", "color": "Grey" },
-      { "name": "Nike Air Max 1", "image": "https://demo.kyf.app/catalog/m-retro-2.jpg", "link": "https://www.myntra.com", "price": 8995, "brand": "Nike", "platform": "Myntra", "color": "Red/White" }
+      { "name": "New Balance 574", "image": "https://i.imgur.com/hKcMNJs.jpeg", "link": "https://www.myntra.com", "price": 6999, "brand": "New Balance", "platform": "Myntra", "color": "Grey" },
+      { "name": "Nike Air Max 1", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/nike-air-jordan-1-red-and-black/2.webp", "link": "https://www.myntra.com", "price": 8995, "brand": "Nike", "platform": "Myntra", "color": "Red/White" }
     ],
     "Female": []
   },
   "Chukka Boots": {
     "Male": [
-      { "name": "Clarks Desert Chukka Boot", "image": "https://demo.kyf.app/catalog/m-chukka-1.jpg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Sand" },
-      { "name": "Woodland Chukka Boots", "image": "https://demo.kyf.app/catalog/m-chukka-2.jpg", "link": "https://www.myntra.com", "price": 3495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Desert Chukka Boot", "image": "https://i.imgur.com/HqYqLnW.jpeg", "link": "https://www.myntra.com", "price": 5999, "brand": "Clarks", "platform": "Myntra", "color": "Sand" },
+      { "name": "Woodland Chukka Boots", "image": "https://i.imgur.com/RlDGnZw.jpeg", "link": "https://www.myntra.com", "price": 3495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Denim Shirt": {
     "Male": [
-      { "name": "Levi's Denim Western Shirt", "image": "https://demo.kyf.app/catalog/m-denim-shirt-1.jpg", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
-      { "name": "H&M Denim Shirt", "image": "https://demo.kyf.app/catalog/m-denim-shirt-2.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Light Blue" }
+      { "name": "Levi's Denim Western Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/2.webp", "link": "https://www.myntra.com", "price": 2499, "brand": "Levi's", "platform": "Myntra", "color": "Blue" },
+      { "name": "H&M Denim Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/blue-&-black-check-shirt/3.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "Light Blue" }
     ],
     "Female": []
   },
   "Graphic T-Shirt": {
     "Male": [
-      { "name": "Bewakoof Graphic Print Tee", "image": "https://demo.kyf.app/catalog/m-graphic-tee-1.jpg", "link": "https://www.bewakoof.com", "price": 499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
-      { "name": "Roadster Graphic T-Shirt", "image": "https://demo.kyf.app/catalog/m-graphic-tee-2.jpg", "link": "https://www.myntra.com", "price": 599, "brand": "Roadster", "platform": "Myntra", "color": "White" }
+      { "name": "Bewakoof Graphic Print Tee", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/gigabyte-aorus-men-tshirt/1.webp", "link": "https://www.bewakoof.com", "price": 499, "brand": "Bewakoof", "platform": "Bewakoof", "color": "Black" },
+      { "name": "Roadster Graphic T-Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/gigabyte-aorus-men-tshirt/2.webp", "link": "https://www.myntra.com", "price": 599, "brand": "Roadster", "platform": "Myntra", "color": "White" }
     ],
     "Female": []
   },
   "Linen Shirt": {
     "Male": [
-      { "name": "H&M Linen Shirt", "image": "https://demo.kyf.app/catalog/m-linen-shirt-1.jpg", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "White" },
-      { "name": "FabIndia Linen Shirt", "image": "https://demo.kyf.app/catalog/m-linen-shirt-2.jpg", "link": "https://www.fabindia.com", "price": 1990, "brand": "FabIndia", "platform": "FabIndia", "color": "Beige" }
+      { "name": "H&M Linen Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/3.webp", "link": "https://www.myntra.com", "price": 1499, "brand": "H&M", "platform": "Myntra", "color": "White" },
+      { "name": "FabIndia Linen Shirt", "image": "https://cdn.dummyjson.com/product-images/mens-shirts/man-short-sleeve-shirt/4.webp", "link": "https://www.fabindia.com", "price": 1990, "brand": "FabIndia", "platform": "FabIndia", "color": "Beige" }
     ],
     "Female": []
   },
   "Suede Chelsea Boots": {
     "Male": [
-      { "name": "Clarks Suede Chelsea Boots", "image": "https://demo.kyf.app/catalog/m-suede-chelsea-1.jpg", "link": "https://www.myntra.com", "price": 6999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
-      { "name": "Woodland Suede Chelsea", "image": "https://demo.kyf.app/catalog/m-suede-chelsea-2.jpg", "link": "https://www.myntra.com", "price": 4495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
+      { "name": "Clarks Suede Chelsea Boots", "image": "https://i.imgur.com/HqYqLnW.jpeg", "link": "https://www.myntra.com", "price": 6999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" },
+      { "name": "Woodland Suede Chelsea", "image": "https://i.imgur.com/qa0O6fg.jpeg", "link": "https://www.myntra.com", "price": 4495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" }
     ],
     "Female": []
   },
   "Canvas Sneakers": {
     "Male": [
-      { "name": "Converse Canvas Sneakers", "image": "https://demo.kyf.app/catalog/m-canvas-sneak-1.jpg", "link": "https://www.myntra.com", "price": 2999, "brand": "Converse", "platform": "Myntra", "color": "White" },
-      { "name": "Vans Canvas Authentic", "image": "https://demo.kyf.app/catalog/m-canvas-sneak-2.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Vans", "platform": "Myntra", "color": "Black" }
+      { "name": "Converse Canvas Sneakers", "image": "https://i.imgur.com/npLfCGq.jpeg", "link": "https://www.myntra.com", "price": 2999, "brand": "Converse", "platform": "Myntra", "color": "White" },
+      { "name": "Vans Canvas Authentic", "image": "https://i.imgur.com/mcW42Gi.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Vans", "platform": "Myntra", "color": "Black" }
     ],
     "Female": []
   },
   "Platform Sneakers": {
     "Male": [
-      { "name": "Puma Platform Sneakers", "image": "https://demo.kyf.app/catalog/m-platform-1.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Puma", "platform": "Myntra", "color": "White" }
+      { "name": "Puma Platform Sneakers", "image": "https://cdn.dummyjson.com/product-images/mens-shoes/puma-future-rider-trainers/1.webp", "link": "https://www.myntra.com", "price": 4999, "brand": "Puma", "platform": "Myntra", "color": "White" }
     ],
     "Female": []
   },
   "Driving Moccasins": {
     "Male": [
-      { "name": "Woodland Driving Moccasins", "image": "https://demo.kyf.app/catalog/m-moccasin-1.jpg", "link": "https://www.myntra.com", "price": 2495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
-      { "name": "Clarks Driving Moccasins", "image": "https://demo.kyf.app/catalog/m-moccasin-2.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" }
+      { "name": "Woodland Driving Moccasins", "image": "https://i.imgur.com/Au8J9sX.jpeg", "link": "https://www.myntra.com", "price": 2495, "brand": "Woodland", "platform": "Myntra", "color": "Brown" },
+      { "name": "Clarks Driving Moccasins", "image": "https://i.imgur.com/gdr8BW2.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "Clarks", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": []
   },
   "Tan Brogues": {
     "Male": [
-      { "name": "Arrow Tan Brogues", "image": "https://demo.kyf.app/catalog/m-tan-brogue-1.jpg", "link": "https://www.myntra.com", "price": 3499, "brand": "Arrow", "platform": "Myntra", "color": "Tan" },
-      { "name": "Hush Puppies Tan Brogues", "image": "https://demo.kyf.app/catalog/m-tan-brogue-2.jpg", "link": "https://www.myntra.com", "price": 4999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Tan" }
+      { "name": "Arrow Tan Brogues", "image": "https://i.imgur.com/R1IN95T.jpeg", "link": "https://www.myntra.com", "price": 3499, "brand": "Arrow", "platform": "Myntra", "color": "Tan" },
+      { "name": "Hush Puppies Tan Brogues", "image": "https://i.imgur.com/sC0ztOB.jpeg", "link": "https://www.myntra.com", "price": 4999, "brand": "Hush Puppies", "platform": "Myntra", "color": "Tan" }
     ],
     "Female": []
   }

@@ -411,7 +411,14 @@ function SubscriptionHistory({ data, colors }) {
           <StatCard label="Total Spent" value={formatCurrency(stats.totalSpent)} icon={AttachMoney} colors={colors} />
           <StatCard label="Plans Used" value={stats.totalPlans || 0} icon={CreditCard} colors={colors} />
           {stats.totalConsultations != null && (
-            <StatCard label="Consultations" value={stats.totalConsultations} icon={VideoCall} colors={colors} />
+            <StatCard
+              label="Consultations"
+              value={typeof stats.totalConsultations === 'object'
+                ? (stats.totalConsultations.completed || 0) + (stats.totalConsultations.cancelled || 0) + (stats.totalConsultations.noShow || 0)
+                : stats.totalConsultations}
+              icon={VideoCall}
+              colors={colors}
+            />
           )}
         </div>
       )}

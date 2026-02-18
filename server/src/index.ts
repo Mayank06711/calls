@@ -30,7 +30,7 @@ import expertBlockRouter from "./routes/expertBlockRoutes";
 import expertTipRouter from "./routes/expertTipRoutes";
 import expertComplaintRouter from "./routes/expertComplaintRoutes";
 import historyRouter from "./routes/historyRoutes";
-import wardrobeRouter from "./routes/wardrobeRoute";
+import wardrobeRouter, { publicWardrobeRouter } from "./routes/wardrobeRoute";
 import {
   connectDB,
   disconnectDB,
@@ -56,6 +56,7 @@ class ServerManager {
       "https://192.168.31.125:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
       "https://staging.d15sv24wr1qszx.amplifyapp.com",
+      "https://hesitatively-filiform-aleah.ngrok-free.dev"
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -127,6 +128,7 @@ class ServerManager {
     this.app.use("/api/v1/tips", expertTipRouter);
     this.app.use("/api/v1/complaints", expertComplaintRouter);
     this.app.use("/api/v1/history", historyRouter);
+    this.app.use("/api/v1/public", publicWardrobeRouter); // Public routes — no auth required
     this.app.use("/api/v1/wardrobe", wardrobeRouter);
     this.app.get(
       "/system/_status/health_check",

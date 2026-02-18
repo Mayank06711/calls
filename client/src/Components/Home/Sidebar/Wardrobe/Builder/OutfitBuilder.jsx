@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowBack, Save, AutoAwesome, Add, Remove, CenterFocusStrong,
   Visibility, Close, Checkroom, Tune, DeleteOutline, GridView, Gesture,
+  ContentCut, Image,
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
@@ -21,6 +22,7 @@ import {
   setBuilderMeta,
   setBuilderMode,
   clearSuggestion,
+  updateBuilderSlotItem,
 } from "../../../../../redux/actions/wardrobe.actions";
 import PremiumGate from "../shared/PremiumGate";
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
@@ -28,13 +30,14 @@ import CanvasItem from "./CanvasItem";
 import SlotBuilder from "./SlotBuilder";
 import ImageLightbox from "../MyCloset/ImageLightbox";
 
-const TYPE_TABS = ["All", "Top", "Bottom", "Outerwear", "Shoes"];
+const TYPE_TABS = ["All", "Top", "Bottom", "Full Body", "Outerwear", "Shoes"];
 let canvasIdCounter = 0;
 
 function OutfitBuilder() {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { items: closetItems } = useSelector((s) => s.wardrobe.closet);
   const builder = useSelector((s) => s.wardrobe.builder);
@@ -46,6 +49,7 @@ function OutfitBuilder() {
   const [aiDescription, setAiDescription] = useState("");
   const [feedbackMsg, setFeedbackMsg] = useState(null);
   const [lightboxItem, setLightboxItem] = useState(null);
+  const [showNobg, setShowNobg] = useState(true);
 
   // New floating UI state
   const [closetDrawerOpen, setClosetDrawerOpen] = useState(false);
@@ -61,13 +65,68 @@ function OutfitBuilder() {
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0, startPanX: 0, startPanY: 0 });
 
+  const editOutfit = location.state?.editOutfit;
+
   useEffect(() => {
     if (closetItems.length === 0) dispatch(fetchClosetThunk());
-    // Set default mode based on screen width
     const isMobile = window.innerWidth < 640;
     dispatch(setBuilderMode(isMobile ? "slots" : "canvas"));
     return () => { dispatch(clearBuilder()); };
   }, [dispatch, closetItems.length]);
+
+  // Pre-populate builder when editing an existing outfit
+  useEffect(() => {
+    if (!editOutfit || closetItems.length === 0) return;
+    const outfitItems = editOutfit.items || [];
+    const isMobile = window.innerWidth < 640;
+
+    // Flat-lay inspired positions for canvas mode
+    const canvasPositions = {
+      Top:       { x: 200, y: 30, w: 180, h: 210 },
+      Outerwear: { x: 50,  y: 20, w: 170, h: 220 },
+      Bottom:    { x: 160, y: 220, w: 180, h: 240 },
+      Shoes:     { x: 280, y: 430, w: 140, h: 100 },
+    };
+
+    const slotMap = { Top: "top", Bottom: "bottom", Outerwear: "layer", Shoes: "footwear" };
+    let zIdx = 1;
+
+    for (const entry of outfitItems) {
+      const resolved = entry.clothingItem || entry;
+      const type = resolved.type;
+      const fullItem = closetItems.find((ci) => ci._id === resolved._id) || resolved;
+
+      // Populate slots (for slot mode / if user switches)
+      const slotKey = slotMap[type];
+      if (slotKey) dispatch(updateBuilderSlotItem(slotKey, fullItem));
+
+      // Place on canvas (for canvas mode)
+      if (!isMobile) {
+        const pos = canvasPositions[type] || { x: 80 + zIdx * 60, y: 80 + zIdx * 40, w: 150, h: 180 };
+        const id = `ci_edit_${++canvasIdCounter}_${Date.now()}`;
+        dispatch(addCanvasItem({
+          id,
+          itemId: fullItem._id,
+          x: pos.x,
+          y: pos.y,
+          width: pos.w,
+          height: pos.h,
+          rotation: 0,
+          zIndex: zIdx++,
+          locked: false,
+        }));
+      }
+    }
+
+    // Set metadata
+    dispatch(setBuilderMeta({
+      name: editOutfit.name || "",
+      occasion: editOutfit.occasion || "",
+      season: editOutfit.season || "",
+      tags: editOutfit.tags || [],
+      notes: editOutfit.notes || "",
+    }));
+  }, [editOutfit, closetItems, dispatch]);
 
   useEffect(() => {
     if (sugError) {
@@ -187,6 +246,27 @@ function OutfitBuilder() {
       itemIds = [...new Set(lockedItems.map((ci) => ci.itemId))];
     }
 
+    // Outfit validation: need Top+Bottom or Full Body, minimum 2 items
+    const selectedItems = closetItems.filter((i) => itemIds.includes(i._id));
+    const types = new Set(selectedItems.map((i) => i.type));
+    const hasFullBody = types.has("Full Body");
+    const hasTop = types.has("Top");
+    const hasBottom = types.has("Bottom");
+    if (!hasFullBody && !(hasTop && hasBottom)) {
+      setFeedbackMsg("An outfit needs a Top + Bottom, or a Full Body item");
+      if (addedToastRef.current) clearTimeout(addedToastRef.current);
+      addedToastRef.current = setTimeout(() => setFeedbackMsg(null), 4000);
+      setShowSaveModal(false);
+      return;
+    }
+    if (itemIds.length < 2) {
+      setFeedbackMsg("An outfit needs at least 2 items");
+      if (addedToastRef.current) clearTimeout(addedToastRef.current);
+      addedToastRef.current = setTimeout(() => setFeedbackMsg(null), 4000);
+      setShowSaveModal(false);
+      return;
+    }
+
     const result = await dispatch(saveOutfitThunk({
       name: meta.name || "Untitled Outfit",
       occasion: meta.occasion,
@@ -208,12 +288,12 @@ function OutfitBuilder() {
   const isSlotMode = builder.mode === "slots";
 
   return (
-    <PremiumGate requiredTier="Silver" message="Outfit Builder requires Silver or above">
+    <PremiumGate requiredTier="Silver" message="Outfit Builder requires Silver or above" fullPage>
       <div className="relative w-full h-full overflow-hidden">
 
         {/* ═══════════════ SLOT MODE ═══════════════ */}
         {isSlotMode && (
-          <SlotBuilder closetItems={closetItems} />
+          <SlotBuilder closetItems={closetItems} showNobg={showNobg} />
         )}
 
         {/* ═══════════════ LAYER 1: Full Canvas (canvas mode only) ═══════════════ */}
@@ -255,6 +335,8 @@ function OutfitBuilder() {
                     key={ci.id}
                     item={ci}
                     closetItem={closetItem}
+                    showNobg={showNobg}
+                    onViewPhoto={() => closetItem && setLightboxItem(closetItem)}
                     x={ci.x}
                     y={ci.y}
                     width={ci.width}
@@ -332,6 +414,19 @@ function OutfitBuilder() {
                 <Gesture style={{ color: colors.fourth, fontSize: 16 }} />
               ) : (
                 <GridView style={{ color: colors.fourth, fontSize: 16 }} />
+              )}
+            </button>
+            {/* No-background / Original photo toggle */}
+            <button
+              onClick={() => setShowNobg((p) => !p)}
+              className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md dark:bg-dark-primary/80 bg-light-secondary/80 shadow-md border transition-all hover:scale-105"
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+              title={showNobg ? "Show original photos" : "Show no-background"}
+            >
+              {showNobg ? (
+                <ContentCut style={{ color: colors.fourth, fontSize: 15 }} />
+              ) : (
+                <Image style={{ color: colors.fourth, fontSize: 16 }} />
               )}
             </button>
             {/* Save button */}
@@ -511,7 +606,7 @@ function OutfitBuilder() {
                         <img src={imgSrc} alt={item.subcategory} className="w-full h-24 object-cover" />
                       ) : (
                         <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
-                          {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "👔"}
+                          {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Full Body" ? "👗" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "👔"}
                         </div>
                       )}
                       <p className="text-[10px] px-2 py-1.5 dark:text-dark-text/70 text-light-text/70 truncate text-left">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack, FingerprintOutlined } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import {
@@ -9,26 +9,54 @@ import {
   fetchProfileOptionsThunk,
   updateStyleProfileThunk,
 } from "../../../../redux/thunks/wardrobe.thunks";
+import WizardMode from "./StyleProfile/WizardMode";
+import EditMode from "./StyleProfile/EditMode";
 
-const REQUIRED_FIELDS = [
-  { key: "bodyShape", label: "Body Shape" },
-  { key: "height", label: "Height" },
-  { key: "skinTone", label: "Skin Tone" },
-  { key: "undertone", label: "Undertone" },
-  { key: "ageGroup", label: "Age Group" },
-  { key: "fitPreference", label: "Fit Preference" },
-  { key: "styleVibe", label: "Style Vibe" },
+const PROFILE_SECTIONS = [
+  {
+    id: "about",
+    title: "About You",
+    subtitle: "Let's start with the basics",
+    celebration: "We know you better already!",
+    fields: [
+      { key: "bodyShape", label: "Body Shape", question: "What's your body shape?", tagline: "Everybody is different.", why: "Helps us pick silhouettes that flatter your shape", reactions: ["Nice! Let's find your perfect fits", "Great pick! We'll work with that", "Love it! Shape noted"], required: true },
+      { key: "height", label: "Height", question: "How tall are you?", tagline: "Size matters — for fit, at least.", why: "We'll suggest the right proportions for you", reactions: ["Got it! Proportions matter", "Perfect, noted!", "Height locked in"], required: true },
+      { key: "skinTone", label: "Skin Tone", question: "What's your skin tone?", tagline: "Your natural canvas.", why: "We'll match colors that complement your complexion", reactions: ["Beautiful! Let's find your colors", "Lovely! This helps a lot", "Your palette is taking shape"], required: true },
+      { key: "undertone", label: "Undertone", question: "Warm, cool, or neutral?", tagline: "The hidden detail.", why: "This changes which colors make you glow", reactions: ["That changes everything!", "Now we're cooking", "Secret weapon unlocked"], required: true },
+      { key: "ageGroup", label: "Age Group", question: "What's your age group?", tagline: "Style evolves with you.", why: "Trends and fits vary by life stage", reactions: ["Age is just a vibe", "Style has no age limit", "Noted! Moving on"], required: true },
+    ],
+  },
+  {
+    id: "style",
+    title: "Your Style",
+    subtitle: "How you like to dress",
+    celebration: "Your style DNA is forming!",
+    fields: [
+      { key: "fitPreference", label: "Fit Preference", question: "How do you like your clothes to fit?", tagline: "Comfort meets style.", why: "Loose and flowy, or fitted and sharp?", reactions: ["That's the vibe!", "Comfort + style = you", "Fit preference locked"], required: true },
+      { key: "styleVibe", label: "Style Vibe", question: "Pick your style vibe", tagline: "Your fashion fingerprint.", why: "This shapes every recommendation we make", reactions: ["You've got taste!", "We love that energy", "Your vibe is everything"], required: true },
+      { key: "colorPaletteSeason", label: "Color Season", question: "What's your color season?", tagline: "Color theory, simplified.", why: "Spring, summer, autumn, or winter palette", reactions: ["Ooh, great palette!", "Colors unlocked", "Now we know your hues"], required: false },
+    ],
+  },
+  {
+    id: "details",
+    title: "Fine Details",
+    subtitle: "Optional — helps refine suggestions",
+    celebration: "You're all set!",
+    fields: [
+      { key: "faceShape", label: "Face Shape", question: "What's your face shape?", tagline: "Frames your look.", why: "Helps with accessory and neckline suggestions", reactions: ["Noted! Accessories will love you", "Face shape locked in", "Great detail!"], required: false },
+      { key: "hairType", label: "Hair Type", question: "What's your hair type?", tagline: "Every strand tells a story.", why: "We'll factor this into overall styling", reactions: ["Hair game strong!", "Every strand counts", "Styling just got personal"], required: false },
+      { key: "hairLength", label: "Hair Length", question: "How long is your hair?", tagline: "Short, long, or in between.", why: "Affects how necklines and accessories land", reactions: ["Length noted!", "That affects necklines — smart", "Good to know!"], required: false },
+      { key: "hairColor", label: "Hair Color", question: "What color is your hair?", tagline: "Your crowning detail.", why: "We'll consider color harmony head to toe", reactions: ["Head to toe harmony!", "Color coordination activated", "Looking good!"], required: false },
+      { key: "eyeShape", label: "Eye Shape", question: "What's your eye shape?", tagline: "The windows to your style.", why: "Refines accessory recommendations", reactions: ["Eyes say it all!", "Detail level: expert", "Almost there!"], required: false },
+      { key: "lipShape", label: "Lip Shape", question: "What's your lip shape?", tagline: "The finishing touch.", why: "Completes your style portrait", reactions: ["Final touch!", "Style portrait complete", "You nailed it!"], required: false },
+    ],
+  },
 ];
 
-const OPTIONAL_FIELDS = [
-  { key: "faceShape", label: "Face Shape" },
-  { key: "hairType", label: "Hair Type" },
-  { key: "hairLength", label: "Hair Length" },
-  { key: "hairColor", label: "Hair Color" },
-  { key: "eyeShape", label: "Eye Shape" },
-  { key: "lipShape", label: "Lip Shape" },
-  { key: "colorPaletteSeason", label: "Color Palette Season" },
-];
+// Flat lists derived from sections for validation/compat
+const ALL_FIELDS = PROFILE_SECTIONS.flatMap((s) => s.fields);
+const REQUIRED_FIELDS = ALL_FIELDS.filter((f) => f.required);
+const OPTIONAL_FIELDS = ALL_FIELDS.filter((f) => !f.required);
 
 function StyleProfile() {
   const colors = useSubscriptionColors();
@@ -43,7 +71,6 @@ function StyleProfile() {
   );
 
   const [formData, setFormData] = useState({});
-  const [showOptional, setShowOptional] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProfileOptionsThunk());
@@ -62,7 +89,6 @@ function StyleProfile() {
   };
 
   const handleSave = async () => {
-    // Validate required fields
     const missing = REQUIRED_FIELDS.filter((f) => !formData[f.key]);
     if (missing.length > 0) return;
 
@@ -74,8 +100,6 @@ function StyleProfile() {
 
   const getOptionsForField = (key) => {
     if (!options) return [];
-    // Server returns { required: { bodyShape: [...] }, optionalTier1: { faceShape: [...] }, ... }
-    // Each option is { value, description }
     return options.required?.[key]
       || options.optionalTier1?.[key]
       || options.optionalTier2?.[key]
@@ -84,6 +108,8 @@ function StyleProfile() {
   };
 
   const allRequiredFilled = REQUIRED_FIELDS.every((f) => formData[f.key]);
+  const filledCount = ALL_FIELDS.filter((f) => formData[f.key]).length;
+  const completionPct = Math.round((filledCount / ALL_FIELDS.length) * 100);
 
   if (loading || optionsLoading) {
     return (
@@ -96,164 +122,65 @@ function StyleProfile() {
   return (
     <div className="w-full h-full overflow-hidden flex flex-col">
       {/* Fixed Header */}
-      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
-        <div className="flex items-center gap-2">
-          <IconButton onClick={() => navigate("/wardrobe")} size="small">
-            <ArrowBack style={{ color: colors.fourth }} />
-          </IconButton>
-          <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-            Style Profile
-          </h2>
-        </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
-      {/* First-time setup banner */}
-      {!hasProfile && (
+      <div className="flex-shrink-0">
         <div
-          className="rounded-xl border p-4 mb-4"
-          style={{ borderColor: toRgba(colors.fourth, 0.4), backgroundColor: toRgba(colors.fourth, 0.08) }}
+          className="px-3 sm:px-4 pt-2 pb-2"
+          style={{
+            background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.06)} 0%, transparent 60%)`,
+          }}
         >
-          <p className="text-sm font-medium dark:text-dark-text/80 text-light-text/80 mb-1">
-            Welcome! Let's set up your style profile.
-          </p>
-          <p className="text-xs dark:text-dark-text/50 text-light-text/50">
-            Select the options that best describe you — tap any option to see its description. This helps our AI suggest outfits tailored to your body, preferences, and vibe.
-          </p>
-        </div>
-      )}
-
-      {/* Form card */}
-      <div
-        className="rounded-xl backdrop-blur-md dark:bg-dark-primary bg-light-secondary border p-4 sm:p-6"
-        style={{ borderColor: toRgba(colors.fourth, 0.3) }}
-      >
-        <h3 className="text-base font-semibold mb-4 dark:text-dark-text/90 text-light-text/90">
-          Your Style DNA
-        </h3>
-
-        {/* Required fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {REQUIRED_FIELDS.map((field) => (
-            <div key={field.key}>
-              <label className="block text-xs font-medium mb-2 dark:text-dark-text/60 text-light-text/60">
-                {field.label} <span className="text-red-400">*</span>
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {getOptionsForField(field.key).map((opt) => {
-                  const optValue = opt.value || opt;
-                  const optDesc = opt.description || "";
-                  const isSelected = formData[field.key] === optValue;
-                  return (
-                    <button
-                      key={optValue}
-                      onClick={() => handleChipSelect(field.key, optValue)}
-                      title={optDesc}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
-                        ${isSelected
-                          ? "text-white"
-                          : "dark:text-dark-text/70 text-light-text/70 dark:bg-dark-primary bg-light-secondary hover:opacity-80"
-                        }`}
-                      style={{
-                        backgroundColor: isSelected ? colors.fourth : undefined,
-                        borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.3),
-                      }}
-                    >
-                      {optValue}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Show description of selected option */}
-              {formData[field.key] && (() => {
-                const selected = getOptionsForField(field.key).find(
-                  (opt) => (opt.value || opt) === formData[field.key]
-                );
-                const desc = selected?.description;
-                return desc ? (
-                  <p className="mt-1.5 text-[10px] leading-snug dark:text-dark-text/50 text-light-text/50 italic">
-                    {desc}
-                  </p>
-                ) : null;
-              })()}
+          <div className="flex items-center gap-2">
+            <IconButton onClick={() => navigate("/wardrobe")} size="small">
+              <ArrowBack style={{ color: colors.fourth }} />
+            </IconButton>
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${colors.fourth}, ${toRgba(colors.fourth, 0.6)})`,
+              }}
+            >
+              <FingerprintOutlined style={{ color: "#fff", fontSize: 16 }} />
             </div>
-          ))}
-        </div>
-
-        {/* Optional section toggle */}
-        <button
-          onClick={() => setShowOptional(!showOptional)}
-          className="mt-6 text-sm font-medium transition-colors"
-          style={{ color: colors.fourth }}
-        >
-          {showOptional ? "Hide" : "Show"} Advanced Options
-        </button>
-
-        {/* Optional fields */}
-        {showOptional && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
-            {OPTIONAL_FIELDS.map((field) => (
-              <div key={field.key}>
-                <label className="block text-xs font-medium mb-2 dark:text-dark-text/60 text-light-text/60">
-                  {field.label}
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {getOptionsForField(field.key).map((opt) => {
-                    const optValue = opt.value || opt;
-                    const optDesc = opt.description || "";
-                    const isSelected = formData[field.key] === optValue;
-                    return (
-                      <button
-                        key={optValue}
-                        onClick={() => handleChipSelect(field.key, optValue)}
-                        title={optDesc}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
-                          ${isSelected
-                            ? "text-white"
-                            : "dark:text-dark-text/70 text-light-text/70 dark:bg-dark-primary bg-light-secondary hover:opacity-80"
-                          }`}
-                        style={{
-                          backgroundColor: isSelected ? colors.fourth : undefined,
-                          borderColor: isSelected ? colors.fourth : toRgba(colors.fourth, 0.3),
-                        }}
-                      >
-                        {optValue}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Show description of selected option */}
-                {formData[field.key] && (() => {
-                  const selected = getOptionsForField(field.key).find(
-                    (opt) => (opt.value || opt) === formData[field.key]
-                  );
-                  const desc = selected?.description;
-                  return desc ? (
-                    <p className="mt-1.5 text-[10px] leading-snug dark:text-dark-text/50 text-light-text/50 italic">
-                      {desc}
-                    </p>
-                  ) : null;
-                })()}
-              </div>
-            ))}
+            <div>
+              <h2 className="text-sm font-bold dark:text-dark-text text-light-text tracking-tight">
+                Style DNA
+              </h2>
+              <p className="text-[10px] dark:text-dark-text/40 text-light-text/40">
+                {hasProfile ? "Powers your AI outfit suggestions" : "Helps AI style outfits just for you"}
+              </p>
+            </div>
           </div>
-        )}
-
-        {/* Save button */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={!allRequiredFilled || saving}
-            className="px-6 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-            style={{ backgroundColor: colors.fourth }}
-          >
-            {saving && <CircularProgress size={14} style={{ color: "white" }} />}
-            {hasProfile ? "Update Profile" : "Save Profile"}
-          </button>
         </div>
+        <div
+          className="h-[2px]"
+          style={{ background: `linear-gradient(to right, ${colors.fourth}, ${toRgba(colors.fourth, 0.15)}, transparent)` }}
+        />
       </div>
-      </div>
+
+      {/* Mode switch: Wizard for new users, Edit for returning users */}
+      {hasProfile ? (
+        <EditMode
+          sections={PROFILE_SECTIONS}
+          formData={formData}
+          onChipSelect={handleChipSelect}
+          getOptionsForField={getOptionsForField}
+          onSave={handleSave}
+          saving={saving}
+          allRequiredFilled={allRequiredFilled}
+          completionPct={completionPct}
+        />
+      ) : (
+        <WizardMode
+          sections={PROFILE_SECTIONS}
+          allFields={ALL_FIELDS}
+          formData={formData}
+          onChipSelect={handleChipSelect}
+          getOptionsForField={getOptionsForField}
+          onSave={handleSave}
+          saving={saving}
+          requiredFields={REQUIRED_FIELDS}
+        />
+      )}
     </div>
   );
 }

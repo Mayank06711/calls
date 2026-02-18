@@ -151,6 +151,7 @@ export const ENDPOINTS = {
     // Wear Tracking
     WEAR_LOG: `/api/${API_CONFIG.VERSION}/wardrobe/wear-log`, // POST (log) / GET (history)
     WEAR_STATS: `/api/${API_CONFIG.VERSION}/wardrobe/wear-stats`, // GET
+    PLANNED_WEARS: `/api/${API_CONFIG.VERSION}/wardrobe/planned-wears`, // GET / PATCH /:id/worn / PUT /:id / DELETE /:id
 
     // Upload
     GENERATE_UPLOAD_URL: `/api/${API_CONFIG.VERSION}/wardrobe/generate-upload-url`, // POST
@@ -165,5 +166,12 @@ export const ENDPOINTS = {
 
     // Product Catalog
     PRODUCT_CATALOG: `/api/${API_CONFIG.VERSION}/wardrobe/product-catalog`, // GET
+
+    // Collections
+    COLLECTIONS: `/api/${API_CONFIG.VERSION}/wardrobe/collections`, // GET (list) / POST (create)
+
+    // Sharing
+    SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // GET /:shareToken (public, no auth)
+    LIKE_SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // POST /:shareToken/like (public, no auth)
   },
 };

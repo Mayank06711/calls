@@ -186,7 +186,7 @@ const SendUserNotificationSchema = z.object({
 // ─── Wardrobe Schemas ──────────────────────────────────────────────────────
 
 const AddClothSchema = z.object({
-  type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear"], {
+  type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear", "Full Body"], {
     required_error: "Clothing type is required",
   }),
   subcategory: z.string().min(1, "Subcategory is required").trim(),
@@ -230,12 +230,12 @@ const UpdateClothSchema = AddClothSchema.partial();
 
 const CreateOutfitSchema = z.object({
   name: z.string().trim().nullable().optional(),
-  itemIds: z.array(mongoId).min(1, "At least one item is required"),
+  itemIds: z.array(mongoId).min(2, "An outfit needs at least 2 items"),
   occasion: z.string().trim().nullable().optional(),
   season: z.string().trim().nullable().optional(),
   tags: z.array(z.string().trim()).default([]),
   notes: z.string().trim().nullable().optional(),
-  source: z.enum(["manual", "ai_suggested", "engine_suggested"]).default("manual"),
+  source: z.enum(["manual", "ai_suggested", "engine_suggested", "builder", "builder-slots"]).default("manual"),
 
   // ─── Phase 7: Python AI Service (all optional) ───────────────────────
   flatlayUrl: z.string().url("Invalid flatlay URL").nullable().optional(),
@@ -364,6 +364,15 @@ const LogWearSchema = z.object({
   occasion: z.string().trim().optional(),
   notes: z.string().trim().optional(),
   weather: z.string().trim().optional(),
+  status: z.enum(['worn', 'planned']).optional(),
+  plannedFor: z.string().datetime().optional(),
+});
+
+const UpdatePlannedWearSchema = z.object({
+  status: z.enum(['worn', 'planned']).optional(),
+  plannedFor: z.string().datetime().optional(),
+  occasion: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
 });
 
 // ─── Batch Schemas ──────────────────────────────────────────────────────────
@@ -380,7 +389,7 @@ const BatchUploadSchema = z.object({
 const AddClothBatchSchema = z.object({
   items: z.array(
     z.object({
-      type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear"], {
+      type: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear", "Full Body"], {
         required_error: "Clothing type is required",
       }),
       subcategory: z.string().min(1, "Subcategory is required").trim(),
@@ -398,6 +407,32 @@ const AddClothBatchSchema = z.object({
       hasPersonInPhoto: z.boolean().optional(),
     })
   ).min(1, "At least one item is required").max(10, "Maximum 10 items per batch"),
+});
+
+// ─── Collections ─────────────────────────────────────────────────────────────
+
+const CreateCollectionSchema = z.object({
+  name: z.string().min(1, "Collection name is required").max(50, "Name must be under 50 characters").trim(),
+  description: z.string().max(200, "Description must be under 200 characters").trim().optional(),
+  emoji: z.string().trim().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color").optional(),
+});
+
+const UpdateCollectionSchema = z.object({
+  name: z.string().min(1, "Collection name is required").max(50, "Name must be under 50 characters").trim().optional(),
+  description: z.string().max(200, "Description must be under 200 characters").trim().optional(),
+  emoji: z.string().trim().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color").optional(),
+});
+
+const CollectionItemsSchema = z.object({
+  itemIds: z.array(mongoId).min(1, "At least one item is required"),
+});
+
+// ─── Sharing ────────────────────────────────────────────────────────────────
+
+const SendOutfitSchema = z.object({
+  recipientUsername: z.string().min(1, "Recipient username is required").trim(),
 });
 
 // ─── Exports ────────────────────────────────────────────────────────────────
@@ -436,7 +471,14 @@ export {
   GeneratePairingsSchema,
   SavePairingSchema,
   LogWearSchema,
+  UpdatePlannedWearSchema,
   // Batch
   BatchUploadSchema,
   AddClothBatchSchema,
+  // Collections
+  CreateCollectionSchema,
+  UpdateCollectionSchema,
+  CollectionItemsSchema,
+  // Sharing
+  SendOutfitSchema,
 };

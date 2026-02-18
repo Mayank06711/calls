@@ -47,6 +47,11 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       port: 3000,
     },
+    preview: {
+      proxy,
+      host: "0.0.0.0",
+      port: 3000,
+    },
     define: {
       'process.env': Object.assign({}, env)
     }

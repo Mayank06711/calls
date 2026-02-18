@@ -12,7 +12,7 @@ import {
 import SlotBox from "./SlotBox";
 import ImageLightbox from "../MyCloset/ImageLightbox";
 
-const TYPE_TABS = ["All", "Top", "Bottom", "Outerwear", "Shoes", "Accessory"];
+const TYPE_TABS = ["All", "Top", "Bottom", "Full Body", "Outerwear", "Shoes", "Accessory"];
 const ACCESSORY_SUBTYPES = [
   { label: "Watch", emoji: "⌚" },
   { label: "Belt", emoji: "👔" },
@@ -24,7 +24,7 @@ const ACCESSORY_SUBTYPES = [
   { label: "Cap", emoji: "🧢" },
 ];
 
-function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
+function SlotBuilder({ closetItems, onOpenClosetDrawer, showNobg = true }) {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const slots = useSelector((s) => s.wardrobe.builder.slots);
@@ -117,6 +117,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
       top: { top: "15%", left: "50%", transform: "translateX(-50%)", zIndex: 2, width: "38%" },
       bottom: { top: "48%", left: "50%", transform: "translateX(-50%)", zIndex: 3, width: "36%" },
       footwear: { bottom: "8%", left: "50%", transform: "translateX(-50%)", zIndex: 4, width: "28%" },
+      full_body: { top: "5%", left: "50%", transform: "translateX(-50%)", zIndex: 2, width: "55%" },
     };
 
     // Accessories positioned around the outfit
@@ -207,7 +208,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                           <img src={imgSrc} alt={item.subcategory} className="w-full h-24 object-cover" draggable={false} />
                         ) : (
                           <div className="w-full h-24 flex items-center justify-center text-2xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
-                            {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
+                            {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Full Body" ? "👗" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
                           </div>
                         )}
                         <p className="text-[10px] px-2 py-1.5 dark:text-dark-text/70 text-light-text/70 truncate text-left">
@@ -306,7 +307,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                     <img src={imgSrc} alt={item.subcategory} className="w-full h-20 object-cover" />
                   ) : (
                     <div className="w-full h-20 flex items-center justify-center text-xl" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
-                      {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
+                      {item.type === "Top" ? "👕" : item.type === "Bottom" ? "👖" : item.type === "Full Body" ? "👗" : item.type === "Outerwear" ? "🧥" : item.type === "Shoes" ? "👟" : "⌚"}
                     </div>
                   )}
                   <p className="text-[9px] px-1.5 py-1 dark:text-dark-text/70 text-light-text/70 truncate">
@@ -387,6 +388,7 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
                   onUpdate={(item) => handleSlotUpdate(slot.key, item)}
                   onRemoveSlot={!defaultSlotKeys.includes(slot.key) ? () => handleRemoveSlot(slot.key) : undefined}
                   isCustom={!defaultSlotKeys.includes(slot.key)}
+                  showNobg={showNobg}
                 />
               </div>
             ))}
@@ -441,7 +443,9 @@ function SlotBuilder({ closetItems, onOpenClosetDrawer }) {
             >
               {slots.map((slot) => {
                 const position = getFlatlayPosition(slot.key);
-                const photoUrl = slot.item?.nobgUrl || slot.item?.thumbnailUrl || slot.item?.photoUrl;
+                const photoUrl = showNobg
+                  ? (slot.item?.nobgUrl || slot.item?.thumbnailUrl || slot.item?.photoUrl)
+                  : (slot.item?.thumbnailUrl || slot.item?.photoUrl);
 
                 return (
                   <div

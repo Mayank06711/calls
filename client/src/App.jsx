@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { decrementTimer } from "./redux/actions/login.actions";
 import {
@@ -17,63 +17,71 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import Login from "./Components/Login/Login";
-import LandingPage from "./Components/Landing/LandingPage";
-import Home from "./Components/Home/Home";
-import Missing from "./Components/Missing";
+// ── Eager imports (needed immediately on every page load) ────────────────────
 import Toast from "./Components/Notification/Toast";
 import { createTheme, ThemeProvider } from "@mui/material";
-import UserInfoForm from "./Components/Login/UserInfoForm";
-import Chats from "./Components/Home/Sidebar/Chats/Chats";
-import Reels from "./Components/Home/Sidebar/Reels/Reels";
-import Subscriptions from "./Components/Home/Sidebar/Subscriptions/Subscriptions";
-import WardrobeHub from "./Components/Home/Sidebar/Wardrobe/WardrobeHub";
-import StyleProfile from "./Components/Home/Sidebar/Wardrobe/StyleProfile";
-import MyCloset from "./Components/Home/Sidebar/Wardrobe/MyCloset/MyCloset";
-import FullOutfit from "./Components/Home/Sidebar/Wardrobe/Suggestions/FullOutfit";
-import FromItem from "./Components/Home/Sidebar/Wardrobe/Suggestions/FromItem";
-import SuggestHub from "./Components/Home/Sidebar/Wardrobe/Suggestions/SuggestHub";
-import Pairings from "./Components/Home/Sidebar/Wardrobe/Pairings/Pairings";
-import OutfitBuilder from "./Components/Home/Sidebar/Wardrobe/Builder/OutfitBuilder";
-import OutfitList from "./Components/Home/Sidebar/Wardrobe/Outfits/OutfitList";
-import OutfitDetail from "./Components/Home/Sidebar/Wardrobe/Outfits/OutfitDetail";
-import WearLogPage from "./Components/Home/Sidebar/Wardrobe/WearLog/WearLog";
-import ShopPage from "./Components/Home/Sidebar/Wardrobe/Shop/Shop";
-import UserProfile from "./Components/Home/Hearders/UserProfile/UserProfile";
-import NotificationPanel from "./Components/Home/Hearders/Notifications/NotificationPanel";
 import { NotificationProvider } from "./hooks/useNotifications";
-import UserSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings";
-import MyStyle from "./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle";
-import UserHistory from "./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory";
-import Likes from "./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes";
-import Posts from "./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts";
-import SilverSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription";
-import PlatinumSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription";
-import GoldSubscription from "./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription";
-import ThemeSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings";
-import NotificationSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings";
-import PrivacySettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PrivacySettings";
-import PreferenceSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PreferenceSettings";
-import LayoutSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/LayoutSettings";
-import AccessibilitySettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AccessibilitySettings";
-import SessionSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/SessionSettings";
-import UsageSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/UsageSettings";
-import ReelsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings";
-import AnalyticsSettings from "./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings";
-import Feedback from "./Components/Feedback/Feedback";
-// import { ensureSocketAuthenticated } from "./socket/authentication";
-// import { SocketManager } from "./socket/config";
 import { showNotification } from "./redux/actions";
-// Import the SocketProvider for context-based socket management
 import { SocketProvider } from "./socket/SocketContext";
 import { VideoCallProvider } from "./hooks/useVideoCall";
-import VideoCall from "./Components/Home/VideoCall/VideoCall";
-import IncomingCall from "./Components/Home/VideoCall/IncomingCall";
-import CallErrorModal from "./Components/Home/VideoCall/CallErrorModal";
-import ExpertPermissionRequest from "./Components/Home/VideoCall/ExpertPermissionRequest";
-import ExpertPermissionStatus from "./Components/Home/VideoCall/ExpertPermissionStatus";
-import TermsAndConditions from "./Components/Legal/TermsAndConditions";
-import PrivacyPolicy from "./Components/Legal/PrivacyPolicy";
+import Feedback from "./Components/Feedback/Feedback";
+
+// ── Lazy-loaded route components ─────────────────────────────────────────────
+const Login = lazy(() => import("./Components/Login/Login"));
+const LandingPage = lazy(() => import("./Components/Landing/LandingPage"));
+const Home = lazy(() => import("./Components/Home/Home"));
+const Missing = lazy(() => import("./Components/Missing"));
+const UserInfoForm = lazy(() => import("./Components/Login/UserInfoForm"));
+const Chats = lazy(() => import("./Components/Home/Sidebar/Chats/Chats"));
+const Reels = lazy(() => import("./Components/Home/Sidebar/Reels/Reels"));
+const Subscriptions = lazy(() => import("./Components/Home/Sidebar/Subscriptions/Subscriptions"));
+const WardrobeHub = lazy(() => import("./Components/Home/Sidebar/Wardrobe/WardrobeHub"));
+const StyleProfile = lazy(() => import("./Components/Home/Sidebar/Wardrobe/StyleProfile"));
+const MyCloset = lazy(() => import("./Components/Home/Sidebar/Wardrobe/MyCloset/MyCloset"));
+const FullOutfit = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Suggestions/FullOutfit"));
+const FromItem = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Suggestions/FromItem"));
+const SuggestHub = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Suggestions/SuggestHub"));
+const Pairings = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Pairings/Pairings"));
+const OutfitBuilder = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Builder/OutfitBuilder"));
+const OutfitList = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Outfits/OutfitList"));
+const OutfitDetail = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Outfits/OutfitDetail"));
+const WearLogPage = lazy(() => import("./Components/Home/Sidebar/Wardrobe/WearLog/WearLog"));
+const ShopPage = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Shop/Shop"));
+const UserProfile = lazy(() => import("./Components/Home/Hearders/UserProfile/UserProfile"));
+const NotificationPanel = lazy(() => import("./Components/Home/Hearders/Notifications/NotificationPanel"));
+const UserSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings"));
+const MyStyle = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle"));
+const UserHistory = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory"));
+const Likes = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes"));
+const Posts = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts"));
+const SilverSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription"));
+const PlatinumSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription"));
+const GoldSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription"));
+const ThemeSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings"));
+const NotificationSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings"));
+const PrivacySettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PrivacySettings"));
+const PreferenceSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PreferenceSettings"));
+const LayoutSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/LayoutSettings"));
+const AccessibilitySettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AccessibilitySettings"));
+const SessionSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/SessionSettings"));
+const UsageSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/UsageSettings"));
+const ReelsSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ReelsSettings"));
+const AnalyticsSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AnalyticsSettings"));
+const VideoCall = lazy(() => import("./Components/Home/VideoCall/VideoCall"));
+const IncomingCall = lazy(() => import("./Components/Home/VideoCall/IncomingCall"));
+const CallErrorModal = lazy(() => import("./Components/Home/VideoCall/CallErrorModal"));
+const ExpertPermissionRequest = lazy(() => import("./Components/Home/VideoCall/ExpertPermissionRequest"));
+const ExpertPermissionStatus = lazy(() => import("./Components/Home/VideoCall/ExpertPermissionStatus"));
+const TermsAndConditions = lazy(() => import("./Components/Legal/TermsAndConditions"));
+const PrivacyPolicy = lazy(() => import("./Components/Legal/PrivacyPolicy"));
+const SharedOutfitPage = lazy(() => import("./Components/Public/SharedOutfitPage"));
+
+// ── Suspense fallback spinner ────────────────────────────────────────────────
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500" />
+  </div>
+);
 
 // Listens for custom 'app:navigate' events (e.g. from browser notification clicks)
 // and performs client-side navigation without a full page reload.
@@ -205,16 +213,7 @@ const App = () => {
           <NavigationListener />
           <div className='relative min-h-screen'>
             <Toast />
-            {/* <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `url(${backgroundImage})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                opacity: 0.05,
-                zIndex: 0,
-              }}
-            /> */}
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route
                 path='/'
@@ -310,10 +309,12 @@ const App = () => {
                   )
                 }
               />
+              <Route path='/outfit/:shareToken' element={<SharedOutfitPage />} />
               <Route path='/terms' element={<TermsAndConditions />} />
               <Route path='/privacy' element={<PrivacyPolicy />} />
               <Route path='*' element={<Missing />} />
             </Routes>
+            </Suspense>
           </div>
           <Feedback />
           {/* Global video call overlays — rendered above all routes */}

@@ -1,10 +1,18 @@
-import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Close } from "@mui/icons-material";
+import React, { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Close, Visibility, Image } from "@mui/icons-material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 
-function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
+
+function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom, showNobg = true }) {
   const colors = useSubscriptionColors();
   const [dragOver, setDragOver] = useState(false);
+  // Per-item nobg override — syncs with global toggle, but can be flipped individually
+  const [itemNobg, setItemNobg] = useState(showNobg);
+
+  // Sync per-item state when global toggle changes
+  useEffect(() => {
+    setItemNobg(showNobg);
+  }, [showNobg]);
 
   const item = slot.item;
   const total = allItemsOfType.length;
@@ -53,8 +61,12 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
     } catch { /* ignore invalid drops */ }
   };
 
-  // Prioritize nobgUrl (background-removed) for cleaner display
-  const photoUrl = item?.nobgUrl || item?.thumbnailUrl || item?.photoUrl;
+  // Respect per-item nobg toggle for image display
+  const hasNobg = !!item?.nobgUrl;
+  const isNobg = itemNobg && hasNobg;
+  const photoUrl = isNobg
+    ? item.nobgUrl
+    : (item?.thumbnailUrl || item?.photoUrl);
 
   return (
     <div
@@ -91,18 +103,20 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
       {item ? (
         /* ── Filled State ── */
         <div className="flex flex-col h-full">
-          {/* Photo with blurred background fill */}
-          <div className="relative flex-1 min-h-0 overflow-hidden">
+          {/* Photo area — nobg: clean white bg for clear item display */}
+          <div className="relative flex-1 min-h-0 overflow-hidden" style={isNobg ? { backgroundColor: "#f8f8f5" } : undefined}>
             {photoUrl ? (
               <>
-                {/* Blurred bg fill — same image, scaled up, heavily blurred */}
-                <img
-                  src={photoUrl}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
-                />
-                {/* Actual image — contained, sharp, on top */}
+                {/* Blurred bg fill — only for regular photos, not nobg */}
+                {!isNobg && (
+                  <img
+                    src={photoUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
+                  />
+                )}
+                {/* Actual image */}
                 <img
                   src={photoUrl}
                   alt={item.subcategory}
@@ -121,6 +135,22 @@ function SlotBox({ slot, allItemsOfType, onUpdate, onRemoveSlot, isCustom }) {
             >
               <Close style={{ fontSize: 14 }} />
             </button>
+            {/* Per-item nobg/photo toggle */}
+            {hasNobg && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setItemNobg((p) => !p); }}
+                className={`absolute bottom-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                  isNobg ? "bg-amber-500 text-white" : "bg-black/50 text-white hover:bg-black/70"
+                }`}
+                title={isNobg ? "Show original photo" : "Show no-background"}
+              >
+                {isNobg ? (
+                  <Image style={{ fontSize: 13 }} />
+                ) : (
+                  <Visibility style={{ fontSize: 13 }} />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Details */}

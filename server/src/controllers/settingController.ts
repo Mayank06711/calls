@@ -28,27 +28,19 @@ class UserSettings {
         throw new ApiError(401, "Unauthorized access");
       }
 
-      // Check if settings already exist
-      let settings = await executeModelOperation(
-        UserSettingsModel,
-        "findOne",
-        { queryOptions: { lean: true } },
-        null,
-        { userId }
+      // Atomic upsert — avoids race condition when called twice in parallel
+      const settings = await UserSettingsModel.findOneAndUpdate(
+        { userId },
+        { $setOnInsert: { userId } },
+        { upsert: true, new: true, lean: true }
       );
 
       if (!settings) {
-        // Create default settings without any request body data
-        settings = await executeModelOperation(
-          UserSettingsModel,
-          "create",
-          {},
-          { userId }
-        ).then(doc=>doc.toObject());
+        throw new ApiError(500, "Failed to initialize user settings");
       }
 
       // Sanitize the response
-      const sanitizedSettings = sanitizeData(settings, {
+      const sanitizedSettings = sanitizeData(settings as any, {
         exclude: ["__v","$__", "_doc","$isNew"],
         deep: {
           lastLoginInfo: {

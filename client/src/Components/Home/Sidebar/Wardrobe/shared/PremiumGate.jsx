@@ -6,7 +6,7 @@ import { LockOutlined } from "@mui/icons-material";
 
 const TIER_LEVEL = { Free: 0, Silver: 1, Gold: 2, Platinum: 3 };
 
-function PremiumGate({ requiredTier = "Silver", children, message }) {
+function PremiumGate({ requiredTier = "Silver", children, message, fullPage = false }) {
   const colors = useSubscriptionColors();
   const navigate = useNavigate();
   const subscriptionType = useSelector(
@@ -18,30 +18,63 @@ function PremiumGate({ requiredTier = "Silver", children, message }) {
 
   if (currentLevel >= requiredLevel) return children;
 
+  /* ── Full-page lock screen (for route-level gates like OutfitBuilder) ── */
+  if (fullPage) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6">
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: `linear-gradient(135deg, rgba(245,158,11,0.15), rgba(249,115,22,0.1))` }}
+        >
+          <LockOutlined className="text-amber-500" style={{ fontSize: 32 }} />
+        </div>
+        <div className="text-center">
+          <h3 className="text-base font-bold dark:text-dark-text text-light-text mb-1">
+            {message || `${requiredTier} Plan Required`}
+          </h3>
+          <p className="text-xs dark:text-dark-text/50 text-light-text/50 max-w-xs">
+            Upgrade your plan to unlock this feature and get the most out of your wardrobe.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/subscriptions")}
+          className="px-5 py-2 rounded-lg text-sm font-medium text-white
+            bg-gradient-to-r from-amber-500 to-orange-500
+            hover:from-amber-600 hover:to-orange-600 transition-all
+            shadow-md hover:shadow-lg"
+        >
+          Upgrade Now
+        </button>
+      </div>
+    );
+  }
+
+  /* ── Card-level lock overlay (for hub cards, collection pills) ── */
   return (
     <div className="relative rounded-xl overflow-hidden">
-      {/* Blurred content preview */}
-      <div className="pointer-events-none select-none blur-sm opacity-40">
+      {/* Dimmed content preview — keeps card shape */}
+      <div className="pointer-events-none select-none blur-[2px] opacity-20 grayscale">
         {children}
       </div>
 
-      {/* Lock overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center backdrop-blur-sm bg-black/10 dark:bg-black/30 rounded-xl">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
-          style={{ backgroundColor: toRgba(colors.fourth, 0.2) }}
-        >
-          <LockOutlined style={{ color: colors.fourth, fontSize: 28 }} />
+      {/* Premium overlay — matches settings-page style */}
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center rounded-xl p-4 cursor-pointer group/gate"
+        onClick={() => navigate("/subscriptions")}
+      >
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <LockOutlined className="text-amber-500" style={{ fontSize: 16 }} />
+          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+            {message || `${requiredTier} Plan`}
+          </span>
         </div>
-        <p className="text-sm font-medium dark:text-dark-text/80 text-light-text/80 mb-1 text-center px-4">
-          {message || `Requires ${requiredTier} or above`}
-        </p>
         <button
-          onClick={() => navigate("/subscriptions")}
-          className="mt-2 px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: colors.fourth }}
+          className="px-3 py-1 rounded-lg text-[10px] font-medium text-white
+            bg-gradient-to-r from-amber-500 to-orange-500
+            hover:from-amber-600 hover:to-orange-600 transition-all
+            shadow-sm hover:shadow-md"
         >
-          Upgrade Plan
+          Upgrade
         </button>
       </div>
     </div>

@@ -24,9 +24,11 @@ export const makeRequest = async (
 
     const upperMethod = method.toUpperCase();
 
+    let response;
+
     // For GET and DELETE requests, payload should be passed as params
     if (upperMethod === "GET" || upperMethod === "DELETE") {
-      const response = await axiosInstance[method.toLowerCase()](
+      response = await axiosInstance[method.toLowerCase()](
         url,
         payload
           ? {
@@ -34,12 +36,12 @@ export const makeRequest = async (
             }
           : undefined
       );
-      return response.data;
+    } else {
+      // For POST, PUT, PATCH requests
+      response = await axiosInstance[method.toLowerCase()](url, payload||{});
     }
 
-    // For POST, PUT, PATCH requests
-    const response = await axiosInstance[method.toLowerCase()](url, payload||{});
-    console.log("response from makereuest", response);
+    console.log(`makeRequest [${upperMethod}] ${url} →`, { data: response.data, status: response.status });
     return response.data;
   } catch (error) {
     console.error("Error in api handler:", error);

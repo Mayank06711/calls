@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
-export type ClothingType = 'Top' | 'Bottom' | 'Shoes' | 'Accessory' | 'Outerwear';
+export type ClothingType = 'Top' | 'Bottom' | 'Shoes' | 'Accessory' | 'Outerwear' | 'Full Body';
 
 export type SeasonType = 'Summer' | 'Winter' | 'Monsoon' | 'All';
 
@@ -62,7 +62,7 @@ const clothingItemSchema = new Schema<IClothingItem>(
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-      enum: ['Top', 'Bottom', 'Shoes', 'Accessory', 'Outerwear'],
+      enum: ['Top', 'Bottom', 'Shoes', 'Accessory', 'Outerwear', 'Full Body'],
       required: true,
     },
     subcategory: {

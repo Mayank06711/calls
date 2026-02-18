@@ -1,10 +1,19 @@
 import React from "react";
-import { Visibility } from "@mui/icons-material";
+import { Visibility, CheckCircleOutline } from "@mui/icons-material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import WardrobeMatchBadge from "./WardrobeMatchBadge";
 import { ColorDots } from "./ColorDots";
 
-function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {}, onExpand, fillParent = false }) {
+function SuggestionCard({
+  item,
+  wardrobeMatches = {},
+  productRecommendations = {},
+  onExpand,
+  onSelect,
+  selected = false,
+  compact = false,
+  fillParent = false,
+}) {
   const colors = useSubscriptionColors();
 
   if (!item) return null;
@@ -21,37 +30,110 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
   const productList = productRecommendations[itemName] || [];
   const productRec = productList.length > 0 ? productList[0] : null;
 
-  const hasPhoto = ownedMatch?.photoUrl || ownedMatch?.thumbnailUrl;
+  const hasOwnedPhoto = ownedMatch?.photoUrl || ownedMatch?.thumbnailUrl;
+  const hasProductPhoto = productRec?.image || productRec?.imageUrl;
+  const photoSrc = hasOwnedPhoto
+    ? (ownedMatch.thumbnailUrl || ownedMatch.photoUrl)
+    : hasProductPhoto
+    ? (productRec.image || productRec.imageUrl)
+    : null;
 
+  const nameToEmoji = (n) => {
+    const l = n.toLowerCase();
+    if (/shirt|top|kurta|tee|blouse|polo/.test(l)) return "👕";
+    if (/jean|trouser|pant|chino|short|skirt/.test(l)) return "👖";
+    if (/jacket|blazer|coat|layer|hoodie|cardigan|sweater/.test(l)) return "🧥";
+    if (/shoe|sneaker|boot|loafer|heel|sandal|footwear|slipper/.test(l)) return "👟";
+    return "👔";
+  };
+
+  /* ── Compact mode: strip card (120px wide, ~150px tall) ── */
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect?.(item)}
+        className={`relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200
+          ${selected ? "ring-2 scale-[1.03] shadow-lg" : "hover:shadow-md"}`}
+        style={{
+          width: 120,
+          borderWidth: 1,
+          borderStyle: "solid",
+          borderColor: selected ? colors.fourth : toRgba(colors.fourth, 0.2),
+          ringColor: colors.fourth,
+        }}
+      >
+        {/* Image */}
+        <div className="relative w-full h-[100px]">
+          {photoSrc ? (
+            <img src={photoSrc} alt={itemName} className="w-full h-full object-cover" />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center text-2xl"
+              style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
+            >
+              {nameToEmoji(itemName)}
+            </div>
+          )}
+
+          {/* Selected check */}
+          {selected && (
+            <div
+              className="absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: colors.fourth }}
+            >
+              <CheckCircleOutline style={{ fontSize: 14, color: "#fff" }} />
+            </div>
+          )}
+
+          {/* Badge */}
+          <div className="absolute top-1 right-1">
+            {ownedMatch ? (
+              <WardrobeMatchBadge type="owned" />
+            ) : productRec ? (
+              <WardrobeMatchBadge type="shop" price={productRec.price} brand={productRec.brand} />
+            ) : null}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="px-2 py-1.5 dark:bg-dark-primary bg-light-secondary text-left">
+          <p className="text-[11px] font-semibold dark:text-dark-text/85 text-light-text/85 truncate">
+            {itemName}
+          </p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <ColorDots colors={ownedMatch?.dominantColors} max={2} size="sm" />
+            <span className="text-[9px] dark:text-dark-text/45 text-light-text/45 truncate">
+              {ownedMatch?.dominantColors?.[0]?.name || itemColor}
+            </span>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  /* ── Default mode: full card (original layout) ── */
   return (
     <div
-      className={`relative group rounded-xl overflow-hidden border transition-all hover:shadow-md ${fillParent ? "w-full" : "flex-shrink-0 w-36 h-[200px]"}`}
-      style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+      className={`relative group rounded-xl overflow-hidden border transition-all hover:shadow-md
+        ${selected ? "ring-2" : ""}
+        ${fillParent ? "w-full" : "flex-shrink-0 w-36 h-[200px]"}`}
+      style={{
+        borderColor: selected ? colors.fourth : toRgba(colors.fourth, 0.3),
+        ringColor: colors.fourth,
+      }}
+      onClick={() => onSelect?.(item)}
     >
       {/* Image area */}
       <div className="relative w-full h-32">
-        {hasPhoto ? (
-          <img
-            src={ownedMatch.thumbnailUrl || ownedMatch.photoUrl}
-            alt={itemName}
-            className="w-full h-full object-cover"
-          />
+        {photoSrc ? (
+          <img src={photoSrc} alt={itemName} className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full flex flex-col items-center justify-center gap-1"
             style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}
           >
-            <span className="text-2xl">
-              {itemName.toLowerCase().includes("shirt") || itemName.toLowerCase().includes("top") || itemName.toLowerCase().includes("kurta") || itemName.toLowerCase().includes("tee")
-                ? "👕"
-                : itemName.toLowerCase().includes("jean") || itemName.toLowerCase().includes("trouser") || itemName.toLowerCase().includes("pant") || itemName.toLowerCase().includes("chino") || itemName.toLowerCase().includes("short")
-                ? "👖"
-                : itemName.toLowerCase().includes("jacket") || itemName.toLowerCase().includes("blazer") || itemName.toLowerCase().includes("coat") || itemName.toLowerCase().includes("layer")
-                ? "🧥"
-                : itemName.toLowerCase().includes("shoe") || itemName.toLowerCase().includes("sneaker") || itemName.toLowerCase().includes("boot") || itemName.toLowerCase().includes("loafer") || itemName.toLowerCase().includes("heel") || itemName.toLowerCase().includes("sandal") || itemName.toLowerCase().includes("footwear")
-                ? "👟"
-                : "👔"}
-            </span>
+            <span className="text-2xl">{nameToEmoji(itemName)}</span>
             {itemColor && (
               <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">{itemColor}</span>
             )}
@@ -67,8 +149,8 @@ function SuggestionCard({ item, wardrobeMatches = {}, productRecommendations = {
           ) : null}
         </div>
 
-        {/* Eye button for expand — visible on hover */}
-        {hasPhoto && onExpand && (
+        {/* Eye button for expand */}
+        {(hasOwnedPhoto) && onExpand && (
           <button
             onClick={(e) => { e.stopPropagation(); onExpand(item, ownedMatch); }}
             className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"

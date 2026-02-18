@@ -15,10 +15,20 @@ import {
   GeneratePairingsSchema,
   SavePairingSchema,
   LogWearSchema,
+  UpdatePlannedWearSchema,
   BatchUploadSchema,
   AddClothBatchSchema,
+  CreateCollectionSchema,
+  UpdateCollectionSchema,
+  CollectionItemsSchema,
+  SendOutfitSchema,
 } from "../validation/zodSchema";
 import { Router } from "express";
+
+// ─── Public route (no auth) — shared outfit viewer ───────────────────────────
+export const publicWardrobeRouter = Router();
+publicWardrobeRouter.get("/outfits/:shareToken", Wardrobe.getSharedOutfit);
+publicWardrobeRouter.post("/outfits/:shareToken/like", Wardrobe.likeSharedOutfit);
 
 const router = Router();
 
@@ -46,6 +56,8 @@ router.get("/outfits", Wardrobe.getYourOutfits);
 router.get("/outfits/:id", Wardrobe.getOutfitById);
 router.put("/outfits/:id", validate(UpdateOutfitSchema), Wardrobe.updateOutfit);
 router.patch("/outfits/:id/favorite", Wardrobe.toggleFavorite);
+router.patch("/outfits/:id/share", Wardrobe.shareOutfit);
+router.post("/outfits/:id/send", validate(SendOutfitSchema), Wardrobe.sendOutfitToUser);
 router.delete("/outfits/:id", Wardrobe.deleteOutfit);
 
 // ─── Style Profile ──────────────────────────────────────────────────────────
@@ -76,11 +88,25 @@ router.post("/save-pairing", validate(SavePairingSchema), Wardrobe.savePairing);
 router.post("/wear-log", validate(LogWearSchema), Wardrobe.logWear);
 router.get("/wear-log", Wardrobe.getWearHistory);
 router.get("/wear-stats", Wardrobe.getWearStats);
+router.get("/planned-wears", Wardrobe.getPlannedWears);
+router.patch("/planned-wears/:id/worn", Wardrobe.markPlannedAsWorn);
+router.put("/planned-wears/:id", validate(UpdatePlannedWearSchema), Wardrobe.updatePlannedWear);
+router.delete("/planned-wears/:id", Wardrobe.deletePlannedWear);
 
 // ─── Phase 7: Python AI Service (proxied) ─────────────────────────────────────
 
 router.post("/process-item", Wardrobe.processItem);
 router.post("/generate-flatlay", Wardrobe.generateFlatlay);
+
+// ─── Collections ────────────────────────────────────────────────────────────
+
+router.post("/collections", validate(CreateCollectionSchema), Wardrobe.createCollection);
+router.get("/collections", Wardrobe.getCollections);
+router.get("/collections/:id", Wardrobe.getCollectionById);
+router.put("/collections/:id", validate(UpdateCollectionSchema), Wardrobe.updateCollection);
+router.delete("/collections/:id", Wardrobe.deleteCollection);
+router.post("/collections/:id/items", validate(CollectionItemsSchema), Wardrobe.addItemsToCollection);
+router.post("/collections/:id/items/remove", validate(CollectionItemsSchema), Wardrobe.removeItemsFromCollection);
 
 // ─── Upload ─────────────────────────────────────────────────────────────────
 

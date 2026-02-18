@@ -7,6 +7,7 @@ const CELL_EMOJI = {
   bottom: "👖",
   layer: "🧥",
   footwear: "👟",
+  full_body: "👗",
 };
 
 const CELL_LABELS = {
@@ -14,6 +15,7 @@ const CELL_LABELS = {
   bottom: "Bottom",
   layer: "Layer",
   footwear: "Footwear",
+  full_body: "Full Body",
 };
 
 const SIZE_MAP = {
@@ -28,6 +30,7 @@ const FLATLAY_SLOTS = {
   top: { top: "2%", left: "24%", width: "50%", height: "46%", transform: "rotate(3deg)", zIndex: 2 },
   bottom: { top: "38%", left: "20%", width: "54%", height: "50%", transform: "rotate(-1deg)", zIndex: 3 },
   footwear: { bottom: "2%", right: "5%", width: "34%", height: "20%", zIndex: 4 },
+  full_body: { top: "2%", left: "15%", width: "65%", height: "78%", transform: "rotate(1deg)", zIndex: 2 },
 };
 
 function getItemName(item) {
@@ -72,6 +75,7 @@ function OutfitFlatLay({
   bottom,
   layer,
   footwear,
+  fullBody,
   flatlayUrl,
   size = "md",
   showOverlay = false,
@@ -100,6 +104,7 @@ function OutfitFlatLay({
 
   // ──── Build all slots with best available image ───────────────────────────
   const allSlots = [
+    { key: "full_body", item: fullBody },
     { key: "top", item: top },
     { key: "bottom", item: bottom },
     { key: "layer", item: layer },

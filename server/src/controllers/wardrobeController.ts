@@ -1,4 +1,5 @@
 import { ClothingItemModel, IClothingItem } from "../models/clothModel";
+import { CollectionModel } from "../models/collectionModel";
 import { OutfitModel } from "../models/outfitModel";
 import { WearLogModel } from "../models/wearLogModel";
 import { StyleProfileModel } from "../models/styleProfileModel";
@@ -14,6 +15,7 @@ import { FileHandler } from "../helper/fileHandler";
 import * as fs from "fs";
 import * as path from "path";
 import axios from "axios";
+import crypto from "crypto";
 
 // Lazy-init: engines load 1GB+ JSON files, only do it when first needed
 let engine: MasterEngine | null = null;
@@ -381,12 +383,13 @@ class Wardrobe {
     await ClothingItemModel.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: "Clothing item deleted" });
 
-    // Fire-and-forget: clean up cloud storage
+    // Fire-and-forget: clean up cloud storage + remove from collections
     setImmediate(async () => {
       try {
         await Promise.allSettled([
           FileHandler.deleteFromUrl(photoUrl),
           thumbnailUrl ? FileHandler.deleteFromUrl(thumbnailUrl) : Promise.resolve(),
+          CollectionModel.updateMany({ user: userId }, { $pull: { itemIds: req.params.id } }),
         ]);
       } catch (_) {}
     });
@@ -402,6 +405,15 @@ class Wardrobe {
 
     const items = await ClothingItemModel.find({ _id: { $in: itemIds }, user: userId });
     if (items.length !== itemIds.length) throw new ApiError(400, "One or more clothing items not found or not yours");
+
+    // Outfit validation: must cover the body (Top+Bottom or Full Body) and have >= 2 items
+    const types = new Set(items.map((i) => i.type));
+    const hasFullBody = types.has("Full Body");
+    const hasTop = types.has("Top");
+    const hasBottom = types.has("Bottom");
+    if (!hasFullBody && !(hasTop && hasBottom)) {
+      throw new ApiError(400, "An outfit needs a Top + Bottom, or a Full Body item (dress, saree, jumpsuit, etc.)");
+    }
 
     const outfit = new OutfitModel({
       user: userId,
@@ -626,8 +638,30 @@ class Wardrobe {
       }));
     }
 
-    // Attach product recommendations where wardrobe matches are empty
+    // Attach product recommendations for primary matches (bottom/top)
     const productRecommendations = Wardrobe.buildProductRecs(matched, wardrobeMatches, userDoc.gender);
+
+    // Also attach product recs for layers and footwear (engine returns these bundled)
+    const catalog = getProductCatalog();
+    const gen = userDoc.gender || "Male";
+    if (result.layers?.options) {
+      for (const opt of result.layers.options) {
+        const key = opt.item;
+        if (!productRecommendations[key]) {
+          const products = Wardrobe.findCatalogProducts(catalog, key, gen);
+          if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
+        }
+      }
+    }
+    if (result.footwear?.options) {
+      for (const opt of result.footwear.options) {
+        const key = opt.item;
+        if (!productRecommendations[key]) {
+          const products = Wardrobe.findCatalogProducts(catalog, key, gen);
+          if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
+        }
+      }
+    }
 
     res.status(200).json({ success: true, data: { ...result, wardrobeMatches, productRecommendations } });
   }
@@ -694,11 +728,11 @@ class Wardrobe {
         _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
 
-      if (matches.length === 0) {
-        const cleanName = key.replace(/\s*\[.*?\]\s*/g, "").replace(/\s*\(.*?\)\s*/g, "").trim();
-        const products = catalog[cleanName]?.[gen] || catalog[key]?.[gen] || [];
-        if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
-      }
+      // TODO: Re-enable for production — always send product recs for now
+      // if (matches.length === 0) {
+      const products = Wardrobe.findCatalogProducts(catalog, key, gen);
+      if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
+      // }
     }
 
     res.status(200).json({ success: true, data: { ...result, wardrobeMatches, productRecommendations } });
@@ -747,11 +781,11 @@ class Wardrobe {
         _id: c._id, subcategory: c.subcategory, color: c.color, photoUrl: c.photoUrl, thumbnailUrl: c.thumbnailUrl, nobgUrl: c.nobgUrl, dominantColors: c.dominantColors, pattern: c.pattern,
       }));
 
-      if (matches.length === 0) {
-        const cleanName = key.replace(/\s*\[.*?\]\s*/g, "").replace(/\s*\(.*?\)\s*/g, "").trim();
-        const products = catalog[cleanName]?.[gen] || catalog[key]?.[gen] || [];
-        if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
-      }
+      // TODO: Re-enable for production — always send product recs for now
+      // if (matches.length === 0) {
+      const products = Wardrobe.findCatalogProducts(catalog, key, gen);
+      if (products.length > 0) productRecommendations[key] = products.slice(0, 3);
+      // }
     }
 
     res.status(200).json({ success: true, data: { ...result, wardrobeMatches, productRecommendations } });
@@ -881,18 +915,17 @@ class Wardrobe {
       }
     }
 
-    // Attach product recommendations where wardrobe matches are still empty
+    // Attach product recommendations — always send for now (frontend decides display)
     const productRecommendations: Record<string, any[]> = {};
     const catalog = getProductCatalog();
     const gen = gender || "Male";
 
     for (const m of matched) {
       const key = m.suggestion.item;
-      if (wardrobeMatches[key] && wardrobeMatches[key].length > 0) continue;
+      // TODO: Re-enable for production
+      // if (wardrobeMatches[key] && wardrobeMatches[key].length > 0) continue;
 
-      // Strip engine modifiers for catalog lookup: "Pajama (Straight) [Slim Fit]" → "Pajama"
-      const cleanName = key.replace(/\s*\[.*?\]\s*/g, "").replace(/\s*\(.*?\)\s*/g, "").trim();
-      const products = catalog[cleanName]?.[gen] || catalog[key]?.[gen] || [];
+      const products = Wardrobe.findCatalogProducts(catalog, key, gen);
       if (products.length > 0) {
         productRecommendations[key] = products.slice(0, 3);
       }
@@ -916,10 +949,10 @@ class Wardrobe {
 
     for (const m of matched) {
       const key = m.suggestion.item;
-      if (wardrobeMatches[key] && wardrobeMatches[key].length > 0) continue;
+      // TODO: Re-enable for production — always send product recs for now (frontend decides display)
+      // if (wardrobeMatches[key] && wardrobeMatches[key].length > 0) continue;
 
-      const cleanName = key.replace(/\s*\[.*?\]\s*/g, "").replace(/\s*\(.*?\)\s*/g, "").trim();
-      const products = catalog[cleanName]?.[gen] || catalog[key]?.[gen] || [];
+      const products = Wardrobe.findCatalogProducts(catalog, key, gen);
       if (products.length > 0) {
         productRecommendations[key] = products.slice(0, 3);
       }
@@ -1056,6 +1089,15 @@ class Wardrobe {
       Male: ["Blazer", "Waistcoat", "Bomber Jacket", "Leather Jacket", "Denim Jacket", "Overcoat", "Windbreaker"],
       Female: ["Blazer", "Shrug", "Cape", "Denim Jacket", "Leather Jacket", "Trench Coat", "Poncho"],
     },
+    "Full Body": {
+      Male: ["Sherwani Set", "Kurta Pajama Set", "Achkan Set", "Jumpsuit", "Overalls"],
+      Female: [
+        "Saree", "Anarkali Suit", "Lehenga Set", "Salwar Kameez Set", "Co-ord Set",
+        "Gown", "Maxi Dress", "Midi Dress", "Mini Dress", "A-Line Dress",
+        "Bodycon Dress", "Wrap Dress", "Shift Dress", "Shirt Dress",
+        "Jumpsuit", "Romper", "Kaftan",
+      ],
+    },
   };
 
   private static readonly PATTERNS = [
@@ -1093,7 +1135,7 @@ class Wardrobe {
     res.status(200).json({
       success: true,
       data: {
-        types: ["Top", "Bottom", "Shoes", "Accessory", "Outerwear"],
+        types: ["Top", "Bottom", "Shoes", "Accessory", "Outerwear", "Full Body"],
         subcategories,
         colors: [...OUTPUT_COLORS],
         patterns: Wardrobe.PATTERNS,
@@ -1124,6 +1166,140 @@ class Wardrobe {
     const a = clothSub.toLowerCase();
     const b = Wardrobe.normalizeForMatch(engineSugg);
     return a === b || b.includes(a) || a.includes(b);
+  }
+
+  /**
+   * Helper: fuzzy lookup in product catalog.
+   * Engine may output "Blue Jeans / Black Trousers" but catalog key is "Jeans".
+   * Tries: exact → contains match → "/" split parts.
+   */
+  // Map generic engine archetype names to specific catalog keys
+  private static readonly GENERIC_TO_CATALOG: Record<string, string> = {
+    // Layers
+    "standard layer": "Blazer",
+    "contrast layer": "Denim Jacket",
+    "statement layer": "Nehru Jacket",
+    "classic layer": "Blazer",
+    "neutral layer": "Blazer",
+    "bold layer": "Leather Biker Jacket",
+    // Shoes
+    "classic shoes": "Oxford Shoes",
+    "statement shoes": "Sneakers",
+    "comfort shoes": "Loafers",
+    "formal shoes": "Oxford Shoes",
+    "casual shoes": "Sneakers",
+    "trendy shoes": "Sneakers",
+    // Common engine color+garment outputs
+    "white shirt": "Formal Shirt",
+    "light shirt": "Formal Shirt",
+    "dark shirt": "Casual Shirt",
+    "colored shirt": "Casual Shirt",
+    "plain shirt": "Formal Shirt",
+    "printed shirt": "Casual Shirt",
+    "black jeans": "Jeans",
+    "blue jeans": "Jeans",
+    "dark jeans": "Jeans",
+    "slim jeans": "Jeans",
+    "skinny jeans": "Jeans",
+    "dark trousers": "Formal Trousers",
+    "light trousers": "Formal Trousers",
+    "black trousers": "Formal Trousers",
+    "navy blazer": "Blazer",
+    "black blazer": "Blazer",
+    "dark blazer": "Blazer",
+    "brown boots": "Chelsea Boots",
+    "black boots": "Chelsea Boots",
+    "leather boots": "Chelsea Boots",
+    "white sneakers": "Sneakers",
+    "black sneakers": "Sneakers",
+    "casual sneakers": "Sneakers",
+    "white t-shirt": "Round Neck T-Shirt",
+    "black t-shirt": "Round Neck T-Shirt",
+    "plain t-shirt": "Round Neck T-Shirt",
+    "graphic tee": "Graphic T-Shirt",
+  };
+
+  // Garment-type keyword → default catalog category (fallback when all else fails)
+  private static readonly GARMENT_DEFAULTS: Record<string, string> = {
+    "shirt": "Casual Shirt",
+    "jeans": "Jeans",
+    "trouser": "Formal Trousers",
+    "pant": "Formal Trousers",
+    "chino": "Chinos",
+    "blazer": "Blazer",
+    "jacket": "Denim Jacket",
+    "boot": "Chelsea Boots",
+    "sneaker": "Sneakers",
+    "loafer": "Loafers",
+    "hoodie": "Hoodie",
+    "kurta": "Short Kurta",
+    "kurti": "Kurti (Short)",
+    "t-shirt": "Round Neck T-Shirt",
+    "tee": "Round Neck T-Shirt",
+    "coat": "Winter Coat",
+    "shorts": "Shorts",
+    "jogger": "Joggers",
+    "oxford": "Oxford Shoes",
+    "mojari": "Mojaris",
+    "sandal": "Leather Sandals",
+    "heel": "Heels",
+    "flat": "Flats",
+    "saree": "Saree (Drape)",
+    "lehenga": "Lehenga Skirt",
+  };
+
+  private static findCatalogProducts(
+    catalog: Record<string, Record<string, any[]>>,
+    engineName: string,
+    gender: string,
+  ): any[] {
+    const clean = engineName.replace(/\s*\[.*?\]\s*/g, "").replace(/\s*\(.*?\)\s*/g, "").trim();
+
+    // 1. Exact match
+    const exact = catalog[clean]?.[gender] || catalog[engineName]?.[gender];
+    if (exact && exact.length > 0) return exact;
+
+    // 2. Generic engine archetype → specific catalog key
+    const mapped = Wardrobe.GENERIC_TO_CATALOG[clean.toLowerCase()];
+    if (mapped) {
+      const products = catalog[mapped]?.[gender];
+      if (products && products.length > 0) return products;
+    }
+
+    // 3. Fuzzy: catalog key contained in engine name or vice-versa
+    const lower = clean.toLowerCase();
+    for (const ck of Object.keys(catalog)) {
+      const ckl = ck.toLowerCase();
+      if (lower.includes(ckl) || ckl.includes(lower)) {
+        const products = catalog[ck]?.[gender];
+        if (products && products.length > 0) return products;
+      }
+    }
+
+    // 4. Split on "/" and try each alternative
+    const parts = lower.split(/\s*\/\s*/);
+    if (parts.length > 1) {
+      for (const part of parts) {
+        const trimmed = part.trim();
+        for (const ck of Object.keys(catalog)) {
+          const ckl = ck.toLowerCase();
+          if (trimmed.includes(ckl) || ckl.includes(trimmed)) {
+            const products = catalog[ck]?.[gender];
+            if (products && products.length > 0) return products;
+          }
+        }
+      }
+    }
+
+    // 5. Garment-type keyword fallback: "White Shirt" → keyword "shirt" → "Casual Shirt"
+    for (const [keyword, defaultCat] of Object.entries(Wardrobe.GARMENT_DEFAULTS)) {
+      if (lower.includes(keyword)) {
+        const products = catalog[defaultCat]?.[gender];
+        if (products && products.length > 0) return products;
+      }
+    }
+
+    return [];
   }
 
   /**
@@ -1474,39 +1650,96 @@ class Wardrobe {
 
   private static async LogWear(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { outfitId, wornAt, occasion, notes, weather } = req.body;
+    const { outfitId, wornAt, occasion, notes, weather, status, plannedFor } = req.body;
 
     const outfit = await OutfitModel.findById(outfitId);
     if (!outfit) throw new ApiError(404, "Outfit not found");
     if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
 
+    const logStatus = status || 'worn';
+
     const log = new WearLogModel({
       user: userId,
       outfit: outfitId,
-      wornAt: wornAt ? new Date(wornAt) : new Date(),
+      wornAt: logStatus === 'planned' ? undefined : (wornAt ? new Date(wornAt) : new Date()),
       occasion,
       notes,
       weather,
+      status: logStatus,
+      plannedFor: logStatus === 'planned' && plannedFor ? new Date(plannedFor) : undefined,
     });
 
     const saved = await log.save();
+
+    // Check streak milestone (only for actual wears)
+    if (logStatus === 'worn') {
+      try {
+        const now = new Date();
+        const recentLogs = await WearLogModel.find(
+          { user: userId, status: { $in: ['worn', null] }, wornAt: { $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } },
+          { wornAt: 1 }
+        ).lean();
+        const dateSet = new Set(recentLogs.map((d: any) => new Date(d.wornAt).toDateString()));
+        let streak = 0;
+        const cursor = new Date(now);
+        while (dateSet.has(cursor.toDateString())) {
+          streak++;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+        if (streak === 7 || streak === 14 || streak === 30) {
+          const notifService = NotificationService.getInstance();
+          await notifService.emitUserNotification({
+            recipientId: userId!.toString(),
+            type: 'wardrobe',
+            title: `${streak}-Day Streak!`,
+            message: `You've logged outfits for ${streak} days in a row. Keep it up!`,
+            wardrobe: { actionType: 'new_item' },
+          });
+        }
+      } catch (_) { /* streak check failure is non-critical */ }
+    }
+
+    // Create a notification for planned wears
+    if (logStatus === 'planned' && plannedFor) {
+      try {
+        const notifService = NotificationService.getInstance();
+        const plannedDate = new Date(plannedFor);
+        const dayStr = plannedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        await notifService.emitUserNotification({
+          recipientId: userId!.toString(),
+          type: 'wardrobe',
+          title: 'Outfit Planned',
+          message: `You planned to wear "${outfit.name || 'an outfit'}" on ${dayStr}`,
+          wardrobe: {
+            actionType: 'new_item',
+            occasion: occasion || undefined,
+            thumbnails: outfit.flatlayUrl ? [outfit.flatlayUrl] : [],
+          },
+        });
+      } catch (_) { /* notification failure is non-critical */ }
+    }
+
     res.status(201).json({ success: true, data: saved });
   }
 
   private static async GetWearHistory(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { outfitId, page = "1", limit = "20" } = req.query;
+    const { outfitId, page = "1", limit = "20", status } = req.query;
 
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
 
     const filter: any = { user: userId };
     if (outfitId) filter.outfit = outfitId;
+    // Default to only worn entries (backwards compatible)
+    filter.status = status === 'planned' ? 'planned' : { $in: ['worn', null, undefined] };
+
+    const sortField = status === 'planned' ? 'plannedFor' : 'wornAt';
 
     const [logs, total] = await Promise.all([
       WearLogModel.find(filter)
         .populate({ path: "outfit", populate: { path: "items" } })
-        .sort({ wornAt: -1 })
+        .sort({ [sortField]: status === 'planned' ? 1 : -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum),
       WearLogModel.countDocuments(filter),
@@ -1532,10 +1765,13 @@ class Wardrobe {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [mostWorn, leastWorn, monthlyCount, totalOutfitsWorn] = await Promise.all([
+    // Only count actual wears (not planned)
+    const wornMatch = { user: userObjId, status: { $in: ['worn', null] } };
+
+    const [mostWorn, leastWorn, monthlyCount, totalOutfitsWorn, upcomingPlanned, allWornDates] = await Promise.all([
       // Most worn outfits (top 10)
       WearLogModel.aggregate([
-        { $match: { user: userObjId } },
+        { $match: wornMatch },
         { $group: { _id: "$outfit", wearCount: { $sum: 1 }, lastWorn: { $max: "$wornAt" } } },
         { $sort: { wearCount: -1 } },
         { $limit: 10 },
@@ -1546,7 +1782,7 @@ class Wardrobe {
 
       // Least worn outfits (top 10)
       WearLogModel.aggregate([
-        { $match: { user: userObjId } },
+        { $match: wornMatch },
         { $group: { _id: "$outfit", wearCount: { $sum: 1 }, lastWorn: { $max: "$wornAt" } } },
         { $sort: { wearCount: 1 } },
         { $limit: 10 },
@@ -1555,12 +1791,41 @@ class Wardrobe {
         { $project: { _id: 0, outfitId: "$_id", name: "$outfit.name", wearCount: 1, lastWorn: 1 } },
       ]),
 
-      // Total wears this month
-      WearLogModel.countDocuments({ user: userId, wornAt: { $gte: startOfMonth } }),
+      // Total wears this month (only worn, not planned)
+      WearLogModel.countDocuments({ user: userId, status: { $in: ['worn', null] }, wornAt: { $gte: startOfMonth } }),
 
       // Total distinct outfits worn
-      WearLogModel.distinct("outfit", { user: userId }).then(arr => arr.length),
+      WearLogModel.distinct("outfit", { user: userId, status: { $in: ['worn', null] } }).then(arr => arr.length),
+
+      // Upcoming planned wears count
+      WearLogModel.countDocuments({ user: userId, status: 'planned', plannedFor: { $gte: now } }),
+
+      // All worn dates for streak calculation (last 90 days for efficiency)
+      WearLogModel.find(
+        { user: userId, status: { $in: ['worn', null] }, wornAt: { $gte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) } },
+        { wornAt: 1, _id: 0 }
+      ).lean(),
     ]);
+
+    // ── Compute streak server-side ──
+    const dateSet = new Set(
+      allWornDates.map((d: any) => new Date(d.wornAt).toDateString())
+    );
+    let currentStreak = 0;
+    const cursor = new Date(now);
+    // If no log today, start from yesterday
+    if (!dateSet.has(cursor.toDateString())) {
+      cursor.setDate(cursor.getDate() - 1);
+      if (!dateSet.has(cursor.toDateString())) {
+        currentStreak = 0;
+      }
+    }
+    if (currentStreak === 0 && dateSet.has(cursor.toDateString())) {
+      while (dateSet.has(cursor.toDateString())) {
+        currentStreak++;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -1569,8 +1834,240 @@ class Wardrobe {
         leastWorn,
         totalWearsThisMonth: monthlyCount,
         totalOutfitsWorn,
+        upcomingPlanned,
+        currentStreak,
       },
     });
+  }
+
+  // ─── Get Planned Wears (upcoming) ─────────────────────────────────
+
+  private static async GetPlannedWears(req: Request, res: Response) {
+    const userId = req.user?._id;
+
+    const logs = await WearLogModel.find({
+      user: userId,
+      status: 'planned',
+    })
+      .populate({ path: "outfit", populate: { path: "items" } })
+      .sort({ plannedFor: 1 })
+      .limit(50);
+
+    res.status(200).json({ success: true, data: logs });
+  }
+
+  // ─── Mark planned wear as worn ──────────────────────────────────
+
+  private static async MarkPlannedAsWorn(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { id } = req.params;
+
+    const log = await WearLogModel.findById(id);
+    if (!log) throw new ApiError(404, "Planned wear not found");
+    if (userId?.toString() !== log.user.toString()) throw new ApiError(403, "Not authorized");
+    if (log.status !== 'planned') throw new ApiError(400, "This entry is already marked as worn");
+
+    log.status = 'worn';
+    log.wornAt = new Date();
+    await log.save();
+
+    res.status(200).json({ success: true, data: log });
+  }
+
+  // ─── Update a planned wear ──────────────────────────────────────
+
+  private static async UpdatePlannedWear(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { id } = req.params;
+    const { status, plannedFor, occasion, notes } = req.body;
+
+    const log = await WearLogModel.findById(id);
+    if (!log) throw new ApiError(404, "Planned wear not found");
+    if (userId?.toString() !== log.user.toString()) throw new ApiError(403, "Not authorized");
+
+    if (plannedFor) log.plannedFor = new Date(plannedFor);
+    if (occasion !== undefined) log.occasion = occasion;
+    if (notes !== undefined) log.notes = notes;
+    if (status === 'worn') {
+      log.status = 'worn';
+      log.wornAt = new Date();
+    }
+    await log.save();
+
+    res.status(200).json({ success: true, data: log });
+  }
+
+  // ─── Delete a planned wear ──────────────────────────────────────
+
+  private static async DeletePlannedWear(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { id } = req.params;
+
+    const log = await WearLogModel.findById(id);
+    if (!log) throw new ApiError(404, "Planned wear not found");
+    if (userId?.toString() !== log.user.toString()) throw new ApiError(403, "Not authorized");
+
+    await WearLogModel.findByIdAndDelete(id);
+
+    res.status(200).json({ success: true, message: "Planned wear deleted" });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  SHARING
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * PATCH /outfits/:id/share
+   * Generates a share token (or returns existing one). Sets outfit as public.
+   */
+  private static async ShareOutfit(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const outfit = await OutfitModel.findById(req.params.id);
+    if (!outfit) throw new ApiError(404, "Outfit not found");
+    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Return existing share link if already shared
+    if (outfit.shareToken) {
+      outfit.shareCount = (outfit.shareCount || 0) + 1;
+      await outfit.save();
+      return res.status(200).json({
+        success: true,
+        data: { shareToken: outfit.shareToken, shareUrl: `/outfit/${outfit.shareToken}` },
+      });
+    }
+
+    // Generate a URL-safe token (10 chars, ~60 bits of entropy)
+    const token = crypto.randomBytes(8).toString('base64url').slice(0, 10);
+
+    outfit.shareToken = token;
+    outfit.isPublic = true;
+    outfit.shareCount = 1;
+    outfit.sharedAt = new Date();
+    await outfit.save();
+
+    res.status(200).json({
+      success: true,
+      data: { shareToken: token, shareUrl: `/outfit/${token}` },
+    });
+  }
+
+  /**
+   * GET /public/outfits/:shareToken
+   * Returns public outfit data. NO AUTH REQUIRED.
+   */
+  private static async GetSharedOutfit(req: Request, res: Response) {
+    const { shareToken } = req.params;
+    const outfit = await OutfitModel.findOne({ shareToken, isPublic: true })
+      .populate({
+        path: 'items',
+        select: 'type subcategory nobgUrl thumbnailUrl dominantColors brand',
+      })
+      .populate({
+        path: 'user',
+        select: 'username profilePhotoId',
+      })
+      .lean();
+
+    if (!outfit) throw new ApiError(404, "Outfit not found or no longer shared");
+
+    // Deduplicate view count — only increment once per visitor session
+    const viewCookieName = `ov_${outfit._id}`;
+    const alreadyViewed = req.cookies?.[viewCookieName];
+    if (!alreadyViewed) {
+      OutfitModel.updateOne({ _id: outfit._id }, { $inc: { viewCount: 1 } }).catch(() => {});
+      // Set a cookie that lasts 24h so the same browser doesn't re-increment
+      res.cookie(viewCookieName, "1", { maxAge: 86400000, httpOnly: true, sameSite: "lax" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        name: outfit.name,
+        occasion: outfit.occasion,
+        season: outfit.season,
+        tags: outfit.tags,
+        source: outfit.source,
+        flatlayUrl: outfit.flatlayUrl,
+        screenshotUrl: outfit.screenshotUrl,
+        colorPalette: outfit.colorPalette,
+        items: outfit.items,
+        user: outfit.user,
+        createdAt: (outfit as any).createdAt,
+        shareCount: outfit.shareCount,
+        viewCount: (outfit.viewCount || 0) + (alreadyViewed ? 0 : 1),
+        publicLikes: outfit.publicLikes || 0,
+        hasLiked: !!req.cookies?.[`ol_${outfit._id}`],
+      },
+    });
+  }
+
+  /**
+   * POST /public/outfits/:shareToken/like
+   * Toggle like on a shared outfit (cookie-based dedup for anonymous visitors).
+   */
+  private static async LikeSharedOutfit(req: Request, res: Response) {
+    const { shareToken } = req.params;
+    const outfit = await OutfitModel.findOne({ shareToken, isPublic: true });
+    if (!outfit) throw new ApiError(404, "Outfit not found");
+
+    const likeCookieName = `ol_${outfit._id}`;
+    const alreadyLiked = req.cookies?.[likeCookieName];
+
+    if (alreadyLiked) {
+      // Unlike
+      outfit.publicLikes = Math.max(0, (outfit.publicLikes || 0) - 1);
+      await outfit.save();
+      res.clearCookie(likeCookieName);
+      res.status(200).json({ success: true, data: { liked: false, publicLikes: outfit.publicLikes } });
+    } else {
+      // Like
+      outfit.publicLikes = (outfit.publicLikes || 0) + 1;
+      await outfit.save();
+      res.cookie(likeCookieName, "1", { maxAge: 365 * 86400000, httpOnly: true, sameSite: "lax" });
+      res.status(200).json({ success: true, data: { liked: true, publicLikes: outfit.publicLikes } });
+    }
+  }
+
+  /**
+   * POST /outfits/:id/send
+   * Sends outfit to another KYF user as a notification.
+   */
+  private static async SendOutfitToUser(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { recipientUsername } = req.body;
+
+    const outfit = await OutfitModel.findById(req.params.id);
+    if (!outfit) throw new ApiError(404, "Outfit not found");
+    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    const recipient = await UserModel.findOne({ username: recipientUsername }).select('_id username').lean();
+    if (!recipient) throw new ApiError(404, "User not found");
+    if (recipient._id.toString() === userId?.toString()) throw new ApiError(400, "Cannot send outfit to yourself");
+
+    // Ensure outfit has share token for linking
+    if (!outfit.shareToken) {
+      outfit.shareToken = crypto.randomBytes(8).toString('base64url').slice(0, 10);
+      outfit.isPublic = true;
+      outfit.sharedAt = new Date();
+    }
+    outfit.shareCount = (outfit.shareCount || 0) + 1;
+    await outfit.save();
+
+    const sender = await UserModel.findById(userId).select('username fullName').lean();
+
+    await NotificationService.getInstance().emitUserNotification({
+      recipientId: recipient._id.toString(),
+      type: 'wardrobe',
+      title: 'Outfit shared with you',
+      message: `${sender?.fullName || sender?.username || 'Someone'} shared "${outfit.name || 'an outfit'}" with you`,
+      wardrobe: {
+        actionType: 'new_item',
+        thumbnails: outfit.flatlayUrl ? [outfit.flatlayUrl] : [],
+      },
+      extLink: `/outfit/${outfit.shareToken}`,
+    });
+
+    res.status(200).json({ success: true, message: "Outfit sent" });
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1867,6 +2364,94 @@ class Wardrobe {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  //  COLLECTIONS
+  // ═══════════════════════════════════════════════════════════════════
+
+  private static async CreateCollection(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { name, description, emoji, color } = req.body;
+
+    const exists = await CollectionModel.findOne({ user: userId, name });
+    if (exists) throw new ApiError(409, "A collection with that name already exists");
+
+    const collection = await CollectionModel.create({ user: userId, name, description, emoji, color, itemIds: [] });
+    res.status(201).json({ success: true, data: collection });
+  }
+
+  private static async GetCollections(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collections = await CollectionModel.find({ user: userId }).sort({ createdAt: -1 }).lean();
+    res.status(200).json({ success: true, data: collections });
+  }
+
+  private static async GetCollectionById(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collection = await CollectionModel.findById(req.params.id).populate("itemIds").lean();
+    if (!collection) throw new ApiError(404, "Collection not found");
+    if (userId?.toString() !== collection.user.toString()) throw new ApiError(403, "Not authorized");
+    res.status(200).json({ success: true, data: collection });
+  }
+
+  private static async UpdateCollection(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collection = await CollectionModel.findById(req.params.id);
+    if (!collection) throw new ApiError(404, "Collection not found");
+    if (userId?.toString() !== collection.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Check name uniqueness on rename
+    if (req.body.name && req.body.name !== collection.name) {
+      const dup = await CollectionModel.findOne({ user: userId, name: req.body.name });
+      if (dup) throw new ApiError(409, "A collection with that name already exists");
+    }
+
+    const updated = await CollectionModel.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true }).lean();
+    res.status(200).json({ success: true, data: updated });
+  }
+
+  private static async DeleteCollection(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collection = await CollectionModel.findById(req.params.id);
+    if (!collection) throw new ApiError(404, "Collection not found");
+    if (userId?.toString() !== collection.user.toString()) throw new ApiError(403, "Not authorized");
+
+    await CollectionModel.findByIdAndDelete(req.params.id);
+    res.status(200).json({ success: true, message: "Collection deleted" });
+  }
+
+  private static async AddItemsToCollection(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collection = await CollectionModel.findById(req.params.id);
+    if (!collection) throw new ApiError(404, "Collection not found");
+    if (userId?.toString() !== collection.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Verify all items belong to the user
+    const { itemIds } = req.body;
+    const count = await ClothingItemModel.countDocuments({ _id: { $in: itemIds }, user: userId });
+    if (count !== itemIds.length) throw new ApiError(400, "Some items were not found in your closet");
+
+    const updated = await CollectionModel.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { itemIds: { $each: itemIds } } },
+      { new: true }
+    ).lean();
+    res.status(200).json({ success: true, data: updated });
+  }
+
+  private static async RemoveItemsFromCollection(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const collection = await CollectionModel.findById(req.params.id);
+    if (!collection) throw new ApiError(404, "Collection not found");
+    if (userId?.toString() !== collection.user.toString()) throw new ApiError(403, "Not authorized");
+
+    const updated = await CollectionModel.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { itemIds: { $in: req.body.itemIds } } },
+      { new: true }
+    ).lean();
+    res.status(200).json({ success: true, data: updated });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   //  PUBLIC WRAPPED HANDLERS
   // ═══════════════════════════════════════════════════════════════════
 
@@ -1908,6 +2493,10 @@ class Wardrobe {
   public static logWear = AsyncHandler.wrap(Wardrobe.LogWear);
   public static getWearHistory = AsyncHandler.wrap(Wardrobe.GetWearHistory);
   public static getWearStats = AsyncHandler.wrap(Wardrobe.GetWearStats);
+  public static getPlannedWears = AsyncHandler.wrap(Wardrobe.GetPlannedWears);
+  public static markPlannedAsWorn = AsyncHandler.wrap(Wardrobe.MarkPlannedAsWorn);
+  public static updatePlannedWear = AsyncHandler.wrap(Wardrobe.UpdatePlannedWear);
+  public static deletePlannedWear = AsyncHandler.wrap(Wardrobe.DeletePlannedWear);
 
   // Suggestions
   public static suggestFullOutfit = AsyncHandler.wrap(Wardrobe.SuggestFullOutfit);
@@ -1919,6 +2508,21 @@ class Wardrobe {
   // Phase 7: Python AI Service Proxy
   public static processItem = AsyncHandler.wrap(Wardrobe.ProcessItem);
   public static generateFlatlay = AsyncHandler.wrap(Wardrobe.GenerateFlatlay);
+
+  // Sharing
+  public static shareOutfit = AsyncHandler.wrap(Wardrobe.ShareOutfit);
+  public static getSharedOutfit = AsyncHandler.wrap(Wardrobe.GetSharedOutfit);
+  public static likeSharedOutfit = AsyncHandler.wrap(Wardrobe.LikeSharedOutfit);
+  public static sendOutfitToUser = AsyncHandler.wrap(Wardrobe.SendOutfitToUser);
+
+  // Collections
+  public static createCollection = AsyncHandler.wrap(Wardrobe.CreateCollection);
+  public static getCollections = AsyncHandler.wrap(Wardrobe.GetCollections);
+  public static getCollectionById = AsyncHandler.wrap(Wardrobe.GetCollectionById);
+  public static updateCollection = AsyncHandler.wrap(Wardrobe.UpdateCollection);
+  public static deleteCollection = AsyncHandler.wrap(Wardrobe.DeleteCollection);
+  public static addItemsToCollection = AsyncHandler.wrap(Wardrobe.AddItemsToCollection);
+  public static removeItemsFromCollection = AsyncHandler.wrap(Wardrobe.RemoveItemsFromCollection);
 }
 
 export default Wardrobe;

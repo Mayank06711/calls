@@ -8,6 +8,7 @@ import { fetchOutfitsThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { setOutfitFilters } from "../../../../../redux/actions/wardrobe.actions";
 import OutfitCard from "./OutfitCard";
 import OutfitListItem from "./OutfitListItem";
+import ShareOutfitModal from "../shared/ShareOutfitModal";
 
 function OutfitList() {
   const colors = useSubscriptionColors();
@@ -16,6 +17,7 @@ function OutfitList() {
 
   const { loading, saved, filters } = useSelector((s) => s.wardrobe.outfits);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+  const [shareOutfit, setShareOutfit] = useState(null);
 
   useEffect(() => {
     dispatch(fetchOutfitsThunk());
@@ -101,6 +103,7 @@ function OutfitList() {
               key={outfit._id}
               outfit={outfit}
               onClick={() => navigate(`/wardrobe/outfits/${outfit._id}`)}
+              onShare={(o) => setShareOutfit(o)}
             />
           ))}
           {/* New outfit CTA */}
@@ -154,6 +157,12 @@ function OutfitList() {
         </div>
       )}
       </div>
+
+      <ShareOutfitModal
+        open={!!shareOutfit}
+        onClose={() => setShareOutfit(null)}
+        outfit={shareOutfit}
+      />
     </div>
   );
 }

@@ -54,8 +54,10 @@ function WardrobeHub() {
 
   const topCount = items.filter((i) => i.type === "Top").length;
   const bottomCount = items.filter((i) => i.type === "Bottom").length;
+  const fullBodyCount = items.filter((i) => i.type === "Full Body").length;
   const layerCount = items.filter((i) => i.type === "Outerwear").length;
   const shoeCount = items.filter((i) => i.type === "Shoes").length;
+  const accessoryCount = items.filter((i) => i.type === "Accessory").length;
 
   /* ── Helper: wrap with PremiumGate when needed ── */
   const gateWrap = (gate, key, content) => {
@@ -315,8 +317,10 @@ function WardrobeHub() {
               {[
                 { emoji: "👕", count: topCount },
                 { emoji: "👖", count: bottomCount },
+                { emoji: "👗", count: fullBodyCount },
                 { emoji: "🧥", count: layerCount },
                 { emoji: "👟", count: shoeCount },
+                { emoji: "⌚", count: accessoryCount },
               ].filter(s => s.count > 0).map((s) => (
                 <div
                   key={s.emoji}
@@ -370,9 +374,11 @@ function WardrobeHub() {
                 ? [
                     { emoji: "👕", count: topCount },
                     { emoji: "👖", count: bottomCount },
+                    { emoji: "👗", count: fullBodyCount },
                     { emoji: "🧥", count: layerCount },
                     { emoji: "👟", count: shoeCount },
-                  ]
+                    { emoji: "⌚", count: accessoryCount },
+                  ].filter(s => s.count > 0)
                 : null,
             })}
           </div>

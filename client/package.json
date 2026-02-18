@@ -6,7 +6,10 @@
   "scripts": {
     "dev1": "cross-env USE_HTTPS=true vite",
     "dev": "vite",
+    "dev:lan": "vite --mode lan",
     "build": "vite build",
+    "serve": "vite build && vite preview --port 3000 --host 0.0.0.0",
+    "serve:lan": "vite build --mode lan && vite preview --mode lan --port 3000 --host 0.0.0.0",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -60,6 +60,11 @@ import {
   FETCH_WEAR_STATS_REQUEST,
   FETCH_WEAR_STATS_SUCCESS,
   FETCH_WEAR_STATS_FAILURE,
+  FETCH_PLANNED_WEARS_REQUEST,
+  FETCH_PLANNED_WEARS_SUCCESS,
+  FETCH_PLANNED_WEARS_FAILURE,
+  MARK_PLANNED_WORN_SUCCESS,
+  DELETE_PLANNED_WEAR_SUCCESS,
   FETCH_PRODUCT_CATALOG_REQUEST,
   FETCH_PRODUCT_CATALOG_SUCCESS,
   FETCH_PRODUCT_CATALOG_FAILURE,
@@ -76,6 +81,22 @@ import {
   PROCESS_ITEM_SUCCESS,
   PROCESS_ITEM_FAILURE,
   UPDATE_ITEM_PROCESSING_STATUS,
+  FETCH_COLLECTIONS_REQUEST,
+  FETCH_COLLECTIONS_SUCCESS,
+  FETCH_COLLECTIONS_FAILURE,
+  CREATE_COLLECTION_REQUEST,
+  CREATE_COLLECTION_SUCCESS,
+  CREATE_COLLECTION_FAILURE,
+  UPDATE_COLLECTION_REQUEST,
+  UPDATE_COLLECTION_SUCCESS,
+  UPDATE_COLLECTION_FAILURE,
+  DELETE_COLLECTION_REQUEST,
+  DELETE_COLLECTION_SUCCESS,
+  DELETE_COLLECTION_FAILURE,
+  ADD_ITEMS_TO_COLLECTION_SUCCESS,
+  REMOVE_ITEMS_FROM_COLLECTION_SUCCESS,
+  SET_ACTIVE_COLLECTION,
+  SHARE_OUTFIT_SUCCESS,
 } from "../action_creators";
 
 // ─── Style Profile ────────────────────────────────────────────────────────────
@@ -181,6 +202,14 @@ export const fetchWearStatsRequest = () => ({ type: FETCH_WEAR_STATS_REQUEST });
 export const fetchWearStatsSuccess = (data) => ({ type: FETCH_WEAR_STATS_SUCCESS, payload: data });
 export const fetchWearStatsFailure = (error) => ({ type: FETCH_WEAR_STATS_FAILURE, payload: error });
 
+// ─── Planned Wears ──────────────────────────────────────────────────────────
+
+export const fetchPlannedWearsRequest = () => ({ type: FETCH_PLANNED_WEARS_REQUEST });
+export const fetchPlannedWearsSuccess = (data) => ({ type: FETCH_PLANNED_WEARS_SUCCESS, payload: data });
+export const fetchPlannedWearsFailure = (error) => ({ type: FETCH_PLANNED_WEARS_FAILURE, payload: error });
+export const markPlannedWornSuccess = (id) => ({ type: MARK_PLANNED_WORN_SUCCESS, payload: id });
+export const deletePlannedWearSuccess = (id) => ({ type: DELETE_PLANNED_WEAR_SUCCESS, payload: id });
+
 // ─── Product Catalog ─────────────────────────────────────────────────────────
 
 export const fetchProductCatalogRequest = () => ({ type: FETCH_PRODUCT_CATALOG_REQUEST });
@@ -206,3 +235,29 @@ export const updateItemProcessingStatus = (itemId, status, data) => ({
   type: UPDATE_ITEM_PROCESSING_STATUS,
   payload: { itemId, status, data }
 });
+
+// ─── Collections ─────────────────────────────────────────────────────────────
+
+export const fetchCollectionsRequest = () => ({ type: FETCH_COLLECTIONS_REQUEST });
+export const fetchCollectionsSuccess = (data) => ({ type: FETCH_COLLECTIONS_SUCCESS, payload: data });
+export const fetchCollectionsFailure = (error) => ({ type: FETCH_COLLECTIONS_FAILURE, payload: error });
+
+export const createCollectionRequest = () => ({ type: CREATE_COLLECTION_REQUEST });
+export const createCollectionSuccess = (data) => ({ type: CREATE_COLLECTION_SUCCESS, payload: data });
+export const createCollectionFailure = (error) => ({ type: CREATE_COLLECTION_FAILURE, payload: error });
+
+export const updateCollectionRequest = () => ({ type: UPDATE_COLLECTION_REQUEST });
+export const updateCollectionSuccess = (data) => ({ type: UPDATE_COLLECTION_SUCCESS, payload: data });
+export const updateCollectionFailure = (error) => ({ type: UPDATE_COLLECTION_FAILURE, payload: error });
+
+export const deleteCollectionRequest = () => ({ type: DELETE_COLLECTION_REQUEST });
+export const deleteCollectionSuccess = (id) => ({ type: DELETE_COLLECTION_SUCCESS, payload: id });
+export const deleteCollectionFailure = (error) => ({ type: DELETE_COLLECTION_FAILURE, payload: error });
+
+export const addItemsToCollectionSuccess = (data) => ({ type: ADD_ITEMS_TO_COLLECTION_SUCCESS, payload: data });
+export const removeItemsFromCollectionSuccess = (data) => ({ type: REMOVE_ITEMS_FROM_COLLECTION_SUCCESS, payload: data });
+export const setActiveCollection = (id) => ({ type: SET_ACTIVE_COLLECTION, payload: id });
+
+// ─── Sharing ─────────────────────────────────────────────────────────────────
+
+export const shareOutfitSuccess = (data) => ({ type: SHARE_OUTFIT_SUCCESS, payload: data });

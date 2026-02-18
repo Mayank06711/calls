@@ -49,10 +49,30 @@ import {
   fetchWearStatsRequest,
   fetchWearStatsSuccess,
   fetchWearStatsFailure,
+  fetchPlannedWearsRequest,
+  fetchPlannedWearsSuccess,
+  fetchPlannedWearsFailure,
+  markPlannedWornSuccess,
+  deletePlannedWearSuccess,
   fetchProductCatalogRequest,
   fetchProductCatalogSuccess,
   fetchProductCatalogFailure,
   updateItemProcessingStatus,
+  fetchCollectionsRequest,
+  fetchCollectionsSuccess,
+  fetchCollectionsFailure,
+  createCollectionRequest,
+  createCollectionSuccess,
+  createCollectionFailure,
+  updateCollectionRequest,
+  updateCollectionSuccess,
+  updateCollectionFailure,
+  deleteCollectionRequest,
+  deleteCollectionSuccess,
+  deleteCollectionFailure,
+  addItemsToCollectionSuccess,
+  removeItemsFromCollectionSuccess,
+  shareOutfitSuccess,
 } from "../actions/wardrobe.actions";
 import { showNotification } from "../actions/notification.actions";
 
@@ -511,6 +531,71 @@ export const fetchWearStatsThunk = () => async (dispatch) => {
   }
 };
 
+// ─── Planned Wears ──────────────────────────────────────────────────────────
+
+export const fetchPlannedWearsThunk = () => async (dispatch) => {
+  try {
+    dispatch(fetchPlannedWearsRequest());
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.GET,
+      ENDPOINTS.WARDROBE.PLANNED_WEARS
+    );
+    if (error) {
+      dispatch(fetchPlannedWearsFailure(error.message));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(fetchPlannedWearsSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(fetchPlannedWearsFailure(error.message || "Failed to fetch planned wears"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const markPlannedAsWornThunk = (id) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.PATCH,
+      `${ENDPOINTS.WARDROBE.PLANNED_WEARS}/${id}/worn`
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(markPlannedWornSuccess(id));
+      dispatch(showNotification("Marked as worn!", "success"));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error marking as worn", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const deletePlannedWearThunk = (id) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.DELETE,
+      `${ENDPOINTS.WARDROBE.PLANNED_WEARS}/${id}`
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(deletePlannedWearSuccess(id));
+      dispatch(showNotification("Plan removed", "success"));
+      return { success: true };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error removing plan", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
 // ─── Product Catalog ─────────────────────────────────────────────────────────
 
 export const fetchProductCatalogThunk = (params = {}) => async (dispatch) => {
@@ -613,5 +698,199 @@ export const generateFlatlayThunk = (payload) => async () => {
     return { success: false, error: "Unexpected response" };
   } catch (error) {
     return { success: false, error: error.message || "Failed to generate flat-lay" };
+  }
+};
+
+// ─── Collections ─────────────────────────────────────────────────────────────
+
+export const fetchCollectionsThunk = () => async (dispatch) => {
+  try {
+    dispatch(fetchCollectionsRequest());
+    const { data, error } = await makeRequest(HTTP_METHODS.GET, ENDPOINTS.WARDROBE.COLLECTIONS);
+    if (error) {
+      dispatch(fetchCollectionsFailure(error.message));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(fetchCollectionsSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(fetchCollectionsFailure(error.message || "Failed to fetch collections"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const createCollectionThunk = (collectionData) => async (dispatch) => {
+  try {
+    dispatch(createCollectionRequest());
+    const { data, error } = await makeRequest(HTTP_METHODS.POST, ENDPOINTS.WARDROBE.COLLECTIONS, collectionData);
+    if (error) {
+      dispatch(createCollectionFailure(error.message));
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(createCollectionSuccess(data.data));
+      dispatch(showNotification("Collection created", "success"));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(createCollectionFailure(error.message || "Failed to create collection"));
+    dispatch(showNotification("Error creating collection", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateCollectionThunk = (id, updates) => async (dispatch) => {
+  try {
+    dispatch(updateCollectionRequest());
+    const { data, error } = await makeRequest(HTTP_METHODS.PUT, `${ENDPOINTS.WARDROBE.COLLECTIONS}/${id}`, updates);
+    if (error) {
+      dispatch(updateCollectionFailure(error.message));
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(updateCollectionSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(updateCollectionFailure(error.message || "Failed to update collection"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteCollectionThunk = (id) => async (dispatch) => {
+  try {
+    dispatch(deleteCollectionRequest());
+    const { data, error } = await makeRequest(HTTP_METHODS.DELETE, `${ENDPOINTS.WARDROBE.COLLECTIONS}/${id}`);
+    if (error) {
+      dispatch(deleteCollectionFailure(error.message));
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(deleteCollectionSuccess(id));
+      dispatch(showNotification("Collection deleted", "success"));
+      return { success: true };
+    }
+  } catch (error) {
+    dispatch(deleteCollectionFailure(error.message || "Failed to delete collection"));
+    dispatch(showNotification("Error deleting collection", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const addItemsToCollectionThunk = (collectionId, itemIds) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.WARDROBE.COLLECTIONS}/${collectionId}/items`,
+      { itemIds }
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(addItemsToCollectionSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error adding items", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const removeItemsFromCollectionThunk = (collectionId, itemIds) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.WARDROBE.COLLECTIONS}/${collectionId}/items/remove`,
+      { itemIds }
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(removeItemsFromCollectionSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error removing items", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+// ─── Sharing ────────────────────────────────────────────────────────────────
+
+export const shareOutfitThunk = (outfitId) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.PATCH,
+      `${ENDPOINTS.WARDROBE.OUTFIT_BY_ID}/${outfitId}/share`
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(shareOutfitSuccess({ outfitId, ...data.data }));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error generating share link", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const sendOutfitThunk = (outfitId, recipientUsername) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.WARDROBE.OUTFIT_BY_ID}/${outfitId}/send`,
+      { recipientUsername }
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(showNotification("Outfit sent!", "success"));
+      return { success: true };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error sending outfit", "error"));
+    return { success: false, error: error.message };
+  }
+};
+
+export const fetchSharedOutfitThunk = (shareToken) => async () => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.GET,
+      `${ENDPOINTS.WARDROBE.SHARED_OUTFIT}/${shareToken}`
+    );
+    if (error) return { success: false, error: error.message };
+    if (data?.success) return { success: true, data: data.data };
+    return { success: false, error: "Not found" };
+  } catch (error) {
+    return { success: false, error: error.message || "Failed to load outfit" };
+  }
+};
+
+export const likeSharedOutfitThunk = (shareToken) => async () => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.WARDROBE.LIKE_SHARED_OUTFIT}/${shareToken}/like`
+    );
+    if (error) return { success: false, error: error.message };
+    if (data?.success) return { success: true, data: data.data };
+    return { success: false, error: "Failed" };
+  } catch (error) {
+    return { success: false, error: error.message || "Failed to like outfit" };
   }
 };

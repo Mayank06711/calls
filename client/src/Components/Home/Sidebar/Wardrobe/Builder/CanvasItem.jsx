@@ -1,9 +1,11 @@
-import React, { useRef, useState, useCallback } from "react";
-import { Close, Lock, LockOpen } from "@mui/icons-material";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import { Close, Lock, LockOpen, Visibility, Image } from "@mui/icons-material";
 
 function CanvasItem({
   item,
   closetItem,
+  showNobg = false,
+  onViewPhoto,
   x,
   y,
   width,
@@ -23,14 +25,27 @@ function CanvasItem({
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [hovered, setHovered] = useState(false);
+  // Per-item nobg override — syncs with global toggle, but can be flipped individually
+  const [itemNobg, setItemNobg] = useState(showNobg);
   const dragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, startW: 0, startH: 0 });
   const rotateStart = useRef({ angle: 0, startRotation: 0 });
   const itemRef = useRef(null);
+  const hoverTimeout = useRef(null);
+
+  // Sync per-item state when global toggle changes
+  useEffect(() => {
+    setItemNobg(showNobg);
+  }, [showNobg]);
+
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); };
+  }, []);
 
   const handleDragStart = useCallback((e) => {
     if (locked) return;
-    if (e.target.closest("[data-resize]") || e.target.closest("[data-rotate]") || e.target.closest("[data-remove]") || e.target.closest("[data-lock]")) return;
+    if (e.target.closest("[data-resize]") || e.target.closest("[data-rotate]") || e.target.closest("[data-remove]") || e.target.closest("[data-lock]") || e.target.closest("[data-toggle]")) return;
     e.stopPropagation();
     setIsDragging(true);
     onBringForward?.();
@@ -115,7 +130,15 @@ function CanvasItem({
     window.addEventListener("pointerup", handleEnd);
   }, [rotation, onRotate, locked]);
 
-  const photoUrl = closetItem?.thumbnailUrl || closetItem?.photoUrl;
+  const hasNobg = !!closetItem?.nobgUrl;
+  const isNobg = itemNobg && hasNobg;
+  // Always use nobgUrl when available — it has zero whitespace so the garment
+  // fills the container at any size. Toggle controls background only:
+  // nobg mode = transparent (layering), photo mode = cream bg (product card).
+  // Double-click lightbox still shows the true original photo.
+  const photoUrl = hasNobg
+    ? closetItem.nobgUrl
+    : (closetItem?.thumbnailUrl || closetItem?.photoUrl);
   const label = closetItem?.subcategory || closetItem?.type || "Item";
   const showControls = hovered || locked;
 
@@ -134,17 +157,33 @@ function CanvasItem({
         touchAction: "none",
       }}
       onPointerDown={handleDragStart}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); setHovered(true); }}
+      onMouseLeave={() => { hoverTimeout.current = setTimeout(() => setHovered(false), 400); }}
     >
-      {/* Image */}
-      <div className={`w-full h-full rounded-lg overflow-hidden shadow-md border ${locked ? "border-amber-400/60" : "border-white/20"}`}>
+      {/* Image container — nobg mode: fully transparent (no bg/border/shadow) so PNG
+          transparency lets items behind show through for natural outfit layering.
+          Photo mode: card style with border + shadow. */}
+      <div
+        className={`w-full h-full overflow-hidden ${
+          isNobg
+            ? `${hovered ? "outline outline-1 outline-dashed outline-white/40 rounded-lg" : ""}`
+            : `rounded-lg shadow-md border ${locked ? "border-amber-400/60" : "border-white/20"}`
+        }`}
+        style={!isNobg ? { backgroundColor: "#f5f5f0" } : undefined}
+        onDoubleClick={(e) => { e.stopPropagation(); onViewPhoto?.(); }}
+      >
         {photoUrl ? (
-          <img src={photoUrl} alt={label} className="w-full h-full object-cover" draggable={false} />
+          <img
+            src={photoUrl}
+            alt={label}
+            className="w-full h-full object-contain"
+            draggable={false}
+            style={isNobg ? { filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.18))" } : undefined}
+          />
         ) : (
-          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded-lg">
             <span className="text-2xl">
-              {closetItem?.type === "Top" ? "👕" : closetItem?.type === "Bottom" ? "👖" : closetItem?.type === "Outerwear" ? "🧥" : closetItem?.type === "Shoes" ? "👟" : "👔"}
+              {closetItem?.type === "Top" ? "👕" : closetItem?.type === "Bottom" ? "👖" : closetItem?.type === "Full Body" ? "👗" : closetItem?.type === "Outerwear" ? "🧥" : closetItem?.type === "Shoes" ? "👟" : "👔"}
             </span>
           </div>
         )}
@@ -152,13 +191,31 @@ function CanvasItem({
 
       {/* Locked border overlay */}
       {locked && (
-        <div className="absolute inset-0 rounded-lg border-2 border-amber-400/50 pointer-events-none" />
+        <div className={`absolute inset-0 border-2 pointer-events-none ${isNobg ? "border-amber-400/40" : "rounded-lg border-amber-400/50"}`} />
       )}
 
-      {/* Label */}
+      {/* Label + per-item nobg/photo toggle */}
       {hovered && (
-        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded">
-          {label}
+        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1">
+          <span className="whitespace-nowrap bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded">
+            {label}
+          </span>
+          {hasNobg && (
+            <button
+              data-toggle
+              onClick={(e) => { e.stopPropagation(); setItemNobg((p) => !p); }}
+              className={`w-4 h-4 rounded-full flex items-center justify-center shadow-sm transition-colors ${
+                isNobg ? "bg-amber-500 text-white" : "bg-black/70 text-white hover:bg-black/90"
+              }`}
+              title={isNobg ? "Show original photo" : "Show no-background"}
+            >
+              {isNobg ? (
+                <Image style={{ fontSize: 9 }} />
+              ) : (
+                <Visibility style={{ fontSize: 9 }} />
+              )}
+            </button>
+          )}
         </div>
       )}
 

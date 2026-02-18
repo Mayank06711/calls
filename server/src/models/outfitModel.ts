@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type OutfitSource = 'manual' | 'ai_suggested' | 'engine_suggested';
+export type OutfitSource = 'manual' | 'ai_suggested' | 'engine_suggested' | 'builder' | 'builder-slots';
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 
@@ -29,6 +29,14 @@ export interface IOutfit extends Document {
     slot: string;
   }>;
   generatedAt?: Date;
+
+  // ─── Sharing ───────────────────────────────────────────────────────
+  shareToken?: string;
+  isPublic: boolean;
+  shareCount: number;
+  viewCount: number;
+  publicLikes: number;
+  sharedAt?: Date;
 }
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
@@ -47,7 +55,7 @@ const outfitSchema = new Schema<IOutfit>(
     tags: [{ type: String, trim: true }],
     source: {
       type: String,
-      enum: ['manual', 'ai_suggested', 'engine_suggested'],
+      enum: ['manual', 'ai_suggested', 'engine_suggested', 'builder', 'builder-slots'],
       default: 'manual',
     },
     isFavorite: { type: Boolean, default: false },
@@ -65,6 +73,14 @@ const outfitSchema = new Schema<IOutfit>(
       slot: { type: String }
     }],
     generatedAt: { type: Date },
+
+    // ─── Sharing ──────────────────────────────────────────────────────
+    shareToken: { type: String, trim: true },
+    isPublic: { type: Boolean, default: false },
+    shareCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    publicLikes: { type: Number, default: 0 },
+    sharedAt: { type: Date },
   },
   { timestamps: true }
 );
@@ -72,5 +88,6 @@ const outfitSchema = new Schema<IOutfit>(
 outfitSchema.index({ user: 1 });
 outfitSchema.index({ user: 1, isFavorite: 1 });
 outfitSchema.index({ user: 1, source: 1 }); // Fast filter: engine-suggested vs manual vs ai-suggested
+outfitSchema.index({ shareToken: 1 }, { unique: true, sparse: true }); // Public lookup by share token
 
 export const OutfitModel = model<IOutfit>('Outfit', outfitSchema);
