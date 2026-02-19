@@ -173,5 +173,7 @@ export const ENDPOINTS = {
     // Sharing
     SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // GET /:shareToken (public, no auth)
     LIKE_SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // POST /:shareToken/like (public, no auth)
+    SAVE_SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // POST /:shareToken/save (auth required)
+    SAVED_OUTFITS: `/api/${API_CONFIG.VERSION}/wardrobe/saved-outfits`, // GET (auth required)
   },
 };

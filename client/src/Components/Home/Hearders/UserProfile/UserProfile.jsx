@@ -58,7 +58,7 @@ function UserProfile() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full p-2 gap-2 overflow-auto min-w-0">
+    <div className="flex flex-col lg:flex-row w-full h-full p-2 gap-2 overflow-auto custom-scrollbar min-w-0">
       {isLoading ? (
         <>
           <UserInfoSkeleton />

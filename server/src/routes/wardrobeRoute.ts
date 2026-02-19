@@ -29,6 +29,7 @@ import { Router } from "express";
 export const publicWardrobeRouter = Router();
 publicWardrobeRouter.get("/outfits/:shareToken", Wardrobe.getSharedOutfit);
 publicWardrobeRouter.post("/outfits/:shareToken/like", Wardrobe.likeSharedOutfit);
+publicWardrobeRouter.post("/outfits/:shareToken/save", Middleware.VerifyJWT, Wardrobe.toggleSaveOutfit);
 
 const router = Router();
 
@@ -59,6 +60,7 @@ router.patch("/outfits/:id/favorite", Wardrobe.toggleFavorite);
 router.patch("/outfits/:id/share", Wardrobe.shareOutfit);
 router.post("/outfits/:id/send", validate(SendOutfitSchema), Wardrobe.sendOutfitToUser);
 router.delete("/outfits/:id", Wardrobe.deleteOutfit);
+router.get("/saved-outfits", Wardrobe.getSavedOutfits);
 
 // ─── Style Profile ──────────────────────────────────────────────────────────
 

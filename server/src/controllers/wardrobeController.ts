@@ -453,9 +453,21 @@ class Wardrobe {
 
   private static async GetOutfitById(req: Request, res: Response) {
     const userId = req.user?._id;
-    const outfit = await OutfitModel.findById(req.params.id).populate("items");
+    const outfit = await OutfitModel.findById(req.params.id)
+      .populate("items")
+      .populate({ path: "user", select: "username fullName" });
     if (!outfit) throw new ApiError(404, "Outfit not found");
-    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    const isOwner = userId?.toString() === outfit.user?._id?.toString() || userId?.toString() === outfit.user?.toString();
+
+    if (!isOwner) {
+      // Allow access if outfit is in user's savedOutfits
+      const user = await UserModel.findById(userId).select("savedOutfits").lean();
+      const oid = (outfit._id as any).toString();
+      const isSaved = (user?.savedOutfits || []).some((id: any) => id.toString() === oid);
+      if (!isSaved) throw new ApiError(403, "Not authorized");
+    }
+
     res.status(200).json({ success: true, data: outfit });
   }
 
@@ -1997,6 +2009,7 @@ class Wardrobe {
         viewCount: (outfit.viewCount || 0) + (alreadyViewed ? 0 : 1),
         publicLikes: outfit.publicLikes || 0,
         hasLiked: !!req.cookies?.[`ol_${outfit._id}`],
+        isSaved: !!req.cookies?.[`os_${outfit._id}`],
       },
     });
   }
@@ -2029,6 +2042,70 @@ class Wardrobe {
   }
 
   /**
+   * POST /public/outfits/:shareToken/save
+   * Toggle bookmark on a shared outfit (authenticated users only).
+   */
+  private static async ToggleSaveOutfit(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Login required");
+
+    const { shareToken } = req.params;
+    const outfit = await OutfitModel.findOne({ shareToken, isPublic: true }).select('_id').lean();
+    if (!outfit) throw new ApiError(404, "Outfit not found");
+
+    const outfitId = (outfit._id as any).toString();
+    const user = await UserModel.findById(userId).select('savedOutfits');
+    if (!user) throw new ApiError(404, "User not found");
+
+    const alreadySaved = (user.savedOutfits || []).some(
+      (id: any) => id.toString() === outfitId
+    );
+
+    const saveCookieName = `os_${outfitId}`;
+
+    if (alreadySaved) {
+      await UserModel.updateOne({ _id: userId }, { $pull: { savedOutfits: outfitId } });
+      res.clearCookie(saveCookieName);
+      res.status(200).json({ success: true, data: { saved: false } });
+    } else {
+      await UserModel.updateOne({ _id: userId }, { $addToSet: { savedOutfits: outfitId } });
+      res.cookie(saveCookieName, "1", { maxAge: 365 * 86400000, httpOnly: true, sameSite: "lax" });
+      res.status(200).json({ success: true, data: { saved: true } });
+    }
+  }
+
+  /**
+   * GET /wardrobe/saved-outfits
+   * Returns bookmarked outfits for the authenticated user.
+   */
+  private static async GetSavedOutfits(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Login required");
+
+    const user = await UserModel.findById(userId).select('savedOutfits');
+    if (!user || !user.savedOutfits?.length) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const outfits = await OutfitModel.find({
+      _id: { $in: user.savedOutfits },
+      isPublic: true,
+    })
+      .populate({
+        path: 'items',
+        select: 'type subcategory brand thumbnailUrl nobgUrl dominantColors photoUrl',
+      })
+      .populate({
+        path: 'user',
+        select: 'username fullName',
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({ success: true, data: outfits });
+  }
+
+  /**
    * POST /outfits/:id/send
    * Sends outfit to another KYF user as a notification.
    */
@@ -2053,6 +2130,9 @@ class Wardrobe {
     outfit.shareCount = (outfit.shareCount || 0) + 1;
     await outfit.save();
 
+    // Auto-add to recipient's savedOutfits
+    await UserModel.updateOne({ _id: recipient._id }, { $addToSet: { savedOutfits: outfit._id } });
+
     const sender = await UserModel.findById(userId).select('username fullName').lean();
 
     await NotificationService.getInstance().emitUserNotification({
@@ -2064,7 +2144,7 @@ class Wardrobe {
         actionType: 'new_item',
         thumbnails: outfit.flatlayUrl ? [outfit.flatlayUrl] : [],
       },
-      extLink: `/outfit/${outfit.shareToken}`,
+      extLink: `/wardrobe/outfits/${outfit._id}`,
     });
 
     res.status(200).json({ success: true, message: "Outfit sent" });
@@ -2513,6 +2593,8 @@ class Wardrobe {
   public static shareOutfit = AsyncHandler.wrap(Wardrobe.ShareOutfit);
   public static getSharedOutfit = AsyncHandler.wrap(Wardrobe.GetSharedOutfit);
   public static likeSharedOutfit = AsyncHandler.wrap(Wardrobe.LikeSharedOutfit);
+  public static toggleSaveOutfit = AsyncHandler.wrap(Wardrobe.ToggleSaveOutfit);
+  public static getSavedOutfits = AsyncHandler.wrap(Wardrobe.GetSavedOutfits);
   public static sendOutfitToUser = AsyncHandler.wrap(Wardrobe.SendOutfitToUser);
 
   // Collections

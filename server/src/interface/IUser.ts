@@ -35,6 +35,7 @@ export interface IUser extends Document {
   isBlockedByAdmin:boolean; // blocked by admin
   isAdmin: boolean; // Whether or not
   isExpert: boolean; // Whether or not the user is an expert
+  savedOutfits: Types.ObjectId[]; // Bookmarked shared outfits from other users
 
   // Add timestamp fields
   createdAt: Date;

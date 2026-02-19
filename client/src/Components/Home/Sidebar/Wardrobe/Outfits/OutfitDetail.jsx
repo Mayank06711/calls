@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowBack, Favorite, FavoriteBorder, DeleteOutline, CalendarMonth, Edit, IosShare, Visibility } from "@mui/icons-material";
+import { ArrowBack, Favorite, FavoriteBorder, DeleteOutline, CalendarMonth, Edit, IosShare, Visibility, PersonOutline } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
   fetchOutfitsThunk,
+  fetchSavedOutfitsThunk,
   toggleOutfitFavoriteThunk,
   deleteOutfitThunk,
   logWearThunk,
@@ -22,7 +23,7 @@ function OutfitDetail() {
   const navigate = useNavigate();
   const { outfitId } = useParams();
 
-  const { saved, loading } = useSelector((s) => s.wardrobe.outfits);
+  const { saved, savedFromOthers, loading } = useSelector((s) => s.wardrobe.outfits);
   const { logging } = useSelector((s) => s.wardrobe.wearLog);
   const [loggingWear, setLoggingWear] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -31,7 +32,17 @@ function OutfitDetail() {
     if (saved.length === 0) dispatch(fetchOutfitsThunk());
   }, [dispatch, saved.length]);
 
-  const outfit = saved.find((o) => o._id === outfitId);
+  // If outfit not in saved, also try loading savedFromOthers
+  useEffect(() => {
+    const inSaved = saved.find((o) => o._id === outfitId);
+    const inOthers = (savedFromOthers || []).find((o) => o._id === outfitId);
+    if (!inSaved && !inOthers && !loading) {
+      dispatch(fetchSavedOutfitsThunk());
+    }
+  }, [dispatch, outfitId, saved, savedFromOthers, loading]);
+
+  const outfit = saved.find((o) => o._id === outfitId) || (savedFromOthers || []).find((o) => o._id === outfitId);
+  const isFromOther = !saved.find((o) => o._id === outfitId) && !!outfit;
 
   if (loading && !outfit) {
     return (
@@ -85,19 +96,23 @@ function OutfitDetail() {
             </h2>
           </div>
           <div className="flex items-center gap-1">
-            <IconButton onClick={() => setShareOpen(true)} size="small">
-              <IosShare style={{ fontSize: 20, color: colors.fourth }} />
-            </IconButton>
-            <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
-              {outfit.isFavorite ? (
-                <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
-              ) : (
-                <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-              )}
-            </IconButton>
-            <IconButton onClick={handleDelete} size="small">
-              <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-            </IconButton>
+            {!isFromOther && (
+              <>
+                <IconButton onClick={() => setShareOpen(true)} size="small">
+                  <IosShare style={{ fontSize: 20, color: colors.fourth }} />
+                </IconButton>
+                <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
+                  {outfit.isFavorite ? (
+                    <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
+                  ) : (
+                    <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+                  )}
+                </IconButton>
+                <IconButton onClick={handleDelete} size="small">
+                  <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+                </IconButton>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -159,6 +174,16 @@ function OutfitDetail() {
 
           {/* Right: Details */}
           <div className="flex-1 min-w-0 py-1">
+            {/* Creator badge (saved from others) */}
+            {isFromOther && outfit.user && (
+              <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 rounded-lg" style={{ backgroundColor: toRgba(colors.fourth, 0.08) }}>
+                <PersonOutline style={{ fontSize: 14, color: colors.fourth }} />
+                <span className="text-[10px] dark:text-dark-text/60 text-light-text/60">
+                  by <span className="font-medium" style={{ color: colors.fourth }}>{outfit.user.fullName || outfit.user.username || "Someone"}</span>
+                </span>
+              </div>
+            )}
+
             {/* Metadata pills */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
               {outfit.occasion && (
@@ -297,30 +322,32 @@ function OutfitDetail() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2.5">
-              <button
-                onClick={handleLogWear}
-                disabled={loggingWear || logging}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity hover:opacity-90"
-                style={{ backgroundColor: colors.fourth }}
-              >
-                {(loggingWear || logging) ? <CircularProgress size={14} style={{ color: "white" }} /> : <CalendarMonth style={{ fontSize: 16 }} />}
-                Log as Worn
-              </button>
-              <button
-                onClick={() => navigate("/wardrobe/outfit-builder", { state: { editOutfit: outfit } })}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium border flex items-center gap-2 dark:text-dark-text/70 text-light-text/70 transition-opacity hover:opacity-70"
-                style={{ borderColor: toRgba(colors.fourth, 0.3) }}
-              >
-                <Edit style={{ fontSize: 16 }} />
-                Edit
-              </button>
-            </div>
+            {!isFromOther && (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={handleLogWear}
+                  disabled={loggingWear || logging}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: colors.fourth }}
+                >
+                  {(loggingWear || logging) ? <CircularProgress size={14} style={{ color: "white" }} /> : <CalendarMonth style={{ fontSize: 16 }} />}
+                  Log as Worn
+                </button>
+                <button
+                  onClick={() => navigate("/wardrobe/outfit-builder", { state: { editOutfit: outfit } })}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium border flex items-center gap-2 dark:text-dark-text/70 text-light-text/70 transition-opacity hover:opacity-70"
+                  style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+                >
+                  <Edit style={{ fontSize: 16 }} />
+                  Edit
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <ShareOutfitModal open={shareOpen} onClose={() => setShareOpen(false)} outfit={outfit} />
+      {!isFromOther && <ShareOutfitModal open={shareOpen} onClose={() => setShareOpen(false)} outfit={outfit} />}
     </div>
   );
 }

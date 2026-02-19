@@ -81,7 +81,7 @@ function UserActivity() {
         })}
       </Stack>
 
-      <div className="flex-1 min-w-0 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-auto custom-scrollbar">
         {/* Content for each tab will go here */}
         <Outlet />
       </div>

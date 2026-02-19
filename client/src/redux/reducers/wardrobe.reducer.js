@@ -94,6 +94,9 @@ import {
   REMOVE_ITEMS_FROM_COLLECTION_SUCCESS,
   SET_ACTIVE_COLLECTION,
   SHARE_OUTFIT_SUCCESS,
+  FETCH_SAVED_OUTFITS_REQUEST,
+  FETCH_SAVED_OUTFITS_SUCCESS,
+  FETCH_SAVED_OUTFITS_FAILURE,
 } from "../action_creators";
 
 const initialState = {
@@ -139,6 +142,7 @@ const initialState = {
     togglingFavorite: null,
     error: null,
     saved: [],
+    savedFromOthers: [],
     filters: { occasion: '', season: '', favorite: false, source: '' },
   },
   builder: {
@@ -654,6 +658,14 @@ const wardrobeReducer = (state = initialState, action) => {
           ),
         },
       };
+
+    // ─── Saved (bookmarked) outfits from other users ──────────────────────
+    case FETCH_SAVED_OUTFITS_REQUEST:
+      return { ...state, outfits: { ...state.outfits, loading: true, error: null } };
+    case FETCH_SAVED_OUTFITS_SUCCESS:
+      return { ...state, outfits: { ...state.outfits, loading: false, savedFromOthers: action.payload } };
+    case FETCH_SAVED_OUTFITS_FAILURE:
+      return { ...state, outfits: { ...state.outfits, loading: false, error: action.payload } };
 
     default:
       return state;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import Headers from "./Hearders/Headers";
 import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
@@ -10,6 +10,258 @@ import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
 import { useSelector } from "react-redux";
 import { LocalGasStation } from "@mui/icons-material";
+
+// ── Route-aware content skeleton ─────────────────────────────────────────────
+const Sh = ({ className }) => (
+  <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700/40 ${className}`} />
+);
+
+const ChatSkeleton = () => (
+  <div className="flex h-full">
+    {/* Contact list */}
+    <div className="w-80 border-r dark:border-dark-text/10 border-light-text/10 p-3 space-y-3 flex-shrink-0">
+      <Sh className="w-full h-10 rounded-lg" />
+      <div className="flex gap-2 mb-2">
+        <Sh className="w-16 h-6 rounded-full" />
+        <Sh className="w-16 h-6 rounded-full" />
+      </div>
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Sh className="w-10 h-10 rounded-full flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Sh className="w-3/5 h-3.5" />
+            <Sh className="w-4/5 h-2.5" />
+          </div>
+        </div>
+      ))}
+    </div>
+    {/* Message area */}
+    <div className="flex-1 flex flex-col">
+      <div className="p-3 border-b dark:border-dark-text/10 border-light-text/10 flex items-center gap-3">
+        <Sh className="w-9 h-9 rounded-full" />
+        <Sh className="w-32 h-4" />
+      </div>
+      <div className="flex-1 p-4 space-y-4">
+        <div className="flex justify-start"><Sh className="w-48 h-8 rounded-xl" /></div>
+        <div className="flex justify-end"><Sh className="w-56 h-8 rounded-xl" /></div>
+        <div className="flex justify-start"><Sh className="w-64 h-12 rounded-xl" /></div>
+        <div className="flex justify-end"><Sh className="w-40 h-8 rounded-xl" /></div>
+        <div className="flex justify-start"><Sh className="w-52 h-8 rounded-xl" /></div>
+      </div>
+      <div className="p-3 border-t dark:border-dark-text/10 border-light-text/10">
+        <Sh className="w-full h-10 rounded-xl" />
+      </div>
+    </div>
+  </div>
+);
+
+const GridSkeleton = ({ chips = true }) => (
+  <div className="p-3 sm:p-4 h-full">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Sh className="w-7 h-7 rounded-full" />
+        <Sh className="w-36 h-5" />
+      </div>
+      <div className="flex gap-2">
+        <Sh className="w-7 h-7 rounded-lg" />
+        <Sh className="w-7 h-7 rounded-lg" />
+      </div>
+    </div>
+    {chips && (
+      <div className="flex gap-2 mb-4">
+        <Sh className="w-20 h-7 rounded-full" />
+        <Sh className="w-16 h-7 rounded-full" />
+        <Sh className="w-24 h-7 rounded-full" />
+      </div>
+    )}
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="rounded-xl overflow-hidden">
+          <Sh className="w-full aspect-[4/5]" />
+          <div className="p-2 space-y-1.5">
+            <Sh className="w-3/4 h-3" />
+            <Sh className="w-1/2 h-2.5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const DetailSkeleton = () => (
+  <div className="p-3 sm:p-4 h-full">
+    <div className="flex items-center gap-2 mb-4">
+      <Sh className="w-7 h-7 rounded-full" />
+      <Sh className="w-40 h-5" />
+    </div>
+    <div className="flex gap-4">
+      <Sh className="w-72 aspect-[4/5] rounded-2xl flex-shrink-0" />
+      <div className="flex-1 space-y-3 pt-1">
+        <div className="flex gap-2">
+          <Sh className="w-16 h-6 rounded-full" />
+          <Sh className="w-20 h-6 rounded-full" />
+        </div>
+        <Sh className="w-1/3 h-3" />
+        <Sh className="w-full h-10 rounded-lg" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl border dark:border-dark-text/10 border-light-text/10">
+            <Sh className="w-14 h-14 rounded-lg flex-shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <Sh className="w-1/4 h-3" />
+              <Sh className="w-2/3 h-2.5" />
+            </div>
+          </div>
+        ))}
+        <div className="flex gap-2.5 mt-2">
+          <Sh className="flex-1 h-10 rounded-xl" />
+          <Sh className="w-24 h-10 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const WardrobeHubSkeleton = () => (
+  <div className="p-3 sm:p-5 h-full">
+    <div className="flex items-center gap-3 mb-1">
+      <Sh className="w-9 h-9 rounded-xl" />
+      <Sh className="w-44 h-6" />
+    </div>
+    <Sh className="w-60 h-3 mb-4" />
+    <Sh className="w-full h-1 rounded-full mb-5" />
+    <Sh className="w-24 h-4 mb-3" />
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-5">
+      {[...Array(6)].map((_, i) => (
+        <Sh key={i} className="h-20 rounded-xl" />
+      ))}
+    </div>
+    <Sh className="w-20 h-4 mb-3" />
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+      {[...Array(3)].map((_, i) => (
+        <Sh key={i} className="h-20 rounded-xl" />
+      ))}
+    </div>
+  </div>
+);
+
+const NotificationSkeleton = () => (
+  <div className="p-3 sm:p-4 h-full">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Sh className="w-6 h-6 rounded" />
+        <Sh className="w-32 h-5" />
+        <Sh className="w-6 h-5 rounded-full" />
+      </div>
+      <Sh className="w-16 h-7 rounded-lg" />
+    </div>
+    <Sh className="w-full h-9 rounded-lg mb-4" />
+    <Sh className="w-16 h-3 mb-3" />
+    <div className="space-y-2.5">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex items-start gap-3 p-3 rounded-xl border dark:border-dark-text/10 border-light-text/10">
+          <Sh className="w-10 h-10 rounded-lg flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Sh className="w-2/5 h-3.5" />
+            <Sh className="w-4/5 h-2.5" />
+            <Sh className="w-1/4 h-2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ProfileSkeleton = () => (
+  <div className="flex flex-col lg:flex-row h-full">
+    <div className="lg:w-[600px] p-6 flex flex-col items-center border-r dark:border-dark-text/10 border-light-text/10">
+      <Sh className="w-32 h-32 rounded-full mb-4" />
+      <Sh className="w-40 h-5 mb-2" />
+      <Sh className="w-24 h-3 mb-4" />
+      <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+        {[...Array(4)].map((_, i) => (
+          <Sh key={i} className="h-16 rounded-xl" />
+        ))}
+      </div>
+    </div>
+    <div className="flex-1 p-4">
+      <div className="flex gap-3 mb-4 border-b dark:border-dark-text/10 border-light-text/10 pb-3">
+        {[...Array(4)].map((_, i) => (
+          <Sh key={i} className="w-16 h-7 rounded-full" />
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <Sh key={i} className="w-full h-20 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const SubscriptionSkeleton = () => (
+  <div className="p-6 max-w-5xl mx-auto h-full">
+    <div className="text-center mb-8">
+      <Sh className="w-48 h-7 mx-auto mb-2" />
+      <Sh className="w-72 h-4 mx-auto" />
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="rounded-2xl border dark:border-dark-text/10 border-light-text/10 p-5 space-y-3">
+          <Sh className="w-20 h-5 rounded-full" />
+          <Sh className="w-16 h-8" />
+          <Sh className="w-full h-3" />
+          <div className="space-y-2 pt-2">
+            {[...Array(5)].map((_, j) => (
+              <div key={j} className="flex items-center gap-2">
+                <Sh className="w-4 h-4 rounded-full flex-shrink-0" />
+                <Sh className="w-full h-3" />
+              </div>
+            ))}
+          </div>
+          <Sh className="w-full h-10 rounded-xl mt-2" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ReelsSkeleton = () => (
+  <div className="flex flex-col items-center justify-center h-full p-6">
+    <Sh className="w-20 h-20 rounded-2xl mb-4" />
+    <Sh className="w-48 h-6 mb-2" />
+    <Sh className="w-64 h-3 mb-6" />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+      {[...Array(4)].map((_, i) => (
+        <Sh key={i} className="h-28 rounded-xl" />
+      ))}
+    </div>
+  </div>
+);
+
+const ContentSkeleton = () => {
+  const { pathname } = useLocation();
+  const p = pathname.replace(/\/$/, "");
+
+  if (p === "" || p === "/chats" || p.startsWith("/chats/"))
+    return <ChatSkeleton />;
+  if (/^\/wardrobe\/outfits\/[^/]+$/.test(p) || p === "/wardrobe/style-profile")
+    return <DetailSkeleton />;
+  if (p === "/wardrobe")
+    return <WardrobeHubSkeleton />;
+  if (p === "/wardrobe/my-closet" || p === "/wardrobe/outfits" || p === "/wardrobe/pairings" || p === "/wardrobe/shop")
+    return <GridSkeleton />;
+  if (p === "/wardrobe/outfit-builder" || p.startsWith("/wardrobe/suggest"))
+    return <GridSkeleton chips={false} />;
+  if (p === "/notifications")
+    return <NotificationSkeleton />;
+  if (p.startsWith("/profile"))
+    return <ProfileSkeleton />;
+  if (p === "/reels")
+    return <ReelsSkeleton />;
+  if (p.startsWith("/subscriptions"))
+    return <SubscriptionSkeleton />;
+  return <GridSkeleton chips={false} />;
+};
 
 function Home() {
   const darkMode = useSelector((state) => state.auth.isDarkMode);
@@ -341,7 +593,9 @@ function Home() {
       <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100%-64px)] ml-16 mt-16 overflow-y-auto overflow-x-hidden scrollbar-hide"
         style={{ scrollBehavior: 'instant' }}
       >
-        <Outlet />
+        <Suspense fallback={<ContentSkeleton />}>
+          <Outlet />
+        </Suspense>
       </div>
 
       {/* AI Assistant Panel */}

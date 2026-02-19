@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Close, Checkroom, AutoAwesome } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
 import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 function WardrobeCard({ notification, onDismiss, colors }) {
-  const { id, title, message, createdAt, wardrobe } = notification;
+  const navigate = useNavigate();
+  const { id, title, message, createdAt, wardrobe, extLink } = notification;
   const timeAgo = getTimeAgo(createdAt);
 
   // Determine icon/color based on action type
@@ -15,18 +17,23 @@ function WardrobeCard({ notification, onDismiss, colors }) {
   const accentColor = isPairings ? '#8B5CF6' : colors.fourth;
   const Icon = isPairings ? AutoAwesome : Checkroom;
 
+  const handleClick = () => {
+    if (extLink) navigate(extLink);
+  };
+
   return (
     <div
-      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
+      className={`relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white ${extLink ? 'cursor-pointer' : ''}`}
       style={{
         border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
         borderLeft: `3px solid ${accentColor}`,
       }}
+      onClick={handleClick}
     >
       {/* Dismiss */}
       <IconButton
         size="small"
-        onClick={() => onDismiss(id)}
+        onClick={(e) => { e.stopPropagation(); onDismiss(id); }}
         className="!absolute !top-2 !right-2"
         sx={{
           color: 'gray',

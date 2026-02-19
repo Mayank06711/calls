@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowBack, Add, GridView, ViewList } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
-import { fetchOutfitsThunk } from "../../../../../redux/thunks/wardrobe.thunks";
+import { fetchOutfitsThunk, fetchSavedOutfitsThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import { setOutfitFilters } from "../../../../../redux/actions/wardrobe.actions";
 import OutfitCard from "./OutfitCard";
 import OutfitListItem from "./OutfitListItem";
@@ -15,15 +15,28 @@ function OutfitList() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { loading, saved, filters } = useSelector((s) => s.wardrobe.outfits);
+  const { loading, saved, savedFromOthers, filters } = useSelector((s) => s.wardrobe.outfits);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [shareOutfit, setShareOutfit] = useState(null);
+  const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
     dispatch(fetchOutfitsThunk());
   }, [dispatch]);
 
-  const filtered = saved.filter((o) => {
+  const handleSavedToggle = () => {
+    const next = !showSaved;
+    setShowSaved(next);
+    if (next) {
+      dispatch(setOutfitFilters({ occasion: "", favorite: false, source: "" }));
+      dispatch(fetchSavedOutfitsThunk());
+    }
+  };
+
+  const displayList = showSaved ? savedFromOthers : saved;
+
+  const filtered = displayList.filter((o) => {
+    if (showSaved) return true; // no extra filters for saved-from-others
     if (filters.occasion && o.occasion !== filters.occasion) return false;
     if (filters.season && o.season !== filters.season) return false;
     if (filters.favorite && !o.isFavorite) return false;
@@ -41,9 +54,9 @@ function OutfitList() {
               <ArrowBack style={{ color: colors.fourth }} />
             </IconButton>
             <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-              My Outfits
+              {showSaved ? "Saved Outfits" : "My Outfits"}
             </h2>
-            {saved.length > 0 && (
+            {displayList.length > 0 && (
               <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">({filtered.length})</span>
             )}
           </div>
@@ -70,16 +83,22 @@ function OutfitList() {
         <div className="flex flex-wrap gap-2">
           <FilterChip
             label="Favorites"
-            active={filters.favorite}
-            onClick={() => dispatch(setOutfitFilters({ favorite: !filters.favorite, occasion: "" }))}
+            active={!showSaved && filters.favorite}
+            onClick={() => { setShowSaved(false); dispatch(setOutfitFilters({ favorite: !filters.favorite, occasion: "" })); }}
+            colors={colors}
+          />
+          <FilterChip
+            label="Saved"
+            active={showSaved}
+            onClick={handleSavedToggle}
             colors={colors}
           />
           {["Casual", "Office: Daily Wear", "Party: Night Out", "Date Night", "Wedding"].map((occ) => (
             <FilterChip
               key={occ}
               label={occ}
-              active={filters.occasion === occ}
-              onClick={() => dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ, favorite: false }))}
+              active={!showSaved && filters.occasion === occ}
+              onClick={() => { setShowSaved(false); dispatch(setOutfitFilters({ occasion: filters.occasion === occ ? "" : occ, favorite: false })); }}
               colors={colors}
             />
           ))}
@@ -102,19 +121,23 @@ function OutfitList() {
             <OutfitCard
               key={outfit._id}
               outfit={outfit}
-              onClick={() => navigate(`/wardrobe/outfits/${outfit._id}`)}
-              onShare={(o) => setShareOutfit(o)}
+              onClick={() => navigate(
+                `/wardrobe/outfits/${outfit._id}`
+              )}
+              onShare={showSaved ? undefined : (o) => setShareOutfit(o)}
             />
           ))}
           {/* New outfit CTA */}
-          <button
-            onClick={() => navigate("/wardrobe/outfit-builder")}
-            className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 py-12 transition-all hover:shadow-sm"
-            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
-          >
-            <Add style={{ color: colors.fourth, fontSize: 28, opacity: 0.5 }} />
-            <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
-          </button>
+          {!showSaved && (
+            <button
+              onClick={() => navigate("/wardrobe/outfit-builder")}
+              className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 py-12 transition-all hover:shadow-sm"
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+            >
+              <Add style={{ color: colors.fourth, fontSize: 28, opacity: 0.5 }} />
+              <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -125,35 +148,45 @@ function OutfitList() {
             <OutfitListItem
               key={outfit._id}
               outfit={outfit}
-              onClick={() => navigate(`/wardrobe/outfits/${outfit._id}`)}
+              onClick={() => navigate(
+                `/wardrobe/outfits/${outfit._id}`
+              )}
             />
           ))}
           {/* New outfit CTA */}
-          <button
-            onClick={() => navigate("/wardrobe/outfit-builder")}
-            className="w-full rounded-xl border-2 border-dashed flex items-center justify-center gap-2 py-4 transition-all hover:shadow-sm"
-            style={{ borderColor: toRgba(colors.fourth, 0.3) }}
-          >
-            <Add style={{ color: colors.fourth, fontSize: 20, opacity: 0.5 }} />
-            <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
-          </button>
+          {!showSaved && (
+            <button
+              onClick={() => navigate("/wardrobe/outfit-builder")}
+              className="w-full rounded-xl border-2 border-dashed flex items-center justify-center gap-2 py-4 transition-all hover:shadow-sm"
+              style={{ borderColor: toRgba(colors.fourth, 0.3) }}
+            >
+              <Add style={{ color: colors.fourth, fontSize: 20, opacity: 0.5 }} />
+              <span className="text-xs dark:text-dark-text/40 text-light-text/40">New Outfit</span>
+            </button>
+          )}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <span className="text-4xl mb-3 opacity-20">👗</span>
+          <span className="text-4xl mb-3 opacity-20">{showSaved ? "🔖" : "👗"}</span>
           <p className="text-sm dark:text-dark-text/50 text-light-text/50 mb-4">
-            No outfits saved yet
+            {showSaved ? "No saved outfits yet" : "No outfits saved yet"}
           </p>
-          <button
-            onClick={() => navigate("/wardrobe/outfit-builder")}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white"
-            style={{ backgroundColor: colors.fourth }}
-          >
-            Create Your First Outfit
-          </button>
+          {showSaved ? (
+            <p className="text-xs dark:text-dark-text/40 text-light-text/40 text-center max-w-xs">
+              When someone shares an outfit with you, save it here for later
+            </p>
+          ) : (
+            <button
+              onClick={() => navigate("/wardrobe/outfit-builder")}
+              className="px-5 py-2 rounded-lg text-sm font-medium text-white"
+              style={{ backgroundColor: colors.fourth }}
+            >
+              Create Your First Outfit
+            </button>
+          )}
         </div>
       )}
       </div>

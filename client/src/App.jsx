@@ -57,6 +57,7 @@ const Posts = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActi
 const SilverSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription"));
 const PlatinumSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription"));
 const GoldSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription"));
+const AccountSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AccountSettings"));
 const ThemeSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings"));
 const NotificationSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/PrivacySettings"));
@@ -76,10 +77,37 @@ const TermsAndConditions = lazy(() => import("./Components/Legal/TermsAndConditi
 const PrivacyPolicy = lazy(() => import("./Components/Legal/PrivacyPolicy"));
 const SharedOutfitPage = lazy(() => import("./Components/Public/SharedOutfitPage"));
 
-// ── Suspense fallback spinner ────────────────────────────────────────────────
+// ── Suspense fallback skeleton (full-page loads: landing, login, public pages) ─
+const Sh = ({ className }) => (
+  <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700/40 ${className}`} />
+);
+
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500" />
+  <div className="w-full h-screen dark:bg-dark-primary bg-light-secondary overflow-hidden">
+    {/* Navbar skeleton */}
+    <div className="flex items-center justify-between px-6 py-4 border-b dark:border-dark-text/10 border-light-text/10">
+      <Sh className="w-28 h-7" />
+      <div className="flex items-center gap-4">
+        <Sh className="w-16 h-4" />
+        <Sh className="w-16 h-4" />
+        <Sh className="w-20 h-9 rounded-full" />
+      </div>
+    </div>
+    {/* Hero skeleton */}
+    <div className="flex items-center justify-between max-w-6xl mx-auto px-6 pt-16">
+      <div className="flex-1 space-y-5 max-w-xl">
+        <Sh className="w-3/4 h-10" />
+        <Sh className="w-full h-6" />
+        <Sh className="w-2/3 h-4" />
+        <div className="flex gap-3 pt-4">
+          <Sh className="w-36 h-12 rounded-full" />
+          <Sh className="w-32 h-12 rounded-full" />
+        </div>
+      </div>
+      <div className="hidden md:block flex-shrink-0">
+        <Sh className="w-72 h-80 rounded-2xl" />
+      </div>
+    </div>
   </div>
 );
 
@@ -269,6 +297,7 @@ const App = () => {
                   <Route path='settings' element={<UserSettings />}>
                     <Route index element={<Navigate to='overview' />} />
                     <Route path='overview' element={<UserSettings />} />
+                    <Route path='account' element={<AccountSettings />} />
                     <Route path='theme' element={<ThemeSettings />} />
                     <Route
                       path='notifications'

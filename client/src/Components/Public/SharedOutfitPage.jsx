@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { CircularProgress } from "@mui/material";
-import { Visibility, ContentCopy, Check, FavoriteBorder, Favorite } from "@mui/icons-material";
-import { fetchSharedOutfitThunk, likeSharedOutfitThunk } from "../../redux/thunks/wardrobe.thunks";
+import { Visibility, ContentCopy, Check, FavoriteBorder, Favorite, BookmarkBorder, Bookmark } from "@mui/icons-material";
+import { fetchSharedOutfitThunk, likeSharedOutfitThunk, saveSharedOutfitThunk } from "../../redux/thunks/wardrobe.thunks";
 import KYFLogo from "../../assets/KYF_Logo.png";
 
 const TYPE_EMOJI = { Top: "👕", Bottom: "👖", "Full Body": "👗", Outerwear: "🧥", Shoes: "👟", Accessory: "⌚" };
@@ -45,7 +45,10 @@ function SharedOutfitPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [liking, setLiking] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [loginPromptAction, setLoginPromptAction] = useState("like"); // 'like' | 'save'
 
   const handleCopyLink = async () => {
     try {
@@ -57,12 +60,12 @@ function SharedOutfitPage() {
 
   const handleLike = useCallback(async () => {
     if (!userId) {
+      setLoginPromptAction("like");
       setShowLoginPrompt(true);
       return;
     }
     if (liking) return;
     setLiking(true);
-    // Optimistic update
     setLiked((prev) => !prev);
     setLikeCount((prev) => prev + (liked ? -1 : 1));
     const result = await dispatch(likeSharedOutfitThunk(shareToken));
@@ -71,11 +74,28 @@ function SharedOutfitPage() {
       setLiked(result.data.liked);
       setLikeCount(result.data.publicLikes);
     } else {
-      // Revert optimistic update
       setLiked((prev) => !prev);
       setLikeCount((prev) => prev + (liked ? 1 : -1));
     }
   }, [liking, liked, shareToken, dispatch, userId]);
+
+  const handleSave = useCallback(async () => {
+    if (!userId) {
+      setLoginPromptAction("save");
+      setShowLoginPrompt(true);
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    setSaved((prev) => !prev);
+    const result = await dispatch(saveSharedOutfitThunk(shareToken));
+    setSaving(false);
+    if (result?.success) {
+      setSaved(result.data.saved);
+    } else {
+      setSaved((prev) => !prev);
+    }
+  }, [saving, shareToken, dispatch, userId]);
 
   useEffect(() => {
     if (!shareToken) return;
@@ -86,6 +106,7 @@ function SharedOutfitPage() {
         setOutfit(result.data);
         setLiked(result.data.hasLiked || false);
         setLikeCount(result.data.publicLikes || 0);
+        setSaved(result.data.isSaved || false);
       } else {
         setError(result?.error || "Outfit not found");
       }
@@ -312,7 +333,7 @@ function SharedOutfitPage() {
                 </div>
               </div>
 
-              {/* Stats + Like + Share */}
+              {/* Stats + Like + Save + Share */}
               <div className="flex flex-col gap-2.5">
                 <div className="flex gap-2.5">
                   <div className="flex-1 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm p-2.5 flex flex-col items-center justify-center gap-0.5">
@@ -329,6 +350,17 @@ function SharedOutfitPage() {
                       <FavoriteBorder style={{ fontSize: 20, color: "#9ca3af" }} />
                     )}
                     <p className="text-[8px] text-gray-400">{likeCount > 0 ? likeCount : "Like"}</p>
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="flex-1 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm p-2.5 flex flex-col items-center justify-center gap-0.5 transition-all hover:shadow-md hover:bg-white/80"
+                  >
+                    {saved ? (
+                      <Bookmark style={{ fontSize: 20, color: ACCENT }} />
+                    ) : (
+                      <BookmarkBorder style={{ fontSize: 20, color: "#9ca3af" }} />
+                    )}
+                    <p className="text-[8px] text-gray-400">{saved ? "Saved" : "Save"}</p>
                   </button>
                 </div>
                 <button
@@ -430,8 +462,14 @@ function SharedOutfitPage() {
       {showLoginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-xs w-full text-center">
-            <FavoriteBorder style={{ fontSize: 36, color: "#ef4444" }} />
-            <p className="text-sm font-semibold text-gray-800 mt-3 mb-1">Sign in to like this outfit</p>
+            {loginPromptAction === "save" ? (
+              <BookmarkBorder style={{ fontSize: 36, color: ACCENT }} />
+            ) : (
+              <FavoriteBorder style={{ fontSize: 36, color: "#ef4444" }} />
+            )}
+            <p className="text-sm font-semibold text-gray-800 mt-3 mb-1">
+              {loginPromptAction === "save" ? "Sign in to save this outfit" : "Sign in to like this outfit"}
+            </p>
             <p className="text-[11px] text-gray-400 mb-4">Join KYF for AI styling, expert fashion advice, color analysis, and your own digital closet</p>
             <button
               onClick={() => { setShowLoginPrompt(false); navigate("/"); }}

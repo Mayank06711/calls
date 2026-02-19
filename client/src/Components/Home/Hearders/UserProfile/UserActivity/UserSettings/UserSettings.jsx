@@ -1,6 +1,7 @@
 import React from "react";
-import { 
-  ColorLensOutlined, 
+import {
+  PersonOutline,
+  ColorLensOutlined,
   NotificationsOutlined,
   LockOutlined,
   TuneOutlined,
@@ -23,9 +24,15 @@ function UserSettings() {
 
 
    const settingsCards = [
-    { 
-      icon: <ColorLensOutlined />, 
-      title: 'Theme', 
+    {
+      icon: <PersonOutline />,
+      title: 'Account',
+      description: 'Update your personal info',
+      path: 'account'
+    },
+    {
+      icon: <ColorLensOutlined />,
+      title: 'Theme',
       description: 'Customize your app appearance',
       path: 'theme'
     },
@@ -94,7 +101,7 @@ function UserSettings() {
     <>
       {isOverview ? (
         // Settings overview grid
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-2 sm:p-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 p-2 sm:p-4 w-full">
           {settingsCards.map((card, index) => (
             <div
               key={index}

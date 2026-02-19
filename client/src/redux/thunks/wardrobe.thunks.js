@@ -73,6 +73,9 @@ import {
   addItemsToCollectionSuccess,
   removeItemsFromCollectionSuccess,
   shareOutfitSuccess,
+  fetchSavedOutfitsRequest,
+  fetchSavedOutfitsSuccess,
+  fetchSavedOutfitsFailure,
 } from "../actions/wardrobe.actions";
 import { showNotification } from "../actions/notification.actions";
 
@@ -892,5 +895,40 @@ export const likeSharedOutfitThunk = (shareToken) => async () => {
     return { success: false, error: "Failed" };
   } catch (error) {
     return { success: false, error: error.message || "Failed to like outfit" };
+  }
+};
+
+export const saveSharedOutfitThunk = (shareToken) => async () => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.WARDROBE.SAVE_SHARED_OUTFIT}/${shareToken}/save`
+    );
+    if (error) return { success: false, error: error.message };
+    if (data?.success) return { success: true, data: data.data };
+    return { success: false, error: "Failed" };
+  } catch (error) {
+    return { success: false, error: error.message || "Failed to save outfit" };
+  }
+};
+
+export const fetchSavedOutfitsThunk = () => async (dispatch) => {
+  try {
+    dispatch(fetchSavedOutfitsRequest());
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.GET,
+      ENDPOINTS.WARDROBE.SAVED_OUTFITS
+    );
+    if (error) {
+      dispatch(fetchSavedOutfitsFailure(error.message));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(fetchSavedOutfitsSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(fetchSavedOutfitsFailure(error.message || "Failed to fetch saved outfits"));
+    return { success: false, error: error.message };
   }
 };

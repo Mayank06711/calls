@@ -97,6 +97,9 @@ import {
   REMOVE_ITEMS_FROM_COLLECTION_SUCCESS,
   SET_ACTIVE_COLLECTION,
   SHARE_OUTFIT_SUCCESS,
+  FETCH_SAVED_OUTFITS_REQUEST,
+  FETCH_SAVED_OUTFITS_SUCCESS,
+  FETCH_SAVED_OUTFITS_FAILURE,
 } from "../action_creators";
 
 // ─── Style Profile ────────────────────────────────────────────────────────────
@@ -261,3 +264,9 @@ export const setActiveCollection = (id) => ({ type: SET_ACTIVE_COLLECTION, paylo
 // ─── Sharing ─────────────────────────────────────────────────────────────────
 
 export const shareOutfitSuccess = (data) => ({ type: SHARE_OUTFIT_SUCCESS, payload: data });
+
+// ─── Saved Outfits (bookmarks from other users) ──────────────────────────────
+
+export const fetchSavedOutfitsRequest = () => ({ type: FETCH_SAVED_OUTFITS_REQUEST });
+export const fetchSavedOutfitsSuccess = (data) => ({ type: FETCH_SAVED_OUTFITS_SUCCESS, payload: data });
+export const fetchSavedOutfitsFailure = (error) => ({ type: FETCH_SAVED_OUTFITS_FAILURE, payload: error });
