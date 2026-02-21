@@ -549,10 +549,33 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
 
   if (!isSocketReady) {
     return (
-      <div className='flex items-center justify-center h-full'>
-        <div className='flex flex-col items-center'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900'></div>
-          <p className='mt-2 text-gray-600'>Initializing chat service...</p>
+      <div className='h-full flex flex-col animate-pulse'>
+        {/* Header skeleton */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700/20">
+          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700/40" />
+          <div className="space-y-1.5">
+            <div className="w-28 h-3.5 rounded bg-gray-200 dark:bg-gray-700/40" />
+            <div className="w-16 h-2.5 rounded bg-gray-100 dark:bg-gray-700/20" />
+          </div>
+        </div>
+        {/* Message area skeleton */}
+        <div className="flex-1 flex flex-col justify-end px-4 pb-4 overflow-hidden">
+          <div className="flex items-end gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700/40 flex-shrink-0" />
+            <div className="w-48 h-8 rounded-2xl rounded-bl-sm bg-gray-200 dark:bg-gray-700/40" />
+          </div>
+          <div className="flex justify-end mb-4">
+            <div className="w-36 h-8 rounded-2xl rounded-br-sm bg-gray-200 dark:bg-gray-700/30" />
+          </div>
+          <div className="flex items-end gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700/40 flex-shrink-0" />
+            <div className="w-52 h-8 rounded-2xl rounded-bl-sm bg-gray-200 dark:bg-gray-700/40" />
+          </div>
+        </div>
+        {/* Input skeleton */}
+        <div className="flex items-center gap-3 px-4 pb-4">
+          <div className="flex-1 h-[42px] rounded-2xl bg-gray-200 dark:bg-gray-700/30" />
+          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700/30" />
         </div>
       </div>
     );
@@ -814,8 +837,40 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
   const renderRequestStatus = () => {
     if (requestStatus === null) {
       return (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
+        <div className="flex-1 flex flex-col justify-end px-4 pb-4 animate-pulse overflow-hidden">
+          {/* Skeleton message bubbles */}
+          <div className="flex items-end gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700/40 flex-shrink-0" />
+            <div className="space-y-1.5">
+              <div className="w-48 h-8 rounded-2xl rounded-bl-sm bg-gray-200 dark:bg-gray-700/40" />
+              <div className="w-10 h-2 rounded bg-gray-100 dark:bg-gray-700/20" />
+            </div>
+          </div>
+          <div className="flex items-end justify-end mb-4">
+            <div className="space-y-1.5 flex flex-col items-end">
+              <div className="w-32 h-8 rounded-2xl rounded-br-sm bg-gray-200 dark:bg-gray-700/30" />
+              <div className="w-10 h-2 rounded bg-gray-100 dark:bg-gray-700/20" />
+            </div>
+          </div>
+          <div className="flex items-end gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700/40 flex-shrink-0" />
+            <div className="space-y-1.5">
+              <div className="w-56 h-8 rounded-2xl rounded-bl-sm bg-gray-200 dark:bg-gray-700/40" />
+              <div className="w-40 h-8 rounded-2xl rounded-bl-sm bg-gray-200 dark:bg-gray-700/40" />
+              <div className="w-10 h-2 rounded bg-gray-100 dark:bg-gray-700/20" />
+            </div>
+          </div>
+          <div className="flex items-end justify-end mb-4">
+            <div className="space-y-1.5 flex flex-col items-end">
+              <div className="w-44 h-8 rounded-2xl rounded-br-sm bg-gray-200 dark:bg-gray-700/30" />
+              <div className="w-10 h-2 rounded bg-gray-100 dark:bg-gray-700/20" />
+            </div>
+          </div>
+          {/* Skeleton input bar */}
+          <div className="flex items-center gap-3 mt-2">
+            <div className="flex-1 h-[42px] rounded-2xl bg-gray-200 dark:bg-gray-700/30" />
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700/30" />
+          </div>
         </div>
       );
     }

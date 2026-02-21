@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Image, Close } from '@mui/icons-material';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Image, Close, AddCircleOutline, CheckroomOutlined } from '@mui/icons-material';
+import { ClickAwayListener } from '@mui/material';
 import PropTypes from 'prop-types';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { uploadImage } from '../../../../socket/handleImageUpload';
 import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 import { showNotification } from '../../../../redux/actions/notification.actions';
+import { shareOutfitThunk, fetchOutfitsThunk } from '../../../../redux/thunks/wardrobe.thunks';
 
 const MessageInput = ({ onSendMessage, onTyping }) => {
   const [message, setMessage] = useState('');
@@ -12,12 +14,17 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const [filePreview, setFilePreview] = useState('');
   const [isVideo, setIsVideo] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showOutfitPicker, setShowOutfitPicker] = useState(false);
+  const [sharingOutfitId, setSharingOutfitId] = useState(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const objectUrlRef = useRef(null);
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
+  const outfits = useSelector((s) => s.wardrobe?.outfits?.saved) || [];
+  const outfitsLoading = useSelector((s) => s.wardrobe?.outfits?.loading);
 
   // Auto-resize textarea based on content
   useEffect(() => {
@@ -169,6 +176,40 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
     }
   };
 
+  const handleOpenOutfitPicker = useCallback(() => {
+    setShowAttachMenu(false);
+    setShowOutfitPicker(true);
+    if (!outfits.length && !outfitsLoading) {
+      dispatch(fetchOutfitsThunk());
+    }
+  }, [outfits.length, outfitsLoading, dispatch]);
+
+  const handleShareOutfit = useCallback(async (outfit) => {
+    setSharingOutfitId(outfit._id);
+    try {
+      let token = outfit.shareToken;
+      if (!token) {
+        const result = await dispatch(shareOutfitThunk(outfit._id));
+        token = result?.data?.shareToken;
+      }
+      if (token) {
+        const link = `${window.location.origin}/outfit/${token}`;
+        const label = outfit.name || "My Outfit";
+        await onSendMessage({
+          type: 'text',
+          content: `${label} — ${link}`,
+          metadata: { fileSize: null, fileType: '', uploadedAt: null, width: null, height: null, duration: null, thumbnailUrl: '', originalName: '', uploaderId: '', description: '', tags: [], isEdited: false, isCompressed: false, resolution: '', exifData: {}, customData: {} },
+        });
+        setShowOutfitPicker(false);
+        dispatch(showNotification('Outfit shared in chat', 200));
+      }
+    } catch (err) {
+      dispatch(showNotification('Failed to share outfit', 'error'));
+    } finally {
+      setSharingOutfitId(null);
+    }
+  }, [dispatch, onSendMessage]);
+
   const clearFileSelection = () => {
     setSelectedFile(null);
     setFilePreview('');
@@ -183,7 +224,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   };
 
   return (
-    <div className="border-t border-light-secondary/10 dark:border-dark-secondary/10 bg-light-primary dark:bg-dark-primary p-3">
+    <div className="relative border-t border-light-secondary/10 dark:border-dark-secondary/10 bg-light-primary dark:bg-dark-primary p-3">
       {filePreview && (
         <div className="relative mb-3 inline-block group">
           {isVideo ? (
@@ -238,15 +279,45 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
             background: 'var(--color-light-secondary-5, transparent)',
           }}
         >
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSending}
-            className="p-2 ml-1 mb-0.5 rounded-full transition-all duration-200 hover:scale-110 flex-shrink-0 disabled:opacity-50"
-            style={{ color: colors.third }}
-          >
-            <Image sx={{ fontSize: 22 }} />
-          </button>
+          {/* Attach menu */}
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAttachMenu((v) => !v)}
+              disabled={isSending}
+              className="p-2 ml-1 mb-0.5 rounded-full transition-all duration-200 hover:scale-110 disabled:opacity-50"
+              style={{ color: colors.third }}
+            >
+              <AddCircleOutline sx={{ fontSize: 22 }} />
+            </button>
+            {showAttachMenu && (
+              <ClickAwayListener onClickAway={() => setShowAttachMenu(false)}>
+                <div
+                  className="absolute bottom-full left-0 mb-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700/40 overflow-hidden z-50"
+                  style={{ background: 'var(--tw-color-light-primary, #fff)' }}
+                >
+                  <div className="dark:bg-dark-primary bg-white min-w-[140px]">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700/30 dark:text-dark-text text-light-text transition-colors"
+                    >
+                      <Image sx={{ fontSize: 18, color: colors.fourth }} />
+                      Media
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenOutfitPicker}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700/30 dark:text-dark-text text-light-text transition-colors"
+                    >
+                      <CheckroomOutlined sx={{ fontSize: 18, color: colors.fourth }} />
+                      Outfit
+                    </button>
+                  </div>
+                </div>
+              </ClickAwayListener>
+            )}
+          </div>
           <textarea
             ref={textareaRef}
             value={message}
@@ -308,6 +379,64 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
           <Send sx={{ fontSize: 20 }} />
         </button>
       </form>
+
+      {/* Outfit picker panel */}
+      {showOutfitPicker && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 mx-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700/40 z-50 dark:bg-dark-primary bg-white overflow-hidden"
+          style={{ maxHeight: 280 }}>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-700/20">
+            <span className="text-xs font-semibold dark:text-dark-text text-light-text">Share an outfit</span>
+            <button type="button" onClick={() => setShowOutfitPicker(false)} className="p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/30">
+              <Close sx={{ fontSize: 16 }} className="dark:text-dark-text/60 text-light-text/60" />
+            </button>
+          </div>
+          <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: 232 }}>
+            {outfitsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2" style={{ borderColor: colors.fourth }} />
+              </div>
+            ) : outfits.length === 0 ? (
+              <p className="text-center py-6 text-xs dark:text-dark-text/40 text-light-text/40">
+                No outfits yet. Create one in your wardrobe!
+              </p>
+            ) : (
+              outfits.map((outfit) => (
+                <button
+                  key={outfit._id}
+                  type="button"
+                  disabled={sharingOutfitId === outfit._id}
+                  onClick={() => handleShareOutfit(outfit)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors text-left disabled:opacity-50"
+                >
+                  {/* Outfit thumbnail */}
+                  <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700/30">
+                    {outfit.flatlayUrl ? (
+                      <img src={outfit.flatlayUrl} alt="" className="w-full h-full object-cover" />
+                    ) : outfit.items?.[0]?.clothingItem?.thumbnailUrl ? (
+                      <img src={outfit.items[0].clothingItem.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <CheckroomOutlined sx={{ fontSize: 16 }} className="dark:text-dark-text/30 text-light-text/30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium dark:text-dark-text text-light-text truncate">
+                      {outfit.name || "Untitled Outfit"}
+                    </p>
+                    <p className="text-[10px] dark:text-dark-text/40 text-light-text/40">
+                      {outfit.items?.length || 0} items{outfit.occasion ? ` · ${outfit.occasion}` : ''}
+                    </p>
+                  </div>
+                  {sharingOutfitId === outfit._id && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 flex-shrink-0" style={{ borderColor: colors.fourth }} />
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
