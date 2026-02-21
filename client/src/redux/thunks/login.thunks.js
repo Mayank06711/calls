@@ -322,18 +322,17 @@ export const googleAuthThunk = (idToken) => async (dispatch) => {
   }
 };
 
-// Cleans all auth + user data from localStorage
+// Cleans auth-related data from localStorage
+// Keeps preferences (isDarkMode, isTourCompleted) so they persist across sessions
 const cleanupLocalStorage = () => {
   localStorage.removeItem("userId");
   localStorage.removeItem("token");
   localStorage.removeItem("mobNum");
   localStorage.removeItem("isAlreadyVerified");
   localStorage.removeItem("isEmailVerified");
-  localStorage.removeItem("isTourCompleted");
   localStorage.removeItem("fullName");
   localStorage.removeItem("userInfo");
   localStorage.removeItem("settingsUpdatedAt");
-  console.log("[logoutThunk] Cleared all auth/user data from localStorage");
 };
 
 export const logoutThunk = () => async (dispatch) => {

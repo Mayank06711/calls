@@ -66,7 +66,6 @@ export const clearAuthData = () => {
   localStorage.removeItem("mobNum");
   localStorage.removeItem("isAlreadyVerified");
   localStorage.removeItem("isEmailVerified");
-  localStorage.removeItem("isTourCompleted");
   localStorage.removeItem("fullName");
   localStorage.removeItem("userInfo");
   localStorage.removeItem("settingsUpdatedAt");

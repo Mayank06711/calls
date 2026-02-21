@@ -312,6 +312,15 @@ const Feedback = () => {
               required
               disabled={isSubmitting}
               className="dark:bg-dark-secondary dark:text-dark-text bg-light-secondary text-light-text"
+              MenuProps={{
+                sx: { zIndex: 10001 },
+                PaperProps: {
+                  sx: {
+                    backgroundColor: isDarkMode ? "var(--tw-color-dark-primary, #1f2937)" : "#fff",
+                    color: isDarkMode ? "var(--tw-color-dark-text, #f9fafb)" : "inherit",
+                  },
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: isDarkMode
