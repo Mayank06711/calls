@@ -410,10 +410,8 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
                 >
                   {/* Outfit thumbnail */}
                   <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700/30">
-                    {outfit.flatlayUrl ? (
-                      <img src={outfit.flatlayUrl} alt="" className="w-full h-full object-cover" />
-                    ) : outfit.items?.[0]?.clothingItem?.thumbnailUrl ? (
-                      <img src={outfit.items[0].clothingItem.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    {(outfit.flatlayUrl || outfit.screenshotUrl || outfit.items?.[0]?.thumbnailUrl || outfit.items?.[0]?.photoUrl) ? (
+                      <img src={outfit.flatlayUrl || outfit.screenshotUrl || outfit.items?.[0]?.thumbnailUrl || outfit.items?.[0]?.photoUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <CheckroomOutlined sx={{ fontSize: 16 }} className="dark:text-dark-text/30 text-light-text/30" />
