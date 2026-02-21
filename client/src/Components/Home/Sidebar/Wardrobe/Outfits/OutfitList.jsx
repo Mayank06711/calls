@@ -77,7 +77,7 @@ function OutfitList() {
               <ArrowBack style={{ color: colors.fourth }} />
             </IconButton>
             <h2 className="text-lg font-semibold dark:text-dark-text text-light-text">
-              {showSaved ? "Saved Outfits" : "My Outfits"}
+              {showSaved ? "Shared with me" : "My Outfits"}
             </h2>
             {displayList.length > 0 && (
               <span className="text-[10px] dark:text-dark-text/40 text-light-text/40">({filtered.length})</span>
@@ -111,7 +111,7 @@ function OutfitList() {
             colors={colors}
           />
           <FilterChip
-            label="Saved"
+            label="Shared with me"
             active={showSaved}
             onClick={handleSavedToggle}
             colors={colors}
@@ -147,7 +147,8 @@ function OutfitList() {
               onClick={() => navigate(
                 `/wardrobe/outfits/${outfit._id}`
               )}
-              onShare={showSaved ? undefined : (o) => setShareOutfit(o)}
+              onShare={(o) => setShareOutfit(o)}
+              isFromOther={showSaved}
             />
           ))}
           {/* New outfit CTA */}
@@ -195,11 +196,11 @@ function OutfitList() {
         <div className="flex flex-col items-center justify-center py-16">
           <span className="text-4xl mb-3 opacity-20">{showSaved ? "🔖" : "👗"}</span>
           <p className="text-sm dark:text-dark-text/50 text-light-text/50 mb-4">
-            {showSaved ? "No saved outfits yet" : "No outfits saved yet"}
+            {showSaved ? "No outfits shared with you yet" : "No outfits saved yet"}
           </p>
           {showSaved ? (
             <p className="text-xs dark:text-dark-text/40 text-light-text/40 text-center max-w-xs">
-              When someone shares an outfit with you, save it here for later
+              When someone shares an outfit with you, it will appear here
             </p>
           ) : (
             <button

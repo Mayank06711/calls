@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowBack, Favorite, FavoriteBorder, DeleteOutline, CalendarMonth, Edit, IosShare, Visibility, PersonOutline } from "@mui/icons-material";
+import { ArrowBack, Favorite, FavoriteBorder, DeleteOutline, CalendarMonth, Edit, IosShare, Visibility, PersonOutline, LinkOff } from "@mui/icons-material";
 import { CircularProgress, IconButton } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import {
@@ -9,6 +9,7 @@ import {
   fetchSavedOutfitsThunk,
   toggleOutfitFavoriteThunk,
   deleteOutfitThunk,
+  unsaveOutfitThunk,
   logWearThunk,
 } from "../../../../../redux/thunks/wardrobe.thunks";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
@@ -29,6 +30,7 @@ function OutfitDetail() {
   const { logging } = useSelector((s) => s.wardrobe.wearLog);
   const [loggingWear, setLoggingWear] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const fetchedSavedRef = useRef(false);
 
   // ── AI context ──────────────────────────────────────────────────
   const { setAIPageContext, clearAIPageContext } = useAIContext();
@@ -57,15 +59,22 @@ function OutfitDetail() {
     return () => clearAIPageContext();
   }, [outfitForCtx?._id, outfitForCtx?.isFavorite, wardrobeState.closet?.items?.length, setAIPageContext, clearAIPageContext]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset ref when outfitId changes (navigating to a different outfit)
+  useEffect(() => {
+    fetchedSavedRef.current = false;
+  }, [outfitId]);
+
   useEffect(() => {
     if (saved.length === 0) dispatch(fetchOutfitsThunk());
   }, [dispatch, saved.length]);
 
-  // If outfit not in saved, also try loading savedFromOthers
+  // If outfit not in saved, try savedFromOthers — only once per outfitId
   useEffect(() => {
+    if (fetchedSavedRef.current || loading) return;
     const inSaved = saved.find((o) => o._id === outfitId);
     const inOthers = (savedFromOthers || []).find((o) => o._id === outfitId);
-    if (!inSaved && !inOthers && !loading) {
+    if (!inSaved && !inOthers) {
+      fetchedSavedRef.current = true;
       dispatch(fetchSavedOutfitsThunk());
     }
   }, [dispatch, outfitId, saved, savedFromOthers, loading]);
@@ -111,36 +120,43 @@ function OutfitDetail() {
     navigate("/wardrobe/outfits");
   };
 
+  const handleUnsave = async () => {
+    await dispatch(unsaveOutfitThunk(outfit._id));
+    navigate("/wardrobe/outfits");
+  };
+
   return (
     <div className="w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 px-2 sm:px-4 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
+      <div className="flex-shrink-0 pl-2 pr-12 sm:pl-4 sm:pr-14 pt-2 sm:pt-4 pb-2 dark:bg-dark-primary bg-light-secondary border-b dark:border-dark-text/10 border-light-text/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <IconButton onClick={() => navigate(-1)} size="small">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <IconButton onClick={() => navigate(-1)} size="small" className="flex-shrink-0">
               <ArrowBack style={{ color: colors.fourth }} />
             </IconButton>
             <h2 className="text-lg font-semibold dark:text-dark-text text-light-text truncate">
               {outfit.name || "Untitled Outfit"}
             </h2>
           </div>
-          <div className="flex items-center gap-1">
-            {!isFromOther && (
-              <>
-                <IconButton onClick={() => setShareOpen(true)} size="small">
-                  <IosShare style={{ fontSize: 20, color: colors.fourth }} />
-                </IconButton>
-                <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
-                  {outfit.isFavorite ? (
-                    <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
-                  ) : (
-                    <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-                  )}
-                </IconButton>
-                <IconButton onClick={handleDelete} size="small">
-                  <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
-                </IconButton>
-              </>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <IconButton onClick={() => setShareOpen(true)} size="small">
+              <IosShare style={{ fontSize: 20, color: colors.fourth }} />
+            </IconButton>
+            <IconButton onClick={() => dispatch(toggleOutfitFavoriteThunk(outfit._id))} size="small">
+              {outfit.isFavorite ? (
+                <Favorite style={{ color: "#ef4444", fontSize: 20 }} />
+              ) : (
+                <FavoriteBorder style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+              )}
+            </IconButton>
+            {isFromOther ? (
+              <IconButton onClick={handleUnsave} size="small" title="Remove from saved">
+                <LinkOff style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+              </IconButton>
+            ) : (
+              <IconButton onClick={handleDelete} size="small">
+                <DeleteOutline style={{ fontSize: 20 }} className="dark:text-dark-text/40 text-light-text/40" />
+              </IconButton>
             )}
           </div>
         </div>
@@ -148,12 +164,12 @@ function OutfitDetail() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-4">
-        <div className="flex gap-4 items-start">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
 
-          {/* Left: Flat-lay image (fixed width) */}
+          {/* Left: Flat-lay image */}
           <div
-            className="relative flex-shrink-0 rounded-2xl overflow-hidden"
-            style={{ width: 320, backgroundColor: "#f5f5f0" }}
+            className="relative w-full sm:w-80 flex-shrink-0 rounded-2xl overflow-hidden"
+            style={{ backgroundColor: "#f5f5f0" }}
           >
             <div className="aspect-[4/5]">
               {outfit.flatlayUrl ? (

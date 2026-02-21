@@ -494,7 +494,13 @@ class Wardrobe {
     const userId = req.user?._id;
     const outfit = await OutfitModel.findById(req.params.id);
     if (!outfit) throw new ApiError(404, "Outfit not found");
-    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Allow owner OR anyone who has it in savedOutfits
+    const isOwner = userId?.toString() === outfit.user.toString();
+    if (!isOwner) {
+      const hasSaved = await UserModel.exists({ _id: userId, savedOutfits: outfit._id });
+      if (!hasSaved) throw new ApiError(403, "Not authorized");
+    }
 
     outfit.isFavorite = !outfit.isFavorite;
     await outfit.save();
@@ -1936,7 +1942,13 @@ class Wardrobe {
     const userId = req.user?._id;
     const outfit = await OutfitModel.findById(req.params.id);
     if (!outfit) throw new ApiError(404, "Outfit not found");
-    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Allow owner OR anyone who has it in savedOutfits
+    const isOwner = userId?.toString() === outfit.user.toString();
+    if (!isOwner) {
+      const hasSaved = await UserModel.exists({ _id: userId, savedOutfits: outfit._id });
+      if (!hasSaved) throw new ApiError(403, "Not authorized");
+    }
 
     // Return existing share link if already shared
     if (outfit.shareToken) {
@@ -2075,6 +2087,19 @@ class Wardrobe {
   }
 
   /**
+   * DELETE /wardrobe/saved-outfits/:id
+   * Remove an outfit from user's savedOutfits (unsave).
+   */
+  private static async UnsaveOutfit(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Login required");
+
+    const outfitId = req.params.id;
+    await UserModel.updateOne({ _id: userId }, { $pull: { savedOutfits: outfitId } });
+    res.status(200).json({ success: true, message: "Outfit removed" });
+  }
+
+  /**
    * GET /wardrobe/saved-outfits
    * Returns bookmarked outfits for the authenticated user.
    */
@@ -2111,11 +2136,21 @@ class Wardrobe {
    */
   private static async SendOutfitToUser(req: Request, res: Response) {
     const userId = req.user?._id;
-    const { recipientUsername } = req.body;
+    const { recipientUsername, skipNotification } = req.body;
+
+    if (skipNotification !== undefined && typeof skipNotification !== 'boolean') {
+      throw new ApiError(400, "skipNotification must be a boolean");
+    }
 
     const outfit = await OutfitModel.findById(req.params.id);
     if (!outfit) throw new ApiError(404, "Outfit not found");
-    if (userId?.toString() !== outfit.user.toString()) throw new ApiError(403, "Not authorized");
+
+    // Allow owner OR anyone who has it in savedOutfits
+    const isOwner = userId?.toString() === outfit.user.toString();
+    if (!isOwner) {
+      const hasSaved = await UserModel.exists({ _id: userId, savedOutfits: outfit._id });
+      if (!hasSaved) throw new ApiError(403, "Not authorized");
+    }
 
     const recipient = await UserModel.findOne({ username: recipientUsername }).select('_id username').lean();
     if (!recipient) throw new ApiError(404, "User not found");
@@ -2133,19 +2168,21 @@ class Wardrobe {
     // Auto-add to recipient's savedOutfits
     await UserModel.updateOne({ _id: recipient._id }, { $addToSet: { savedOutfits: outfit._id } });
 
-    const sender = await UserModel.findById(userId).select('username fullName').lean();
+    if (!skipNotification) {
+      const sender = await UserModel.findById(userId).select('username fullName').lean();
 
-    await NotificationService.getInstance().emitUserNotification({
-      recipientId: recipient._id.toString(),
-      type: 'wardrobe',
-      title: 'Outfit shared with you',
-      message: `${sender?.fullName || sender?.username || 'Someone'} shared "${outfit.name || 'an outfit'}" with you`,
-      wardrobe: {
-        actionType: 'new_item',
-        thumbnails: outfit.flatlayUrl ? [outfit.flatlayUrl] : [],
-      },
-      extLink: `/wardrobe/outfits/${outfit._id}`,
-    });
+      await NotificationService.getInstance().emitUserNotification({
+        recipientId: recipient._id.toString(),
+        type: 'wardrobe',
+        title: 'Outfit shared with you',
+        message: `${sender?.fullName || sender?.username || 'Someone'} shared "${outfit.name || 'an outfit'}" with you`,
+        wardrobe: {
+          actionType: 'new_item',
+          thumbnails: outfit.flatlayUrl ? [outfit.flatlayUrl] : [],
+        },
+        extLink: `/wardrobe/outfits/${outfit._id}`,
+      });
+    }
 
     res.status(200).json({ success: true, message: "Outfit sent" });
   }
@@ -2877,6 +2914,7 @@ class Wardrobe {
   public static likeSharedOutfit = AsyncHandler.wrap(Wardrobe.LikeSharedOutfit);
   public static toggleSaveOutfit = AsyncHandler.wrap(Wardrobe.ToggleSaveOutfit);
   public static getSavedOutfits = AsyncHandler.wrap(Wardrobe.GetSavedOutfits);
+  public static unsaveOutfit = AsyncHandler.wrap(Wardrobe.UnsaveOutfit);
   public static sendOutfitToUser = AsyncHandler.wrap(Wardrobe.SendOutfitToUser);
 
   // Collections

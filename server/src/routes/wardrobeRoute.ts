@@ -61,6 +61,7 @@ router.patch("/outfits/:id/share", Wardrobe.shareOutfit);
 router.post("/outfits/:id/send", validate(SendOutfitSchema), Wardrobe.sendOutfitToUser);
 router.delete("/outfits/:id", Wardrobe.deleteOutfit);
 router.get("/saved-outfits", Wardrobe.getSavedOutfits);
+router.delete("/saved-outfits/:id", Wardrobe.unsaveOutfit);
 
 // ─── Style Profile ──────────────────────────────────────────────────────────
 

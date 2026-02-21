@@ -33,7 +33,7 @@ export const SESSION_REDIS_KEYS = {
 export const SESSION_TTL = {
   ACTIVITY: 86400, // 24 hours
   META: 1296000, // 15 days (same as refresh token)
-  ACTIVE_SET: 86400, // 24 hours
+  ACTIVE_SET: 1296000, // 15 days (must match refresh token lifetime)
 } as const;
 
 /**

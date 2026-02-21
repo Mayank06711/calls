@@ -63,6 +63,12 @@ const SessionSchema = new Schema<ISession>(
       type: String,
       required: true,
     },
+    previousRefreshToken: {
+      type: String,
+    },
+    tokenRotatedAt: {
+      type: Date,
+    },
 
     // Device information
     device: {

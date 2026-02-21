@@ -6,9 +6,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { uploadImage } from '../../../../socket/handleImageUpload';
 import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 import { showNotification } from '../../../../redux/actions/notification.actions';
-import { shareOutfitThunk, fetchOutfitsThunk } from '../../../../redux/thunks/wardrobe.thunks';
+import { fetchOutfitsThunk, fetchSavedOutfitsThunk, sendOutfitThunk } from '../../../../redux/thunks/wardrobe.thunks';
 
-const MessageInput = ({ onSendMessage, onTyping }) => {
+const MessageInput = ({ onSendMessage, onTyping, recipientUsername }) => {
   const [message, setMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState('');
@@ -16,14 +16,16 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const [isSending, setIsSending] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showOutfitPicker, setShowOutfitPicker] = useState(false);
-  const [sharingOutfitId, setSharingOutfitId] = useState(null);
+  const pendingOutfitRef = useRef(null); // outfitId to save to recipient on send
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const objectUrlRef = useRef(null);
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
-  const outfits = useSelector((s) => s.wardrobe?.outfits?.saved) || [];
+  const ownOutfits = useSelector((s) => s.wardrobe?.outfits?.saved) || [];
+  const savedFromOthers = useSelector((s) => s.wardrobe?.outfits?.savedFromOthers) || [];
+  const outfits = [...ownOutfits, ...savedFromOthers];
   const outfitsLoading = useSelector((s) => s.wardrobe?.outfits?.loading);
 
   // Auto-resize textarea based on content
@@ -115,6 +117,13 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
     if (fileToSend) clearFileSelection();
     if (textToSend) setMessage('');
 
+    // Save outfit to recipient's wardrobe on actual send (same as notification flow)
+    const outfitToSave = pendingOutfitRef.current;
+    pendingOutfitRef.current = null;
+    if (outfitToSave && recipientUsername) {
+      dispatch(sendOutfitThunk(outfitToSave, recipientUsername, true));
+    }
+
     try {
       if (fileToSend) {
         const fileIsVideo = fileToSend.type.startsWith('video/');
@@ -179,36 +188,22 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
   const handleOpenOutfitPicker = useCallback(() => {
     setShowAttachMenu(false);
     setShowOutfitPicker(true);
-    if (!outfits.length && !outfitsLoading) {
+    if (!ownOutfits.length && !outfitsLoading) {
       dispatch(fetchOutfitsThunk());
     }
-  }, [outfits.length, outfitsLoading, dispatch]);
-
-  const handleShareOutfit = useCallback(async (outfit) => {
-    setSharingOutfitId(outfit._id);
-    try {
-      let token = outfit.shareToken;
-      if (!token) {
-        const result = await dispatch(shareOutfitThunk(outfit._id));
-        token = result?.data?.shareToken;
-      }
-      if (token) {
-        const link = `${window.location.origin}/outfit/${token}`;
-        const label = outfit.name || "My Outfit";
-        await onSendMessage({
-          type: 'text',
-          content: `${label} — ${link}`,
-          metadata: { fileSize: null, fileType: '', uploadedAt: null, width: null, height: null, duration: null, thumbnailUrl: '', originalName: '', uploaderId: '', description: '', tags: [], isEdited: false, isCompressed: false, resolution: '', exifData: {}, customData: {} },
-        });
-        setShowOutfitPicker(false);
-        dispatch(showNotification('Outfit shared in chat', 200));
-      }
-    } catch (err) {
-      dispatch(showNotification('Failed to share outfit', 'error'));
-    } finally {
-      setSharingOutfitId(null);
+    if (!savedFromOthers.length && !outfitsLoading) {
+      dispatch(fetchSavedOutfitsThunk());
     }
-  }, [dispatch, onSendMessage]);
+  }, [ownOutfits.length, savedFromOthers.length, outfitsLoading, dispatch]);
+
+  const handleShareOutfit = useCallback((outfit) => {
+    pendingOutfitRef.current = outfit._id;
+    const link = `${window.location.origin}/wardrobe/outfits/${outfit._id}`;
+    const label = outfit.name || "My Outfit";
+    setMessage((prev) => prev ? `${prev}\n${label} — ${link}` : `${label} — ${link}`);
+    setShowOutfitPicker(false);
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  }, []);
 
   const clearFileSelection = () => {
     setSelectedFile(null);
@@ -404,14 +399,24 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
                 <button
                   key={outfit._id}
                   type="button"
-                  disabled={sharingOutfitId === outfit._id}
                   onClick={() => handleShareOutfit(outfit)}
                   className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors text-left disabled:opacity-50"
                 >
                   {/* Outfit thumbnail */}
                   <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700/30">
-                    {(outfit.flatlayUrl || outfit.screenshotUrl || outfit.items?.[0]?.thumbnailUrl || outfit.items?.[0]?.photoUrl) ? (
-                      <img src={outfit.flatlayUrl || outfit.screenshotUrl || outfit.items?.[0]?.thumbnailUrl || outfit.items?.[0]?.photoUrl} alt="" className="w-full h-full object-cover" />
+                    {(outfit.flatlayUrl || outfit.screenshotUrl) ? (
+                      <img src={outfit.flatlayUrl || outfit.screenshotUrl} alt="" className="w-full h-full object-cover" />
+                    ) : outfit.items?.length > 0 ? (
+                      <div className={`w-full h-full grid ${outfit.items.length >= 4 ? 'grid-cols-2 grid-rows-2' : outfit.items.length >= 2 ? 'grid-cols-2 grid-rows-1' : ''}`}>
+                        {(outfit.items.length === 1 ? outfit.items : outfit.items.slice(0, 4)).map((item, idx) => (
+                          <img
+                            key={idx}
+                            src={item.thumbnailUrl || item.nobgUrl || item.photoUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <CheckroomOutlined sx={{ fontSize: 16 }} className="dark:text-dark-text/30 text-light-text/30" />
@@ -426,9 +431,6 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
                       {outfit.items?.length || 0} items{outfit.occasion ? ` · ${outfit.occasion}` : ''}
                     </p>
                   </div>
-                  {sharingOutfitId === outfit._id && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 flex-shrink-0" style={{ borderColor: colors.fourth }} />
-                  )}
                 </button>
               ))
             )}
@@ -442,6 +444,7 @@ const MessageInput = ({ onSendMessage, onTyping }) => {
 MessageInput.propTypes = {
   onSendMessage: PropTypes.func.isRequired,
   onTyping: PropTypes.func.isRequired,
+  recipientUsername: PropTypes.string,
 };
 
 export default MessageInput;

@@ -5,7 +5,7 @@ import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscript
 import { toggleOutfitFavoriteThunk, deleteOutfitThunk, shareOutfitThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 
-function OutfitCard({ outfit, onClick, onShare }) {
+function OutfitCard({ outfit, onClick, onShare, isFromOther }) {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
   const { togglingFavorite } = useSelector((s) => s.wardrobe.outfits);
@@ -126,12 +126,14 @@ function OutfitCard({ outfit, onClick, onShare }) {
               <FavoriteBorder style={{ fontSize: 14 }} />
             )}
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); dispatch(deleteOutfitThunk(outfit._id)); }}
-            className="w-7 h-7 rounded-full flex items-center justify-center bg-red-500/80 hover:bg-red-600 text-white transition-all"
-          >
-            <DeleteOutline style={{ fontSize: 14 }} />
-          </button>
+          {!isFromOther && (
+            <button
+              onClick={(e) => { e.stopPropagation(); dispatch(deleteOutfitThunk(outfit._id)); }}
+              className="w-7 h-7 rounded-full flex items-center justify-center bg-red-500/80 hover:bg-red-600 text-white transition-all"
+            >
+              <DeleteOutline style={{ fontSize: 14 }} />
+            </button>
+          )}
         </div>
       )}
     </div>

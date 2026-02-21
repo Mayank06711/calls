@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useVideoCall, CALL_STATES } from "../../../hooks/useVideoCall";
 import {
   CallEnd,
@@ -7,6 +7,8 @@ import {
   Mic,
   MicOff,
   Lock,
+  OpenInFull,
+  CloseFullscreen,
 } from "@mui/icons-material";
 
 function VideoCall() {
@@ -32,6 +34,31 @@ function VideoCall() {
 
   const fullscreenVideoRef = useRef(null);
   const pipVideoRef = useRef(null);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimerRef = useRef(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  const resetControlsTimer = useCallback(() => {
+    setShowControls(true);
+    clearTimeout(controlsTimerRef.current);
+    if (callState === CALL_STATES.CONNECTED && !isMinimized) {
+      controlsTimerRef.current = setTimeout(() => setShowControls(false), 4000);
+    }
+  }, [callState, isMinimized]);
+
+  // Auto-hide controls after 4s when connected (not minimized)
+  useEffect(() => {
+    if (callState === CALL_STATES.CONNECTED && !isMinimized) {
+      controlsTimerRef.current = setTimeout(() => setShowControls(false), 4000);
+    } else {
+      setShowControls(true);
+      clearTimeout(controlsTimerRef.current);
+    }
+    if (callState !== CALL_STATES.CONNECTED) {
+      setIsMinimized(false);
+    }
+    return () => clearTimeout(controlsTimerRef.current);
+  }, [callState, isMinimized]);
 
   // Assign streams based on swap state
   useEffect(() => {
@@ -43,7 +70,7 @@ function VideoCall() {
     if (pipVideoRef.current) {
       pipVideoRef.current.srcObject = pipStream;
     }
-  }, [localStream, remoteStream, isVideoSwapped]);
+  }, [localStream, remoteStream, isVideoSwapped, isMinimized]);
 
   // Only show during active call states (not idle)
   if (
@@ -97,8 +124,94 @@ function VideoCall() {
     return m <= 1 ? "Call ending in less than 1 minute" : `Call ending in ${m} minutes`;
   };
 
+  // Minimized/PiP view during connected call
+  if (isMinimized && callState === CALL_STATES.CONNECTED) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 w-64 rounded-2xl overflow-hidden shadow-2xl border border-gray-700/50 bg-gray-900">
+        <div
+          className="relative w-full h-36 bg-black cursor-pointer"
+          onClick={() => setIsMinimized(false)}
+        >
+          <video
+            ref={fullscreenVideoRef}
+            autoPlay
+            playsInline
+            muted={fullscreenIsLocal}
+            className="w-full h-full object-cover"
+            style={{
+              display: fullscreenStream && fullscreenVideoOn ? "block" : "none",
+              transform: fullscreenIsLocal ? "scaleX(-1)" : "none",
+            }}
+          />
+          {(!fullscreenStream || !fullscreenVideoOn) && (
+            <div className="w-full h-full flex items-center justify-center bg-gray-800">
+              {remoteUserInfo?.avatar ? (
+                <img
+                  src={remoteUserInfo.avatar}
+                  alt={remoteUserInfo.name || "User"}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
+                  <span className="text-xl font-bold text-gray-400">
+                    {remoteUserInfo?.name?.charAt(0)?.toUpperCase() || "?"}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 flex items-center justify-center">
+            <OpenInFull sx={{ fontSize: 12 }} className="text-white" />
+          </div>
+          <div className="absolute top-2 left-2 bg-black/50 px-2 py-0.5 rounded text-white text-xs font-medium">
+            {formatDuration(duration)}
+          </div>
+          <div className="absolute bottom-2 left-2 text-white text-xs font-medium bg-black/40 px-2 py-0.5 rounded truncate max-w-[80%]">
+            {remoteUserInfo?.name || "Video Call"}
+          </div>
+        </div>
+        <div className="flex items-center justify-center gap-3 py-2.5">
+          <button
+            onClick={toggleVideo}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+              isVideoEnabled ? "bg-gray-700 hover:bg-gray-600" : "bg-red-600"
+            }`}
+          >
+            {isVideoEnabled ? (
+              <Videocam sx={{ fontSize: 18 }} className="text-white" />
+            ) : (
+              <VideocamOff sx={{ fontSize: 18 }} className="text-white" />
+            )}
+          </button>
+          <button
+            onClick={endCall}
+            className="w-11 h-11 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-all active:scale-95"
+          >
+            <CallEnd sx={{ fontSize: 20 }} className="text-white" />
+          </button>
+          <button
+            onClick={toggleAudio}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+              isAudioEnabled ? "bg-gray-700 hover:bg-gray-600" : "bg-red-600"
+            }`}
+          >
+            {isAudioEnabled ? (
+              <Mic sx={{ fontSize: 18 }} className="text-white" />
+            ) : (
+              <MicOff sx={{ fontSize: 18 }} className="text-white" />
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col">
+    <div
+      className="fixed inset-0 z-50 bg-black"
+      onMouseMove={resetControlsTimer}
+      onTouchStart={resetControlsTimer}
+    >
       {/* Time warning banner */}
       {timeWarning && (
         <div className="absolute top-0 left-0 right-0 z-10 bg-amber-500 text-black text-center py-2 px-4 text-sm font-semibold">
@@ -106,8 +219,8 @@ function VideoCall() {
         </div>
       )}
 
-      {/* Fullscreen video area */}
-      <div className="flex-1 relative overflow-hidden bg-black">
+      {/* Full-screen video area */}
+      <div className="w-full h-full relative overflow-hidden bg-black">
         <video
           ref={fullscreenVideoRef}
           autoPlay
@@ -120,8 +233,10 @@ function VideoCall() {
           }}
         />
 
-        {/* Avatar fallback when fullscreen video is off */}
-        {(!fullscreenStream || !fullscreenVideoOn) && (
+        {/* Avatar fallback when fullscreen video is off (hidden during ringing/connecting — those have their own overlay) */}
+        {(!fullscreenStream || !fullscreenVideoOn) &&
+          callState !== CALL_STATES.CONNECTING &&
+          callState !== CALL_STATES.RINGING && (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
             {remoteUserInfo?.avatar ? (
               <img
@@ -142,7 +257,11 @@ function VideoCall() {
         )}
 
         {/* Top bar overlay: status, timer, encryption badge */}
-        <div className={`absolute ${timeWarning ? "top-10" : "top-0"} left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent transition-all`}>
+        <div
+          className={`absolute ${timeWarning ? "top-10" : "top-0"} left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent transition-all duration-300 ${
+            showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white text-sm font-medium opacity-80">
@@ -161,11 +280,21 @@ function VideoCall() {
                 </div>
               )}
             </div>
-            {!remoteAudioEnabled && callState === CALL_STATES.CONNECTED && (
-              <div className="bg-red-600/80 px-2 py-1 rounded text-white text-xs">
-                Remote Muted
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {!remoteAudioEnabled && callState === CALL_STATES.CONNECTED && (
+                <div className="bg-red-600/80 px-2 py-1 rounded text-white text-xs">
+                  {remoteUserInfo?.name || "Remote"} Muted
+                </div>
+              )}
+              {callState === CALL_STATES.CONNECTED && (
+                <button
+                  onClick={() => setIsMinimized(true)}
+                  className="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center hover:bg-black/60 transition-colors"
+                >
+                  <CloseFullscreen sx={{ fontSize: 16 }} className="text-white" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -173,7 +302,9 @@ function VideoCall() {
         {pipStream && (
           <div
             onClick={toggleVideoSwap}
-            className="absolute bottom-24 right-4 w-32 h-44 rounded-xl overflow-hidden shadow-lg border-2 border-gray-700 bg-gray-800 cursor-pointer active:scale-95 transition-transform"
+            className={`absolute right-4 w-32 h-44 rounded-xl overflow-hidden shadow-lg border-2 border-gray-700 bg-gray-800 cursor-pointer active:scale-95 transition-all duration-300 ${
+              showControls ? "bottom-28" : "bottom-4"
+            }`}
           >
             <video
               ref={pipVideoRef}
@@ -236,52 +367,56 @@ function VideoCall() {
             </p>
           </div>
         )}
+
+        {/* Bottom controls overlay */}
+        {callState !== CALL_STATES.ENDED && (
+          <div
+            className={`absolute bottom-0 left-0 right-0 flex items-center justify-center gap-6 py-6 bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300 ${
+              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          >
+            {/* Toggle video */}
+            <button
+              onClick={toggleVideo}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                isVideoEnabled
+                  ? "bg-gray-700/80 hover:bg-gray-600/80"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
+            >
+              {isVideoEnabled ? (
+                <Videocam className="text-white" />
+              ) : (
+                <VideocamOff className="text-white" />
+              )}
+            </button>
+
+            {/* End call */}
+            <button
+              onClick={endCall}
+              className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-lg transition-all active:scale-95"
+            >
+              <CallEnd className="text-white" sx={{ fontSize: 30 }} />
+            </button>
+
+            {/* Toggle audio */}
+            <button
+              onClick={toggleAudio}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                isAudioEnabled
+                  ? "bg-gray-700/80 hover:bg-gray-600/80"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
+            >
+              {isAudioEnabled ? (
+                <Mic className="text-white" />
+              ) : (
+                <MicOff className="text-white" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Bottom controls */}
-      {callState !== CALL_STATES.ENDED && (
-        <div className="flex items-center justify-center gap-6 py-6 bg-gray-900">
-          {/* Toggle video */}
-          <button
-            onClick={toggleVideo}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-              isVideoEnabled
-                ? "bg-gray-700 hover:bg-gray-600"
-                : "bg-red-600 hover:bg-red-700"
-            }`}
-          >
-            {isVideoEnabled ? (
-              <Videocam className="text-white" />
-            ) : (
-              <VideocamOff className="text-white" />
-            )}
-          </button>
-
-          {/* End call */}
-          <button
-            onClick={endCall}
-            className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center shadow-lg transition-all active:scale-95"
-          >
-            <CallEnd className="text-white" sx={{ fontSize: 30 }} />
-          </button>
-
-          {/* Toggle audio */}
-          <button
-            onClick={toggleAudio}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-              isAudioEnabled
-                ? "bg-gray-700 hover:bg-gray-600"
-                : "bg-red-600 hover:bg-red-700"
-            }`}
-          >
-            {isAudioEnabled ? (
-              <Mic className="text-white" />
-            ) : (
-              <MicOff className="text-white" />
-            )}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

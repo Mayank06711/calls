@@ -42,10 +42,12 @@ export interface SessionRequestInfo {
 
 export interface ISession extends Document {
   userId: Types.ObjectId;
-  
+
   // Session identification
   refreshTokenId: string; // Session identifier (sess_<uuid>), used in Redis and JWTs
   refreshToken: string; // The actual JWT refresh token for this session
+  previousRefreshToken?: string; // Previous token kept for grace period after rotation
+  tokenRotatedAt?: Date; // When the last rotation happened
   
   // Device information
   device: IDeviceInfo;

@@ -100,6 +100,7 @@ import {
   FETCH_SAVED_OUTFITS_REQUEST,
   FETCH_SAVED_OUTFITS_SUCCESS,
   FETCH_SAVED_OUTFITS_FAILURE,
+  UNSAVE_OUTFIT_SUCCESS,
   ANALYZE_STYLE_DNA_REQUEST,
   ANALYZE_STYLE_DNA_SUCCESS,
   ANALYZE_STYLE_DNA_FAILURE,
@@ -277,6 +278,7 @@ export const shareOutfitSuccess = (data) => ({ type: SHARE_OUTFIT_SUCCESS, paylo
 export const fetchSavedOutfitsRequest = () => ({ type: FETCH_SAVED_OUTFITS_REQUEST });
 export const fetchSavedOutfitsSuccess = (data) => ({ type: FETCH_SAVED_OUTFITS_SUCCESS, payload: data });
 export const fetchSavedOutfitsFailure = (error) => ({ type: FETCH_SAVED_OUTFITS_FAILURE, payload: error });
+export const unsaveOutfitSuccess = (outfitId) => ({ type: UNSAVE_OUTFIT_SUCCESS, payload: outfitId });
 
 // ─── Style DNA (AI Photo Analysis) ──────────────────────────────────────────
 

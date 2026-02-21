@@ -221,17 +221,22 @@ class AuthServices {
       if (session.expiresAt <= new Date()) {
         throw new ApiError(401, "Session expired");
       }
-      if (incomingRefreshToken !== session.refreshToken) {
+      // Check incoming token against current AND previous (grace period for rotation)
+      const isCurrentToken = incomingRefreshToken === session.refreshToken;
+      const GRACE_PERIOD_MS = 30_000; // 30 seconds
+      const isOldTokenInGrace =
+        !isCurrentToken &&
+        session.previousRefreshToken &&
+        incomingRefreshToken === session.previousRefreshToken &&
+        session.tokenRotatedAt &&
+        (Date.now() - new Date(session.tokenRotatedAt).getTime()) < GRACE_PERIOD_MS;
+
+      if (!isCurrentToken && !isOldTokenInGrace) {
         throw new ApiError(401, "Refresh token is expired or revoked");
       }
 
-      // Generate new access and refresh tokens
+      // Always generate a fresh access token
       const accessToken = user.generateAccessToken(
-        sessionId,
-        subscriptionId,
-        subscriptionType
-      );
-      const refreshToken = user.generateRefreshToken(
         sessionId,
         subscriptionId,
         subscriptionType
@@ -245,9 +250,9 @@ class AuthServices {
       if (!isRedisActive) {
          // Extract device info from request
         const userAgent = req.headers["user-agent"] || "";
-        
+
         const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
-        
+
         await RedisManager.addActiveSession(userId, sessionId, {
             device: userAgent.substring(0, 100),
             deviceType: req.isMobileApp ? "mobile" : "desktop",
@@ -276,13 +281,33 @@ class AuthServices {
         console.log(`[Auth] Session ${sessionId} restored in Redis after refresh`);
       }
 
-      // 2. Rotate refresh token on session + extend expiresAt (sliding window)
+      // 2. Extend expiresAt (sliding window) + rotate refresh token
       const newExpiresAt = new Date();
       newExpiresAt.setDate(newExpiresAt.getDate() + 15);
-      await SessionModel.updateOne(
-        { _id: session._id },
-        { $set: { refreshToken, expiresAt: newExpiresAt, lastActiveAt: new Date() } }
-      );
+
+      let refreshToken: string;
+      if (isCurrentToken) {
+        // Normal rotation — generate new refresh token, keep old as grace fallback
+        refreshToken = user.generateRefreshToken(sessionId, subscriptionId, subscriptionType);
+        await SessionModel.updateOne(
+          { _id: session._id },
+          { $set: {
+            previousRefreshToken: session.refreshToken,
+            tokenRotatedAt: new Date(),
+            refreshToken,
+            expiresAt: newExpiresAt,
+            lastActiveAt: new Date(),
+          } }
+        );
+      } else {
+        // Old token within grace period — return current token, don't rotate again
+        refreshToken = session.refreshToken;
+        await SessionModel.updateOne(
+          { _id: session._id },
+          { $set: { expiresAt: newExpiresAt, lastActiveAt: new Date() } }
+        );
+        console.log(`[Auth] Grace period used for session ${sessionId} — skipped rotation`);
+      }
 
       if (req.isMobileApp) {
         return res
@@ -307,10 +332,36 @@ class AuthServices {
             "Successfully Refreshed Access Token"
           )
         );
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ApiError) throw error;
+
+      // Handle JWT-specific errors instead of swallowing them
+      if (error.name === "TokenExpiredError") {
+        console.error(`[RefreshToken] JWT expired at ${error.expiredAt} — user needs to re-login`);
+        throw new ApiError(401, "Refresh token has expired, please login again", [
+          `Token expired at: ${error.expiredAt}`,
+        ]);
+      }
+
+      if (error instanceof JsonWebTokenError) {
+        console.error(`[RefreshToken] JWT verification failed: ${error.message}`);
+        throw new ApiError(401, "Refresh token signature is invalid — possible secret mismatch or token corruption", [
+          error.message,
+        ]);
+      }
+
+      // Crypto / decryption errors
+      if (error.code === "ERR_OSSL_EVP_BAD_DECRYPT" || error.message?.includes("decrypt")) {
+        console.error(`[RefreshToken] Decryption failed: ${error.message}`);
+        throw new ApiError(401, "Refresh token decryption failed — ENCRYPTION_SECRET may have changed", [
+          error.message,
+        ]);
+      }
+
+      // Unexpected errors (MongoDB, Redis, etc.)
+      console.error("[RefreshToken] Unexpected error:", error.name, error.message);
       throw new ApiError(401, "Invalid refresh token", [
-        "Authentication failed",
+        error.message || "Authentication failed",
       ]);
     }
   }

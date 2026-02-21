@@ -76,6 +76,7 @@ import {
   fetchSavedOutfitsRequest,
   fetchSavedOutfitsSuccess,
   fetchSavedOutfitsFailure,
+  unsaveOutfitSuccess,
   analyzeStyleDnaRequest,
   analyzeStyleDnaSuccess,
   analyzeStyleDnaFailure,
@@ -855,12 +856,12 @@ export const shareOutfitThunk = (outfitId) => async (dispatch) => {
   }
 };
 
-export const sendOutfitThunk = (outfitId, recipientUsername) => async (dispatch) => {
+export const sendOutfitThunk = (outfitId, recipientUsername, skipNotification = false) => async (dispatch) => {
   try {
     const { data, error } = await makeRequest(
       HTTP_METHODS.POST,
       `${ENDPOINTS.WARDROBE.OUTFIT_BY_ID}/${outfitId}/send`,
-      { recipientUsername }
+      { recipientUsername, skipNotification }
     );
     if (error) {
       dispatch(showNotification(error.message, "error"));
@@ -936,6 +937,27 @@ export const fetchSavedOutfitsThunk = () => async (dispatch) => {
   } catch (error) {
     dispatch(fetchSavedOutfitsFailure(error.message || "Failed to fetch saved outfits"));
     return { success: false, error: error.message };
+  }
+};
+
+export const unsaveOutfitThunk = (outfitId) => async (dispatch) => {
+  try {
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.DELETE,
+      `${ENDPOINTS.WARDROBE.SAVED_OUTFITS}/${outfitId}`
+    );
+    if (error) {
+      dispatch(showNotification(error.message, "error"));
+      return { success: false };
+    }
+    if (data?.success) {
+      dispatch(unsaveOutfitSuccess(outfitId));
+      dispatch(showNotification("Outfit removed", "success"));
+      return { success: true };
+    }
+  } catch (error) {
+    dispatch(showNotification("Error removing outfit", "error"));
+    return { success: false };
   }
 };
 

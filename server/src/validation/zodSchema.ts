@@ -433,6 +433,7 @@ const CollectionItemsSchema = z.object({
 
 const SendOutfitSchema = z.object({
   recipientUsername: z.string().min(1, "Recipient username is required").trim(),
+  skipNotification: z.boolean().optional(),
 });
 
 // ─── Exports ────────────────────────────────────────────────────────────────

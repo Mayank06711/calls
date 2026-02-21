@@ -97,6 +97,7 @@ import {
   FETCH_SAVED_OUTFITS_REQUEST,
   FETCH_SAVED_OUTFITS_SUCCESS,
   FETCH_SAVED_OUTFITS_FAILURE,
+  UNSAVE_OUTFIT_SUCCESS,
   ANALYZE_STYLE_DNA_REQUEST,
   ANALYZE_STYLE_DNA_SUCCESS,
   ANALYZE_STYLE_DNA_FAILURE,
@@ -408,6 +409,9 @@ const wardrobeReducer = (state = initialState, action) => {
           saved: state.outfits.saved.map((o) =>
             o._id === action.payload._id ? { ...o, isFavorite: action.payload.isFavorite } : o
           ),
+          savedFromOthers: state.outfits.savedFromOthers.map((o) =>
+            o._id === action.payload._id ? { ...o, isFavorite: action.payload.isFavorite } : o
+          ),
         },
       };
     case TOGGLE_OUTFIT_FAVORITE_FAILURE:
@@ -680,6 +684,15 @@ const wardrobeReducer = (state = initialState, action) => {
       return { ...state, outfits: { ...state.outfits, loading: false, savedFromOthers: action.payload } };
     case FETCH_SAVED_OUTFITS_FAILURE:
       return { ...state, outfits: { ...state.outfits, loading: false, error: action.payload } };
+
+    case UNSAVE_OUTFIT_SUCCESS:
+      return {
+        ...state,
+        outfits: {
+          ...state.outfits,
+          savedFromOthers: state.outfits.savedFromOthers.filter((o) => o._id !== action.payload),
+        },
+      };
 
     // ─── Style DNA (AI Photo Analysis) ──────────────────────────────
     case ANALYZE_STYLE_DNA_REQUEST:

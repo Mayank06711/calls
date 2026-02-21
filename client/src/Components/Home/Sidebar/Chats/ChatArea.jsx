@@ -1031,7 +1031,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
       }}
       isTyping={isTyping}
       onBack={onBack}
-      onVideoCall={requestStatus === "accepted" ? handleVideoCall : undefined}
+      onVideoCall={requestStatus === "accepted" && selectedUser?._id !== currentUserId ? handleVideoCall : undefined}
       onMenuClick={handleMenuClick}
       onSelectMessages={!isSelectionMode ? () => setIsSelectionMode(true) : undefined}
       isExpert={isExpert}
@@ -1077,7 +1077,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
           onCancel={handleExitSelection}
         />
       ) : (
-        <MessageInput onSendMessage={handleSendMessage} onTyping={handleTyping} />
+        <MessageInput onSendMessage={handleSendMessage} onTyping={handleTyping} recipientUsername={selectedUser?.username} />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import MessageStatus from "./MessageStatus";
 import MessageActionMenu from "./MessageActionMenu";
 import MessageDetailsDialog from "./MessageDetailsDialog";
@@ -20,6 +21,7 @@ const MessageList = ({
   selectedIds = new Set(),
   onToggleSelect,
 }) => {
+  const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const observerRef = useRef(null);
   const colors = useSubscriptionColors();
@@ -211,7 +213,44 @@ const MessageList = ({
   const isUploading = (message) =>
     message.status === "sending" && (message.type === "image" || message.type === "video");
 
-  const renderMessageContent = (message) => {
+  // Detect URLs in text and render them as clickable links
+  // Outfit links navigate to in-app detail page; other internal links navigate in-app; external links open new tab
+  const linkifyText = (text, isSender) => {
+    if (!text) return text;
+    const parts = text.split(/(https?:\/\/[^\s<]+)/g);
+    if (parts.length === 1) return text; // no URLs found
+    return parts.map((part, i) => {
+      if (!part.match(/^https?:\/\//)) {
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      }
+      const isInternal = part.startsWith(window.location.origin);
+      return (
+        <a
+          key={i}
+          href={part}
+          target={isInternal ? undefined : "_blank"}
+          rel={isInternal ? undefined : "noopener noreferrer"}
+          className="underline break-all font-medium hover:opacity-80"
+          style={{ color: isSender ? "#bfdbfe" : "#3b82f6" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isInternal) {
+              e.preventDefault();
+              try {
+                navigate(new URL(part).pathname);
+              } catch {
+                window.location.href = part;
+              }
+            }
+          }}
+        >
+          {part}
+        </a>
+      );
+    });
+  };
+
+  const renderMessageContent = (message, isSender) => {
     const uploading = isUploading(message);
 
     switch (message.type) {
@@ -286,7 +325,7 @@ const MessageList = ({
         );
       case "text":
       default:
-        return <p className="text-sm">{message.content}</p>;
+        return <p className="text-sm">{linkifyText(message.content, isSender)}</p>;
     }
   };
 
@@ -398,7 +437,7 @@ const MessageList = ({
                           : "text-light-text dark:text-dark-text"
                       }
                     >
-                      {renderMessageContent(message)}
+                      {renderMessageContent(message, isSender)}
                     </div>
                   </div>
 

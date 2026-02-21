@@ -625,13 +625,46 @@ class ChatController {
             },
             { $unwind: { path: "$participantInfo", preserveNullAndEmptyArrays: true } },
             {
+              $lookup: {
+                from: "media",
+                localField: "participantInfo.mediaId",
+                foreignField: "_id",
+                as: "_participantMedia",
+              },
+            },
+            { $unwind: { path: "$_participantMedia", preserveNullAndEmptyArrays: true } },
+            {
               $project: {
                 chatId: "$_id",
                 otherUser: {
                   _id: "$participantInfo._id",
                   fullName: "$participantInfo.fullName",
                   username: "$participantInfo.username",
-                  profilePhoto: "$participantInfo.profilePhoto",
+                  profilePhoto: {
+                    $let: {
+                      vars: {
+                        photo: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: { $ifNull: ["$_participantMedia.photos", []] },
+                                as: "p",
+                                cond: { $eq: ["$$p.public_id", "$participantInfo.profilePhotoId"] },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      },
+                      in: {
+                        $cond: [
+                          { $ifNull: ["$$photo", false] },
+                          { url: "$$photo.url", thumbnail_url: "$$photo.thumbnail_url" },
+                          null,
+                        ],
+                      },
+                    },
+                  },
                 },
                 updatedAt: 1,
               },
@@ -1677,6 +1710,21 @@ class ChatController {
             preserveNullAndEmptyArrays: true,
           },
         },
+        // Lookup Media doc to construct profilePhoto (User stores profilePhotoId + mediaId, not profilePhoto)
+        {
+          $lookup: {
+            from: "media",
+            localField: "participantInfo.mediaId",
+            foreignField: "_id",
+            as: "_participantMedia",
+          },
+        },
+        {
+          $unwind: {
+            path: "$_participantMedia",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $project: {
             chatId: "$_id",
@@ -1684,7 +1732,31 @@ class ChatController {
               _id: "$participantInfo._id",
               fullName: "$participantInfo.fullName",
               username: "$participantInfo.username",
-              profilePhoto: "$participantInfo.profilePhoto",
+              profilePhoto: {
+                $let: {
+                  vars: {
+                    photo: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: { $ifNull: ["$_participantMedia.photos", []] },
+                            as: "p",
+                            cond: { $eq: ["$$p.public_id", "$participantInfo.profilePhotoId"] },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    $cond: [
+                      { $ifNull: ["$$photo", false] },
+                      { url: "$$photo.url", thumbnail_url: "$$photo.thumbnail_url" },
+                      null,
+                    ],
+                  },
+                },
+              },
               isActive: "$participantInfo.isActive",
               isExpert: "$participantInfo.isExpert",
             },

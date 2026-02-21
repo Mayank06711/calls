@@ -71,60 +71,76 @@ function CallErrorModal() {
     navigate("/subscriptions");
   };
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
-        {/* Close button */}
-        <button
-          onClick={dismissCallError}
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        >
-          <Close className="text-gray-400" sx={{ fontSize: 20 }} />
-        </button>
+  const card = (
+    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      {/* Close button */}
+      <button
+        onClick={dismissCallError}
+        className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
+      >
+        <Close className="text-gray-400" sx={{ fontSize: 20 }} />
+      </button>
 
-        {/* Content */}
-        <div className="flex flex-col items-center px-6 pt-8 pb-6">
-          {/* Icon */}
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-            config.showSubscriptionCTA
-              ? "bg-amber-500/10"
-              : "bg-gray-100 dark:bg-gray-700"
-          }`}>
-            <Icon className={config.iconColor} sx={{ fontSize: 32 }} />
-          </div>
-
-          {/* Title */}
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            {config.title}
-          </h3>
-
-          {/* Message */}
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-6">
-            {displayMessage}
-          </p>
-
-          {/* Buttons */}
-          <div className="flex flex-col gap-3 w-full">
-            {config.showSubscriptionCTA && !isExpert && (
-              <button
-                onClick={handleGetSubscription}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-lg transition-all active:scale-[0.98]"
-              >
-                Upgrade Subscription
-              </button>
-            )}
-            <button
-              onClick={dismissCallError}
-              className={`w-full py-3 px-4 rounded-xl text-sm font-medium transition-all active:scale-[0.98] ${
-                config.showSubscriptionCTA
-                  ? "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  : "bg-green-600 hover:bg-green-700 text-white"
-              }`}
-            >
-              {config.showSubscriptionCTA ? "Maybe Later" : "OK"}
-            </button>
-          </div>
+      {/* Content */}
+      <div className="flex flex-col items-center px-6 pt-8 pb-6">
+        {/* Icon */}
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          config.showSubscriptionCTA
+            ? "bg-amber-500/10"
+            : "bg-gray-100 dark:bg-gray-700"
+        }`}>
+          <Icon className={config.iconColor} sx={{ fontSize: 32 }} />
         </div>
+
+        {/* Title */}
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          {config.title}
+        </h3>
+
+        {/* Message */}
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-6">
+          {displayMessage}
+        </p>
+
+        {/* Buttons */}
+        <div className="flex flex-col gap-3 w-full">
+          {config.showSubscriptionCTA && !isExpert && (
+            <button
+              onClick={handleGetSubscription}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-lg transition-all active:scale-[0.98]"
+            >
+              Upgrade Subscription
+            </button>
+          )}
+          <button
+            onClick={dismissCallError}
+            className={`w-full py-3 px-4 rounded-xl text-sm font-medium transition-all active:scale-[0.98] ${
+              config.showSubscriptionCTA
+                ? "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
+          >
+            {config.showSubscriptionCTA ? "Maybe Later" : "OK"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Subscription CTA errors need a modal with backdrop for user attention
+  if (config.showSubscriptionCTA) {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={dismissCallError}>
+        {card}
+      </div>
+    );
+  }
+
+  // Informational errors — floating card, no backdrop, doesn't block the app
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-none">
+      <div className="pointer-events-auto mx-4">
+        {card}
       </div>
     </div>
   );

@@ -120,22 +120,25 @@ class SessionController {
         .select("-__v")
         .lean();
 
-      // Reconcile: mark MongoDB sessions not in Redis as inactive
-      const staleSessionIds = sessions
-        .filter((s: any) => s.refreshTokenId && !redisSet.has(s.refreshTokenId))
-        .map((s: any) => s._id);
+      // Reconcile: re-cache MongoDB sessions missing from Redis
+      // MongoDB is the source of truth — if a valid session exists in DB
+      // but not Redis (e.g. Redis restart/eviction), restore it to Redis
+      const missingFromRedis = sessions.filter(
+        (s: any) => s.refreshTokenId && !redisSet.has(s.refreshTokenId)
+      );
 
-      if (staleSessionIds.length > 0) {
-        await SessionModel.updateMany(
-          { _id: { $in: staleSessionIds } },
-          {
-            isActive: false,
-            revokedAt: new Date(),
-            revokedReason: "Session expired (Redis reconciliation)",
-          }
-        );
+      if (missingFromRedis.length > 0) {
+        for (const session of missingFromRedis as any[]) {
+          await RedisManager.addActiveSession(userId.toString(), session.refreshTokenId, {
+            device: session.device?.userAgent || "Unknown",
+            deviceType: session.device?.type || "unknown",
+            platform: session.device?.platform || "unknown",
+            browser: session.device?.browser || "unknown",
+            ip: session.location?.ip || "unknown",
+          });
+        }
         console.log(
-          `[SESSION] Reconciled ${staleSessionIds.length} stale MongoDB session(s) for user ${userId}`
+          `[SESSION] Restored ${missingFromRedis.length} session(s) to Redis for user ${userId}`
         );
       }
 
@@ -144,10 +147,8 @@ class SessionController {
         console.error("[SESSION] Orphaned activity cleanup failed:", err)
       );
 
-      // Only return sessions that are active in Redis
-      const activeSessions = sessions.filter(
-        (s: any) => s.refreshTokenId && redisSet.has(s.refreshTokenId)
-      );
+      // Return all valid MongoDB sessions (they're all now in Redis)
+      const activeSessions = sessions;
 
       // Transform sessions for frontend (exclude sensitive fields)
       const transformedSessions = activeSessions.map((session: any) => ({
