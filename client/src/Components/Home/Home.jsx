@@ -225,18 +225,18 @@ const SubscriptionSkeleton = () => (
   </div>
 );
 
-const ReelsSkeleton = () => (
-  <div className="flex flex-col items-center justify-center h-full p-6">
-    <Sh className="w-20 h-20 rounded-2xl mb-4" />
-    <Sh className="w-48 h-6 mb-2" />
-    <Sh className="w-64 h-3 mb-6" />
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
-      {[...Array(4)].map((_, i) => (
-        <Sh key={i} className="h-28 rounded-xl" />
-      ))}
-    </div>
-  </div>
-);
+// const ReelsSkeleton = () => (
+//   <div className="flex flex-col items-center justify-center h-full p-6">
+//     <Sh className="w-20 h-20 rounded-2xl mb-4" />
+//     <Sh className="w-48 h-6 mb-2" />
+//     <Sh className="w-64 h-3 mb-6" />
+//     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+//       {[...Array(4)].map((_, i) => (
+//         <Sh key={i} className="h-28 rounded-xl" />
+//       ))}
+//     </div>
+//   </div>
+// );
 
 const ContentSkeleton = () => {
   const { pathname } = useLocation();
@@ -256,8 +256,8 @@ const ContentSkeleton = () => {
     return <NotificationSkeleton />;
   if (p.startsWith("/profile"))
     return <ProfileSkeleton />;
-  if (p === "/reels")
-    return <ReelsSkeleton />;
+  // if (p === "/reels")
+  //   return <ReelsSkeleton />;
   if (p.startsWith("/subscriptions"))
     return <SubscriptionSkeleton />;
   return <GridSkeleton chips={false} />;
@@ -367,13 +367,13 @@ function Home() {
           position: "right",
           title: "Subscription",
         },
-        {
-          element: document.querySelector(".tour6"),
-          intro:
-            "Browse through reels to discover short-form content from your network and industry influencers.",
-          position: "right",
-          title: "Reels",
-        },
+        // {
+        //   element: document.querySelector(".tour6"),
+        //   intro:
+        //     "Browse through reels to discover short-form content from your network and industry influencers.",
+        //   position: "right",
+        //   title: "Reels",
+        // },
         {
           element: document.querySelector(".tour7"),
           intro:

@@ -11,7 +11,7 @@ import {
   addItemsToCollectionThunk,
 } from "../../../../../redux/thunks/wardrobe.thunks";
 import { showNotification } from "../../../../../redux/actions/notification.actions";
-import { getCloudinaryThumbnail } from "../../../../../utils/cloudinaryUtils";
+import { getCloudinaryThumbnail, uploadFile } from "../../../../../utils/cloudinaryUtils";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -45,38 +45,6 @@ const PATTERN_OPTIONS = ["Solid", "Striped", "Checked", "Floral", "Embroidered",
 const FABRIC_OPTIONS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Chiffon", "Velvet", "Satin", "Leather", "Georgette", "Crepe", "Khadi", "Other"];
 const SEASON_OPTIONS = ["Summer", "Winter", "Monsoon", "All"];
 const OCCASION_OPTIONS = ["Wedding", "Office", "Casual", "Party", "Travel", "Festive", "Date Night", "Sports", "Lounge"];
-
-// Upload a single file to S3 or Cloudinary based on server response
-async function uploadFile(file, uploadData) {
-  const { provider, uploadUrl, uploadParams, presignedUrl, fileUrl } = uploadData;
-
-  console.log("─────────────────*****─────────────────");
-  console.log("[uploadFile] Provider:", provider, "| File:", file.name, file.size, "bytes");
-
-  if (provider === "cloudinary") {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (uploadParams) {
-      Object.entries(uploadParams).forEach(([key, val]) => {
-        formData.append(key, String(val));
-      });
-    }
-    const res = await fetch(uploadUrl, { method: "POST", body: formData });
-    const json = await res.json();
-    const resultUrl = json.secure_url || json.url;
-    console.log("[uploadFile] Cloudinary →", resultUrl);
-    console.log("─────────────────*****─────────────────");
-    return resultUrl;
-  }
-
-  // S3 presigned PUT
-  const url = presignedUrl || uploadUrl;
-  await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-  const resultUrl = fileUrl || url.split("?")[0];
-  console.log("[uploadFile] S3 →", resultUrl);
-  console.log("─────────────────*****─────────────────");
-  return resultUrl;
-}
 
 // localStorage helpers for recovery
 function savePending(items) {

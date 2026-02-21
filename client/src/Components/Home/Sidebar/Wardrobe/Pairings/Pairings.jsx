@@ -8,6 +8,7 @@ import { generatePairingsThunk, fetchClosetThunk, fetchStyleProfileThunk } from 
 import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import PairingCard from "./PairingCard";
 import PremiumGate from "../shared/PremiumGate";
+import { useWardrobeAIContext } from "../../../../../utils/wardrobeAIContext";
 
 /* ── Auto-defaults (same pattern as AI Stylist / Mix & Match) ── */
 
@@ -48,6 +49,14 @@ function Pairings() {
   const [defaultsApplied, setDefaultsApplied] = useState(false);
   const [description, setDescription] = useState("");
   const [showDescription, setShowDescription] = useState(false);
+
+  useWardrobeAIContext("wardrobe/pairings", (ws) => {
+    const p = ws.pairings;
+    let desc = "User is viewing AI-generated outfit pairings (all possible combinations from their closet).";
+    if (p.data?.length > 0) desc += ` ${p.data.length} pairings generated.`;
+    if (p.unpaired?.length > 0) desc += ` ${p.unpaired.length} items couldn't be paired.`;
+    return desc;
+  }, [pairings?.length, unpaired?.length]);
 
   useEffect(() => {
     if (closetItems.length === 0) dispatch(fetchClosetThunk());
@@ -110,8 +119,8 @@ function Pairings() {
 
         {/* Auto-defaults hint */}
         {defaultsApplied && (
-          <p className="text-[9px] mt-1 ml-10 animate-pulse" style={{ color: colors.fourth }}>
-            <InfoOutlined style={{ fontSize: 10, marginRight: 2, verticalAlign: "middle" }} />
+          <p className="text-[9px] mt-1 ml-10 inline-flex items-center gap-0.5 animate-pulse w-fit" style={{ color: colors.fourth }}>
+            <InfoOutlined style={{ fontSize: 10 }} />
             {styleProfile ? "Pre-filled from your style profile" : "Pre-filled with defaults \u2014 set up your Style DNA for personalized picks"}
           </p>
         )}

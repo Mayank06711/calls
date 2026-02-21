@@ -10,6 +10,7 @@ import ClothingCard from "./ClothingCard";
 import AddItemModal from "./AddItemModal";
 import ImageLightbox from "./ImageLightbox";
 import CreateCollectionModal from "./CreateCollectionModal";
+import { useWardrobeAIContext } from "../../../../../utils/wardrobeAIContext";
 
 const CLOSET_QUOTES = [
   "Your style story, one piece at a time",
@@ -53,6 +54,27 @@ function MyCloset() {
   const containerRef = useRef(null);
   const reprocessedRef = useRef(new Set()); // Track items already queued for reprocessing
   const [closetQuote] = useState(() => CLOSET_QUOTES[Math.floor(Math.random() * CLOSET_QUOTES.length)]);
+
+  useWardrobeAIContext("wardrobe/my-closet", (ws) => {
+    const { items: allItems, filter: f } = ws.closet;
+    const cols = ws.collections?.list || [];
+    const activeCol = ws.collections?.activeId;
+    let desc = "User is managing their closet.";
+    if (f !== "All") desc += ` Filtering by: ${f}.`;
+    if (activeCol) {
+      const col = cols.find((c) => c._id === activeCol);
+      if (col) desc += ` Viewing collection: "${col.name}" (${col.itemIds?.length || 0} items).`;
+    }
+    if (cols.length > 0) desc += ` ${cols.length} collection(s): ${cols.map((c) => c.name).join(", ")}.`;
+    if (allItems.length > 0) {
+      const recent = allItems.slice(-5).map((i) => {
+        const color = i.dominantColors?.[0]?.name || i.color || "";
+        return `${color ? color + " " : ""}${i.subcategory || i.type}`;
+      });
+      desc += ` Recent items: ${recent.join(", ")}.`;
+    }
+    return desc;
+  }, [filter, items.length, activeCollectionId]);
 
   useEffect(() => {
     dispatch(fetchClosetThunk());

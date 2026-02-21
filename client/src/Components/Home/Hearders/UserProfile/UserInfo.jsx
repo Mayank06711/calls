@@ -13,6 +13,7 @@ import { TextField, Button } from "@mui/material";
 import EmailIcon from "@mui/icons-material/Email";
 import { motion } from "framer-motion";
 import { verifyEmailThunk } from "../../../../redux/thunks/userInfo.thunks";
+import { showNotification } from "../../../../redux/actions/notification.actions";
 
 function UserInfo() {
   const dispatch = useDispatch();
@@ -135,8 +136,9 @@ function UserInfo() {
           },
         };
 
-        // Update Redux store with new data
+        // Update Redux store + localStorage so photo persists across refresh
         dispatch(setUserInfo(updatedUserData));
+        localStorage.setItem("userInfo", JSON.stringify(updatedUserData));
 
         // Set the current display URL to the thumbnail for faster display
         setCurrentDisplayUrl(thumbnail_url);
@@ -420,7 +422,6 @@ function UserInfo() {
               </div>
             )}
           </div>
-          {renderStatusChip("Role", userData.isExpert ? "Expert" : "User")}
           {!userData.isExpert && renderStatusChip(
             "Subscription",
             userData.subscription?.type || "Free"

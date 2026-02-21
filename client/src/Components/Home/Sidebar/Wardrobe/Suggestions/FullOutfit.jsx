@@ -26,6 +26,8 @@ import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 import OutfitCard from "../Outfits/OutfitCard";
 import { ColorDots } from "../shared/ColorDots";
+import { useAIContext } from "../../../../../context/AIContext";
+import { buildWardrobeBaseContext } from "../../../../../utils/wardrobeAIContext";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Auto-defaults
@@ -250,6 +252,31 @@ function FullOutfit() {
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [saveName, setSaveName] = useState("");
 
+  // ── AI context ──────────────────────────────────────────────────
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+  const wardrobeState = useSelector((s) => s.wardrobe);
+  useEffect(() => {
+    const base = buildWardrobeBaseContext(wardrobeState);
+    let desc = "User is on AI Full Outfit Suggestion. AI generates complete outfit recommendations based on occasion, season, and closet.";
+    if (loading) {
+      desc += " Currently generating a suggestion...";
+    } else if (result) {
+      const sug = result.suggestion || result;
+      const topName = sug?.top?.name || sug?.top?.subcategory || sug?.top?.item || "";
+      const bottomName = sug?.bottom?.[0]?.name || sug?.bottom?.[0]?.item || "";
+      desc += ` Current suggestion: ${topName}${bottomName ? " + " + bottomName : ""}`;
+      if (sug?.overallVibe) desc += ` (vibe: ${sug.overallVibe})`;
+      desc += ".";
+      const wm = result.wardrobeMatches || {};
+      const matchCount = Object.values(wm).filter((m) => m?.length > 0).length;
+      if (matchCount > 0) desc += ` ${matchCount} items found in user's closet.`;
+    } else if (error) {
+      desc += ` Last generation errored.`;
+    }
+    setAIPageContext({ page: "wardrobe/suggest/full-outfit", description: `${base} ${desc}` });
+    return () => clearAIPageContext();
+  }, [loading, result, error, wardrobeState.closet?.items?.length, setAIPageContext, clearAIPageContext]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch saved outfits + style profile on mount
   useEffect(() => {
     dispatch(fetchOutfitsThunk());
@@ -434,8 +461,8 @@ function FullOutfit() {
 
         {/* Auto-defaults hint */}
         {defaultsApplied && (
-          <p className="text-[9px] mt-1 ml-10 animate-pulse" style={{ color: colors.fourth }}>
-            <InfoOutlined style={{ fontSize: 10, marginRight: 2, verticalAlign: "middle" }} />
+          <p className="text-[9px] mt-1 ml-10 inline-flex items-center gap-0.5 animate-pulse w-fit" style={{ color: colors.fourth }}>
+            <InfoOutlined style={{ fontSize: 10 }} />
             {styleProfile ? "Pre-filled from your style profile" : "Pre-filled with defaults — set up your Style DNA for personalized picks"}
           </p>
         )}

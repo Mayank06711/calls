@@ -14,6 +14,8 @@ import {
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 import { ColorDots, ColorPaletteDetail } from "../shared/ColorDots";
 import ShareOutfitModal from "../shared/ShareOutfitModal";
+import { useAIContext } from "../../../../../context/AIContext";
+import { buildWardrobeBaseContext } from "../../../../../utils/wardrobeAIContext";
 
 const TYPE_EMOJI = { Top: "👕", Bottom: "👖", "Full Body": "👗", Outerwear: "🧥", Shoes: "👟", Accessory: "⌚" };
 
@@ -27,6 +29,33 @@ function OutfitDetail() {
   const { logging } = useSelector((s) => s.wardrobe.wearLog);
   const [loggingWear, setLoggingWear] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  // ── AI context ──────────────────────────────────────────────────
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+  const wardrobeState = useSelector((s) => s.wardrobe);
+  const outfitForCtx = saved.find((o) => o._id === outfitId) || (savedFromOthers || []).find((o) => o._id === outfitId);
+  useEffect(() => {
+    const base = buildWardrobeBaseContext(wardrobeState);
+    if (!outfitForCtx) {
+      setAIPageContext({ page: "wardrobe/outfits/detail", description: `${base} User is viewing an outfit (loading...).` });
+      return () => clearAIPageContext();
+    }
+    const items = (outfitForCtx.items || []).map((i) => {
+      const r = i.clothingItem || i;
+      const color = r.dominantColors?.[0]?.name || "";
+      return `${color ? color + " " : ""}${r.subcategory || r.type}`;
+    });
+    let desc = `Viewing outfit: "${outfitForCtx.name || "Untitled"}". Items: ${items.join(", ")}.`;
+    if (outfitForCtx.occasion) desc += ` Occasion: ${outfitForCtx.occasion}.`;
+    if (outfitForCtx.season) desc += ` Season: ${outfitForCtx.season}.`;
+    if (outfitForCtx.source) desc += ` Source: ${outfitForCtx.source}.`;
+    if (outfitForCtx.tags?.length > 0) desc += ` Tags: ${outfitForCtx.tags.join(", ")}.`;
+    if (outfitForCtx.isFavorite) desc += " Favorited.";
+    if (outfitForCtx.isPublic) desc += ` Shared (${outfitForCtx.viewCount || 0} views, ${outfitForCtx.publicLikes || 0} likes).`;
+    if (outfitForCtx.notes) desc += ` Notes: "${outfitForCtx.notes}".`;
+    setAIPageContext({ page: "wardrobe/outfits/detail", description: `${base} ${desc}` });
+    return () => clearAIPageContext();
+  }, [outfitForCtx?._id, outfitForCtx?.isFavorite, wardrobeState.closet?.items?.length, setAIPageContext, clearAIPageContext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (saved.length === 0) dispatch(fetchOutfitsThunk());

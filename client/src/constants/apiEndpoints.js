@@ -164,6 +164,11 @@ export const ENDPOINTS = {
     PROCESS_ITEM: `/api/${API_CONFIG.VERSION}/wardrobe/process-item`, // POST
     GENERATE_FLATLAY: `/api/${API_CONFIG.VERSION}/wardrobe/generate-flatlay`, // POST
 
+    // Style DNA (AI Photo Analysis)
+    STYLE_DNA_ANALYZE: `/api/${API_CONFIG.VERSION}/wardrobe/style-dna/analyze`, // POST
+    STYLE_DNA: `/api/${API_CONFIG.VERSION}/wardrobe/style-dna`, // GET
+    STYLE_DNA_AUTO_FILL: `/api/${API_CONFIG.VERSION}/wardrobe/style-dna/auto-fill-applied`, // PATCH
+
     // Product Catalog
     PRODUCT_CATALOG: `/api/${API_CONFIG.VERSION}/wardrobe/product-catalog`, // GET
 

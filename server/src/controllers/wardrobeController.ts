@@ -3,6 +3,7 @@ import { CollectionModel } from "../models/collectionModel";
 import { OutfitModel } from "../models/outfitModel";
 import { WearLogModel } from "../models/wearLogModel";
 import { StyleProfileModel } from "../models/styleProfileModel";
+import { StyleDnaModel } from "../models/styleDnaModel";
 import { UserModel } from "../models/userModel";
 import { Request, Response } from "express";
 import { AsyncHandler } from "../utils/AsyncHandler";
@@ -527,8 +528,7 @@ class Wardrobe {
   private static async GetStyleProfile(req: Request, res: Response) {
     const userId = req.user?._id;
     const profile = await StyleProfileModel.findOne({ user: userId });
-    if (!profile) throw new ApiError(404, "Style profile not found. Please set up your style profile first.");
-    res.status(200).json({ success: true, data: profile });
+    res.status(200).json({ success: true, data: profile || null });
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2444,6 +2444,283 @@ class Wardrobe {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  //  STYLE DNA (AI Photo Analysis)
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Maps raw Style DNA analysis results → StyleProfile enum values.
+   * Used to compute which fields *could* be auto-filled.
+   */
+  private static computeAutoFillMapping(result: any): Record<string, string> {
+    const mapping: Record<string, string> = {};
+
+    // body.shape → bodyShape
+    if (result.body?.shape) {
+      const shapeMap: Record<string, string> = {
+        trapezoid: "Trapezoid", rectangle: "Rectangle", triangle: "Triangle",
+        inverted_triangle: "Inverted_Triangle", oval: "Oval",
+        hourglass: "Hourglass", pear: "Pear", apple: "Apple",
+      };
+      const key = result.body.shape.toLowerCase().replace(/\s+/g, "_");
+      if (shapeMap[key]) mapping.bodyShape = shapeMap[key];
+    }
+
+    // body.heightCategory → height
+    if (result.body?.heightCategory) {
+      const hMap: Record<string, string> = { short: "Short", medium: "Medium", tall: "Tall" };
+      const h = hMap[result.body.heightCategory.toLowerCase()];
+      if (h) mapping.height = h;
+    }
+
+    // skin.monkTone → skinTone (1-3=Fair, 4-6=Wheatish, 7-8=Dusky, 9-10=Dark Brown)
+    if (result.skin?.monkTone) {
+      const tone = result.skin.monkTone;
+      if (tone <= 3) mapping.skinTone = "Fair";
+      else if (tone <= 6) mapping.skinTone = "Wheatish";
+      else if (tone <= 8) mapping.skinTone = "Dusky";
+      else mapping.skinTone = "Dark Brown";
+    }
+
+    // skin.undertone → undertone
+    if (result.skin?.undertone) {
+      const utMap: Record<string, string> = { warm: "Warm", cool: "Cool", olive: "Olive", neutral: "Neutral" };
+      const ut = utMap[result.skin.undertone.toLowerCase()];
+      if (ut) mapping.undertone = ut;
+    }
+
+    // face.estimatedAge → ageGroup
+    if (result.face?.estimatedAge) {
+      const age = result.face.estimatedAge;
+      if (age < 26) mapping.ageGroup = "GenZ (16-25)";
+      else if (age <= 35) mapping.ageGroup = "Young Adult (26-35)";
+      else if (age <= 50) mapping.ageGroup = "Mid-Aged (36-50)";
+      else mapping.ageGroup = "Senior (50+)";
+    }
+
+    // face.faceShape → faceShape
+    if (result.face?.faceShape) {
+      const fsMap: Record<string, string> = {
+        oval: "Oval", round: "Round", square: "Square", heart: "Heart",
+        diamond: "Diamond", oblong: "Oblong", triangle: "Triangle",
+      };
+      const fs = fsMap[result.face.faceShape.toLowerCase()];
+      if (fs) mapping.faceShape = fs;
+    }
+
+    // face.eyeShape → eyeShape
+    if (result.face?.eyeShape) {
+      const esMap: Record<string, string> = {
+        almond: "Almond", round: "Round", hooded: "Hooded", upturned: "Upturned",
+        downturned: "Downturned", monolid: "Monolid", "deep set": "Deep Set", deep_set: "Deep Set",
+      };
+      const es = esMap[result.face.eyeShape.toLowerCase().replace(/-/g, " ")];
+      if (es) mapping.eyeShape = es;
+    }
+
+    // face.lipFullness → lipShape
+    if (result.face?.lipFullness) {
+      const lpMap: Record<string, string> = {
+        thin: "Thin", medium: "Cupids Bow", full: "Full",
+      };
+      const lp = lpMap[result.face.lipFullness.toLowerCase()];
+      if (lp) mapping.lipShape = lp;
+    }
+
+    // hair.type → hairType
+    if (result.hair?.type) {
+      const htMap: Record<string, string> = {
+        straight: "Straight Medium", wavy: "Wavy Medium",
+        curly: "Curly Springy", coily: "Coily Soft",
+        "straight fine": "Straight Fine", "straight medium": "Straight Medium", "straight coarse": "Straight Coarse",
+        "wavy fine": "Wavy Fine", "wavy medium": "Wavy Medium", "wavy coarse": "Wavy Coarse",
+        "curly loose": "Curly Loose", "curly springy": "Curly Springy", "curly tight": "Curly Tight",
+        "coily soft": "Coily Soft", "coily zigzag": "Coily Zigzag", "coily dense": "Coily Dense",
+      };
+      const ht = htMap[result.hair.type.toLowerCase()];
+      if (ht) mapping.hairType = ht;
+    }
+
+    // hair.color.name → hairColor
+    if (result.hair?.color?.name) {
+      const hcMap: Record<string, string> = {
+        black: "Black", "dark brown": "Dark Brown", "medium brown": "Medium Brown",
+        "light brown": "Light Brown", blonde: "Blonde", red: "Red",
+        gray: "Gray/Silver", silver: "Gray/Silver", "gray/silver": "Gray/Silver",
+        white: "White", highlighted: "Highlighted",
+      };
+      const hc = hcMap[result.hair.color.name.toLowerCase()];
+      if (hc) mapping.hairColor = hc;
+    }
+
+    // colorSeason.season → colorPaletteSeason
+    if (result.colorSeason?.season) {
+      const csMap: Record<string, string> = {
+        spring: "Spring", summer: "Summer", autumn: "Autumn", fall: "Autumn", winter: "Winter",
+      };
+      const cs = csMap[result.colorSeason.season.toLowerCase()];
+      if (cs) mapping.colorPaletteSeason = cs;
+    }
+
+    return mapping;
+  }
+
+  /**
+   * Analyze user's profile photo via Python Style DNA pipeline.
+   *
+   * Flow:
+   * 1. Fetch user's profile photo URL from Media model
+   * 2. Send thumbnailUrl (preferred) + imageUrl to Python service
+   * 3. Python runs 6-stage pipeline: person → body → face → geometry → skin → hair
+   * 4. No face detected → return { skipped: true } silently (photo may be of someone else)
+   * 5. Upsert results to StyleDna model (one per user)
+   * 6. Compute autoFillMapping for client-side auto-fill
+   */
+  private static async AnalyzeStyleDna(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const user = await UserModel.findById(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    let imageUrl: string;
+    let thumbnailUrl: string | null = null;
+
+    if (req.body.imageUrl) {
+      // Client provided a separate photo URL (uploaded via Cloudinary)
+      imageUrl = req.body.imageUrl;
+    } else {
+      // Use profile photo
+      const profileMedia = await user.getProfileMedia();
+      if (!profileMedia?.photo?.url) {
+        throw new ApiError(400, "No profile photo found. Please upload a profile photo first.");
+      }
+      imageUrl = profileMedia.photo.url;
+      thumbnailUrl = profileMedia.photo.thumbnail_url || null;
+    }
+
+    // Call Python Style DNA service
+    const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8001";
+    const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY;
+    if (!INTERNAL_SERVICE_KEY) {
+      throw new ApiError(500, "INTERNAL_SERVICE_KEY not configured");
+    }
+
+    try {
+      const response = await axios.post(
+        `${PYTHON_SERVICE_URL}/api/v1/analyze-style-dna`,
+        { userId: userId!.toString(), imageUrl, thumbnailUrl },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Service-Key": INTERNAL_SERVICE_KEY,
+          },
+          timeout: 60000, // 60s — pipeline runs 6 stages sequentially
+        }
+      );
+
+      const result = response.data;
+      const warnings: string[] = result.warnings || [];
+
+      // ── Guard: skip if no face or multiple people detected ────────────
+      // Photo might be of someone else, or has multiple people → results unreliable
+      if (!result.face || warnings.includes("NO_FACE") || warnings.includes("NO_PERSON")) {
+        return res.status(200).json({ success: true, skipped: true, reason: "no_face" });
+      }
+      if (warnings.includes("MULTIPLE_PEOPLE_CROP_SUGGESTED")) {
+        return res.status(200).json({ success: true, skipped: true, reason: "multiple_people" });
+      }
+
+      // ── Compute autoFillMapping for client-side auto-fill ────────────
+      const autoFillMapping = Wardrobe.computeAutoFillMapping(result);
+
+      // Preserve existing autoFilledValues from previous analysis
+      const existing = await StyleDnaModel.findOne({ user: userId }, "meta").lean();
+      const prevAutoFilledValues = existing?.meta?.autoFilledValues || null;
+      const prevAutoFilledAt = existing?.meta?.autoFilledAt || null;
+
+      const enrichedMeta = {
+        ...(result.meta || {}),
+        autoFillMapping,
+        // Carry forward previous tracking data (client will update via MarkAutoFillApplied)
+        ...(prevAutoFilledValues && { autoFilledValues: prevAutoFilledValues }),
+        ...(prevAutoFilledAt && { autoFilledAt: prevAutoFilledAt }),
+      };
+
+      // Upsert to StyleDna model (one per user, replaces on re-analysis)
+      const styleDna = await StyleDnaModel.findOneAndUpdate(
+        { user: userId },
+        {
+          user: userId,
+          body: result.body || null,
+          face: result.face || null,
+          eyes: result.eyes || null,
+          skin: result.skin || null,
+          hair: result.hair || null,
+          colorSeason: result.colorSeason || null,
+          descriptions: result.descriptions || {},
+          confidence: result.confidence || {},
+          warnings,
+          imageUrl,
+          pipelineVersion: "v6",
+          meta: enrichedMeta,
+          analyzedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      ).lean();
+
+      res.status(200).json({ success: true, data: styleDna });
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status || 500;
+        const message = error.response?.data?.detail || "Style DNA analysis failed";
+        throw new ApiError(status, message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's saved Style DNA analysis.
+   */
+  private static async GetStyleDna(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const styleDna = await StyleDnaModel.findOne({ user: userId }).lean();
+    if (!styleDna) {
+      return res.status(200).json({ success: true, data: null });
+    }
+    res.status(200).json({ success: true, data: styleDna });
+  }
+
+  /**
+   * Record which auto-fill values were actually applied to StyleProfile.
+   * Client calls this after silently auto-filling fields so we can track
+   * which ones the user later edits manually (for conflict detection on re-analysis).
+   */
+  private static async MarkAutoFillApplied(req: Request, res: Response) {
+    const userId = req.user?._id;
+    const { autoFilledValues } = req.body;
+
+    if (!autoFilledValues || typeof autoFilledValues !== "object") {
+      throw new ApiError(400, "autoFilledValues object is required");
+    }
+
+    const styleDna = await StyleDnaModel.findOneAndUpdate(
+      { user: userId },
+      {
+        $set: {
+          "meta.autoFilledValues": autoFilledValues,
+          "meta.autoFilledAt": new Date().toISOString(),
+        },
+      },
+      { new: true }
+    ).lean();
+
+    if (!styleDna) {
+      throw new ApiError(404, "No Style DNA analysis found");
+    }
+
+    res.status(200).json({ success: true });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   //  COLLECTIONS
   // ═══════════════════════════════════════════════════════════════════
 
@@ -2588,6 +2865,11 @@ class Wardrobe {
   // Phase 7: Python AI Service Proxy
   public static processItem = AsyncHandler.wrap(Wardrobe.ProcessItem);
   public static generateFlatlay = AsyncHandler.wrap(Wardrobe.GenerateFlatlay);
+
+  // Style DNA
+  public static analyzeStyleDna = AsyncHandler.wrap(Wardrobe.AnalyzeStyleDna);
+  public static getStyleDna = AsyncHandler.wrap(Wardrobe.GetStyleDna);
+  public static markAutoFillApplied = AsyncHandler.wrap(Wardrobe.MarkAutoFillApplied);
 
   // Sharing
   public static shareOutfit = AsyncHandler.wrap(Wardrobe.ShareOutfit);

@@ -17,6 +17,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import { fetchStyleProfileThunk, fetchClosetThunk, fetchOutfitsThunk } from "../../../../redux/thunks/wardrobe.thunks";
 import PremiumGate from "./shared/PremiumGate";
+import { useWardrobeAIContext } from "../../../../utils/wardrobeAIContext";
 
 /* ── Section divider with gradient line ── */
 function SectionLabel({ label, color }) {
@@ -45,6 +46,11 @@ function WardrobeHub() {
   const { hasProfile } = useSelector((state) => state.wardrobe.styleProfile);
   const { items } = useSelector((state) => state.wardrobe.closet);
   const { saved: outfits } = useSelector((state) => state.wardrobe.outfits);
+
+  useWardrobeAIContext("wardrobe", (ws) => {
+    const count = ws.outfits?.saved?.length || 0;
+    return `User is on the Wardrobe Hub overview. ${count} saved outfits. Sections: Style Profile, Closet, AI Suggestions (full outfit & mix-match), Outfit Builder, Pairings, Outfits, Wear Log, Shop.`;
+  }, [outfits?.length]);
 
   useEffect(() => {
     dispatch(fetchStyleProfileThunk());

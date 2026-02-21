@@ -15,6 +15,8 @@ import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
 import OutfitCard from "../Outfits/OutfitCard";
 import ImageLightbox from "../MyCloset/ImageLightbox";
+import { useAIContext } from "../../../../../context/AIContext";
+import { buildWardrobeBaseContext } from "../../../../../utils/wardrobeAIContext";
 
 const FILTER_TABS = ["All", "Top", "Bottom"];
 
@@ -91,6 +93,27 @@ function FromItem() {
   const [layerLoading, setLayerLoading] = useState(false);
   const [footwearLoading, setFootwearLoading] = useState(false);
   const [nudge, setNudge] = useState(null);                        // { type: "layer"|"footwear" } or null
+
+  // ── AI context ──────────────────────────────────────────────────
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+  const wardrobeState = useSelector((s) => s.wardrobe);
+  useEffect(() => {
+    const base = buildWardrobeBaseContext(wardrobeState);
+    let desc = "User is on Mix & Match, building an outfit by picking a starting item and getting AI-matched suggestions.";
+    if (selectedItem) {
+      const color = selectedItem.dominantColors?.[0]?.name || "";
+      desc += ` Anchor item: ${color ? color + " " : ""}${selectedItem.subcategory || selectedItem.type}.`;
+    }
+    if (result) {
+      desc += " AI suggestions available.";
+      const picked = Object.entries(picks).filter(([, v]) => v);
+      if (picked.length > 0) {
+        desc += ` Picked: ${picked.map(([slot, item]) => `${slot}: ${item.subcategory || item.name || "item"}`).join(", ")}.`;
+      }
+    }
+    setAIPageContext({ page: "wardrobe/suggest/from-item", description: `${base} ${desc}` });
+    return () => clearAIPageContext();
+  }, [selectedItem?._id, result, picks, wardrobeState.closet?.items?.length, setAIPageContext, clearAIPageContext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (closetItems.length === 0) dispatch(fetchClosetThunk());
@@ -591,8 +614,8 @@ function FromItem() {
                     </p>
                     {/* Auto-defaults hint */}
                     {defaultsApplied && (
-                      <p className="text-[9px] mt-1 animate-pulse" style={{ color: colors.fourth }}>
-                        <InfoOutlined style={{ fontSize: 10, marginRight: 2, verticalAlign: "middle" }} />
+                      <p className="text-[9px] mt-1 inline-flex items-center gap-0.5 animate-pulse w-fit" style={{ color: colors.fourth }}>
+                        <InfoOutlined style={{ fontSize: 10 }} />
                         Pre-filled from your style profile
                       </p>
                     )}

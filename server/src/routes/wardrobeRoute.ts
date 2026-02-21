@@ -100,6 +100,12 @@ router.delete("/planned-wears/:id", Wardrobe.deletePlannedWear);
 router.post("/process-item", Wardrobe.processItem);
 router.post("/generate-flatlay", Wardrobe.generateFlatlay);
 
+// ─── Style DNA (AI Photo Analysis) ──────────────────────────────────────────
+
+router.post("/style-dna/analyze", Wardrobe.analyzeStyleDna);
+router.get("/style-dna", Wardrobe.getStyleDna);
+router.patch("/style-dna/auto-fill-applied", Wardrobe.markAutoFillApplied);
+
 // ─── Collections ────────────────────────────────────────────────────────────
 
 router.post("/collections", validate(CreateCollectionSchema), Wardrobe.createCollection);

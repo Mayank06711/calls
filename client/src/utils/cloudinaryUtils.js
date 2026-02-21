@@ -18,3 +18,31 @@ export function getCloudinaryThumbnail(url, width = 400, height = 400) {
   const [, base, rest] = match;
   return `${base}c_fill,w_${width},h_${height},q_auto/${rest}`;
 }
+
+/**
+ * Upload a single file to S3 or Cloudinary based on the server-provided upload data.
+ * @param {File} file - The file to upload
+ * @param {Object} uploadData - Server response from generate-upload-url endpoint
+ * @returns {string} The uploaded file's URL
+ */
+export async function uploadFile(file, uploadData) {
+  const { provider, uploadUrl, uploadParams, presignedUrl, fileUrl } = uploadData;
+
+  if (provider === "cloudinary") {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (uploadParams) {
+      Object.entries(uploadParams).forEach(([key, val]) => {
+        formData.append(key, String(val));
+      });
+    }
+    const res = await fetch(uploadUrl, { method: "POST", body: formData });
+    const json = await res.json();
+    return json.secure_url || json.url;
+  }
+
+  // S3 presigned PUT
+  const url = presignedUrl || uploadUrl;
+  await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  return fileUrl || url.split("?")[0];
+}

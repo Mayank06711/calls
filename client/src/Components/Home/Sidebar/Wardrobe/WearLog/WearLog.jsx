@@ -20,6 +20,7 @@ import {
 import PremiumGate from "../shared/PremiumGate";
 import CalendarGrid from "./CalendarGrid";
 import OutfitFlatLay from "../shared/OutfitFlatLay";
+import { useWardrobeAIContext } from "../../../../../utils/wardrobeAIContext";
 
 function WearLog() {
   const colors = useSubscriptionColors();
@@ -45,6 +46,27 @@ function WearLog() {
 
   // Day detail popup
   const [dayDetail, setDayDetail] = useState(null); // { day, entries }
+
+  useWardrobeAIContext("wardrobe/outfit-log", (ws) => {
+    const { history: h, stats: st } = ws.wearLog;
+    const planned = ws.plannedWears?.items || [];
+    let desc = "User is viewing their outfit wear log (calendar of what they wore).";
+    if (st) {
+      desc += ` Stats: ${st.totalWears || 0} total wears`;
+      if (st.currentStreak) desc += `, ${st.currentStreak}-day streak`;
+      if (st.mostWornOutfit?.name) desc += `, most worn: "${st.mostWornOutfit.name}"`;
+      desc += ".";
+    }
+    if (h.length > 0) {
+      const recent = h.slice(0, 3).map((e) => {
+        const d = new Date(e.wornAt || e.createdAt).toLocaleDateString();
+        return `${e.outfit?.name || "outfit"} on ${d}`;
+      });
+      desc += ` Recent: ${recent.join(", ")}.`;
+    }
+    if (planned.length > 0) desc += ` ${planned.length} planned.`;
+    return desc;
+  }, [history?.length, stats, plannedWears?.length]);
 
   useEffect(() => {
     dispatch(fetchWearHistoryThunk({ limit: 200 }));

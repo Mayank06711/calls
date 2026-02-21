@@ -97,6 +97,13 @@ import {
   FETCH_SAVED_OUTFITS_REQUEST,
   FETCH_SAVED_OUTFITS_SUCCESS,
   FETCH_SAVED_OUTFITS_FAILURE,
+  ANALYZE_STYLE_DNA_REQUEST,
+  ANALYZE_STYLE_DNA_SUCCESS,
+  ANALYZE_STYLE_DNA_FAILURE,
+  FETCH_STYLE_DNA_REQUEST,
+  FETCH_STYLE_DNA_SUCCESS,
+  FETCH_STYLE_DNA_FAILURE,
+  CLEAR_STYLE_DNA,
 } from "../action_creators";
 
 const initialState = {
@@ -191,6 +198,13 @@ const initialState = {
     error: null,
     list: [],
     activeId: null,
+  },
+  styleDna: {
+    analyzing: false,
+    loading: false,
+    error: null,
+    data: null,
+    hasAnalysis: false,
   },
 };
 
@@ -666,6 +680,30 @@ const wardrobeReducer = (state = initialState, action) => {
       return { ...state, outfits: { ...state.outfits, loading: false, savedFromOthers: action.payload } };
     case FETCH_SAVED_OUTFITS_FAILURE:
       return { ...state, outfits: { ...state.outfits, loading: false, error: action.payload } };
+
+    // ─── Style DNA (AI Photo Analysis) ──────────────────────────────
+    case ANALYZE_STYLE_DNA_REQUEST:
+      return { ...state, styleDna: { ...state.styleDna, analyzing: true, error: null } };
+    case ANALYZE_STYLE_DNA_SUCCESS:
+      return {
+        ...state,
+        styleDna: { ...state.styleDna, analyzing: false, data: action.payload, hasAnalysis: !!action.payload },
+      };
+    case ANALYZE_STYLE_DNA_FAILURE:
+      return { ...state, styleDna: { ...state.styleDna, analyzing: false, error: action.payload } };
+
+    case FETCH_STYLE_DNA_REQUEST:
+      return { ...state, styleDna: { ...state.styleDna, loading: true, error: null } };
+    case FETCH_STYLE_DNA_SUCCESS:
+      return {
+        ...state,
+        styleDna: { ...state.styleDna, loading: false, data: action.payload, hasAnalysis: !!action.payload },
+      };
+    case FETCH_STYLE_DNA_FAILURE:
+      return { ...state, styleDna: { ...state.styleDna, loading: false, error: action.payload } };
+
+    case CLEAR_STYLE_DNA:
+      return { ...state, styleDna: { ...initialState.styleDna } };
 
     default:
       return state;

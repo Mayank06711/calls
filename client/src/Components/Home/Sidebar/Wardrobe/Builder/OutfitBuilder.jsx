@@ -29,6 +29,8 @@ import OccasionSeasonPicker from "../shared/OccasionSeasonPicker";
 import CanvasItem from "./CanvasItem";
 import SlotBuilder from "./SlotBuilder";
 import ImageLightbox from "../MyCloset/ImageLightbox";
+import { useAIContext } from "../../../../../context/AIContext";
+import { buildWardrobeBaseContext } from "../../../../../utils/wardrobeAIContext";
 
 const TYPE_TABS = ["All", "Top", "Bottom", "Full Body", "Outerwear", "Shoes"];
 let canvasIdCounter = 0;
@@ -66,6 +68,35 @@ function OutfitBuilder() {
   const panStart = useRef({ x: 0, y: 0, startPanX: 0, startPanY: 0 });
 
   const editOutfit = location.state?.editOutfit;
+
+  // ── AI context ──────────────────────────────────────────────────
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+  const wardrobeState = useSelector((s) => s.wardrobe);
+  useEffect(() => {
+    const base = buildWardrobeBaseContext(wardrobeState);
+    const mode = builder.mode;
+    const meta = builder.meta;
+    let desc = `User is in the Outfit Builder (${mode} mode).`;
+    if (mode === "canvas") {
+      desc += ` ${builder.canvasItems.length} items on canvas.`;
+      const names = builder.canvasItems
+        .map((ci) => closetItems.find((item) => item._id === ci.itemId))
+        .filter(Boolean)
+        .map((item) => item.subcategory || item.type)
+        .slice(0, 5);
+      if (names.length > 0) desc += ` Items: ${names.join(", ")}.`;
+    } else {
+      const filled = builder.slots.filter((s) => s.item).map((s) => `${s.label}: ${s.item.subcategory || s.item.type}`);
+      desc += filled.length > 0 ? ` Filled slots: ${filled.join(", ")}.` : " No slots filled yet.";
+    }
+    if (meta.name) desc += ` Name: "${meta.name}".`;
+    if (meta.occasion) desc += ` Occasion: ${meta.occasion}.`;
+    if (meta.season) desc += ` Season: ${meta.season}.`;
+    if (builder.processingStatus === "processing") desc += " Generating flat-lay preview.";
+    if (builder.processingStatus === "ready") desc += " Flat-lay preview ready.";
+    setAIPageContext({ page: "wardrobe/outfit-builder", description: `${base} ${desc}` });
+    return () => clearAIPageContext();
+  }, [builder.mode, builder.canvasItems.length, builder.slots, builder.meta, builder.processingStatus, closetItems.length, setAIPageContext, clearAIPageContext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (closetItems.length === 0) dispatch(fetchClosetThunk());

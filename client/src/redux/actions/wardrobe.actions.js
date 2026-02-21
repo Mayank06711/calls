@@ -100,6 +100,13 @@ import {
   FETCH_SAVED_OUTFITS_REQUEST,
   FETCH_SAVED_OUTFITS_SUCCESS,
   FETCH_SAVED_OUTFITS_FAILURE,
+  ANALYZE_STYLE_DNA_REQUEST,
+  ANALYZE_STYLE_DNA_SUCCESS,
+  ANALYZE_STYLE_DNA_FAILURE,
+  FETCH_STYLE_DNA_REQUEST,
+  FETCH_STYLE_DNA_SUCCESS,
+  FETCH_STYLE_DNA_FAILURE,
+  CLEAR_STYLE_DNA,
 } from "../action_creators";
 
 // ─── Style Profile ────────────────────────────────────────────────────────────
@@ -270,3 +277,15 @@ export const shareOutfitSuccess = (data) => ({ type: SHARE_OUTFIT_SUCCESS, paylo
 export const fetchSavedOutfitsRequest = () => ({ type: FETCH_SAVED_OUTFITS_REQUEST });
 export const fetchSavedOutfitsSuccess = (data) => ({ type: FETCH_SAVED_OUTFITS_SUCCESS, payload: data });
 export const fetchSavedOutfitsFailure = (error) => ({ type: FETCH_SAVED_OUTFITS_FAILURE, payload: error });
+
+// ─── Style DNA (AI Photo Analysis) ──────────────────────────────────────────
+
+export const analyzeStyleDnaRequest = () => ({ type: ANALYZE_STYLE_DNA_REQUEST });
+export const analyzeStyleDnaSuccess = (data) => ({ type: ANALYZE_STYLE_DNA_SUCCESS, payload: data });
+export const analyzeStyleDnaFailure = (error) => ({ type: ANALYZE_STYLE_DNA_FAILURE, payload: error });
+
+export const fetchStyleDnaRequest = () => ({ type: FETCH_STYLE_DNA_REQUEST });
+export const fetchStyleDnaSuccess = (data) => ({ type: FETCH_STYLE_DNA_SUCCESS, payload: data });
+export const fetchStyleDnaFailure = (error) => ({ type: FETCH_STYLE_DNA_FAILURE, payload: error });
+
+export const clearStyleDna = () => ({ type: CLEAR_STYLE_DNA });

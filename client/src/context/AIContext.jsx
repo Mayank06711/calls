@@ -30,6 +30,17 @@ const ROUTE_DESCRIPTIONS = {
   "/profile/settings/usage": "User is viewing usage tracking settings",
   "/profile/settings/reels": "User is configuring reels settings",
   "/profile/settings/analytics": "User is configuring analytics preferences",
+  "/wardrobe": "User is on the wardrobe hub",
+  "/wardrobe/style-profile": "User is setting up their style DNA",
+  "/wardrobe/my-closet": "User is managing their closet",
+  "/wardrobe/suggest": "User is viewing suggestion options",
+  "/wardrobe/suggest/full-outfit": "User is getting AI outfit suggestions",
+  "/wardrobe/suggest/from-item": "User is doing mix & match suggestions",
+  "/wardrobe/pairings": "User is viewing outfit pairings",
+  "/wardrobe/outfit-builder": "User is building an outfit",
+  "/wardrobe/outfits": "User is viewing saved outfits",
+  "/wardrobe/outfit-log": "User is viewing their wear log",
+  "/wardrobe/shop": "User is browsing product recommendations",
 };
 
 function getPageFromPath(pathname) {
@@ -40,6 +51,10 @@ function getPageFromPath(pathname) {
   // Check if user is in a specific chat (/chats/:userId)
   if (pathname.match(/^\/chats\/.+/)) {
     return { page: "chat", description: "User is in a chat conversation" };
+  }
+  // Check if user is viewing a specific outfit (/wardrobe/outfits/:outfitId)
+  if (pathname.match(/^\/wardrobe\/outfits\/.+/)) {
+    return { page: "wardrobe/outfits/detail", description: "User is viewing a specific outfit" };
   }
   // Fallback: derive from path
   const segments = pathname.split("/").filter(Boolean);

@@ -99,6 +99,17 @@ function getPageLabel(page) {
     "profile": "Profile",
     "notifications": "Notifications",
     "settings": "Settings",
+    "wardrobe": "Wardrobe Hub",
+    "wardrobe/style-profile": "Style Profile",
+    "wardrobe/my-closet": "My Closet",
+    "wardrobe/suggest/full-outfit": "AI Outfit Suggestion",
+    "wardrobe/suggest/from-item": "Mix & Match",
+    "wardrobe/pairings": "All Pairings",
+    "wardrobe/outfit-builder": "Outfit Builder",
+    "wardrobe/outfits": "My Outfits",
+    "wardrobe/outfits/detail": "Outfit Detail",
+    "wardrobe/outfit-log": "Wear Log",
+    "wardrobe/shop": "Shop",
   };
   return labels[page] || page.split("/").pop().replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }

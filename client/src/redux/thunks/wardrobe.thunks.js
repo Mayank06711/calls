@@ -76,6 +76,12 @@ import {
   fetchSavedOutfitsRequest,
   fetchSavedOutfitsSuccess,
   fetchSavedOutfitsFailure,
+  analyzeStyleDnaRequest,
+  analyzeStyleDnaSuccess,
+  analyzeStyleDnaFailure,
+  fetchStyleDnaRequest,
+  fetchStyleDnaSuccess,
+  fetchStyleDnaFailure,
 } from "../actions/wardrobe.actions";
 import { showNotification } from "../actions/notification.actions";
 
@@ -929,6 +935,92 @@ export const fetchSavedOutfitsThunk = () => async (dispatch) => {
     }
   } catch (error) {
     dispatch(fetchSavedOutfitsFailure(error.message || "Failed to fetch saved outfits"));
+    return { success: false, error: error.message };
+  }
+};
+
+// ─── Style DNA (AI Photo Analysis) ──────────────────────────────────────────
+
+/**
+ * Analyze photo via Style DNA pipeline.
+ * @param {string} [imageUrl] - Optional Cloudinary URL of an uploaded photo. If omitted, uses profile photo.
+ * Returns { success, data } on analysis, { success, skipped } if no face / multiple people.
+ */
+export const analyzeStyleDnaThunk = (imageUrl) => async (dispatch) => {
+  try {
+    dispatch(analyzeStyleDnaRequest());
+    const payload = imageUrl ? { imageUrl } : undefined;
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.WARDROBE.STYLE_DNA_ANALYZE,
+      payload
+    );
+    if (error) {
+      dispatch(analyzeStyleDnaFailure(error.message));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      // No face detected → server skipped silently
+      if (data.skipped) {
+        dispatch(analyzeStyleDnaSuccess(null));
+        return { success: true, skipped: true, reason: data.reason };
+      }
+      dispatch(analyzeStyleDnaSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+  } catch (error) {
+    dispatch(analyzeStyleDnaFailure(error.message || "Style DNA analysis failed"));
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Fetch existing Style DNA analysis. 404 = null (not an error).
+ */
+export const fetchStyleDnaThunk = () => async (dispatch) => {
+  try {
+    dispatch(fetchStyleDnaRequest());
+    const { data, error } = await makeRequest(
+      HTTP_METHODS.GET,
+      ENDPOINTS.WARDROBE.STYLE_DNA
+    );
+    if (error) {
+      if (error.statusCode === 404 || error.message?.includes("not found")) {
+        dispatch(fetchStyleDnaSuccess(null));
+        return { success: true, data: null };
+      }
+      dispatch(fetchStyleDnaFailure(error.message));
+      return { success: false, error: error.message };
+    }
+    if (data?.success) {
+      dispatch(fetchStyleDnaSuccess(data.data));
+      return { success: true, data: data.data };
+    }
+    dispatch(fetchStyleDnaSuccess(null));
+    return { success: true, data: null };
+  } catch (error) {
+    if (error.response?.status === 404 || error.message?.includes("not found")) {
+      dispatch(fetchStyleDnaSuccess(null));
+      return { success: true, data: null };
+    }
+    dispatch(fetchStyleDnaFailure(error.message || "Failed to fetch Style DNA"));
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Record which auto-fill values were applied to StyleProfile.
+ * Fire-and-forget — no Redux state changes needed.
+ */
+export const markAutoFillAppliedThunk = (autoFilledValues) => async () => {
+  try {
+    await makeRequest(
+      HTTP_METHODS.PATCH,
+      ENDPOINTS.WARDROBE.STYLE_DNA_AUTO_FILL,
+      { autoFilledValues }
+    );
+    return { success: true };
+  } catch (error) {
     return { success: false, error: error.message };
   }
 };

@@ -33,7 +33,7 @@ const Home = lazy(() => import("./Components/Home/Home"));
 const Missing = lazy(() => import("./Components/Missing"));
 const UserInfoForm = lazy(() => import("./Components/Login/UserInfoForm"));
 const Chats = lazy(() => import("./Components/Home/Sidebar/Chats/Chats"));
-const Reels = lazy(() => import("./Components/Home/Sidebar/Reels/Reels"));
+// const Reels = lazy(() => import("./Components/Home/Sidebar/Reels/Reels"));
 const Subscriptions = lazy(() => import("./Components/Home/Sidebar/Subscriptions/Subscriptions"));
 const WardrobeHub = lazy(() => import("./Components/Home/Sidebar/Wardrobe/WardrobeHub"));
 const StyleProfile = lazy(() => import("./Components/Home/Sidebar/Wardrobe/StyleProfile"));
@@ -50,10 +50,9 @@ const ShopPage = lazy(() => import("./Components/Home/Sidebar/Wardrobe/Shop/Shop
 const UserProfile = lazy(() => import("./Components/Home/Hearders/UserProfile/UserProfile"));
 const NotificationPanel = lazy(() => import("./Components/Home/Hearders/Notifications/NotificationPanel"));
 const UserSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/UserSettings"));
-const MyStyle = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/MyStyle/MyStyle"));
 const UserHistory = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory"));
-const Likes = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes"));
-const Posts = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts"));
+// const Likes = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes"));
+// const Posts = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts"));
 const SilverSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription"));
 const PlatinumSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription"));
 const GoldSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription"));
@@ -80,6 +79,44 @@ const SharedOutfitPage = lazy(() => import("./Components/Public/SharedOutfitPage
 // ── Suspense fallback skeleton (full-page loads: landing, login, public pages) ─
 const Sh = ({ className }) => (
   <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700/40 ${className}`} />
+);
+
+const LoginLoader = () => (
+  <div className="flex items-center justify-center min-h-screen dark:bg-dark-primary bg-light-secondary">
+    <div className="w-[450px] max-w-[calc(100vw-16px)] rounded-2xl overflow-hidden shadow-lg"
+      style={{ height: "80vh", maxHeight: 700, background: "linear-gradient(180deg, #86efac 0%, #FFFFFF 50%)" }}>
+      {/* Banner */}
+      <div className="w-full h-[30px]" />
+      {/* Logo + title */}
+      <div className="flex items-center justify-center gap-2 mb-3 mt-1">
+        <Sh className="w-8 h-8 rounded-lg !bg-white/40" />
+        <Sh className="w-36 h-5 !bg-white/40" />
+      </div>
+      {/* Image area */}
+      <div className="flex items-center justify-center px-6">
+        <Sh className="w-full h-40 sm:h-48 rounded-lg !bg-white/30" />
+      </div>
+      {/* Tab bar */}
+      <div className="flex gap-0 mx-6 mt-4">
+        <Sh className="flex-1 h-9 rounded-l-lg !bg-green-200/50" />
+        <Sh className="flex-1 h-9 rounded-r-lg !bg-gray-200/50" />
+      </div>
+      {/* Input + button area */}
+      <div className="flex flex-col items-center gap-3 pt-8 px-6">
+        <Sh className="w-full max-w-[340px] h-[46px] rounded-xl" />
+        <Sh className="w-full max-w-[340px] h-[42px] rounded-xl !bg-green-200/60" />
+        <Sh className="w-24 h-3 rounded" />
+        {/* OR divider */}
+        <div className="flex items-center gap-3 w-full max-w-[340px]">
+          <div className="flex-1 h-px bg-gray-200" />
+          <Sh className="w-6 h-3 rounded" />
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+        {/* Google button */}
+        <Sh className="w-full max-w-[340px] h-[42px] rounded-xl" />
+      </div>
+    </div>
+  </div>
 );
 
 const PageLoader = () => (
@@ -266,7 +303,7 @@ const App = () => {
                 <Route index element={<Chats />} />
                 <Route path='chats' element={<Chats />} />
                 <Route path='chats/:userId' element={<Chats />} />
-                <Route path='reels' element={<Reels />} />
+                {/* <Route path='reels' element={<Reels />} /> */}
 
                 <Route path='subscriptions'>
                   <Route index element={isExpert ? <Navigate to='/chats' replace /> : <Subscriptions />} />
@@ -289,11 +326,10 @@ const App = () => {
                 <Route path='wardrobe/shop' element={<ShopPage />} />
                 <Route path='/notifications' element={<NotificationPanel />} />
                 <Route path='/profile' element={<UserProfile />}>
-                  <Route index element={<Navigate to='posts' />} />
-                  <Route path='posts' element={<Posts />} />
-                  <Route path='likes' element={<Likes />} />
+                  <Route index element={<Navigate to='history' />} />
+                  {/* <Route path='posts' element={<Posts />} /> */}
+                  {/* <Route path='likes' element={<Likes />} /> */}
                   <Route path='history' element={<UserHistory />} />
-                  <Route path='my-style' element={<MyStyle />} />
                   <Route path='settings' element={<UserSettings />}>
                     <Route index element={<Navigate to='overview' />} />
                     <Route path='overview' element={<UserSettings />} />
@@ -321,27 +357,31 @@ const App = () => {
               <Route
                 path='/login'
                 element={!userId ? (
-                  <div className="flex items-center justify-center min-h-screen">
-                    <Login />
-                  </div>
+                  <Suspense fallback={<LoginLoader />}>
+                    <div className="flex items-center justify-center min-h-screen">
+                      <Login />
+                    </div>
+                  </Suspense>
                 ) : <Navigate to='/' />}
               />
               <Route
                 path='/complete-profile'
                 element={
                   userId && isAlreadyVerified === false ? (
-                    <div className="flex items-center justify-center min-h-screen">
-                      <UserInfoForm />
-                    </div>
+                    <Suspense fallback={<LoginLoader />}>
+                      <div className="flex items-center justify-center min-h-screen">
+                        <UserInfoForm />
+                      </div>
+                    </Suspense>
                   ) : (
                     <Navigate to='/' />
                   )
                 }
               />
-              <Route path='/outfit/:shareToken' element={<SharedOutfitPage />} />
-              <Route path='/terms' element={<TermsAndConditions />} />
-              <Route path='/privacy' element={<PrivacyPolicy />} />
-              <Route path='*' element={<Missing />} />
+              <Route path='/outfit/:shareToken' element={<Suspense fallback={<PageLoader />}><SharedOutfitPage /></Suspense>} />
+              <Route path='/terms' element={<Suspense fallback={<PageLoader />}><TermsAndConditions /></Suspense>} />
+              <Route path='/privacy' element={<Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense>} />
+              <Route path='*' element={<Suspense fallback={<PageLoader />}><Missing /></Suspense>} />
             </Routes>
             </Suspense>
           </div>

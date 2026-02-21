@@ -9,6 +9,7 @@ import { setOutfitFilters } from "../../../../../redux/actions/wardrobe.actions"
 import OutfitCard from "./OutfitCard";
 import OutfitListItem from "./OutfitListItem";
 import ShareOutfitModal from "../shared/ShareOutfitModal";
+import { useWardrobeAIContext } from "../../../../../utils/wardrobeAIContext";
 
 function OutfitList() {
   const colors = useSubscriptionColors();
@@ -19,6 +20,28 @@ function OutfitList() {
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [shareOutfit, setShareOutfit] = useState(null);
   const [showSaved, setShowSaved] = useState(false);
+
+  useWardrobeAIContext("wardrobe/outfits", (ws) => {
+    const { saved: s, savedFromOthers: sfo, filters: f } = ws.outfits;
+    let desc = `User is browsing saved outfits (${s.length} own, ${sfo.length} saved from others).`;
+    const af = [];
+    if (f.occasion) af.push(`occasion: ${f.occasion}`);
+    if (f.season) af.push(`season: ${f.season}`);
+    if (f.favorite) af.push("favorites only");
+    if (f.source) af.push(`source: ${f.source}`);
+    if (af.length > 0) desc += ` Filters: ${af.join(", ")}.`;
+    if (s.length > 0) {
+      const ai = s.filter((o) => o.source === "ai_suggested" || o.source === "engine_suggested").length;
+      const b = s.filter((o) => o.source?.startsWith("builder")).length;
+      const m = s.length - ai - b;
+      const parts = [];
+      if (ai > 0) parts.push(`${ai} AI-generated`);
+      if (b > 0) parts.push(`${b} from builder`);
+      if (m > 0) parts.push(`${m} manual`);
+      desc += ` Sources: ${parts.join(", ")}.`;
+    }
+    return desc;
+  }, [saved?.length, savedFromOthers?.length, filters]);
 
   useEffect(() => {
     dispatch(fetchOutfitsThunk());

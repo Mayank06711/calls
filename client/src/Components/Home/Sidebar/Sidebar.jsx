@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { IoMdLogOut } from "react-icons/io";
 import { IoShirtOutline } from "react-icons/io5";
 import { BsChatLeftTextFill } from "react-icons/bs";
-import { PiFilmReelFill } from "react-icons/pi";
+// import { PiFilmReelFill } from "react-icons/pi";
 import { BiSolidBadgeDollar } from "react-icons/bi";
 import { IconButton } from "@mui/material";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
@@ -14,14 +14,14 @@ import { getSubscriptionPlansThunk } from "../../../redux/thunks/subscription.th
 
 const MENU_ITEMS = [
   { icon: <BsChatLeftTextFill />, label: "Chats", path: "/chats" },
+  { icon: <IoShirtOutline />, label: "Wardrobe", path: "/wardrobe" },
+  // { icon: <PiFilmReelFill />, label: "Reels", path: "/reels" },
   {
     icon: <BiSolidBadgeDollar />,
     label: "Subscriptions",
     path: "/subscriptions",
     hideForExpert: true,
   },
-  { icon: <PiFilmReelFill />, label: "Reels", path: "/reels" },
-  { icon: <IoShirtOutline />, label: "Wardrobe", path: "/wardrobe" },
 ];
 
 function Sidebar({ isDarkMode }) {

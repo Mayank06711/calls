@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import {
   PersonOutline,
   ColorLensOutlined,
@@ -13,6 +13,7 @@ import {
   BarChartOutlined
 } from "@mui/icons-material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { CircularProgress } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../../utils/getSubscriptionColors";
 
 function UserSettings() {
@@ -166,7 +167,15 @@ function UserSettings() {
         </div>
       ) : (
         // Render specific setting component via Outlet
-        <Outlet />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-32">
+              <CircularProgress size={24} style={{ color: colors.fourth }} />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       )}
     </>
   );

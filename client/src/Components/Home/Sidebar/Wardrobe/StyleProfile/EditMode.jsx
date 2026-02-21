@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Check, Edit } from "@mui/icons-material";
+import { Check, Edit, InfoOutlined } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscriptionColors";
 import ChipField from "../shared/ChipField";
@@ -7,8 +7,50 @@ import ChipField from "../shared/ChipField";
 /* ── Hero fields get larger tiles (span 2 cols) ── */
 const HERO_KEYS = new Set(["bodyShape", "styleVibe"]);
 
+/* ── AI insight mappings ── */
+
+// Which pipeline analyzers map to which section
+const SECTION_ANALYZERS = {
+  about: ["body", "skin", "face"],
+  style: [],
+  details: ["face_geo", "hair"],
+};
+
+// Which description keys to show per section
+const SECTION_DESC_KEYS = {
+  about: ["body"],
+  style: ["colorSeason"],
+  details: ["face", "hair"],
+};
+
+// Which tiles get a detected-color hex dot
+const TILE_HEX_GETTER = {
+  skinTone: (dna) => dna?.skin?.hex,
+  hairColor: (dna) => dna?.hair?.color?.hex,
+};
+
+function getSectionConfidence(sectionId, confidence) {
+  if (!confidence) return null;
+  const keys = SECTION_ANALYZERS[sectionId] || [];
+  const vals = keys.map((k) => confidence[k]).filter((v) => typeof v === "number");
+  if (vals.length === 0) return null;
+  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100);
+}
+
+function getSectionDescription(sectionId, descriptions) {
+  if (!descriptions) return null;
+  const keys = SECTION_DESC_KEYS[sectionId] || [];
+  const parts = keys.map((k) => descriptions[k]).filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+function formatSubSeason(s) {
+  if (!s) return null;
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /* ── Bento tile ── */
-function BentoTile({ field, value, isHero, isEditing, onTap, colors }) {
+function BentoTile({ field, value, isHero, isEditing, onTap, colors, hexColor }) {
   const hasValue = !!value;
 
   return (
@@ -68,6 +110,15 @@ function BentoTile({ field, value, isHero, isEditing, onTap, colors }) {
         </p>
       )}
 
+      {/* Detected color swatch */}
+      {hexColor && (
+        <div
+          className="absolute bottom-2 right-5 w-2.5 h-2.5 rounded-full"
+          style={{ backgroundColor: hexColor, border: "1px solid rgba(255,255,255,0.15)" }}
+          title={`Detected: ${hexColor}`}
+        />
+      )}
+
       {/* Filled indicator dot */}
       {hasValue && (
         <div
@@ -76,6 +127,105 @@ function BentoTile({ field, value, isHero, isEditing, onTap, colors }) {
         />
       )}
     </button>
+  );
+}
+
+/* ── Color Palette Strip ── */
+function PaletteStrip({ colorSeason, colors }) {
+  if (!colorSeason?.palette?.length) return null;
+
+  const subSeason = formatSubSeason(colorSeason.subSeason);
+
+  return (
+    <div
+      className="mt-2 px-3 py-2.5 rounded-xl"
+      style={{
+        backgroundColor: toRgba(colors.fourth, 0.03),
+        border: `1px solid ${toRgba(colors.fourth, 0.08)}`,
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="text-[9px] font-semibold uppercase tracking-wider"
+          style={{ color: toRgba(colors.fourth, 0.4) }}
+        >
+          Your Colors
+        </span>
+        {subSeason && (
+          <span
+            className="text-[9px] px-1.5 py-0.5 rounded-full"
+            style={{
+              backgroundColor: toRgba(colors.fourth, 0.08),
+              color: toRgba(colors.fourth, 0.6),
+            }}
+          >
+            {subSeason}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {colorSeason.palette.map((hex, i) => (
+          <div
+            key={i}
+            className="w-7 h-7 rounded-full flex-shrink-0 transition-transform hover:scale-110"
+            style={{
+              backgroundColor: hex,
+              border: "1.5px solid rgba(255,255,255,0.12)",
+              boxShadow: `0 1px 4px ${hex}40`,
+            }}
+            title={hex}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Body Proportions Card ── */
+function ProportionsCard({ body, colors }) {
+  if (!body) return null;
+  const { shoulderHipRatio, waistHipRatio, torsoLegRatio } = body;
+  if (!shoulderHipRatio && !waistHipRatio && !torsoLegRatio) return null;
+
+  const stats = [
+    shoulderHipRatio && { label: "Shoulder : Hip", value: shoulderHipRatio.toFixed(2) },
+    waistHipRatio && { label: "Waist : Hip", value: waistHipRatio.toFixed(2) },
+    torsoLegRatio && { label: "Torso : Leg", value: torsoLegRatio.toFixed(2) },
+  ].filter(Boolean);
+
+  return (
+    <div
+      className="mt-2 px-3 py-2.5 rounded-xl"
+      style={{
+        backgroundColor: toRgba(colors.fourth, 0.03),
+        border: `1px solid ${toRgba(colors.fourth, 0.08)}`,
+      }}
+    >
+      <span
+        className="text-[9px] font-semibold uppercase tracking-wider"
+        style={{ color: toRgba(colors.fourth, 0.4) }}
+      >
+        Body Proportions
+      </span>
+      <div className="flex items-center gap-3 mt-1.5">
+        {stats.map((s) => (
+          <div key={s.label} className="flex flex-col items-center">
+            <span
+              className="text-base font-bold tabular-nums"
+              style={{ color: colors.fourth }}
+            >
+              {s.value}
+            </span>
+            <span
+              className="text-[8px] tracking-wide"
+              style={{ color: toRgba(colors.fourth, 0.4) }}
+            >
+              {s.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -88,6 +238,7 @@ function EditMode({
   saving,
   allRequiredFilled,
   completionPct = 0,
+  styleDna,
 }) {
   const colors = useSubscriptionColors();
   const [editingField, setEditingField] = useState(null);
@@ -148,10 +299,13 @@ function EditMode({
         {/* ── Sections with bento grids ── */}
         {sections.map((section) => {
           const sectionFilled = section.fields.every((f) => formData[f.key]);
+          const conf = getSectionConfidence(section.id, styleDna?.confidence);
+          const desc = getSectionDescription(section.id, styleDna?.descriptions);
+
           return (
             <div key={section.id}>
-              {/* Section label */}
-              <div className="flex items-center gap-2 mb-2 px-0.5">
+              {/* Section label + confidence */}
+              <div className="flex items-center gap-2 mb-1 px-0.5">
                 {sectionFilled ? (
                   <div
                     className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
@@ -171,17 +325,39 @@ function EditMode({
                 >
                   {section.title}
                 </span>
+                {conf !== null && (
+                  <span
+                    className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: toRgba(colors.fourth, conf >= 80 ? 0.1 : 0.06),
+                      color: toRgba(colors.fourth, conf >= 80 ? 0.6 : 0.4),
+                    }}
+                  >
+                    {conf}% confidence
+                  </span>
+                )}
                 <div
                   className="flex-1 h-px ml-1"
                   style={{ backgroundColor: toRgba(colors.fourth, 0.1) }}
                 />
               </div>
 
+              {/* AI description */}
+              {desc && (
+                <p
+                  className="text-[10px] leading-relaxed px-7 mb-2"
+                  style={{ color: toRgba(colors.fourth, 0.35) }}
+                >
+                  {desc}
+                </p>
+              )}
+
               {/* Bento grid — 2 cols on mobile, 3 cols on wider screens */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {section.fields.map((field) => {
                   const isHero = HERO_KEYS.has(field.key);
                   const isEditing = editingField === field.key;
+                  const hexColor = TILE_HEX_GETTER[field.key]?.(styleDna) || null;
 
                   return (
                     <React.Fragment key={field.key}>
@@ -192,6 +368,7 @@ function EditMode({
                         isEditing={isEditing}
                         onTap={() => toggleEdit(field.key)}
                         colors={colors}
+                        hexColor={hexColor}
                       />
 
                       {/* Inline edit — spans full grid width */}
@@ -221,9 +398,30 @@ function EditMode({
                   );
                 })}
               </div>
+
+              {/* Section-specific AI extras */}
+              {section.id === "about" && styleDna?.body && (
+                <ProportionsCard body={styleDna.body} colors={colors} />
+              )}
+              {section.id === "style" && styleDna?.colorSeason && (
+                <PaletteStrip colorSeason={styleDna.colorSeason} colors={colors} />
+              )}
             </div>
           );
         })}
+
+        {/* ── AI disclaimer ── */}
+        {styleDna && (
+          <div className="flex items-center justify-center gap-1.5 pt-1 pb-2">
+            <InfoOutlined style={{ fontSize: 11, color: toRgba(colors.fourth, 0.25) }} />
+            <span
+              className="text-[9px]"
+              style={{ color: toRgba(colors.fourth, 0.25) }}
+            >
+              AI analysis can make mistakes — tap any field to correct it
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Sticky save bar ── */}

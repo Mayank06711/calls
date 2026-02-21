@@ -7,6 +7,7 @@ import { useSubscriptionColors, toRgba } from "../../../../../utils/getSubscript
 import { fetchProductCatalogThunk } from "../../../../../redux/thunks/wardrobe.thunks";
 import PremiumGate from "../shared/PremiumGate";
 import ProductRecCard from "../shared/ProductRecCard";
+import { useWardrobeAIContext } from "../../../../../utils/wardrobeAIContext";
 
 const CATEGORY_TABS = [
   { key: "all", label: "All" },
@@ -24,6 +25,17 @@ function Shop() {
   const { loading, products } = useSelector((s) => s.wardrobe.productCatalog);
   const gender = useSelector((s) => s.wardrobe.styleProfile?.data?.gender);
   const [category, setCategory] = useState("all");
+
+  useWardrobeAIContext("wardrobe/shop", (ws) => {
+    const prods = ws.productCatalog?.products || [];
+    let desc = `User is browsing the product shop (AI-recommended products). ${prods.length} products shown.`;
+    if (prods.length > 0) {
+      const tc = {};
+      prods.forEach((p) => { tc[p.type || "Other"] = (tc[p.type || "Other"] || 0) + 1; });
+      desc += ` Categories: ${Object.entries(tc).map(([t, c]) => `${c} ${t.toLowerCase()}`).join(", ")}.`;
+    }
+    return desc;
+  }, [products?.length]);
 
   useEffect(() => {
     const params = {};
