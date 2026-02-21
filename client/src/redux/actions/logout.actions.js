@@ -35,8 +35,8 @@ export const logout = () => async (dispatch) => {
     dispatch(logoutSuccess());
     dispatch(showNotification('Logged out successfully', 200));
     
-    // Redirect to login page (you can handle this in the component)
-    window.location.href = '/login';
+    // Redirect to landing page (LandingPage shows when userId is null)
+    window.location.href = '/';
   } catch (error) {
     dispatch(logoutFailure(error));
     dispatch(showNotification(error.message || 'Logout failed', error.statusCode || 500));

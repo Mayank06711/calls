@@ -322,6 +322,20 @@ export const googleAuthThunk = (idToken) => async (dispatch) => {
   }
 };
 
+// Cleans all auth + user data from localStorage
+const cleanupLocalStorage = () => {
+  localStorage.removeItem("userId");
+  localStorage.removeItem("token");
+  localStorage.removeItem("mobNum");
+  localStorage.removeItem("isAlreadyVerified");
+  localStorage.removeItem("isEmailVerified");
+  localStorage.removeItem("isTourCompleted");
+  localStorage.removeItem("fullName");
+  localStorage.removeItem("userInfo");
+  localStorage.removeItem("settingsUpdatedAt");
+  console.log("[logoutThunk] Cleared all auth/user data from localStorage");
+};
+
 export const logoutThunk = () => async (dispatch) => {
   dispatch({ type: 'LOGOUT_REQUEST' });
   try {
@@ -329,42 +343,41 @@ export const logoutThunk = () => async (dispatch) => {
       HTTP_METHODS.POST,
       ENDPOINTS.USERS.LOGOUT
     );
- 
+
     if (error) {
-      dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
-      dispatch(showNotification(error.message, error.statusCode));
+      // Server returned an error but responded — still clean up client side
+      cleanupLocalStorage();
+      dispatch({ type: 'LOGOUT_SUCCESS' });
+      dispatch(clearUserId());
+      dispatch(showNotification(error.message || "Logged out", error.statusCode));
+      window.location.href = '/';
       return;
     }
     if (data.success) {
-      // Clear local storage
-      localStorage.removeItem("userId");
-      localStorage.removeItem("mobNum");
-      localStorage.removeItem("token");
-      localStorage.removeItem("isAlreadyVerified");
-      localStorage.removeItem("isEmailVerified"); 
-      localStorage.removeItem("isTourCompleted");
-      // add more
-
-      console.log("[logoutThunk] Cleared userId, token, and related keys from localStorage");
+      cleanupLocalStorage();
 
       // Clear Redux state
       dispatch({ type: 'LOGOUT_SUCCESS' });
       dispatch(clearUserId());
       dispatch(showNotification("Logged out successfully", statusCode));
 
-      // Redirect to login page
-      window.location.href = '/login';
-      // Socket disconnect is now handled by SocketContext
+      // Redirect to landing page (shows LandingPage when userId is null)
+      window.location.href = '/';
+      // Socket disconnect is handled by SocketContext when userId becomes null
     } else {
-      dispatch({ type: 'LOGOUT_FAILURE', payload: 'Logout failed' });
-      dispatch(showNotification("Logout failed", statusCode || 400));
+      cleanupLocalStorage();
+      dispatch({ type: 'LOGOUT_SUCCESS' });
+      dispatch(clearUserId());
+      dispatch(showNotification("Logged out", statusCode || 200));
+      window.location.href = '/';
     }
   } catch (error) {
+    // Server unreachable — still clean up client side so user isn't stuck
     console.error("Error during logout:", error);
-    dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
-    dispatch(showNotification(
-      "Unable to connect to server. Please check your internet connection.",
-      500
-    ));
+    cleanupLocalStorage();
+    dispatch({ type: 'LOGOUT_SUCCESS' });
+    dispatch(clearUserId());
+    dispatch(showNotification("Logged out locally. Server was unreachable.", 200));
+    window.location.href = '/';
   }
 };

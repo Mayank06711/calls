@@ -248,8 +248,53 @@ function StyleProfile() {
 
   if (loading || optionsLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <CircularProgress style={{ color: colors.fourth }} />
+      <div className="w-full h-full overflow-hidden flex flex-col animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex-shrink-0 px-3 sm:px-4 pt-2 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700/40" />
+            <div className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700/40" />
+            <div className="space-y-1">
+              <div className="w-20 h-3.5 rounded bg-gray-200 dark:bg-gray-700/40" />
+              <div className="w-40 h-2.5 rounded bg-gray-200 dark:bg-gray-700/30" />
+            </div>
+          </div>
+        </div>
+        <div className="h-[2px] bg-gray-200 dark:bg-gray-700/30" />
+        {/* Action bar skeleton */}
+        <div className="flex-shrink-0 px-4 py-2 flex items-center justify-center gap-4 border-b border-gray-100 dark:border-gray-700/20">
+          <div className="w-36 h-3 rounded bg-gray-200 dark:bg-gray-700/30" />
+          <div className="w-28 h-3 rounded bg-gray-200 dark:bg-gray-700/30" />
+        </div>
+        {/* Sections skeleton */}
+        <div className="flex-1 overflow-hidden px-3 sm:px-4 py-3 space-y-5">
+          {[0, 1, 2].map((s) => (
+            <div key={s}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-4 h-4 rounded-full bg-gray-200 dark:bg-gray-700/40" />
+                <div className="w-24 h-3.5 rounded bg-gray-200 dark:bg-gray-700/40" />
+                <div className="w-16 h-3 rounded-full bg-gray-200 dark:bg-gray-700/30 ml-auto" />
+              </div>
+              <div className="w-full h-2.5 rounded bg-gray-100 dark:bg-gray-700/20 mb-2" />
+              {/* Bento grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="col-span-2 h-16 rounded-xl bg-gray-100 dark:bg-gray-700/20" />
+                {[0, 1, 2].map((t) => (
+                  <div key={t} className="h-14 rounded-xl bg-gray-100 dark:bg-gray-700/20" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Save bar skeleton */}
+        <div className="flex-shrink-0 px-4 py-2.5 flex items-center gap-3 border-t border-gray-100 dark:border-gray-700/20">
+          <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700/40" />
+          <div className="flex-1 space-y-1">
+            <div className="w-20 h-2.5 rounded bg-gray-200 dark:bg-gray-700/30" />
+            <div className="w-32 h-2 rounded bg-gray-100 dark:bg-gray-700/20" />
+          </div>
+          <div className="w-16 h-8 rounded-lg bg-gray-200 dark:bg-gray-700/40" />
+        </div>
       </div>
     );
   }

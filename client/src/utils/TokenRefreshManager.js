@@ -36,11 +36,11 @@ class TokenRefreshManager {
         showNotification("Your Previus session expired, please login.", 401)
       );
 
-      // Force redirect to login — Redux route guard may not trigger
+      // Force redirect to landing page — Redux route guard may not trigger
       // if a component's error UI is already rendered
       setTimeout(() => {
         if (window.location.pathname !== "/login" && window.location.pathname !== "/") {
-          window.location.href = "/login";
+          window.location.href = "/";
         }
       }, 500);
     } catch (error) {
