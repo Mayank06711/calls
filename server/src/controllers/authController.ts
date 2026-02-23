@@ -750,7 +750,7 @@ class Authentication {
         await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
       };
 
-      // ─── verifyOnly: link email to authenticated user, no login flow ───
+      // ─── verifyOnly: verify email for authenticated user, no login flow ───
       if (verifyOnly) {
         const authHeader = req.header("Authorization");
         const accessToken = authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
@@ -762,13 +762,23 @@ class Authentication {
           return res.status(401).json(errorResponse(401, "Invalid or expired session. Please login again."));
         }
 
+        const currentUser = await UserModel.findById(tokenResult.data.userId);
+        if (!currentUser) {
+          return res.status(404).json(errorResponse(404, "User not found."));
+        }
+
+        // If user already has an email, only allow verifying that SAME email (prevent overwrite)
+        if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+          return res.status(400).json(errorResponse(400, "You can only verify your existing email address. Contact support to change your email."));
+        }
+
         // Check if another user already owns this email
         const existingOwner = await UserModel.findOne({ email: normalizedEmail, _id: { $ne: tokenResult.data.userId } });
         if (existingOwner) {
           return res.status(409).json(errorResponse(409, "This email is already linked to another account."));
         }
 
-        // Update the authenticated user's email
+        // Set email (if new) and mark verified — never overwrites a different existing email
         await UserModel.findByIdAndUpdate(tokenResult.data.userId, {
           email: normalizedEmail,
           isEmailVerified: true,

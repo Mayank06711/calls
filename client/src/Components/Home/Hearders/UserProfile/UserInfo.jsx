@@ -24,7 +24,7 @@ function UserInfo() {
   const [avatarImage, setAvatarImage] = useState(null);
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(userInfo?.data?.email || "");
   const [emailError, setEmailError] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
   const [emailOtpSent, setEmailOtpSent] = useState(false);
@@ -243,7 +243,7 @@ function UserInfo() {
       }));
       if (result.success) {
         setShowEmailVerification(false);
-        setEmail("");
+        setEmail(userData.email || "");
         setEmailOtp("");
         setEmailOtpSent(false);
         setEmailOtpRef(null);
@@ -424,13 +424,14 @@ function UserInfo() {
                     <TextField
                       fullWidth size="small" variant="outlined" placeholder="Enter your email address"
                       value={email} onChange={handleEmailChange} error={!!emailError} helperText={emailError}
+                      InputProps={{ readOnly: !!userData.email }}
                       sx={{
                         "& .MuiOutlinedInput-root": { "& fieldset": { borderColor: toRgba(colors.fourth, 0.5) }, "&:hover fieldset": { borderColor: colors.fourth }, "&.Mui-focused fieldset": { borderColor: colors.fourth }, "& input": { color: isDarkMode ? "#ffffff" : "#000000" } },
                         "& .MuiFormHelperText-root": { color: "error.main" },
                       }}
                     />
                     <div className="flex justify-end gap-2">
-                      <Button size="small" onClick={() => { setShowEmailVerification(false); setEmail(""); setEmailError(""); }} sx={{ color: "gray", "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" } }}>Cancel</Button>
+                      <Button size="small" onClick={() => { setShowEmailVerification(false); setEmail(userData.email || ""); setEmailError(""); }} sx={{ color: "gray", "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" } }}>Cancel</Button>
                       <Button variant="contained" size="small" onClick={handleSendEmailOtp} disabled={!email || !!emailError || sendingEmailOtp} sx={{ backgroundColor: colors.fourth, "&:hover": { backgroundColor: toRgba(colors.fourth, 0.87) }, "&.Mui-disabled": { backgroundColor: toRgba(colors.fourth, 0.5) } }}>
                         {sendingEmailOtp ? "Sending..." : "Send OTP"}
                       </Button>
@@ -649,7 +650,7 @@ function UserInfo() {
                           }}
                         />
                         <div className="flex justify-end gap-2">
-                          <Button size="small" onClick={() => { setShowEmailVerification(false); setEmail(""); setEmailError(""); }} sx={{ color: "gray", "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" } }}>Cancel</Button>
+                          <Button size="small" onClick={() => { setShowEmailVerification(false); setEmail(userData.email || ""); setEmailError(""); }} sx={{ color: "gray", "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" } }}>Cancel</Button>
                           <Button variant="contained" size="small" onClick={handleSendEmailOtp} disabled={!email || !!emailError || sendingEmailOtp} sx={{ backgroundColor: colors.fourth, "&:hover": { backgroundColor: toRgba(colors.fourth, 0.87) }, "&.Mui-disabled": { backgroundColor: toRgba(colors.fourth, 0.5) } }}>
                             {sendingEmailOtp ? "Sending..." : "Send OTP"}
                           </Button>
