@@ -9,7 +9,6 @@ function WardrobeCard({ notification, onDismiss, colors }) {
   const { id, title, message, createdAt, wardrobe, extLink } = notification;
   const timeAgo = getTimeAgo(createdAt);
 
-  // Determine icon/color based on action type
   const actionType = wardrobe?.actionType || 'default';
   const isNewItem = actionType === 'new_item' || actionType === 'batch_add';
   const isPairings = actionType === 'pairings_generated';
@@ -23,18 +22,17 @@ function WardrobeCard({ notification, onDismiss, colors }) {
 
   return (
     <div
-      className={`relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white ${extLink ? 'cursor-pointer' : ''}`}
+      className={`relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white group ${extLink ? 'cursor-pointer' : ''}`}
       style={{
-        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
-        borderLeft: `3px solid ${accentColor}`,
+        border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+        borderLeft: `4px solid ${accentColor}`,
       }}
       onClick={handleClick}
     >
-      {/* Dismiss */}
       <IconButton
         size="small"
         onClick={(e) => { e.stopPropagation(); onDismiss(id); }}
-        className="!absolute !top-2 !right-2"
+        className="!absolute !top-2 !right-2 !opacity-0 group-hover:!opacity-100 !transition-opacity"
         sx={{
           color: 'gray',
           '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
@@ -43,25 +41,22 @@ function WardrobeCard({ notification, onDismiss, colors }) {
         <Close fontSize="small" />
       </IconButton>
 
-      <div className="flex gap-3 pr-8">
-        {/* Icon */}
+      <div className="flex gap-3 pr-6">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${toRgba(accentColor, 0.2)}` }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ backgroundColor: `${toRgba(accentColor, 0.15)}` }}
         >
-          <Icon style={{ color: accentColor, fontSize: 20 }} />
+          <Icon style={{ color: accentColor, fontSize: 18 }} />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-sm dark:text-dark-text text-light-text">
             {title || 'Wardrobe Update'}
           </h4>
-          <p className="text-sm dark:text-gray-400 text-gray-500 mt-1 leading-relaxed">
+          <p className="text-sm dark:text-gray-400 text-gray-500 mt-0.5 leading-relaxed">
             {message}
           </p>
 
-          {/* Thumbnails preview if available */}
           {wardrobe?.thumbnails && wardrobe.thumbnails.length > 0 && (
             <div className="flex gap-1.5 mt-2">
               {wardrobe.thumbnails.slice(0, 4).map((url, i) => (
@@ -69,26 +64,24 @@ function WardrobeCard({ notification, onDismiss, colors }) {
                   key={i}
                   src={url}
                   alt=""
-                  className="w-10 h-10 rounded-lg object-cover"
+                  className="w-9 h-9 rounded-md object-cover"
                   style={{ border: `1px solid ${toRgba(colors.fourth, 0.2)}` }}
                 />
               ))}
             </div>
           )}
 
-          {/* Badge + Timestamp */}
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-2 mt-2">
             <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
+              className="text-[11px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
               style={{
-                backgroundColor: `${toRgba(accentColor, 0.15)}`,
+                backgroundColor: `${toRgba(accentColor, 0.12)}`,
                 color: accentColor,
               }}
             >
-              <Icon sx={{ fontSize: 12 }} />
               {isPairings ? 'Pairings' : isNewItem ? 'Closet' : 'Wardrobe'}
             </span>
-            <span className="text-xs text-gray-400">{timeAgo}</span>
+            <span className="text-[11px] text-gray-400">{timeAgo}</span>
           </div>
         </div>
       </div>

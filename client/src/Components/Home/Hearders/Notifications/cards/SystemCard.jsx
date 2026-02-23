@@ -1,22 +1,28 @@
 import React from 'react';
-import { Close, Warning, Info, Security } from '@mui/icons-material';
+import { Close, WarningAmber, InfoOutlined, GppBad } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
 import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 const SEVERITY_CONFIG = {
   info: {
-    icon: Info,
+    icon: InfoOutlined,
     color: '#3B82F6',
+    bg: '#EFF6FF',
+    darkBg: 'rgba(59,130,246,0.12)',
     label: 'Info',
   },
   warning: {
-    icon: Warning,
-    color: '#F59E0B',
+    icon: WarningAmber,
+    color: '#D97706',
+    bg: '#FFFBEB',
+    darkBg: 'rgba(217,119,6,0.12)',
     label: 'Warning',
   },
   critical: {
-    icon: Security,
-    color: '#EF4444',
+    icon: GppBad,
+    color: '#DC2626',
+    bg: '#FEF2F2',
+    darkBg: 'rgba(220,38,38,0.12)',
     label: 'Critical',
   },
 };
@@ -25,22 +31,21 @@ function SystemCard({ notification, onDismiss, colors }) {
   const { id, severity, title, message, createdAt } = notification;
   const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.info;
   const SeverityIcon = config.icon;
-
   const timeAgo = getTimeAgo(createdAt);
 
   return (
     <div
-      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
+      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white group"
       style={{
-        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
-        borderLeft: `3px solid ${config.color}`,
+        border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+        borderLeft: `4px solid ${config.color}`,
       }}
     >
-      {/* Dismiss Button */}
+      {/* Dismiss */}
       <IconButton
         size="small"
         onClick={() => onDismiss(id)}
-        className="!absolute !top-2 !right-2"
+        className="!absolute !top-2 !right-2 !opacity-0 group-hover:!opacity-100 !transition-opacity"
         sx={{
           color: 'gray',
           '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
@@ -49,33 +54,41 @@ function SystemCard({ notification, onDismiss, colors }) {
         <Close fontSize="small" />
       </IconButton>
 
-      <div className="flex gap-3 pr-8">
-        {/* Severity Icon */}
+      <div className="flex gap-3 pr-6">
+        {/* Icon */}
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: `${toRgba(config.color, 0.2)}` }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ backgroundColor: config.darkBg }}
         >
-          <SeverityIcon style={{ color: config.color, fontSize: 20 }} />
+          <SeverityIcon style={{ color: config.color, fontSize: 18 }} />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm dark:text-dark-text text-light-text">{title}</h4>
-          <p className="text-sm dark:text-gray-400 text-gray-500 mt-1 leading-relaxed">{message}</p>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h4 className="font-semibold text-sm dark:text-dark-text text-light-text truncate">
+              {title || message}
+            </h4>
+          </div>
 
-          {/* Severity Badge + Timestamp */}
-          <div className="flex items-center gap-3 mt-2">
+          {title && title !== message && (
+            <p className="text-sm dark:text-gray-400 text-gray-500 leading-relaxed">
+              {message}
+            </p>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center gap-2 mt-2">
             <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
+              className="text-[11px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide"
               style={{
-                backgroundColor: `${toRgba(config.color, 0.15)}`,
+                backgroundColor: config.darkBg,
                 color: config.color,
               }}
             >
-              <SeverityIcon sx={{ fontSize: 12 }} />
               {config.label}
             </span>
-            <span className="text-xs text-gray-400">{timeAgo}</span>
+            <span className="text-[11px] text-gray-400">{timeAgo}</span>
           </div>
         </div>
       </div>

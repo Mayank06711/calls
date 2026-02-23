@@ -31,10 +31,8 @@ function SocialCard({ notification, onDismiss, colors }) {
   const user = notification.user || { name: title || message || 'Someone', avatar: '' };
   const config = ACTION_CONFIG[action] || ACTION_CONFIG.like;
   const ActionIcon = config.icon;
-
   const timeAgo = getTimeAgo(createdAt);
 
-  // Generate initials for avatar fallback
   const initials = (user.name || 'U')
     .split(' ')
     .map((n) => n[0])
@@ -43,17 +41,16 @@ function SocialCard({ notification, onDismiss, colors }) {
 
   return (
     <div
-      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
+      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white group"
       style={{
-        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
-        borderLeft: `3px solid ${colors.fourth}`,
+        border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+        borderLeft: `4px solid ${config.color}`,
       }}
     >
-      {/* Dismiss Button */}
       <IconButton
         size="small"
         onClick={() => onDismiss(id)}
-        className="!absolute !top-2 !right-2"
+        className="!absolute !top-2 !right-2 !opacity-0 group-hover:!opacity-100 !transition-opacity"
         sx={{
           color: 'gray',
           '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
@@ -62,20 +59,19 @@ function SocialCard({ notification, onDismiss, colors }) {
         <Close fontSize="small" />
       </IconButton>
 
-      <div className="flex gap-3 pr-8">
+      <div className="flex gap-3 pr-6">
         {/* Avatar */}
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-semibold"
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-semibold overflow-hidden"
           style={{
             background: user.avatar
               ? `url(${user.avatar}) center/cover`
-              : `linear-gradient(135deg, ${colors.fourth}, ${colors.first || colors.fourth})`,
+              : `linear-gradient(135deg, ${config.color}, ${toRgba(config.color, 0.7)})`,
           }}
         >
           {!user.avatar && initials}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-sm dark:text-dark-text text-light-text">
             <span className="font-semibold">{user.name}</span>{' '}
@@ -88,10 +84,9 @@ function SocialCard({ notification, onDismiss, colors }) {
             </p>
           )}
 
-          {/* Action Icon + Timestamp */}
           <div className="flex items-center gap-2 mt-2">
-            <ActionIcon sx={{ fontSize: 14, color: config.color }} />
-            <span className="text-xs text-gray-400">{timeAgo}</span>
+            <ActionIcon sx={{ fontSize: 13, color: config.color }} />
+            <span className="text-[11px] text-gray-400">{timeAgo}</span>
           </div>
         </div>
       </div>

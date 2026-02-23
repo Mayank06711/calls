@@ -4,23 +4,21 @@ import { IconButton } from '@mui/material';
 import { toRgba } from '../../../../../utils/getSubscriptionColors';
 
 function PromotionCard({ notification, onDismiss, colors }) {
-  const { id, title, description, discount, expiresIn, createdAt } = notification;
-
+  const { id, title, description, message, discount, expiresIn, createdAt } = notification;
   const timeAgo = getTimeAgo(createdAt);
 
   return (
     <div
-      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white"
+      className="relative p-4 rounded-xl transition-all duration-200 hover:shadow-md dark:bg-dark-secondary bg-white group"
       style={{
-        border: `1px solid ${toRgba(colors.fourth, 0.2)}`,
-        borderLeft: `3px solid ${colors.fourth}`,
+        border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+        borderLeft: `4px solid ${colors.fourth}`,
       }}
     >
-      {/* Dismiss Button */}
       <IconButton
         size="small"
         onClick={() => onDismiss(id)}
-        className="!absolute !top-2 !right-2"
+        className="!absolute !top-2 !right-2 !opacity-0 group-hover:!opacity-100 !transition-opacity"
         sx={{
           color: 'gray',
           '&:hover': { color: colors.fourth, backgroundColor: `${toRgba(colors.fourth, 0.15)}` },
@@ -29,48 +27,41 @@ function PromotionCard({ notification, onDismiss, colors }) {
         <Close fontSize="small" />
       </IconButton>
 
-      <div className="flex gap-3 pr-8">
-        {/* Promo Icon */}
+      <div className="flex gap-3 pr-6">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{
-            background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.3)}, ${toRgba(colors.fourth, 0.1)})`,
-          }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ backgroundColor: `${toRgba(colors.fourth, 0.15)}` }}
         >
-          <LocalOffer style={{ color: colors.fourth, fontSize: 20 }} />
+          <LocalOffer style={{ color: colors.fourth, fontSize: 18 }} />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-sm dark:text-dark-text text-light-text">{title}</h4>
-          <p className="text-sm dark:text-gray-400 text-gray-500 mt-1 leading-relaxed">
-            {description}
-          </p>
+          <h4 className="font-semibold text-sm dark:text-dark-text text-light-text">
+            {title || message}
+          </h4>
+          {(description || (title && message && title !== message)) && (
+            <p className="text-sm dark:text-gray-400 text-gray-500 mt-0.5 leading-relaxed">
+              {description || message}
+            </p>
+          )}
 
-          {/* Discount Badge + Expiry */}
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-2 mt-2">
             {discount && (
               <span
-                className="text-xs px-2.5 py-1 rounded-full font-bold"
-                style={{
-                  backgroundColor: colors.fourth,
-                  color: '#fff',
-                }}
+                className="text-[11px] px-2 py-0.5 rounded font-bold"
+                style={{ backgroundColor: colors.fourth, color: '#fff' }}
               >
                 {discount}
               </span>
             )}
-
             {expiresIn && (
-              <span className="text-xs flex items-center gap-1" style={{ color: '#F59E0B' }}>
-                <Schedule sx={{ fontSize: 12 }} />
+              <span className="text-[11px] flex items-center gap-1 text-amber-500">
+                <Schedule sx={{ fontSize: 11 }} />
                 Ends in {expiresIn}
               </span>
             )}
+            <span className="text-[11px] text-gray-400">{timeAgo}</span>
           </div>
-
-          {/* Timestamp */}
-          <p className="text-xs text-gray-400 mt-2">{timeAgo}</p>
         </div>
       </div>
     </div>

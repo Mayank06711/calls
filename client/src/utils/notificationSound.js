@@ -107,52 +107,92 @@ export async function playChatSound() {
 }
 
 /**
+ * Register the minimal notification service worker (needed for mobile).
+ * Safe to call multiple times — only registers once.
+ */
+let swRegistration = null;
+async function ensureServiceWorker() {
+  if (swRegistration) return swRegistration;
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    swRegistration = await navigator.serviceWorker.register('/sw-notifications.js');
+    // Listen for navigation messages from SW notification clicks
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'navigate' && event.data.url) {
+        window.dispatchEvent(
+          new CustomEvent('app:navigate', { detail: { path: event.data.url } })
+        );
+      }
+    });
+    return swRegistration;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Request browser notification permission.
  * Call this early (e.g. on app mount or after user interaction).
  * Returns the permission status: 'granted', 'denied', or 'default'.
  */
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) return 'unsupported';
-  if (Notification.permission === 'granted') return 'granted';
+  if (Notification.permission === 'granted') {
+    // Also register SW while we have permission
+    ensureServiceWorker();
+    return 'granted';
+  }
   if (Notification.permission === 'denied') return 'denied';
-  return await Notification.requestPermission();
+  const result = await Notification.requestPermission();
+  if (result === 'granted') ensureServiceWorker();
+  return result;
 }
 
 /**
  * Show a system-level browser notification.
- * Works even when the tab is not focused or browser is minimized.
+ * Uses ServiceWorker.showNotification on mobile (new Notification() is deprecated on mobile Chrome).
+ * Falls back to new Notification() on desktop.
  */
-export function showBrowserNotification(title, options = {}) {
+export async function showBrowserNotification(title, options = {}) {
   if (!('Notification' in window)) return null;
   if (Notification.permission !== 'granted') return null;
 
-  try {
-    const notification = new Notification(title, {
-      body: options.body || '',
-      icon: options.icon || '/favicon.ico',
-      badge: options.badge || '/favicon.ico',
-      tag: options.tag || `notif-${Date.now()}`,
-      silent: false, // allow the OS notification sound too
-      requireInteraction: false,
-    });
+  const notifOptions = {
+    body: options.body || '',
+    icon: options.icon || '/favicon.ico',
+    badge: options.badge || '/favicon.ico',
+    tag: options.tag || `notif-${Date.now()}`,
+    silent: false,
+    requireInteraction: false,
+    data: { url: options.url },
+  };
 
-    // Auto-close after 5 seconds
+  // Try ServiceWorker approach first (works on mobile Chrome)
+  try {
+    const reg = await ensureServiceWorker();
+    if (reg) {
+      await reg.showNotification(title, notifOptions);
+      return true;
+    }
+  } catch {
+    // Fall through to legacy approach
+  }
+
+  // Fallback: new Notification() (works on desktop)
+  try {
+    const notification = new Notification(title, notifOptions);
+
     setTimeout(() => notification.close(), 5000);
 
-    // On click: focus existing tab and navigate via custom event (no page reload)
     notification.onclick = function (event) {
       event.preventDefault();
       notification.close();
       window.focus();
-
       if (options.url) {
-        // Dispatch a custom event so React Router can handle navigation
-        // without a full page reload (which would create a new socket)
         window.dispatchEvent(
           new CustomEvent('app:navigate', { detail: { path: options.url } })
         );
       }
-
       if (options.onClick) options.onClick();
     };
 

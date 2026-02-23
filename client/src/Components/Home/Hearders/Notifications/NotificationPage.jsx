@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Notifications,
   DeleteSweep,
   NotificationsNone,
   KeyboardArrowDown,
+  NotificationsActive,
 } from '@mui/icons-material';
 import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 import { useNotifications } from '../../../../hooks/useNotifications';
 import { useAIContext } from '../../../../context/AIContext';
+import { requestNotificationPermission } from '../../../../utils/notificationSound';
 import SuggestionCard from './cards/SuggestionCard';
 import SystemCard from './cards/SystemCard';
 import SocialCard from './cards/SocialCard';
@@ -47,6 +49,19 @@ function NotificationPage() {
   } = useNotifications();
 
   const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // Notification permission state — also check secure context (HTTPS required for push)
+  const isSecureCtx = typeof window !== 'undefined' && window.isSecureContext;
+  const [notifPermission, setNotifPermission] = useState(() => {
+    if (!isSecureCtx) return 'insecure';
+    if (!('Notification' in window)) return 'unsupported';
+    return Notification.permission;
+  });
+
+  const handleEnableNotifications = useCallback(async () => {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+  }, []);
 
   // Mark all as read when opening the notification page
   useEffect(() => {
@@ -129,6 +144,75 @@ function NotificationPage() {
           )}
         </div>
       </div>
+
+      {/* Push notification permission banner */}
+      {notifPermission === 'default' && (
+        <button
+          onClick={handleEnableNotifications}
+          className="w-full flex items-center gap-3 mb-5 px-4 py-3 rounded-xl text-left transition-all hover:opacity-90"
+          style={{
+            background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.15)}, ${toRgba(colors.fourth, 0.05)})`,
+            border: `1px solid ${toRgba(colors.fourth, 0.3)}`,
+          }}
+        >
+          <NotificationsActive style={{ color: colors.fourth, fontSize: 22 }} />
+          <div className="flex-1">
+            <p className="text-sm font-medium dark:text-white text-gray-900">Enable push notifications</p>
+            <p className="text-xs dark:text-gray-400 text-gray-500">Tap to get notified even when the app is in background</p>
+          </div>
+          <span
+            className="text-xs px-3 py-1 rounded-full font-medium"
+            style={{ backgroundColor: colors.fourth, color: '#fff' }}
+          >
+            Enable
+          </span>
+        </button>
+      )}
+
+      {notifPermission === 'denied' && (
+        <div
+          className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl"
+          style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}
+        >
+          <NotificationsNone style={{ color: '#ef4444', fontSize: 20 }} />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Push notifications are blocked. Enable them in your browser settings to receive alerts.
+          </p>
+        </div>
+      )}
+
+      {notifPermission === 'unsupported' && (
+        <div
+          className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl"
+          style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+          }}
+        >
+          <NotificationsNone style={{ color: '#f59e0b', fontSize: 20 }} />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Push notifications aren't supported on this browser. Try opening the app in Chrome for popup alerts.
+          </p>
+        </div>
+      )}
+
+      {notifPermission === 'insecure' && (
+        <div
+          className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl"
+          style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+          }}
+        >
+          <NotificationsNone style={{ color: '#f59e0b', fontSize: 20 }} />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Push notifications require HTTPS. Access this app via HTTPS or ngrok to enable popup alerts.
+          </p>
+        </div>
+      )}
 
       {/* Category Dropdown */}
       <div className="mb-5">
