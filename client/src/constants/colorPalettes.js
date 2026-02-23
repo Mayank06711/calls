@@ -30,4 +30,10 @@ export const COLORS = {
       third: 'rgb(74, 125, 105)',
       fourth: 'rgb(38, 78, 65)',
     },
+    ADMIN: {
+      first: 'rgb(220, 225, 240)',
+      second: 'rgb(148, 163, 210)',
+      third: 'rgb(88, 110, 175)',
+      fourth: 'rgb(45, 62, 120)',
+    },
   };

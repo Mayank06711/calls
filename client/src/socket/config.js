@@ -30,6 +30,7 @@ class SocketManager {
     }
 
     const SERVER_URL = env.API_BASE_URL;
+    const isSecure = window.location.protocol === "https:";
     const socketOptions = {
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -37,7 +38,7 @@ class SocketManager {
       reconnectionDelayMax: 15000,
       randomizationFactor: 0.5,
       timeout: 10000,
-      secure: true,
+      secure: isSecure,
       rejectUnauthorized: false,
       autoConnect: false,
       transports: ["websocket", "polling"],

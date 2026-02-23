@@ -21,12 +21,22 @@ export const handleApiError = async (error, retryRequest = null) => {
     let errorMessage;
     let errorData = error.response.data;
 
+    // Skip token refresh for auth routes — user isn't logged in yet
+    const isAuthRoute = error.config?.url && (
+      error.config.url.includes("/auth/verify_otp") ||
+      error.config.url.includes("/auth/generate_otp") ||
+      error.config.url.includes("/auth/verify_email_otp") ||
+      error.config.url.includes("/auth/generate_email_otp") ||
+      error.config.url.includes("/auth/google") ||
+      error.config.url.includes("/auth/refresh_token")
+    );
+
     // Only handle 401 errors for token refresh
     if (
       error.response.status === 401 &&
       error.config &&
       !error.config._retry &&
-      error.config.url !== ENDPOINTS.AUTH.REFRESH_TOKEN
+      !isAuthRoute
     ) {
       error.config._retry = true;
 

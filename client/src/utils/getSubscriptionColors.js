@@ -23,12 +23,17 @@ export const selectSubscriptionType = (state) => state.subscription.type || 'CAS
 // Selector to check if user is an expert
 export const selectIsExpert = (state) => !!state.auth.userInfo?.isExpert;
 
+// Selector to check if user is an admin
+export const selectIsAdmin = (state) => !!state.auth.userInfo?.isAdmin;
+
 // Hook to get subscription colors from Redux state
-// Experts always get the EXPERT color palette regardless of subscription
+// Priority: Admin > Expert > Subscription type > Casual
 export const useSubscriptionColors = () => {
   const subscriptionType = useSelector(selectSubscriptionType);
   const isExpert = useSelector(selectIsExpert);
+  const isAdmin = useSelector(selectIsAdmin);
 
+  if (isAdmin) return COLORS.ADMIN;
   if (isExpert) return COLORS.EXPERT;
 
   // Convert to uppercase to match COLOR_PALETTES keys
