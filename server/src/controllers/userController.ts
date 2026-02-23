@@ -600,6 +600,7 @@ class User {
         // Account status
         isActive: user.isActive,
         isExpert: user.isExpert,
+        isAdmin: user.isAdmin,
         // Add timestamps
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -761,6 +762,7 @@ class User {
       country: user.country,
       isEmailVerified: user.isEmailVerified,
       isPhoneVerified: user.isPhoneVerified,
+      isAdmin: user.isAdmin,
       // Add subscription data
       isSubscribed: user.isSubscribed,
       subscription: isSubscriptionPopulated(user.currentSubscriptionId)

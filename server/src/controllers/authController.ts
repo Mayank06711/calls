@@ -391,7 +391,7 @@ class Authentication {
   }
 
   private static async _verifyOtp(req: Request, res: Response) {
-    const { referenceId, mobNum, otp } = req.body;
+    const { referenceId, mobNum, otp, verifyOnly } = req.body;
 
     // Validate required parameters
     if (!referenceId || !mobNum || !otp) {
@@ -483,10 +483,44 @@ class Authentication {
         await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
       };
 
+      // ─── verifyOnly: link phone to authenticated user, no login flow ───
+      if (verifyOnly) {
+        // Extract JWT from cookies/headers to identify the authenticated user
+        const authHeader = req.header("Authorization");
+        const accessToken = authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+        if (!accessToken) {
+          return res.status(401).json(errorResponse(401, "Authentication required for phone verification"));
+        }
+        const tokenResult = await AuthServices.verifyJWT_Token(accessToken, "access");
+        if (!tokenResult.data?.userId) {
+          return res.status(401).json(errorResponse(401, "Invalid or expired session. Please login again."));
+        }
+
+        // Check if another user already owns this phone number
+        const existingOwner = await UserModel.findOne({ phoneNumber: formattedRecipientNumber, _id: { $ne: tokenResult.data.userId } });
+        if (existingOwner) {
+          return res.status(409).json(errorResponse(409, "This phone number is already linked to another account."));
+        }
+
+        // Update the authenticated user's phone
+        await UserModel.findByIdAndUpdate(tokenResult.data.userId, {
+          phoneNumber: formattedRecipientNumber,
+          isPhoneVerified: true,
+        });
+        await otpConsumeFn();
+        return res.status(200).json(successResponse({ verified: true }, "Phone number verified successfully"));
+      }
+
       let user = await UserModel.findOne({
         phoneNumber: formattedRecipientNumber,
       }).populate("currentSubscriptionId");
-
+      if(user?.isBlockedByAdmin){
+        // Don't consume OTP — let it expire via TTL so retries
+        // still show "blocked" instead of confusing "Invalid OTP"
+        return res
+          .status(403)
+          .json(errorResponse(403, "Your account has been blocked by admin. Contact support for help."));
+      }
       if (user && user.isPhoneVerified && user.isActive) {
         // Existing verified user — shared post-auth flow handles session limits, tokens, sessions
         await handleExistingUserAuth({
@@ -668,7 +702,7 @@ class Authentication {
   // ─── Email OTP: Verify ──────────────────────────────────────────────────
 
   private static async _verifyEmailOtp(req: Request, res: Response) {
-    const { referenceId, email, otp } = req.body;
+    const { referenceId, email, otp, verifyOnly } = req.body;
 
     if (!referenceId || !email || !otp) {
       return res
@@ -715,6 +749,33 @@ class Authentication {
         await RedisManager.removeDataFromGroup("otp_data", otpKey);
         await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
       };
+
+      // ─── verifyOnly: link email to authenticated user, no login flow ───
+      if (verifyOnly) {
+        const authHeader = req.header("Authorization");
+        const accessToken = authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+        if (!accessToken) {
+          return res.status(401).json(errorResponse(401, "Authentication required for email verification"));
+        }
+        const tokenResult = await AuthServices.verifyJWT_Token(accessToken, "access");
+        if (!tokenResult.data?.userId) {
+          return res.status(401).json(errorResponse(401, "Invalid or expired session. Please login again."));
+        }
+
+        // Check if another user already owns this email
+        const existingOwner = await UserModel.findOne({ email: normalizedEmail, _id: { $ne: tokenResult.data.userId } });
+        if (existingOwner) {
+          return res.status(409).json(errorResponse(409, "This email is already linked to another account."));
+        }
+
+        // Update the authenticated user's email
+        await UserModel.findByIdAndUpdate(tokenResult.data.userId, {
+          email: normalizedEmail,
+          isEmailVerified: true,
+        });
+        await otpConsumeFn();
+        return res.status(200).json(successResponse({ verified: true }, "Email verified successfully"));
+      }
 
       // Look up user by email
       let user = await UserModel.findOne({
@@ -846,6 +907,12 @@ class Authentication {
           }
           await user.save();
         }
+      }
+
+      if (user?.isBlockedByAdmin) {
+        return res
+          .status(403)
+          .json(errorResponse(403, "Your account has been blocked by admin. Contact support for help."));
       }
 
       if (user && user.isActive) {

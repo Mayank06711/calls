@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { PersonOutline, Badge, Wc, CalendarMonth } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { PersonOutline, Badge, Wc, CalendarMonth, WorkspacePremium, ArrowForward, CheckCircle } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
 import SettingTemplate from '../SettingTemplate';
 import { useSubscriptionColors, toRgba } from '../../../../../../../utils/getSubscriptionColors';
@@ -16,7 +17,9 @@ const GENDER_OPTIONS = [
 function AccountSettings() {
   const colors = useSubscriptionColors();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const userInfo = useSelector(state => state.userInfo?.data || {});
+  const isExpert = useSelector(state => state.auth.userInfo?.isExpert);
 
   const [form, setForm] = useState({
     fullName: '',
@@ -159,6 +162,63 @@ function AccountSettings() {
           </button>
         </div>
       </div>
+
+      {/* Expert Application CTA */}
+      {!isExpert && (
+        <div className="mt-8 pt-6 border-t dark:border-gray-700/50 border-gray-200">
+          <h2 className="text-lg font-medium mb-1 dark:text-dark-text text-light-text">Expert Application</h2>
+          <p className="dark:text-gray-400 text-gray-600 mb-4 text-sm">
+            Are you a fashion professional? Apply to become an expert and offer styling consultations.
+          </p>
+          <button
+            onClick={() => navigate('/become-expert')}
+            className="w-full flex items-center gap-3 p-4 rounded-lg border transition-all hover:shadow-md group"
+            style={{
+              borderColor: toRgba(colors.fourth, 0.3),
+              backgroundColor: toRgba(colors.fourth, 0.05),
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: toRgba(colors.fourth, 0.15) }}
+            >
+              <WorkspacePremium style={{ color: colors.fourth, fontSize: 22 }} />
+            </div>
+            <div className="flex-1 text-left">
+              <span className="text-sm font-medium dark:text-dark-text text-light-text block">
+                Become a Fashion Expert
+              </span>
+              <span className="text-xs dark:text-gray-400 text-gray-500">
+                Share your expertise, build your profile, and connect with clients
+              </span>
+            </div>
+            <ArrowForward
+              style={{ color: colors.fourth, fontSize: 18 }}
+              className="flex-shrink-0 group-hover:translate-x-1 transition-transform"
+            />
+          </button>
+        </div>
+      )}
+
+      {isExpert && (
+        <div className="mt-8 pt-6 border-t dark:border-gray-700/50 border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle style={{ color: '#22c55e', fontSize: 20 }} />
+              <span className="text-sm font-medium dark:text-dark-text text-light-text">
+                You are a verified fashion expert
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/expert-profile')}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 hover:opacity-80 transition-all"
+              style={{ color: colors.fourth, backgroundColor: toRgba(colors.fourth, 0.1) }}
+            >
+              Edit Profile <ArrowForward style={{ fontSize: 14 }} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .acct-input:focus {

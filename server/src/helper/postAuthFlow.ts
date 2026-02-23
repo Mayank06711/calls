@@ -275,6 +275,7 @@ export async function handleExistingUserAuth(
       isAlreadyVerified: true,
       token: accessToken,
       fullName: user.fullName,
+      isAdmin: user.isAdmin,
       ...responseExtras,
     };
 
@@ -320,6 +321,7 @@ export async function handleNewUserAuth(
     isAlreadyVerified: false,
     token: accessToken,
     fullName: user.fullName,
+    isAdmin: user.isAdmin,
     ...responseExtras,
   };
 
