@@ -456,6 +456,14 @@ class Middleware {
           errors: [err.message],
         });
       }
+      // Handle Mongoose CastError (invalid ObjectId, etc.)
+      if (err.name === "CastError") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid ID format",
+          errors: [],
+        });
+      }
       if (err.name === "TokenExpiredError") {
         return res
           .status(401)

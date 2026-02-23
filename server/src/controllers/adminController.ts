@@ -83,49 +83,100 @@ class AdminController {
     );
   }
 
-  // Upgrade user to admin
+  // Refresh admin access token
+  private static async _refreshToken(
+    req: express.Request,
+    res: express.Response
+  ) {
+    const incomingRefreshToken =
+      req.cookies?.adminRefreshToken ||
+      (req.headers["x-admin-refresh-token"] as string);
+
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, "No admin refresh token provided");
+    }
+
+    try {
+      const wrappedToken = JWT.verify(
+        incomingRefreshToken,
+        process.env.ADMIN_REFRESH_TOKEN_SECRET!,
+        { algorithms: ["HS512"], complete: true }
+      ) as any;
+
+      const decryptedPayloadStr = AuthServices.decrypt(wrappedToken.payload.data);
+      const decodedToken = JSON.parse(decryptedPayloadStr);
+
+      if (decodedToken.iss !== "KYF-ADMIN" || decodedToken.aud !== "kyf-admin-api") {
+        throw new ApiError(401, "Invalid admin token");
+      }
+
+      const admin = await Admin.findById(decodedToken._id).populate("userId");
+      if (!admin || !admin.isActive) {
+        throw new ApiError(401, "Admin not found or deactivated");
+      }
+
+      const accessToken = AdminController.generateAdminAccessToken(admin, admin.userId);
+
+      return res
+        .status(200)
+        .cookie("adminAccessToken", accessToken, AdminController.options)
+        .json(
+          successResponse(
+            { accessToken },
+            "Admin token refreshed"
+          )
+        );
+    } catch (error: any) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(401, "Invalid or expired admin refresh token");
+    }
+  }
+
+  // Upgrade a user to admin — only superadmin (canManageAdmins) can do this
+  // Body: { targetUserId, adminKey, position? }
   private static async _upgradeUserToAdmin(
     req: express.Request,
     res: express.Response
   ) {
     try {
-      const { userId, adminKey, position = AdminPosition.AGENT } = req.body;
-      // Validate required fields
-      if (!userId || !adminKey) {
-        throw new ApiError(400, "userId and adminKey are required");
+      // Permission check — only superadmin
+      const requestingAdmin = await Admin.findById(req.admin?._id);
+      if (!requestingAdmin?.hasPermission("canManageAdmins")) {
+        throw new ApiError(403, "Only superadmin can create new admins");
       }
+
+      const { targetUserId, adminKey, position = AdminPosition.AGENT } = req.body;
 
       // Validate position enum
       if (!Object.values(AdminPosition).includes(position)) {
-        throw new ApiError(400, "Invalid admin position");
+        throw new ApiError(400, `Invalid position. Must be one of: ${Object.values(AdminPosition).join(", ")}`);
       }
 
-      // Check if user exists
-      const user = await UserModel.findById(userId);
+      // Check if target user exists
+      const user = await UserModel.findById(targetUserId);
       if (!user) {
-        throw new ApiError(404, "User not found");
+        throw new ApiError(404, "Target user not found");
       }
 
-      // Check if user is already an admin
       if (user.isAdmin) {
         throw new ApiError(409, "User is already an admin");
       }
 
-      // Upgrade user to admin
-      const admin = await Admin.upgradeUserToAdmin(userId, adminKey, position);
+      // Require verified email and phone
+      if (!user.isEmailVerified) {
+        throw new ApiError(400, "User must have a verified email before being upgraded to admin");
+      }
+      if (!user.isPhoneVerified) {
+        throw new ApiError(400, "User must have a verified phone number before being upgraded to admin");
+      }
 
-      // Generate tokens
-      const accessToken = AdminController.generateAdminAccessToken(admin, user);
-      const refreshToken = AdminController.generateAdminRefreshToken(admin);
+      // Create admin record for the target user
+      const admin = await Admin.upgradeUserToAdmin(targetUserId, adminKey, position);
+
+      console.log(`[Admin Upgrade] Superadmin ${req.admin?._id} upgraded user ${targetUserId} to ${position}`);
 
       return res
         .status(201)
-        .cookie("adminAccessToken", accessToken, AdminController.options)
-        .cookie(
-          "adminRefreshToken",
-          refreshToken,
-          AdminController.refreshOptions
-        )
         .json(
           successResponse(
             {
@@ -142,6 +193,7 @@ class AdminController {
                 email: user.email,
                 isAdmin: true,
               },
+              upgradedBy: req.admin?._id,
             },
             "User upgraded to admin successfully"
           )
@@ -157,28 +209,34 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const {adminId, adminKey } = req.body;
-
-      if (!adminKey || !adminId) {
-        throw new ApiError(400, "adminKey and Id are required");
+      // VerifyJWT middleware has already confirmed the user is logged in
+      // Now verify they have admin privileges on their user account
+      if (!req.user?.isAdmin) {
+        throw new ApiError(403, "You do not have admin privileges");
       }
 
-      // Find admin by userId
-      const admin = await Admin.findOne({ _id: adminId }).populate(
+      const adminKey = req.body.adminKey?.trim();
+
+      if (!adminKey) {
+        throw new ApiError(400, "Admin key is required");
+      }
+
+      // Find admin record by the logged-in user's ID
+      const admin = await Admin.findOne({ userId: req.user._id }).populate(
         "userId"
       );
       if (!admin) {
-        throw new ApiError(404, "Admin not found");
+        throw new ApiError(404, "Admin record not found for this user");
       }
+      console.log("admin login attempt for user:", req.user._id, "admin._id:", admin._id);
 
       if (!admin.isActive) {
-        throw new ApiError(401, "Admin account is deactivated");
+        throw new ApiError(403, "Admin account is deactivated");
       }
-
       // Verify admin key
       const isKeyValid = await admin.verifyAdminKey(adminKey);
       if (!isKeyValid) {
-        throw new ApiError(401, "Invalid admin key");
+        throw new ApiError(403, "Invalid admin key");
       }
 
       // Update login activity
@@ -206,10 +264,22 @@ class AdminController {
                 _id: admin._id,
                 userId: admin.userId,
                 position: admin.position,
+                permissions: {
+                  canBlockUsers: admin.hasPermission("canBlockUsers"),
+                  canDeleteUsers: admin.hasPermission("canDeleteUsers"),
+                  canManageAdmins: admin.hasPermission("canManageAdmins"),
+                  canViewAnalytics: admin.hasPermission("canViewAnalytics"),
+                  canManageContent: admin.hasPermission("canManageContent"),
+                  canAccessReports: admin.hasPermission("canAccessReports"),
+                  canSendNotifications: admin.hasPermission("canSendNotifications"),
+                  canManageExperts: admin.hasPermission("canManageExperts"),
+                  canManageSubscriptions: admin.hasPermission("canManageSubscriptions"),
+                },
                 lastLoginAt: admin.lastLoginAt,
                 loginCount: admin.loginCount,
               },
               user: admin.userId, // Populated user data
+              token: accessToken, // For header-based auth (admin panel)
             },
             "Admin logged in successfully"
           )
@@ -254,24 +324,30 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const isAdmin = req.user?.isAdmin;
-      if (!isAdmin) {
-        throw new ApiError(401, "Unauthorized access");
-      }
-
-      const admin = await Admin.findById(req.user?._id).populate("userId");
+      const admin = await Admin.findById(req.admin?._id).populate("userId");
       if (!admin) {
         throw new ApiError(404, "Admin not found");
       }
 
       if (!admin.isActive) {
-        throw new ApiError(401, "Admin account is deactivated");
+        throw new ApiError(403, "Admin account is deactivated");
       }
 
       const responseData = {
         admin: {
           _id: admin._id,
           position: admin.position,
+          permissions: {
+            canBlockUsers: admin.hasPermission("canBlockUsers"),
+            canDeleteUsers: admin.hasPermission("canDeleteUsers"),
+            canManageAdmins: admin.hasPermission("canManageAdmins"),
+            canViewAnalytics: admin.hasPermission("canViewAnalytics"),
+            canManageContent: admin.hasPermission("canManageContent"),
+            canAccessReports: admin.hasPermission("canAccessReports"),
+            canSendNotifications: admin.hasPermission("canSendNotifications"),
+            canManageExperts: admin.hasPermission("canManageExperts"),
+            canManageSubscriptions: admin.hasPermission("canManageSubscriptions"),
+          },
           lastLoginAt: admin.lastLoginAt,
           loginCount: admin.loginCount,
           isActive: admin.isActive,
@@ -295,10 +371,7 @@ class AdminController {
   // Block user
   private static async _blockUser(req: express.Request, res: express.Response) {
     try {
-      if (req.user?.isAdmin) {
-        throw new ApiError(401, "Unauthorized access");
-      }
-      const adminId = req.user?._id;
+      const adminId = req.admin?._id;
 
       if (!adminId) {
         throw new ApiError(401, "Unauthorized access");
@@ -360,7 +433,7 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const adminId = req.user?._id;
+      const adminId = req.admin?._id;
       const { userId } = req.params;
 
       if (!adminId) {
@@ -387,6 +460,13 @@ class AdminController {
 
       // Unblock the user
       await admin.unblockUser(userId);
+
+      // Clear the isBlockedByAdmin flag on the user document
+      const user = await UserModel.findById(userId);
+      if (user) {
+        user.isBlockedByAdmin = false;
+        await user.save();
+      }
 
       return res.status(200).json(
         successResponse(
@@ -558,6 +638,84 @@ class AdminController {
     }
   }
 
+  // Reactivate admin (super admin only)
+  private static async _reactivateAdmin(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const adminId = req.admin?._id;
+      const { targetAdminId } = req.params;
+
+      if (!adminId) throw new ApiError(401, "Unauthorized access");
+      if (!targetAdminId) throw new ApiError(400, "Target admin ID is required");
+
+      const currentAdmin = await Admin.findById(adminId);
+      if (!currentAdmin) throw new ApiError(404, "Admin not found");
+      if (!currentAdmin.isActive) throw new ApiError(401, "Admin account is deactivated");
+      if (currentAdmin.position !== AdminPosition.SUPER_ADMIN) {
+        throw new ApiError(403, "Only super admin can reactivate admins");
+      }
+
+      const targetAdmin = await Admin.findById(targetAdminId);
+      if (!targetAdmin) throw new ApiError(404, "Target admin not found");
+
+      if (targetAdmin.isActive) {
+        throw new ApiError(400, "Admin is already active");
+      }
+
+      targetAdmin.isActive = true;
+      await targetAdmin.save();
+
+      // Restore user's admin status
+      await UserModel.findByIdAndUpdate(targetAdmin.userId, { isAdmin: true });
+
+      return res.status(200).json(
+        successResponse(
+          { reactivatedAdminId: targetAdminId },
+          "Admin reactivated successfully"
+        )
+      );
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // Reset admin key (super admin only)
+  private static async _resetAdminKey(
+    req: express.Request,
+    res: express.Response
+  ) {
+    try {
+      const adminId = req.admin?._id;
+      const { targetAdminId } = req.params;
+      const { newKey } = req.body;
+
+      if (!adminId) throw new ApiError(401, "Unauthorized access");
+      if (!targetAdminId) throw new ApiError(400, "Target admin ID is required");
+      if (!newKey || newKey.length < 8) throw new ApiError(400, "New key must be at least 8 characters");
+
+      const currentAdmin = await Admin.findById(adminId);
+      if (!currentAdmin) throw new ApiError(404, "Admin not found");
+      if (!currentAdmin.isActive) throw new ApiError(401, "Admin account is deactivated");
+      if (currentAdmin.position !== AdminPosition.SUPER_ADMIN) {
+        throw new ApiError(403, "Only super admin can reset admin keys");
+      }
+
+      const targetAdmin = await Admin.findById(targetAdminId);
+      if (!targetAdmin) throw new ApiError(404, "Target admin not found");
+
+      targetAdmin.adminKey = newKey; // pre-save hook will hash it
+      await targetAdmin.save();
+
+      return res.status(200).json(
+        successResponse({ targetAdminId }, "Admin key reset successfully")
+      );
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
   // Fetch model data (generic data fetching)
   private static async _fetchModelData(
     req: express.Request,
@@ -620,10 +778,10 @@ class AdminController {
     res: express.Response
   ) {
     try {
-      const { eventType, text, extLink, stickyTime } = req.body;
-      // Validate required fields
-      if (!eventType || !text) {
-        throw new ApiError(400, "eventtype and text are required");
+      const { type, message, extLink, stickyTime } = req.body;
+      // Validate required fields (Zod already validates, but just in case)
+      if (!type || !message) {
+        throw new ApiError(400, "type and message are required");
       }
 
       // Validate admin permissions
@@ -648,9 +806,9 @@ class AdminController {
       // Use the notification service with MongoDB persistence
       const notificationService = NotificationService.getInstance();
       const notification = await notificationService.emitBroadcastNotification({
-        type: eventType as any,
-        title: text,
-        message: text,
+        type: type as any,
+        title: message,
+        message: message,
         severity: req.body.severity,
         discount: req.body.discount,
         expiresIn: req.body.expiresIn,
@@ -764,6 +922,7 @@ class AdminController {
   }
 
   // Public methods wrapped with AsyncHandler
+  public static refreshToken = AsyncHandler.wrap(AdminController._refreshToken);
   public static upgradeUserToAdmin = AsyncHandler.wrap(
     AdminController._upgradeUserToAdmin
   );
@@ -781,6 +940,12 @@ class AdminController {
   public static getAllAdmins = AsyncHandler.wrap(AdminController._getAllAdmins);
   public static deactivateAdmin = AsyncHandler.wrap(
     AdminController._deactivateAdmin
+  );
+  public static reactivateAdmin = AsyncHandler.wrap(
+    AdminController._reactivateAdmin
+  );
+  public static resetAdminKey = AsyncHandler.wrap(
+    AdminController._resetAdminKey
   );
   public static fetchModelData = AsyncHandler.wrap(
     AdminController._fetchModelData

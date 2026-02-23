@@ -69,12 +69,14 @@ const UserSchema = z.object({
 const GenerateOtpSchema = z.object({
   mobNum: phoneNumber,
   isTesting: z.boolean({ required_error: "isTesting must be a boolean" }),
+  verifyOnly: z.boolean().optional(),
 });
 
 const VerifyOtpSchema = z.object({
   referenceId: z.string().min(1, "Reference ID is required"),
   mobNum: phoneNumber,
   otp: z.string().min(1, "OTP is required"),
+  verifyOnly: z.boolean().optional(),
 });
 
 const GenerateEmailOtpSchema = z.object({
@@ -86,6 +88,7 @@ const VerifyEmailOtpSchema = z.object({
   referenceId: z.string().min(1, "Reference ID is required"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   otp: z.string().length(6, "OTP must be 6 digits"),
+  verifyOnly: z.boolean().optional(),
 });
 
 const GoogleAuthSchema = z.object({
@@ -148,18 +151,27 @@ const ExpertFeedbackSchema = z.object({
 // ─── Admin Schemas ──────────────────────────────────────────────────────────
 
 const UpgradeToAdminSchema = z.object({
-  userId: mongoId,
-  adminKey: z.string().min(1, "Admin key is required"),
-  position: z.string().optional(),
+  targetUserId: mongoId,
+  adminKey: z.string().min(8, "Admin key must be at least 8 characters"),
+  position: z.enum(["superadmin", "operationshead", "agent"]).optional(),
 });
 
 const AdminLoginSchema = z.object({
-  adminId: z.string().min(1, "Admin ID is required"),
   adminKey: z.string().min(1, "Admin key is required"),
 });
 
 const UserIdParamSchema = z.object({
   userId: mongoId,
+});
+
+const AdminBulkSessionRevokeSchema = z.object({
+  sessionIds: z.array(z.string().min(1)).min(1, "At least one session ID required").max(100, "Maximum 100 sessions per batch"),
+  reason: z.string().optional(),
+});
+
+const AdminSubscriptionExtendSchema = z.object({
+  days: z.number().int().min(1, "Must extend by at least 1 day").max(365, "Maximum 365 days"),
+  reason: z.string().min(1, "Reason is required"),
 });
 
 const SendNotificationSchema = z.object({
@@ -436,6 +448,87 @@ const SendOutfitSchema = z.object({
   skipNotification: z.boolean().optional(),
 });
 
+// ─── Expert Application ─────────────────────────────────────────────────────
+
+const EXPERT_SPECIALIZATIONS = [
+  "Personal Styling",
+  "Bridal & Wedding",
+  "Corporate & Workwear",
+  "Ethnic & Traditional",
+  "Wardrobe Consulting",
+  "Color & Image Analysis",
+  "Men's Fashion",
+  "Occasion & Event Styling",
+  "Sustainable Fashion",
+  "Streetwear & Trends",
+] as const;
+
+const socialLinksSchema = z.object({
+  instagram: z.string().url().optional().or(z.literal("")),
+  linkedin: z.string().url().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal("")),
+}).optional();
+
+const ExpertApplicationSubmitSchema = z.object({
+  personalInfo: z.object({
+    fullName: z.string().min(1, "Full name is required").max(100).trim(),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().optional(),
+    city: z.string().min(1, "City is required").trim(),
+    country: z.string().trim().default("India"),
+    bio: z.string().min(50, "Bio must be at least 50 characters").max(500, "Bio must be under 500 characters").trim(),
+  }),
+  professionalInfo: z.object({
+    experienceInYears: z.number().int().min(0, "Experience cannot be negative").max(50),
+    qualification: z.string().min(1, "Qualification is required").trim(),
+    specializations: z.array(z.enum(EXPERT_SPECIALIZATIONS)).min(1, "Select at least 1 specialization").max(5, "Maximum 5 specializations"),
+    portfolioUrls: z.array(z.string().url()).max(5, "Maximum 5 portfolio items").optional(),
+    socialLinks: socialLinksSchema,
+    previousWork: z.string().max(1000).trim().optional(),
+  }),
+  verification: z.object({
+    degreeFileUrl: z.string().min(1, "Degree/certificate file is required"),
+    idProofUrl: z.string().optional(),
+    agreedToTerms: z.literal(true, { errorMap: () => ({ message: "You must agree to the terms" }) }),
+  }),
+});
+
+const ExpertApplicationUpdateSchema = z.object({
+  personalInfo: z.object({
+    fullName: z.string().min(1).max(100).trim(),
+    email: z.string().email(),
+    phone: z.string().optional(),
+    city: z.string().min(1).trim(),
+    country: z.string().trim(),
+    bio: z.string().min(50).max(500).trim(),
+  }).partial().optional(),
+  professionalInfo: z.object({
+    experienceInYears: z.number().int().min(0).max(50),
+    qualification: z.string().min(1).trim(),
+    specializations: z.array(z.enum(EXPERT_SPECIALIZATIONS)).min(1).max(5),
+    portfolioUrls: z.array(z.string().url()).max(5),
+    socialLinks: socialLinksSchema,
+    previousWork: z.string().max(1000).trim(),
+  }).partial().optional(),
+  verification: z.object({
+    degreeFileUrl: z.string().min(1),
+    idProofUrl: z.string(),
+    agreedToTerms: z.literal(true),
+  }).partial().optional(),
+});
+
+const ExpertApplicationReviewSchema = z.object({
+  status: z.enum(["under_review", "approved", "rejected", "revisions_requested"]),
+  notes: z.string().max(1000).trim().optional(),
+});
+
+const ExpertProfileUpdateSchema = z.object({
+  bio: z.string().min(50).max(500).trim().optional(),
+  specializations: z.array(z.enum(EXPERT_SPECIALIZATIONS)).min(1).max(5).optional(),
+  portfolioUrls: z.array(z.string().url()).max(5).optional(),
+  socialLinks: socialLinksSchema,
+});
+
 // ─── Exports ────────────────────────────────────────────────────────────────
 
 export {
@@ -482,4 +575,12 @@ export {
   CollectionItemsSchema,
   // Sharing
   SendOutfitSchema,
+  // Expert Application
+  ExpertApplicationSubmitSchema,
+  ExpertApplicationUpdateSchema,
+  ExpertApplicationReviewSchema,
+  ExpertProfileUpdateSchema,
+  // Admin Management
+  AdminBulkSessionRevokeSchema,
+  AdminSubscriptionExtendSchema,
 };
