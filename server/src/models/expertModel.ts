@@ -2,15 +2,23 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // Define the Expert interface extending Document
 interface IExpert extends Document {
-  user: mongoose.Schema.Types.ObjectId; // Link to User model
+  user: mongoose.Schema.Types.ObjectId;
   experienceInYears: number;
   bonus: number;
   totalCustomersHandled: number;
   degree: {
-    key: string; // Degree Key (name of the degree)
-    isVerified: boolean; // Degree verification status
+    key: string;
+    isVerified: boolean;
   };
-  qualification: string; // Qualification of the expert
+  qualification: string;
+  bio?: string;
+  specializations?: string[];
+  portfolioUrls?: string[];
+  socialLinks?: {
+    instagram?: string;
+    linkedin?: string;
+    website?: string;
+  };
 }
 
 // Define the Expert Schema
@@ -48,8 +56,23 @@ const ExpertSchema: Schema<IExpert> = new Schema(
       type: String,
       required: true,
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    specializations: [{ type: String }],
+    portfolioUrls: {
+      type: [String],
+      validate: [(v: string[]) => v.length <= 5, "Maximum 5 portfolio items"],
+    },
+    socialLinks: {
+      instagram: { type: String, trim: true },
+      linkedin: { type: String, trim: true },
+      website: { type: String, trim: true },
+    },
   },
-  { timestamps: true } // Automatically add createdAt and updatedAt timestamps
+  { timestamps: true }
 );
 
 // Create the Expert model
