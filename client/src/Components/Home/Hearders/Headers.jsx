@@ -1,20 +1,24 @@
 import React, { useState } from "react";
 import Searchbar from "./Searchbar/Searchbar";
-import { DarkMode, LightMode, MoreVert, Search, Close, Notifications } from "@mui/icons-material";
+import { DarkMode, LightMode, MoreVert, Search, Close, Notifications, Logout } from "@mui/icons-material";
 import { IconButton, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from "@mui/material";
 import UserProfileAvatar from "./UserProfile/UserProfileAvatar";
 import Notification from "./Notifications/NotificationIcon";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import { useNavigate } from "react-router-dom";
 import FeedbackIcon from "@mui/icons-material/Feedback";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { feedbackClick } from "../../../redux/actions";
+import { logoutThunk } from "../../../redux/thunks/login.thunks";
+import { adminLogoutThunk } from "../../../redux/thunks/admin.thunks";
 import KYFLogo from "../../../assets/KYF_Logo1.png";
 
 function Headers({ isDarkMode, setIsDarkMode }) {
   const colors = useSubscriptionColors();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const isLoggingOut = useSelector((state) => state.auth.isLoggingOut);
+  const adminInfo = useSelector((state) => state.admin.adminInfo);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   
@@ -111,13 +115,26 @@ function Headers({ isDarkMode, setIsDarkMode }) {
             {isDarkMode ? <LightMode /> : <DarkMode />}
           </IconButton>
         </Tooltip>
+
+        {/* Admin Logout — only when admin is logged in */}
+        {adminInfo && (
+          <Tooltip title="Admin Logout" arrow placement="bottom">
+            <button
+              onClick={() => dispatch(adminLogoutThunk())}
+              className="flex items-center gap-1 ml-1 px-2.5 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Logout sx={{ fontSize: 18 }} />
+              <span>Admin Logout</span>
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       {/* Mobile Icons - Visible only on mobile */}
       <div className="flex md:hidden items-center gap-1">
         {/* User Profile - Always visible on mobile */}
         <UserProfileAvatar />
-        
+
         {/* Three Dots Menu */}
         <IconButton
           onClick={handleMenuOpen}
@@ -180,6 +197,36 @@ function Headers({ isDarkMode, setIsDarkMode }) {
               {isDarkMode ? <LightMode sx={{ color: colors.fourth }} /> : <DarkMode sx={{ color: colors.fourth }} />}
             </ListItemIcon>
             <ListItemText>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</ListItemText>
+          </MenuItem>
+
+          {/* Admin Logout — only when admin is logged in */}
+          {adminInfo && (
+            <>
+              <Divider sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+              <MenuItem
+                onClick={() => { dispatch(adminLogoutThunk()); handleMenuClose(); }}
+              >
+                <ListItemIcon>
+                  <Logout sx={{ color: '#f59e0b' }} />
+                </ListItemIcon>
+                <ListItemText sx={{ color: '#f59e0b' }}>Admin Logout</ListItemText>
+              </MenuItem>
+            </>
+          )}
+
+          <Divider sx={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+
+          {/* Logout */}
+          <MenuItem
+            onClick={() => { dispatch(logoutThunk()); handleMenuClose(); }}
+            disabled={isLoggingOut}
+          >
+            <ListItemIcon>
+              <Logout sx={{ color: '#ef4444' }} />
+            </ListItemIcon>
+            <ListItemText sx={{ color: '#ef4444' }}>
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </ListItemText>
           </MenuItem>
         </Menu>
       </div>

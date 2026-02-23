@@ -264,14 +264,17 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
         setError(err.data?.message || err.message || 'Message error');
       },
       onSystemMessage: (msg) => {
+        const d = msg.data || msg;
         setMessages((prev) => [
           ...prev,
           {
             id: `system-${Date.now()}`,
             type: 'system',
-            content: msg.data?.content || 'System message',
+            content: d.message || d.content || d.title || 'System message',
+            title: d.title,
+            severity: d.severity,
             timestamp: Date.now(),
-            metadata: msg.data,
+            metadata: d,
           },
         ]);
       },

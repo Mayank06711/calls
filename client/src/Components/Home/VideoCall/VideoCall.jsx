@@ -38,6 +38,44 @@ function VideoCall() {
   const controlsTimerRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // Draggable PiP state
+  const pipRef = useRef(null);
+  const dragState = useRef({ dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, moved: false });
+  const [pipPos, setPipPos] = useState({ x: 16, y: 16 }); // distance from bottom-right
+
+  const onPointerDown = useCallback((e) => {
+    if (e.target.closest("button")) return; // don't drag when tapping buttons
+    const ds = dragState.current;
+    ds.dragging = true;
+    ds.moved = false;
+    ds.startX = e.clientX;
+    ds.startY = e.clientY;
+    ds.offsetX = pipPos.x;
+    ds.offsetY = pipPos.y;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [pipPos]);
+
+  const onPointerMove = useCallback((e) => {
+    const ds = dragState.current;
+    if (!ds.dragging) return;
+    const dx = ds.startX - e.clientX;
+    const dy = ds.startY - e.clientY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) ds.moved = true;
+    if (!ds.moved) return;
+    const el = pipRef.current;
+    if (!el) return;
+    const maxX = window.innerWidth - el.offsetWidth;
+    const maxY = window.innerHeight - el.offsetHeight;
+    setPipPos({
+      x: Math.max(0, Math.min(maxX, ds.offsetX + dx)),
+      y: Math.max(0, Math.min(maxY, ds.offsetY + dy)),
+    });
+  }, []);
+
+  const onPointerUp = useCallback(() => {
+    dragState.current.dragging = false;
+  }, []);
+
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
     clearTimeout(controlsTimerRef.current);
@@ -127,10 +165,17 @@ function VideoCall() {
   // Minimized/PiP view during connected call
   if (isMinimized && callState === CALL_STATES.CONNECTED) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 w-64 rounded-2xl overflow-hidden shadow-2xl border border-gray-700/50 bg-gray-900">
+      <div
+        ref={pipRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        className="fixed z-50 w-64 rounded-2xl overflow-hidden shadow-2xl border border-gray-700/50 bg-gray-900 touch-none select-none"
+        style={{ bottom: pipPos.y, right: pipPos.x }}
+      >
         <div
-          className="relative w-full h-36 bg-black cursor-pointer"
-          onClick={() => setIsMinimized(false)}
+          className="relative w-full h-36 bg-black cursor-grab active:cursor-grabbing"
+          onClick={() => { if (!dragState.current.moved) setIsMinimized(false); }}
         >
           <video
             ref={fullscreenVideoRef}

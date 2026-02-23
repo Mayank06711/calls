@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { Close, CloudUpload } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
-import { feedbackClick } from "../../redux/actions";
+import { feedbackClick, showNotification } from "../../redux/actions";
 import { fetchUserLocation } from "../../helper/locatonPicker";
 import { submitBugFeedbackThunk } from "../../redux/thunks/feedback.thunks";
 
@@ -36,6 +36,7 @@ const Feedback = () => {
   const [previewUrl, setPreviewUrl] = useState(null);
   
   const isOpen = useSelector((state) => state.isOpenFeedback);
+  const userId = useSelector((state) => state.auth.userId);
   const dispatch = useDispatch();
   const storedDarkMode = localStorage.getItem("isDarkMode");
 
@@ -98,17 +99,17 @@ const Feedback = () => {
     
     // Validation
     if (!feedbackText.trim() || feedbackText.trim().length < 10) {
-      alert('Please enter at least 10 characters for feedback');
+      dispatch(showNotification('Please enter at least 10 characters for feedback', 'warning'));
       return;
     }
 
     if (!category) {
-      alert('Please select a category');
+      dispatch(showNotification('Please select a category', 'warning'));
       return;
     }
 
     if (category === 'Other' && !customCategory.trim()) {
-      alert('Please specify custom category');
+      dispatch(showNotification('Please specify custom category', 'warning'));
       return;
     }
 
@@ -133,6 +134,7 @@ const Feedback = () => {
         appVersion: systemInfo.appVersion,
         location: locationData,
         stepsToReproduce: `Category: ${category}${category === 'Other' ? ` (${customCategory})` : ''}`,
+        ...(userId ? { userId } : {}),
       };
 
       // Process file attachment if present
@@ -142,7 +144,7 @@ const Feedback = () => {
           feedbackData.attachmentUrls = [attachment.data]; // Store base64 data
         } catch (error) {
           console.error('Failed to process file:', error);
-          alert('Failed to process file attachment. Please try again.');
+          dispatch(showNotification('Failed to process file attachment. Please try again.', 'error'));
           return;
         }
       }
@@ -170,7 +172,7 @@ const Feedback = () => {
 
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('An unexpected error occurred. Please try again.');
+      dispatch(showNotification('An unexpected error occurred. Please try again.', 'error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -179,6 +181,7 @@ const Feedback = () => {
     category,
     customCategory,
     file,
+    userId,
     dispatch,
     getSystemInfo,
     processFileAttachment
@@ -191,14 +194,14 @@ const Feedback = () => {
       // Validate file size (e.g., max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (selectedFile.size > maxSize) {
-        alert('File size must be less than 5MB');
+        dispatch(showNotification('File size must be less than 5MB', 'warning'));
         return;
       }
       
-      // Validate file type (optional)
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
+      // Validate file type — images only
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(selectedFile.type)) {
-        alert('Please select a valid file type (JPEG, PNG, GIF, PDF, or TXT)');
+        dispatch(showNotification('Please select an image file (JPEG, PNG, GIF, or WebP)', 'warning'));
         return;
       }
       
@@ -455,7 +458,7 @@ const Feedback = () => {
               style={{ display: "none" }}
               id="raised-button-file"
               type="file"
-              accept="image/*,.pdf,.txt"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               onChange={handleFileChange}
               disabled={isSubmitting}
             />

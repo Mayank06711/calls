@@ -576,7 +576,7 @@ function ChatSection() {
           selectedTab === "experts"
             ? "expert"
             : "user",
-        search: searchQuery,
+        search: debouncedSearch,
       })
     );
 
@@ -613,14 +613,21 @@ function ChatSection() {
   );
 
   // Reset and fetch when filters change - ONLY for Users/Experts tabs
+  // Debounce search to avoid firing API on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     // Skip fetch for "chats" tab - it uses socket-based chatUsers
     if (selectedTab === "chats") return;
-    
+
     setPage(1);
     setHasMore(true);
     fetchUsers(1, false);
-  }, [selectedTab, searchQuery]);
+  }, [selectedTab, debouncedSearch]);
 
   // Handle URL parameter - auto-select user if userId in URL
   // This runs as a separate effect that IMMEDIATELY tries to fetch the user if not found
@@ -873,7 +880,7 @@ function ChatSection() {
         </div>
 
         {/* Users List - Show chatUsers for "chats" tab, users for other tabs */}
-        <div className='overflow-y-auto h-[calc(100vh-160px)] p-2 scrollbar-hide'>
+        <div className='overflow-y-auto flex-1 min-h-0 p-2 scrollbar-hide'>
           {loadingInitial && selectedTab !== "chats" && isSocketReady ? (
             <div className='flex justify-center p-4'>
               <CircularProgress size={24} />

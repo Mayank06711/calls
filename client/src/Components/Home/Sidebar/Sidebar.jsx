@@ -4,6 +4,7 @@ import { IoShirtOutline } from "react-icons/io5";
 import { BsChatLeftTextFill } from "react-icons/bs";
 // import { PiFilmReelFill } from "react-icons/pi";
 import { BiSolidBadgeDollar } from "react-icons/bi";
+import { MdAdminPanelSettings } from "react-icons/md";
 import { IconButton } from "@mui/material";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,6 +23,12 @@ const MENU_ITEMS = [
     path: "/subscriptions",
     hideForExpert: true,
   },
+  {
+    icon: <MdAdminPanelSettings />,
+    label: "Admin",
+    path: "/admin",
+    adminOnly: true,
+  },
 ];
 
 function Sidebar({ isDarkMode }) {
@@ -30,6 +37,7 @@ function Sidebar({ isDarkMode }) {
   const colors = useSubscriptionColors();
   const isLoggingOut = useSelector((state) => state.auth.isLoggingOut);
   const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
+  const isAdmin = useSelector((state) => state.auth.userInfo?.isAdmin);
   const subscriptionPlans = useSelector((state) => state.plans);
 
   const navigate = useNavigate();
@@ -50,16 +58,16 @@ function Sidebar({ isDarkMode }) {
 
   return (
     <nav
-      className={` fixed left-0 top-16 h-[calc(100vh-4rem)] ${
+      className={` fixed left-0 top-16 bottom-0 ${
         isDarkMode ? "bg-gray-800" : "bg-white"
-      } shadow-lg 
+      } shadow-lg
         ${
           isSidebarExpanded ? "w-48" : "w-16"
         } transition-[width] duration-200 ease-in-out z-40`}
     >
       <div className="flex flex-col justify-between h-full  tour3">
         <div className="py-4 ">
-          {MENU_ITEMS.filter((item) => !(item.hideForExpert && isExpert)).map((item, index) => (
+          {MENU_ITEMS.filter((item) => !(item.hideForExpert && isExpert) && !(item.adminOnly && !isAdmin)).map((item, index) => (
             <div
               key={index}
               className={`flex items-center px-4  py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}

@@ -354,6 +354,56 @@ const MessageList = ({
           const prevDate = idx > 0 ? new Date(messages[idx - 1].timestamp) : null;
           const showDateSeparator = !prevDate || !isSameDay(msgDate, prevDate);
 
+          // System messages — centered card with distinct style
+          if (message.type === 'system') {
+            const severityColors = {
+              critical: { bg: '#ef444418', border: '#ef444440', text: '#ef4444', icon: '#ef4444' },
+              warning: { bg: '#f59e0b18', border: '#f59e0b40', text: '#f59e0b', icon: '#f59e0b' },
+              info: { bg: `${colors.fourth}18`, border: `${colors.fourth}40`, text: colors.fourth, icon: colors.fourth },
+            };
+            const sc = severityColors[message.severity] || severityColors.info;
+
+            return (
+              <React.Fragment key={uniqueKey}>
+                {showDateSeparator && (
+                  <div className="flex items-center gap-3 my-3">
+                    <div className="flex-1 h-px bg-light-text/10 dark:bg-dark-text/10" />
+                    <span className="text-[11px] text-light-text/40 dark:text-dark-text/40 font-medium px-2">
+                      {getDateLabel(msgDate)}
+                    </span>
+                    <div className="flex-1 h-px bg-light-text/10 dark:bg-dark-text/10" />
+                  </div>
+                )}
+                <div className="flex justify-center my-2">
+                  <div
+                    className="flex items-start gap-2.5 px-4 py-2.5 rounded-xl max-w-[85%] shadow-sm"
+                    style={{ background: sc.bg, border: `1px solid ${sc.border}` }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold"
+                      style={{ backgroundColor: `${sc.icon}20`, color: sc.icon }}
+                    >
+                      {message.severity === 'critical' ? '!' : message.severity === 'warning' ? '!' : 'i'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {message.title && message.title !== message.content && (
+                        <p className="text-xs font-semibold mb-0.5" style={{ color: sc.text }}>
+                          {message.title}
+                        </p>
+                      )}
+                      <p className="text-xs break-words" style={{ color: sc.text }}>
+                        {message.content}
+                      </p>
+                    </div>
+                    <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: `${sc.text}80` }}>
+                      {format(new Date(message.timestamp), "HH:mm")}
+                    </span>
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          }
+
           return (
             <React.Fragment key={uniqueKey}>
               {showDateSeparator && (

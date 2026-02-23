@@ -589,8 +589,10 @@ function Home() {
       {/* Sidebar */}
       <Sidebar isDarkMode={isDarkMode} />
 
-      {/* Main Content */}
-      <div  ref={mainContentRef} className="h-[calc(100vh-64px)] w-[calc(100%-64px)] ml-16 mt-16 overflow-y-auto overflow-x-hidden scrollbar-hide"
+      {/* Main Content — fixed positioning fills exactly the visible viewport gap */}
+      <div  ref={mainContentRef} className={`fixed top-16 left-16 right-0 bottom-0 overflow-x-hidden scrollbar-hide ${
+        location.pathname === '/' || location.pathname === '/chats' || location.pathname.startsWith('/chats/') ? 'overflow-hidden' : 'overflow-y-auto'
+      }`}
         style={{ scrollBehavior: 'instant' }}
       >
         <Suspense fallback={<ContentSkeleton />}>
