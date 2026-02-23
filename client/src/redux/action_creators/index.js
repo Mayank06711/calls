@@ -7,3 +7,4 @@ export * from "./loader.action_creators";
 export * from "./settings.action_creators";
 export * from "./feedback.action_creatrors";
 export * from "./wardrobe.action_creators";
+export * from "./admin.action_creators";

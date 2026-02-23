@@ -11,4 +11,4 @@ export * from "./loader.actions";
 export * from "./Settings.actions";
 export * from "./feedback.actions";
 export * from "./wardrobe.actions";
-
+export * from "./admin.actions";

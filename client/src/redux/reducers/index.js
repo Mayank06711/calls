@@ -10,3 +10,4 @@ export * from "./settings.reducer";
 export * from "./feedback.reducer";
 export * from "./session.reducer";
 export * from "./wardrobe.reducer";
+export * from "./admin.reducer";

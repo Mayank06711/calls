@@ -181,4 +181,93 @@ export const ENDPOINTS = {
     SAVE_SHARED_OUTFIT: `/api/${API_CONFIG.VERSION}/public/outfits`, // POST /:shareToken/save (auth required)
     SAVED_OUTFITS: `/api/${API_CONFIG.VERSION}/wardrobe/saved-outfits`, // GET (auth required)
   },
+
+  EXPERT_APPLICATION: {
+    SUBMIT: `/api/${API_CONFIG.VERSION}/expert-applications`, // POST
+    MINE: `/api/${API_CONFIG.VERSION}/expert-applications/mine`, // GET / PUT
+    WITHDRAW: `/api/${API_CONFIG.VERSION}/expert-applications/mine/withdraw`, // POST
+  },
+
+  EXPERT: {
+    PROFILE: `/api/${API_CONFIG.VERSION}/expert/profile`, // GET / PUT
+  },
+
+  // ─── Admin Panel ──────────────────────────────────────────────────────────
+  ADMIN: {
+    LOGIN: `/api/${API_CONFIG.VERSION}/admins/login`, // POST
+    REFRESH_TOKEN: `/api/${API_CONFIG.VERSION}/admins/refresh-token`, // POST
+
+    // Dashboard
+    DASHBOARD_OVERVIEW: `/api/${API_CONFIG.VERSION}/admins/dashboard/overview`,
+    DASHBOARD_USER_GROWTH: `/api/${API_CONFIG.VERSION}/admins/dashboard/user-growth`,
+    DASHBOARD_SUBSCRIPTION_REVENUE: `/api/${API_CONFIG.VERSION}/admins/dashboard/subscription-revenue`,
+    DASHBOARD_EXPERT_STATS: `/api/${API_CONFIG.VERSION}/admins/dashboard/expert-stats`,
+    DASHBOARD_PLATFORM_ACTIVITY: `/api/${API_CONFIG.VERSION}/admins/dashboard/platform-activity`,
+    DASHBOARD_RECENT_ACTIVITY: `/api/${API_CONFIG.VERSION}/admins/dashboard/recent-activity`,
+
+    // User Management
+    USERS: `/api/${API_CONFIG.VERSION}/admins/manage-users`,
+    USERS_SEARCH: `/api/${API_CONFIG.VERSION}/admins/manage-users/search`,
+    USER_DETAIL: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // /:userId
+    USER_SESSIONS: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // /:userId/sessions
+    USER_FORCE_LOGOUT: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // /:userId/force-logout
+    USER_REACTIVATE: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // /:userId/reactivate
+    USER_SESSION_REVOKE: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // /:userId/sessions/:sessionId/revoke
+    USER_DELETE: `/api/${API_CONFIG.VERSION}/admins/manage-users`, // DELETE /:userId
+
+    // Subscription Management
+    SUBSCRIPTIONS: `/api/${API_CONFIG.VERSION}/admins/manage-subscriptions`,
+    SUBSCRIPTIONS_STATS: `/api/${API_CONFIG.VERSION}/admins/manage-subscriptions/stats`,
+    SUBSCRIPTION_DETAIL: `/api/${API_CONFIG.VERSION}/admins/manage-subscriptions`, // /:subscriptionId
+    SUBSCRIPTION_USER: `/api/${API_CONFIG.VERSION}/admins/manage-subscriptions/user`, // /:userId
+    SUBSCRIPTION_EXTEND: `/api/${API_CONFIG.VERSION}/admins/manage-subscriptions`, // /:subscriptionId/extend
+
+    // Feedback Management
+    BUG_REPORTS: `/api/${API_CONFIG.VERSION}/admins/manage-feedback/bug-reports`, // GET (list) / GET /:bugId (detail)
+    FEEDBACK_EXPERT_REVIEWS: `/api/${API_CONFIG.VERSION}/admins/manage-feedback/expert-reviews`,
+    FEEDBACK_EXPERT_REVIEWS_STATS: `/api/${API_CONFIG.VERSION}/admins/manage-feedback/expert-reviews/stats`,
+    FEEDBACK_DELETE_REVIEW: `/api/${API_CONFIG.VERSION}/admins/manage-feedback/expert-reviews`, // DELETE /:feedbackId
+
+    // Complaint Management
+    COMPLAINTS: `/api/${API_CONFIG.VERSION}/admins/manage-complaints/list`,
+    COMPLAINTS_STATS: `/api/${API_CONFIG.VERSION}/admins/manage-complaints/stats`,
+    COMPLAINT_DETAIL: `/api/${API_CONFIG.VERSION}/admins/manage-complaints`, // /:complaintId
+    COMPLAINTS_BY_EXPERT: `/api/${API_CONFIG.VERSION}/admins/manage-complaints/expert`, // /:expertId
+
+    // Session Management
+    SESSIONS: `/api/${API_CONFIG.VERSION}/admins/manage-sessions`,
+    SESSIONS_STATS: `/api/${API_CONFIG.VERSION}/admins/manage-sessions/stats`,
+    SESSION_REVOKE: `/api/${API_CONFIG.VERSION}/admins/manage-sessions`, // /:sessionId/revoke
+    SESSIONS_REVOKE_BULK: `/api/${API_CONFIG.VERSION}/admins/manage-sessions/revoke-bulk`,
+
+    // Wardrobe Analytics
+    WARDROBE_STATS: `/api/${API_CONFIG.VERSION}/admins/wardrobe-analytics/stats`,
+    WARDROBE_TRENDS: `/api/${API_CONFIG.VERSION}/admins/wardrobe-analytics/trends`,
+    WARDROBE_AI_USAGE: `/api/${API_CONFIG.VERSION}/admins/wardrobe-analytics/ai-usage`,
+    WARDROBE_USER: `/api/${API_CONFIG.VERSION}/admins/wardrobe-analytics/user`, // /:userId
+
+    // Notification Management
+    NOTIFICATIONS: `/api/${API_CONFIG.VERSION}/admins/manage-notifications`,
+    NOTIFICATIONS_STATS: `/api/${API_CONFIG.VERSION}/admins/manage-notifications/stats`,
+    NOTIFICATION_DETAIL: `/api/${API_CONFIG.VERSION}/admins/manage-notifications`, // /:notificationId
+
+    // Existing admin endpoints (from adminController)
+    SEND_NOTIFICATION: `/api/${API_CONFIG.VERSION}/admins/notifications/send`,
+    SEND_USER_NOTIFICATION: `/api/${API_CONFIG.VERSION}/admins/notifications/send/user`,
+    ALL_ADMINS: `/api/${API_CONFIG.VERSION}/admins/all`,
+    UPGRADE_TO_ADMIN: `/api/${API_CONFIG.VERSION}/admins/upgrade`,
+    DEACTIVATE_ADMIN: `/api/${API_CONFIG.VERSION}/admins`, // POST /:targetAdminId/deactivate
+    REACTIVATE_ADMIN: `/api/${API_CONFIG.VERSION}/admins`, // POST /:targetAdminId/reactivate
+    RESET_ADMIN_KEY: `/api/${API_CONFIG.VERSION}/admins`, // POST /:targetAdminId/reset-key
+    BLOCK_USER: `/api/${API_CONFIG.VERSION}/admins/users`, // POST /:userId/block
+    UNBLOCK_USER: `/api/${API_CONFIG.VERSION}/admins/users`, // POST /:userId/unblock
+    BLOCKED_USERS: `/api/${API_CONFIG.VERSION}/admins/users/blocked`,
+    EXPERT_APPLICATIONS: `/api/${API_CONFIG.VERSION}/admins/expert-applications`,
+    EXPERT_BLOCK_REQUESTS: `/api/${API_CONFIG.VERSION}/admins/expert-block-requests`,
+    BLOCK_EXPERT: `/api/${API_CONFIG.VERSION}/admins/block-expert`,
+
+    // Bug feedback (existing)
+    ALL_FEEDBACK: `/api/${API_CONFIG.VERSION}/feedback/all`,
+    FEEDBACK_STATS: `/api/${API_CONFIG.VERSION}/feedback/stats`,
+  },
 };
