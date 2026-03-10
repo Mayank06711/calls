@@ -11,10 +11,22 @@ tools
 .claude/
 
 # Python AI Service (deployed separately)
-kyfFashionAi/
+# kyfFashionAi/
+
+# ML model files (too large for GitHub)
+*.pt
+*.tflite
+*.task
+
+# Test images & results (large binaries)
+kyfFashionAi/test_full_photo/
+kyfFashionAi/test_extra_downloaded/
+kyfFashionAi/bg_removal_test/results_all_production/
+kyfFashionAi/testing_img_with_unions/*_output/
+kyfFashionAi/testing_img_with_unions/*.png
 
 # Test / local folders
-colournametest/
+# colournametest/
 photos/
 
 # Python
