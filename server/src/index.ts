@@ -33,13 +33,15 @@ import expertApplicationRouter from "./routes/expertApplicationRoutes";
 import expertRouter from "./routes/expertRoutes";
 import historyRouter from "./routes/historyRoutes";
 import wardrobeRouter, { publicWardrobeRouter } from "./routes/wardrobeRoute";
+import { paymentRouter } from "./routes/paymentRoutes";
+import { webhookRouter } from "./routes/webhookRoutes";
 import {
   connectDB,
   disconnectDB,
   configureCloudinary,
   checkHealth,
 } from "./db";
-import cronSchuduler from "./auto/cronJob";
+import cronSchuduler, { startStaleOrderCleanup } from "./auto/cronJob";
 
 
 class ServerManager {
@@ -86,6 +88,13 @@ class ServerManager {
     this.app.use(helmet());
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     // this.app.set("trust proxy", 1);
+
+    // ── WEBHOOK ROUTES: must be mounted BEFORE express.json() ──
+    // Signature verification requires raw Buffer body.
+    // express.raw() is applied per-route inside webhookRouter itself,
+    // so we just mount the router here early before the global json parser.
+    this.app.use("/api/v1/webhooks", webhookRouter);
+
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use(cookieParser());
@@ -136,6 +145,7 @@ class ServerManager {
     this.app.use("/api/v1/history", historyRouter);
     this.app.use("/api/v1/public", publicWardrobeRouter); // Public routes — no auth required
     this.app.use("/api/v1/wardrobe", wardrobeRouter);
+    this.app.use("/api/v1/payments", paymentRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -317,4 +327,6 @@ class ServerManager {
 }
 
 const serverManager = new ServerManager();
-serverManager.start();
+serverManager.start().then(() => {
+  startStaleOrderCleanup();
+});

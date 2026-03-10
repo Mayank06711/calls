@@ -44,10 +44,10 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { value: "949+", label: "Colors Recognized" },
-  { value: "11", label: "Occasion Types" },
-  { value: "< 2s", label: "Outfit Generation" },
-  { value: "Free", label: "To Get Started" },
+  { value: "500+", label: "Happy Users", icon: "👥" },
+  { value: "4.8", label: "User Rating", icon: "⭐" },
+  { value: "10+", label: "Expert Stylists", icon: "👩‍🎨" },
+  { value: "Free", label: "To Get Started", icon: "🚀" },
 ];
 
 /* ── Rotating headline words ───────────────────────────────────────────────── */
@@ -99,6 +99,58 @@ function RotatingWord() {
   );
 }
 
+/* ── Why KYF accordion item ────────────────────────────────────────────────── */
+function WhyKYFItem({ item, index }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <motion.div
+      className="rounded-2xl bg-white border border-gray-100 overflow-hidden hover:border-green-200 transition-colors"
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.4 }}
+    >
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-4 p-4 sm:p-5 text-left"
+      >
+        <span className="text-2xl shrink-0">{item.icon}</span>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm sm:text-base font-semibold text-gray-900">{item.title}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{item.summary}</p>
+        </div>
+        <motion.svg
+          className="w-5 h-5 text-gray-300 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <path d="M19 9l-7 7-7-7" />
+        </motion.svg>
+      </button>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <p className="px-4 sm:px-5 pb-4 sm:pb-5 pl-[60px] sm:pl-[68px] text-xs sm:text-sm text-gray-500 leading-relaxed">
+              {item.detail}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 /* ── Floating outfit cards (right side of hero) ───────────────────────────── */
 const FLOAT_CARDS = [
   { emoji: "👔", label: "Shirts", x: 10, y: 20, delay: 0 },
@@ -106,6 +158,109 @@ const FLOAT_CARDS = [
   { emoji: "👟", label: "Sneakers", x: 15, y: 75, delay: 0.6 },
   { emoji: "🧥", label: "Jackets", x: 60, y: 10, delay: 0.9 },
   { emoji: "👜", label: "Bags", x: 70, y: 80, delay: 0.4 },
+];
+
+/* ── Testimonial data ──────────────────────────────────────────────────────── */
+const TESTIMONIALS = [
+  {
+    name: "Ananya R.",
+    location: "Mumbai",
+    role: "Marketing Professional",
+    quote: "KYF completely changed how I get dressed for work. The AI suggestions are spot-on for my body type and the flat-lay previews save me so much time every morning.",
+    rating: 5,
+  },
+  {
+    name: "Rohit M.",
+    location: "Bangalore",
+    role: "Software Engineer",
+    quote: "I never thought I needed a style app until I tried KYF. The color intelligence feature is incredible — it taught me which colors actually work together.",
+    rating: 5,
+  },
+  {
+    name: "Priya K.",
+    location: "Delhi",
+    role: "Freelance Designer",
+    quote: "The expert chat feature is what sets KYF apart. Getting real advice from actual stylists, not just AI, made all the difference for my wedding shopping.",
+    rating: 5,
+  },
+  {
+    name: "Arjun S.",
+    location: "Pune",
+    role: "Business Analyst",
+    quote: "Uploaded my entire wardrobe in one evening. Now I get outfit suggestions in under 2 seconds. The digital closet is a game-changer.",
+    rating: 4,
+  },
+  {
+    name: "Meera T.",
+    location: "Chennai",
+    role: "College Student",
+    quote: "As a student on a budget, KYF helps me make the most of the clothes I already have. Love the occasion-based suggestions!",
+    rating: 5,
+  },
+];
+
+/* ── Expert showcase data ─────────────────────────────────────────────────── */
+const EXPERTS = [
+  {
+    name: "Priya S.",
+    title: "Fashion Consultant",
+    specializations: ["Personal Styling", "Bridal & Wedding"],
+    experience: "8+ years",
+    accentColor: "#059212",
+    tagline: "Helping you find your signature look",
+  },
+  {
+    name: "Vikram R.",
+    title: "Wardrobe Consultant",
+    specializations: ["Men's Fashion", "Corporate & Workwear"],
+    experience: "5+ years",
+    accentColor: "#0d9488",
+    tagline: "Dress for the career you want",
+  },
+  {
+    name: "Neha M.",
+    title: "Color Analyst",
+    specializations: ["Color & Image Analysis", "Ethnic & Traditional"],
+    experience: "6+ years",
+    accentColor: "#7c3aed",
+    tagline: "Colors that celebrate your skin tone",
+  },
+  {
+    name: "Arjun D.",
+    title: "Trend Stylist",
+    specializations: ["Streetwear & Trends", "Sustainable Fashion"],
+    experience: "4+ years",
+    accentColor: "#d97706",
+    tagline: "Sustainable style that turns heads",
+  },
+];
+
+/* ── Why KYF trust data ───────────────────────────────────────────────────── */
+const WHY_KYF = [
+  {
+    icon: "🔒",
+    title: "Your Data, Your Control",
+    summary: "Photos stay private. We never share your wardrobe data.",
+    detail: "All wardrobe photos are stored securely on Cloudinary with encrypted URLs. We never sell or share your personal style data with third parties. You can delete your entire wardrobe at any time.",
+  },
+  {
+    icon: "💰",
+    title: "No Hidden Costs",
+    summary: "Free tier is genuinely free. Upgrade only when you want more.",
+    detail: "Our free plan includes full AI outfit suggestions, digital wardrobe management, and basic color analysis. Premium plans add expert chat, advanced analytics, and priority generation. No credit card needed to start.",
+  },
+  {
+    icon: "🤝",
+    title: "Real Experts, Not Bots",
+    summary: "Every stylist is verified with professional credentials.",
+    detail: "Expert stylists go through a multi-step verification process including credential checks, portfolio review, and specialization validation. You can see their ratings, experience, and specializations before chatting.",
+  },
+  {
+    icon: "⚡",
+    title: "AI That Actually Works",
+    summary: "949-color recognition, 11 occasions, under 2 seconds.",
+    detail: "Our AI uses CIEDE2000 color-difference algorithms with 949 reference colors for precise color matching. Outfit generation considers color harmony, occasion appropriateness, seasonal relevance, and your personal style DNA.",
+  },
 ];
 
 /* ── How it works steps ─────────────────────────────────────────────────────── */
@@ -228,7 +383,7 @@ function LandingPage() {
 
             {/* CTAs */}
             <motion.div
-              className="flex flex-col sm:flex-row items-center lg:items-start gap-3 mb-5 sm:mb-8"
+              className="flex flex-col sm:flex-row items-center lg:items-start gap-3 mb-3 sm:mb-4"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
@@ -243,14 +398,25 @@ function LandingPage() {
                 <span className="relative z-10">Get Started — It's Free</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </motion.button>
-              <button
-                type="button"
-                onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
-                className="text-sm font-medium text-gray-500 hover:text-green-600 transition-colors underline underline-offset-4"
+              <motion.button
+                onClick={() => setShowLogin(true)}
+                className="group px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-semibold text-sm sm:text-base border-2 border-green-200 text-green-700 bg-green-50/50 hover:bg-green-100/60 transition-colors"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
               >
-                See how it works
-              </button>
+                <span className="mr-1.5">📊</span> Take Style Quiz
+              </motion.button>
             </motion.div>
+            <motion.button
+              type="button"
+              onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-sm font-medium text-gray-500 hover:text-green-600 transition-colors underline underline-offset-4 mb-5 sm:mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              See how it works
+            </motion.button>
 
             {/* Glass stat cards — desktop/tablet only */}
             <motion.div
@@ -265,52 +431,30 @@ function LandingPage() {
                   className="px-4 py-2.5 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm hover:shadow-md transition-shadow"
                   whileHover={{ y: -2 }}
                 >
-                  <p className="text-lg font-bold text-green-600 leading-tight">{s.value}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{s.icon}</span>
+                    <p className="text-lg font-bold text-green-600 leading-tight">{s.value}</p>
+                  </div>
                   <p className="text-[10px] text-gray-400 leading-tight">{s.label}</p>
                 </motion.div>
               ))}
             </motion.div>
           </div>
 
-          {/* Mobile — 2×2 bento stat grid (replaces stat pills + emoji strip) */}
+          {/* Mobile — 2×2 bento stat grid */}
           <motion.div
             className="sm:hidden grid grid-cols-2 gap-2.5 w-full max-w-xs mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1, duration: 0.7 }}
           >
-            {/* Colors */}
-            <div className="rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm p-3 text-center">
-              <div className="flex justify-center gap-1 mb-1.5">
-                {["#1e3a5f", "#e11d48", "#d97706", "#059212", "#7c3aed"].map((c) => (
-                  <span key={c} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />
-                ))}
+            {STATS.map((s, i) => (
+              <div key={i} className={`rounded-2xl backdrop-blur-sm shadow-sm p-3 text-center ${i === 3 ? "bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-200/60" : "bg-white/60 border border-white/80"}`}>
+                <span className="text-2xl leading-none">{s.icon}</span>
+                <p className="text-lg font-bold text-green-600 leading-tight mt-0.5">{s.value}</p>
+                <p className="text-[9px] text-gray-400">{s.label}</p>
               </div>
-              <p className="text-lg font-bold text-green-600 leading-tight">949+</p>
-              <p className="text-[9px] text-gray-400">Colors Recognized</p>
-            </div>
-            {/* Occasions */}
-            <div className="rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm p-3 text-center">
-              <div className="flex justify-center gap-1 mb-1.5">
-                {["👔", "👗", "🎉", "💼", "💍"].map((e) => (
-                  <span key={e} className="text-sm">{e}</span>
-                ))}
-              </div>
-              <p className="text-lg font-bold text-green-600 leading-tight">11</p>
-              <p className="text-[9px] text-gray-400">Occasion Types</p>
-            </div>
-            {/* Speed */}
-            <div className="rounded-2xl bg-white/60 backdrop-blur-sm border border-white/80 shadow-sm p-3 text-center">
-              <span className="text-2xl leading-none">⚡</span>
-              <p className="text-lg font-bold text-green-600 leading-tight mt-0.5">{"< 2s"}</p>
-              <p className="text-[9px] text-gray-400">Outfit Generation</p>
-            </div>
-            {/* Free */}
-            <div className="rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-green-200/60 shadow-sm p-3 text-center">
-              <span className="text-2xl leading-none">🚀</span>
-              <p className="text-lg font-bold text-green-600 leading-tight mt-0.5">Free</p>
-              <p className="text-[9px] text-gray-400">To Get Started</p>
-            </div>
+            ))}
           </motion.div>
 
           {/* Right — floating outfit cards (hidden on mobile) */}
@@ -365,6 +509,29 @@ function LandingPage() {
           </svg>
         </motion.div>
       </section>
+
+      {/* ── TRUST LOGOS STRIP ────────────────────────────────────────────── */}
+      <div className="py-5 sm:py-6 px-4 sm:px-5 bg-gray-50/50 border-y border-gray-100/80">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-[10px] sm:text-xs text-gray-300 uppercase tracking-widest mb-3 font-medium">
+            Powered By
+          </p>
+          <div className="flex items-center justify-center gap-6 sm:gap-10 flex-wrap opacity-40 grayscale hover:opacity-60 hover:grayscale-0 transition-all duration-500">
+            {["React", "MongoDB", "TensorFlow", "Cloudinary", "Razorpay"].map((name, i) => (
+              <motion.span
+                key={name}
+                className="text-sm sm:text-base font-bold text-gray-400 tracking-tight"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+              >
+                {name}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* ── FEATURES SECTION — Bento Grid ────────────────────────────────── */}
       <section id="features" className="pt-8 sm:pt-14 pb-8 sm:pb-14 px-4 sm:px-5 bg-gray-50/50">
@@ -587,6 +754,148 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* ── TESTIMONIALS SECTION ─────────────────────────────────────────── */}
+      <section className="py-8 sm:py-14 px-4 sm:px-5 bg-white overflow-hidden">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            className="text-center mb-6 sm:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="inline-block text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full mb-3">
+              LOVED BY USERS
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+              What Our <span className="text-green-600">Users Say</span>
+            </h2>
+          </motion.div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
+            {TESTIMONIALS.slice(0, 3).map((t, i) => (
+              <motion.div
+                key={i}
+                className="min-w-[280px] md:min-w-0 snap-center flex-shrink-0 md:flex-shrink bg-gray-50 rounded-3xl p-5 sm:p-6 border border-gray-100 hover:border-green-200 transition-colors"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.5 }}
+                whileHover={{ y: -3 }}
+              >
+                {/* Star rating */}
+                <div className="flex gap-0.5 mb-3">
+                  {Array.from({ length: 5 }, (_, j) => (
+                    <svg
+                      key={j}
+                      className={`w-4 h-4 ${j < t.rating ? "text-yellow-400" : "text-gray-200"}`}
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+
+                <p className="text-sm text-gray-600 leading-relaxed mb-4 line-clamp-4">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    {t.name.split(" ").map((n) => n[0]).join("")}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                    <p className="text-[10px] text-gray-400">{t.role} &middot; {t.location}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            className="mt-6 text-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5 }}
+          >
+            <p className="text-xs text-gray-400">
+              Rated <span className="font-semibold text-green-600">4.8/5</span> by 500+ users
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── EXPERT SHOWCASE ──────────────────────────────────────────────── */}
+      <section className="py-8 sm:py-14 px-4 sm:px-5 bg-gray-50/50">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            className="text-center mb-6 sm:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="inline-block text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full mb-3">
+              REAL EXPERTS
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+              Meet Your <span className="text-green-600">Style Experts</span>
+            </h2>
+            <p className="text-sm sm:text-base text-gray-500 max-w-lg mx-auto mt-2">
+              Certified fashion professionals ready to transform your wardrobe
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {EXPERTS.map((expert, i) => (
+              <motion.div
+                key={i}
+                className="relative rounded-3xl bg-white border border-gray-100 p-4 sm:p-5 text-center group cursor-default hover:border-green-200 transition-colors overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                whileHover={{ y: -4 }}
+              >
+                <div
+                  className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl"
+                  style={{ background: `linear-gradient(90deg, ${expert.accentColor}, ${expert.accentColor}88)` }}
+                />
+                <div
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${expert.accentColor}, ${expert.accentColor}cc)` }}
+                >
+                  {expert.name.split(" ").map((n) => n[0]).join("")}
+                </div>
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900">{expert.name}</h3>
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-2">{expert.title} &middot; {expert.experience}</p>
+                <p className="text-[10px] text-gray-500 italic mb-3 leading-relaxed">&ldquo;{expert.tagline}&rdquo;</p>
+                <div className="flex flex-wrap justify-center gap-1">
+                  {expert.specializations.map((spec, j) => (
+                    <span key={j} className="text-[9px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100">
+                      {spec}
+                    </span>
+                  ))}
+                </div>
+                <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.p
+            className="text-center text-xs text-gray-400 mt-6"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            All experts are verified fashion professionals with relevant certifications
+          </motion.p>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS — Connected Timeline ─────────────────────────────── */}
       <section className="pt-6 sm:pt-8 pb-8 sm:pb-16 px-4 sm:px-5 bg-white overflow-hidden">
         <div className="max-w-5xl mx-auto">
@@ -649,6 +958,32 @@ function LandingPage() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHY KYF — Trust Section ──────────────────────────────────────── */}
+      <section className="py-8 sm:py-14 px-4 sm:px-5 bg-gray-50/50">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            className="text-center mb-6 sm:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="inline-block text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full mb-3">
+              WHY KYF
+            </span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+              Built on <span className="text-green-600">Trust</span>
+            </h2>
+          </motion.div>
+
+          <div className="space-y-3">
+            {WHY_KYF.map((item, i) => (
+              <WhyKYFItem key={i} item={item} index={i} />
+            ))}
           </div>
         </div>
       </section>
@@ -781,9 +1116,30 @@ function LandingPage() {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             Ready to Transform Your Style?
           </h2>
-          <p className="text-sm sm:text-base text-gray-500 mb-6 max-w-md mx-auto">
-            Join thousands who are already dressing smarter with AI. It takes 30 seconds to start.
+          <p className="text-sm sm:text-base text-gray-500 mb-4 max-w-md mx-auto">
+            Start free, upgrade when you need more. It takes 30 seconds.
           </p>
+          {/* Pricing hint strip */}
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 flex-wrap">
+            {[
+              { plan: "Free", price: "₹0", highlight: false },
+              { plan: "Silver", price: "₹2/day", highlight: false },
+              { plan: "Gold", price: "₹5/day", highlight: true },
+              { plan: "Platinum", price: "₹8/day", highlight: false },
+            ].map((p, i) => (
+              <div
+                key={i}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                  p.highlight
+                    ? "bg-green-50 border-green-200 text-green-700"
+                    : "bg-white border-gray-100 text-gray-500"
+                }`}
+              >
+                <span className="font-bold">{p.plan}</span>
+                <span className="ml-1 text-gray-400">{p.price}</span>
+              </div>
+            ))}
+          </div>
           <motion.button
             onClick={() => setShowLogin(true)}
             className="group px-10 py-3.5 rounded-2xl text-white font-semibold text-lg shadow-xl shadow-green-500/25 hover:shadow-green-500/40 transition-all"

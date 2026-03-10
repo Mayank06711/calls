@@ -52,25 +52,13 @@ function PlatinumSubscription() {
   const planColor =
     subscriptionColors[planDetails?.type?.toUpperCase()]?.fourth;
 
-  // Enhanced duration plans
+  // Duration plans — simplified to 3 primary tiers + annual
   const durationPlans = [
-    {
-      duration: "7 Days",
-      pricePerDay: planDetails?.basePrice || 0,
-      savings: 0,
-      tag: "Trial",
-    },
-    {
-      duration: "15 Days",
-      pricePerDay: planDetails?.basePrice * 0.95 || 0,
-      savings: 5,
-      tag: "Quick Start",
-    },
     {
       duration: "1 Month",
       pricePerDay: planDetails?.basePrice * 0.9 || 0,
       savings: 10,
-      tag: "Popular",
+      tag: "Starter",
     },
     {
       duration: "3 Months",
@@ -82,13 +70,7 @@ function PlatinumSubscription() {
       duration: "6 Months",
       pricePerDay: planDetails?.basePrice * 0.8 || 0,
       savings: 20,
-      tag: "Pro Choice",
-    },
-    {
-      duration: "1 Year",
-      pricePerDay: planDetails?.basePrice * 0.75 || 0,
-      savings: 25,
-      tag: "Maximum Savings",
+      tag: "Pro",
     },
   ];
 
@@ -359,6 +341,7 @@ const MemoizedPayment = useMemo(() => {
         key={selectedDays}
         numberOfDays={selectedDays}
         planColor={planColor}
+        subscriptionType="Platinum"
       />
     </motion.div>
   );
@@ -494,7 +477,7 @@ const MemoizedPayment = useMemo(() => {
         <p className="text-center text-light-text/70 dark:text-dark-text/70 mb-8 max-w-2xl mx-auto text-sm">
           Longer commitments come with greater savings
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {durationPlans.map((plan, index) => (
             <motion.div
               key={index}
@@ -596,6 +579,18 @@ const MemoizedPayment = useMemo(() => {
             </motion.div>
           ))}
         </div>
+
+        {/* Trial option */}
+        <p className="text-center mt-4 text-sm text-light-text/50 dark:text-dark-text/50">
+          Want to try first?{" "}
+          <button
+            onClick={() => handleDurationSelect("7 Days")}
+            className="font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
+            style={{ color: planColor }}
+          >
+            Start a 7-day trial at ₹{planDetails?.basePrice}/day
+          </button>
+        </p>
       </motion.section>
 
       {/* Payment Component */}

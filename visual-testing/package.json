@@ -1,0 +1,15 @@
+{
+  "name": "kyf-visual-testing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visual testing & screenshot comparison for KYF landing page",
+  "scripts": {
+    "screenshot": "node screenshot.js",
+    "screenshot:getstyled": "node screenshot.js --target=getstyled",
+    "screenshot:kyf": "node screenshot.js --target=kyf",
+    "screenshot:both": "node screenshot.js --target=both"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

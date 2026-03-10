@@ -18,6 +18,8 @@ import { showNotification } from "../../../../redux/actions/notification.actions
 
 function UserInfo() {
   const dispatch = useDispatch();
+  const userInfo = useSelector((state) => state.userInfo);
+  const colors = useSubscriptionColors();
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -41,14 +43,12 @@ function UserInfo() {
   const [otpRef, setOtpRef] = useState(null); // { referenceId, mobNum }
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const colors = useSubscriptionColors();
-  const userInfo = useSelector((state) => state.userInfo);
 
   const userData = userInfo?.data || {};
   // First try to get thumbnail (for faster loading), then fallback to full URL
   const userThumbnailUrl = userData?.photo?.thumbnailUrl || null;
   const userFullImageUrl = userData?.photo?.url || null;
-  const isDarkMode =localStorage.getItem('isDarkMode');
+  const isDarkMode = document.documentElement.classList.contains('dark');
 
   const [currentDisplayUrl, setCurrentDisplayUrl] = useState(userThumbnailUrl);
 

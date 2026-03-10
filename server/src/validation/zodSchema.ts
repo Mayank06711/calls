@@ -529,6 +529,23 @@ const ExpertProfileUpdateSchema = z.object({
   socialLinks: socialLinksSchema,
 });
 
+// ─── Payment Schemas ─────────────────────────────────────────────────────────
+
+const CreatePaymentOrderSchema = z.object({
+  subscriptionId: z.string().min(1, "subscriptionId is required"),
+});
+
+const VerifyPaymentSchema = z.object({
+  providerOrderId: z.string().min(1, "providerOrderId is required"),
+  providerPaymentId: z.string().min(1, "providerPaymentId is required"),
+  signature: z.string().min(1, "signature is required"),
+});
+
+const RefundPaymentSchema = z.object({
+  paymentOrderId: z.string().min(1, "paymentOrderId is required"),
+  reason: z.string().min(3, "reason must be at least 3 characters").max(200),
+});
+
 // ─── Exports ────────────────────────────────────────────────────────────────
 
 export {
@@ -583,4 +600,8 @@ export {
   // Admin Management
   AdminBulkSessionRevokeSchema,
   AdminSubscriptionExtendSchema,
+  // Payment
+  CreatePaymentOrderSchema,
+  VerifyPaymentSchema,
+  RefundPaymentSchema,
 };

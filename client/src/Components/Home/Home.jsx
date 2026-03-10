@@ -258,6 +258,8 @@ const ContentSkeleton = () => {
     return <ProfileSkeleton />;
   // if (p === "/reels")
   //   return <ReelsSkeleton />;
+  if (p.startsWith("/stylist"))
+    return <WardrobeHubSkeleton />;
   if (p.startsWith("/subscriptions"))
     return <SubscriptionSkeleton />;
   return <GridSkeleton chips={false} />;

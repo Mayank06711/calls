@@ -270,4 +270,13 @@ export const ENDPOINTS = {
     ALL_FEEDBACK: `/api/${API_CONFIG.VERSION}/feedback/all`,
     FEEDBACK_STATS: `/api/${API_CONFIG.VERSION}/feedback/stats`,
   },
+
+  PAYMENTS: {
+    CONFIG: `/api/${API_CONFIG.VERSION}/payments/config`,
+    CREATE_ORDER: `/api/${API_CONFIG.VERSION}/payments/create-order`,
+    VERIFY: `/api/${API_CONFIG.VERSION}/payments/verify`,
+    ORDER_STATUS: `/api/${API_CONFIG.VERSION}/payments/order`, // + /:providerOrderId
+    HISTORY: `/api/${API_CONFIG.VERSION}/payments/history`,
+    REFUND: `/api/${API_CONFIG.VERSION}/payments/refund`,
+  },
 };

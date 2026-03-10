@@ -79,11 +79,20 @@ function ThemeSettings() {
     dispatch(fetchSettingsThunk());
   }, [dispatch]);
 
-  // Apply theme mode to document for preview
+  // Apply theme mode to document for preview — only when user has access
   useEffect(() => {
-    const applyThemeToDocument = () => {
-      const rootElement = document.documentElement;
+    // Don't modify document theme for users without access (Free tier).
+    // Applying the default 'system' mode can switch to dark and break the page.
+    if (!hasAccess) return;
 
+    const rootElement = document.documentElement;
+    // Save current state so we can restore on unmount
+    const prevHadDark = rootElement.classList.contains('dark');
+    const prevHadLight = rootElement.classList.contains('light');
+    const prevPrimaryColor = rootElement.style.getPropertyValue('--primary-color');
+    const prevFontSize = rootElement.style.getPropertyValue('--base-font-size');
+
+    const applyThemeToDocument = () => {
       if (theme.mode === 'dark') {
         rootElement.classList.add('dark');
         rootElement.classList.remove('light');
@@ -118,7 +127,20 @@ function ThemeSettings() {
     };
 
     applyThemeToDocument();
-  }, [theme]);
+
+    // Restore previous state when leaving the settings page
+    return () => {
+      if (prevHadDark) {
+        rootElement.classList.add('dark');
+        rootElement.classList.remove('light');
+      } else if (prevHadLight) {
+        rootElement.classList.add('light');
+        rootElement.classList.remove('dark');
+      }
+      if (prevPrimaryColor) rootElement.style.setProperty('--primary-color', prevPrimaryColor);
+      if (prevFontSize) rootElement.style.setProperty('--base-font-size', prevFontSize);
+    };
+  }, [theme, hasAccess]);
 
   const handleModeChange = (mode) => {
     if (!hasAccess) return;

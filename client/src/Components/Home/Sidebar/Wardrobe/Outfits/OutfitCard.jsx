@@ -56,9 +56,13 @@ function OutfitCard({ outfit, onClick, onShare, isFromOther }) {
 
       {/* Color palette strip */}
       {palette.length > 0 && (
-        <div className="absolute left-0 right-0 flex" style={{ bottom: 52, height: 4 }}>
+        <div className="absolute left-0 right-0 flex overflow-hidden" style={{ bottom: 52, height: 8 }}>
           {palette.map((c, i) => (
-            <div key={i} className="flex-1" style={{ backgroundColor: c.hex }} />
+            <div
+              key={i}
+              className={`flex-1 ${i === 0 ? "rounded-l-sm" : ""} ${i === palette.length - 1 ? "rounded-r-sm" : ""}`}
+              style={{ backgroundColor: c.hex }}
+            />
           ))}
         </div>
       )}

@@ -2199,8 +2199,8 @@ class Wardrobe {
   private static buildFlatlayPayload(pairing: any): { items: any[]; canvasSize: number } | null {
     const flatlayItems: any[] = [];
 
-    // Top
-    if (pairing.top?.nobgUrl) {
+    // Top — only include product photos (no person in photo)
+    if (pairing.top?.nobgUrl && !pairing.top?.hasPersonInPhoto) {
       flatlayItems.push({
         itemId: String(pairing.top._id),
         nobgUrl: pairing.top.nobgUrl,
@@ -2209,8 +2209,8 @@ class Wardrobe {
       });
     }
 
-    // Bottom
-    if (pairing.bottom?.nobgUrl) {
+    // Bottom — only product photos
+    if (pairing.bottom?.nobgUrl && !pairing.bottom?.hasPersonInPhoto) {
       flatlayItems.push({
         itemId: String(pairing.bottom._id),
         nobgUrl: pairing.bottom.nobgUrl,
@@ -2219,8 +2219,8 @@ class Wardrobe {
       });
     }
 
-    // Layer — first owned outerwear with nobgUrl
-    const layer = pairing.layers?.owned?.find((l: any) => l.nobgUrl);
+    // Layer — first owned outerwear with nobgUrl that is a product photo
+    const layer = pairing.layers?.owned?.find((l: any) => l.nobgUrl && !l.hasPersonInPhoto);
     if (layer) {
       flatlayItems.push({
         itemId: String(layer._id),
@@ -2230,8 +2230,8 @@ class Wardrobe {
       });
     }
 
-    // Footwear — first owned shoes with nobgUrl
-    const shoe = pairing.footwear?.owned?.find((f: any) => f.nobgUrl);
+    // Footwear — first owned shoes with nobgUrl that is a product photo
+    const shoe = pairing.footwear?.owned?.find((f: any) => f.nobgUrl && !f.hasPersonInPhoto);
     if (shoe) {
       flatlayItems.push({
         itemId: String(shoe._id),
@@ -2241,6 +2241,7 @@ class Wardrobe {
       });
     }
 
+    // Need at least 2 product-photo items for a meaningful flat-lay
     if (flatlayItems.length < 2) return null;
     return { items: flatlayItems, canvasSize: 1080 };
   }
@@ -2255,18 +2256,18 @@ class Wardrobe {
     const wm = enriched.wardrobeMatches || {};
     const items: any[] = [];
 
-    // Top
+    // Top — only product photos (no person)
     if (enriched.top?.item) {
-      const match = (wm[enriched.top.item] || []).find((m: any) => m.nobgUrl);
+      const match = (wm[enriched.top.item] || []).find((m: any) => m.nobgUrl && !m.hasPersonInPhoto);
       if (match) {
         items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Top", dominantColors: match.dominantColors || [] });
       }
     }
 
-    // Bottom — first suggestion with a wardrobe match that has nobgUrl
+    // Bottom — first suggestion with a product-photo wardrobe match
     if (Array.isArray(enriched.bottom)) {
       for (const b of enriched.bottom) {
-        const match = (wm[b.item] || []).find((m: any) => m.nobgUrl);
+        const match = (wm[b.item] || []).find((m: any) => m.nobgUrl && !m.hasPersonInPhoto);
         if (match) {
           items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Bottom", dominantColors: match.dominantColors || [] });
           break;
@@ -2274,10 +2275,10 @@ class Wardrobe {
       }
     }
 
-    // Layer — first option with a wardrobe match that has nobgUrl
+    // Layer — first option with a product-photo wardrobe match
     if (enriched.layers?.options) {
       for (const opt of enriched.layers.options) {
-        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl);
+        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl && !m.hasPersonInPhoto);
         if (match) {
           items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Outerwear", dominantColors: match.dominantColors || [] });
           break;
@@ -2285,10 +2286,10 @@ class Wardrobe {
       }
     }
 
-    // Footwear — first option with a wardrobe match that has nobgUrl
+    // Footwear — first option with a product-photo wardrobe match
     if (enriched.footwear?.options) {
       for (const opt of enriched.footwear.options) {
-        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl);
+        const match = (wm[opt.item] || []).find((m: any) => m.nobgUrl && !m.hasPersonInPhoto);
         if (match) {
           items.push({ itemId: String(match._id), nobgUrl: match.nobgUrl, itemType: "Shoes", dominantColors: match.dominantColors || [] });
           break;
@@ -2296,6 +2297,7 @@ class Wardrobe {
       }
     }
 
+    // Need at least 2 product-photo items for a meaningful flat-lay
     if (items.length < 2) return null;
     return { items, canvasSize: 1080 };
   }
@@ -2307,8 +2309,9 @@ class Wardrobe {
   private static buildFlatlayFromItems(
     clothingItems: any[]
   ): { items: any[]; canvasSize: number } | null {
+    // Only include product photos (no person) — person photos use CSS flat-lay on frontend
     const flatlayItems = clothingItems
-      .filter((i) => i.nobgUrl)
+      .filter((i) => i.nobgUrl && !i.hasPersonInPhoto)
       .map((i) => ({
         itemId: String(i._id),
         nobgUrl: i.nobgUrl,
@@ -2316,6 +2319,7 @@ class Wardrobe {
         dominantColors: i.dominantColors || [],
       }));
 
+    // Need at least 2 product-photo items for a meaningful flat-lay
     if (flatlayItems.length < 2) return null;
     return { items: flatlayItems, canvasSize: 1080 };
   }

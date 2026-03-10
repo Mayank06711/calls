@@ -78,6 +78,14 @@ const SharedOutfitPage = lazy(() => import("./Components/Public/SharedOutfitPage
 const BecomeExpert = lazy(() => import("./Components/Home/Sidebar/BecomeExpert/BecomeExpert"));
 const ExpertProfileEdit = lazy(() => import("./Components/Home/Sidebar/BecomeExpert/ExpertProfileEdit"));
 
+// ── Stylist module (lazy-loaded) ────────────────────────────────────────────
+const StylistHub = lazy(() => import("./Components/Home/Sidebar/Stylist/StylistHub"));
+const ClothingExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/ClothingExpert"));
+const HairExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/HairExpert"));
+const MakeupExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/MakeupExpert"));
+const CompleteMakeover = lazy(() => import("./Components/Home/Sidebar/Stylist/CompleteMakeover"));
+const WeddingExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/WeddingExpert"));
+
 // ── Admin module (lazy-loaded) ──────────────────────────────────────────────
 const AdminLayout = lazy(() => import("./Components/Admin/AdminLayout"));
 const AdminDashboard = lazy(() => import("./Components/Admin/Dashboard/AdminDashboard"));
@@ -344,6 +352,14 @@ const App = () => {
                 <Route path='wardrobe/outfits/:outfitId' element={<OutfitDetail />} />
                 <Route path='wardrobe/outfit-log' element={<WearLogPage />} />
                 <Route path='wardrobe/shop' element={<ShopPage />} />
+
+                <Route path='stylist' element={<StylistHub />} />
+                <Route path='stylist/clothing' element={<ClothingExpert />} />
+                <Route path='stylist/hair' element={<HairExpert />} />
+                <Route path='stylist/makeup' element={<MakeupExpert />} />
+                <Route path='stylist/makeover' element={<CompleteMakeover />} />
+                <Route path='stylist/wedding' element={<WeddingExpert />} />
+
                 <Route path='become-expert' element={isExpert ? <Navigate to='/chats' replace /> : <BecomeExpert />} />
                 <Route path='expert-profile' element={isExpert ? <ExpertProfileEdit /> : <Navigate to='/chats' replace />} />
 
