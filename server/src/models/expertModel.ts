@@ -19,6 +19,12 @@ interface IExpert extends Document {
     linkedin?: string;
     website?: string;
   };
+  pricing?: {
+    per15Min: number;
+    per30Min: number;
+    per60Min: number;
+    currency: string;
+  };
 }
 
 // Define the Expert Schema
@@ -70,6 +76,12 @@ const ExpertSchema: Schema<IExpert> = new Schema(
       instagram: { type: String, trim: true },
       linkedin: { type: String, trim: true },
       website: { type: String, trim: true },
+    },
+    pricing: {
+      per15Min: { type: Number, default: 0, min: 0 },
+      per30Min: { type: Number, default: 0, min: 0 },
+      per60Min: { type: Number, default: 0, min: 0 },
+      currency: { type: String, default: "credits" },
     },
   },
   { timestamps: true }

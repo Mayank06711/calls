@@ -241,7 +241,7 @@ const WHY_KYF = [
     icon: "🔒",
     title: "Your Data, Your Control",
     summary: "Photos stay private. We never share your wardrobe data.",
-    detail: "All wardrobe photos are stored securely on Cloudinary with encrypted URLs. We never sell or share your personal style data with third parties. You can delete your entire wardrobe at any time.",
+    detail: "All wardrobe photos are stored securely on our cloud with encryption. We never sell or share your personal style data with third parties. You can delete your entire wardrobe at any time.",
   },
   {
     icon: "💰",

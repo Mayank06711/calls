@@ -3,16 +3,14 @@ import { motion } from "framer-motion";
 import {
   AutoFixHighOutlined,
   ArrowBack,
-  PersonSearchOutlined,
-  CalendarMonthOutlined,
   CheckroomOutlined,
   ContentCutOutlined,
   FaceRetouchingNaturalOutlined,
   DiamondOutlined,
 } from "@mui/icons-material";
-import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
+import ExpertPanel from "./ExpertPanel";
 
 const MAKEOVER_INCLUDES = [
   { icon: <CheckroomOutlined />, label: "Clothing & Style", description: "Complete wardrobe overhaul" },
@@ -135,47 +133,8 @@ function CompleteMakeover() {
           </div>
         </motion.div>
 
-        {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-          className="space-y-3 pt-2"
-        >
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<PersonSearchOutlined />}
-            onClick={() => navigate("/chats")}
-            sx={{
-              backgroundColor: colors.fourth,
-              "&:hover": { backgroundColor: toRgba(colors.fourth, 0.87) },
-              borderRadius: "0.75rem",
-              textTransform: "none",
-              fontWeight: 600,
-              py: 1.5,
-              boxShadow: `0 4px 14px ${toRgba(colors.fourth, 0.3)}`,
-            }}
-          >
-            Connect to a Stylist Instantly
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<CalendarMonthOutlined />}
-            sx={{
-              borderColor: colors.fourth,
-              color: colors.fourth,
-              "&:hover": { borderColor: colors.fourth, backgroundColor: toRgba(colors.fourth, 0.08) },
-              borderRadius: "0.75rem",
-              textTransform: "none",
-              fontWeight: 600,
-              py: 1.5,
-            }}
-          >
-            Book an Appointment
-          </Button>
-        </motion.div>
+        {/* CTA — Expert Panel */}
+        <ExpertPanel category="makeover" colors={colors} delay={0.6} />
       </div>
     </div>
   );

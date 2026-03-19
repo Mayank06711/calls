@@ -9,6 +9,7 @@ import {
 import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
+import ExpertPanel from "./ExpertPanel";
 
 const SERVICES = [
   "Bridal styling & outfit selection",
@@ -123,12 +124,15 @@ function WeddingExpert() {
           </div>
         </motion.div>
 
+        {/* ── Expert Panel ── */}
+        <ExpertPanel category="wedding" colors={colors} delay={0.5} />
+
         {/* Schedule Call CTA */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-          className="space-y-3 pt-2"
+          transition={{ delay: 0.7, duration: 0.4 }}
+          className="space-y-3"
         >
           <div
             className="text-center p-3 rounded-xl"

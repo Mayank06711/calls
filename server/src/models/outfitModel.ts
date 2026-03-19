@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type OutfitSource = 'manual' | 'ai_suggested' | 'engine_suggested' | 'builder' | 'builder-slots';
+export type OutfitSource = 'manual' | 'ai_suggested' | 'engine_suggested' | 'builder' | 'builder-slots' | 'expert';
 
 // ─── Interface ──────────────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ const outfitSchema = new Schema<IOutfit>(
     tags: [{ type: String, trim: true }],
     source: {
       type: String,
-      enum: ['manual', 'ai_suggested', 'engine_suggested', 'builder', 'builder-slots'],
+      enum: ['manual', 'ai_suggested', 'engine_suggested', 'builder', 'builder-slots', 'expert'],
       default: 'manual',
     },
     isFavorite: { type: Boolean, default: false },

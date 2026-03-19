@@ -8,6 +8,7 @@ import {
 } from "./redux/actions/auth.actions";
 import { setSubscriptionType } from "./redux/actions/subscription.action";
 import { fetchSettingsThunk } from "./redux/thunks/settings.thunk";
+import { fetchUserInfoThunk } from "./redux/thunks/userInfo.thunks";
 import { applyFontSize, applyFontFamily, dbValueToFontSize } from "./constants/styleOptions";
 import {
   BrowserRouter as Router,
@@ -85,6 +86,13 @@ const HairExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/HairExpe
 const MakeupExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/MakeupExpert"));
 const CompleteMakeover = lazy(() => import("./Components/Home/Sidebar/Stylist/CompleteMakeover"));
 const WeddingExpert = lazy(() => import("./Components/Home/Sidebar/Stylist/WeddingExpert"));
+const ExpertCatalog = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertCatalog"));
+const ExpertDetail = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertDetail"));
+const MyBookings = lazy(() => import("./Components/Home/Sidebar/Stylist/MyBookings"));
+const CreditStore = lazy(() => import("./Components/Home/Sidebar/Stylist/CreditStore"));
+const ExpertBookings = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertBookings"));
+const ExpertScheduleEditor = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertScheduleEditor"));
+const BookingDetail = lazy(() => import("./Components/Home/Sidebar/Stylist/BookingDetail"));
 
 // ── Admin module (lazy-loaded) ──────────────────────────────────────────────
 const AdminLayout = lazy(() => import("./Components/Admin/AdminLayout"));
@@ -249,13 +257,19 @@ const App = () => {
     if (savedUserInfo) {
       const userInfo = JSON.parse(savedUserInfo);
       dispatch(setUserInfo(userInfo));
-      
+
       // Also set subscription type for colors
       if (userInfo?.subscription?.type) {
         dispatch(setSubscriptionType(userInfo.subscription.type.toUpperCase()));
       }
     }
-    
+
+    // Fetch fresh user info from server to keep Redux in sync with DB
+    // (e.g. isExpert, subscription changes made after last login)
+    if (savedUserId) {
+      dispatch(fetchUserInfoThunk());
+    }
+
     // ✅ Mark auth initialization as complete (regardless of whether user was found)
     setIsAuthInitializing(false);
   }, [dispatch]);
@@ -359,6 +373,13 @@ const App = () => {
                 <Route path='stylist/makeup' element={<MakeupExpert />} />
                 <Route path='stylist/makeover' element={<CompleteMakeover />} />
                 <Route path='stylist/wedding' element={<WeddingExpert />} />
+                <Route path='stylist/experts' element={<ExpertCatalog />} />
+                <Route path='stylist/experts/:expertId' element={<ExpertDetail />} />
+                <Route path='stylist/bookings' element={<MyBookings />} />
+                <Route path='stylist/credits' element={<CreditStore />} />
+                <Route path='stylist/booking/:bookingId' element={<BookingDetail />} />
+                <Route path='expert-bookings' element={isExpert ? <ExpertBookings /> : <Navigate to='/stylist' replace />} />
+                <Route path='expert-schedule' element={isExpert ? <ExpertScheduleEditor /> : <Navigate to='/stylist' replace />} />
 
                 <Route path='become-expert' element={isExpert ? <Navigate to='/chats' replace /> : <BecomeExpert />} />
                 <Route path='expert-profile' element={isExpert ? <ExpertProfileEdit /> : <Navigate to='/chats' replace />} />

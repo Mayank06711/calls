@@ -10,6 +10,7 @@ import { ReferralModel } from "../../models/referralModel";
 import { RedisManager } from "../../utils/redisClient";
 import { withTransaction } from "../../utils/mongoUtils";
 import { Types } from "mongoose";
+import CreditController from "../../controllers/creditController";
 
 const WEBHOOK_DEDUP_GROUP = "webhook_event";
 const WEBHOOK_DEDUP_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
@@ -226,5 +227,8 @@ export class WebhookHandler {
       },
       { session }
     );
+
+    // Grant monthly credits based on subscription tier
+    await CreditController.grantSubscriptionCredits(userId, subscription.type, session);
   }
 }

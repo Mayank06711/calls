@@ -4,7 +4,7 @@ import { useSocketContext } from '../socket/SocketContext';
 import { listenEvent, emitEvent } from '../socket/socketUtils';
 import { playNotificationSound, requestNotificationPermission, showBrowserNotification } from '../utils/notificationSound';
 
-const CATEGORIES = ['all', 'suggestion', 'social', 'promotion', 'system', 'wardrobe'];
+const CATEGORIES = ['all', 'suggestion', 'social', 'promotion', 'system', 'wardrobe', 'booking'];
 const DISMISS_FLUSH_DELAY = 2000; // 2s debounce window for batching dismisses
 
 const NotificationContext = createContext(null);

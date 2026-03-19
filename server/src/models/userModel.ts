@@ -88,6 +88,7 @@ const UserSchema: Schema<IUser> = new Schema(
     isAdmin: { type: Boolean, default: false }, // Whether or not the user is an admin
     isBlockedByAdmin: {type:Boolean, default:false},
     isExpert: { type: Boolean, default: false }, // Whether or not the user is an expert
+    creditBalance: { type: Number, default: 0, min: 0 },
     savedOutfits: [{ type: Schema.Types.ObjectId, ref: 'Outfit' }],
   },
   { timestamps: true }

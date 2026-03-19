@@ -4,13 +4,11 @@ import {
   ContentCutOutlined,
   ArrowBack,
   AutoAwesome,
-  PersonSearchOutlined,
-  CalendarMonthOutlined,
   FaceOutlined,
 } from "@mui/icons-material";
-import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
+import ExpertPanel from "./ExpertPanel";
 
 const HAIR_SUGGESTIONS = [
   {
@@ -82,7 +80,19 @@ function HairExpert() {
       </div>
 
       {/* ── Scrollable Content ── */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-5 pt-5 pb-6 space-y-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-5 pt-5 pb-6 space-y-5">
+
+        {/* ── Always-visible Expert Panel ── */}
+        <ExpertPanel category="hair" colors={colors} />
+
+        {/* ── Divider ── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px dark:bg-dark-text/10 bg-light-text/10" />
+          <span className="text-[10px] font-bold uppercase tracking-widest dark:text-dark-text/30 text-light-text/30">
+            or explore AI suggestions
+          </span>
+          <div className="flex-1 h-px dark:bg-dark-text/10 bg-light-text/10" />
+        </div>
 
         {/* AI Suggestions Header */}
         <motion.div
@@ -104,7 +114,7 @@ function HairExpert() {
               key={item.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.15, duration: 0.4 }}
+              transition={{ delay: 0.3 + idx * 0.15, duration: 0.4 }}
               className="group relative overflow-hidden rounded-xl p-4
                 dark:bg-dark-primary bg-light-secondary
                 hover:shadow-md transition-all duration-300"
@@ -146,53 +156,21 @@ function HairExpert() {
           ))}
         </div>
 
-        {/* Want More Section */}
+        {/* Post-AI expert nudge */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
-          className="space-y-4 pt-2"
+          transition={{ delay: 0.8, duration: 0.4 }}
+          className="relative overflow-hidden rounded-xl p-4"
+          style={{
+            background: `linear-gradient(145deg, ${toRgba(colors.fourth, 0.06)}, transparent)`,
+            border: `1px dashed ${toRgba(colors.fourth, 0.2)}`,
+          }}
         >
-          <div className="text-center">
-            <p className="text-xs dark:text-dark-text/50 text-light-text/50">
-              Want more personalized advice? Connect with a hair specialist.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<PersonSearchOutlined />}
-              onClick={() => navigate("/chats")}
-              sx={{
-                backgroundColor: colors.fourth,
-                "&:hover": { backgroundColor: toRgba(colors.fourth, 0.87) },
-                borderRadius: "0.75rem",
-                textTransform: "none",
-                fontWeight: 600,
-                py: 1.2,
-              }}
-            >
-              Connect Instantly
-            </Button>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<CalendarMonthOutlined />}
-              sx={{
-                borderColor: colors.fourth,
-                color: colors.fourth,
-                "&:hover": { borderColor: colors.fourth, backgroundColor: toRgba(colors.fourth, 0.08) },
-                borderRadius: "0.75rem",
-                textTransform: "none",
-                fontWeight: 600,
-                py: 1.2,
-              }}
-            >
-              Book Appointment
-            </Button>
-          </div>
+          <p className="text-xs dark:text-dark-text/50 text-light-text/50 mb-3">
+            Want more personalized advice? A specialist can recommend styles based on your face shape & hair type.
+          </p>
+          <ExpertPanel category="hair" colors={colors} delay={0} />
         </motion.div>
       </div>
     </div>

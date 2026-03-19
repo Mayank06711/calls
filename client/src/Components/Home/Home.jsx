@@ -1,15 +1,70 @@
-import React, { useEffect, useRef, useState, Suspense } from "react";
+import React, { Component, useEffect, useRef, useState, Suspense } from "react";
 import Headers from "./Hearders/Headers";
 import Sidebar from "./Sidebar/Sidebar";
 import { useSubscriptionColors } from "../../utils/getSubscriptionColors";
 import AISidebar from "./AISidebar/AISidebar";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AIContextProvider } from "../../context/AIContext";
 import introJs from "intro.js";
 import "intro.js/introjs.css";
 import { Box, Button, Modal, Typography } from "@mui/material";
 import { useSelector } from "react-redux";
 import { LocalGasStation } from "@mui/icons-material";
+
+// ── Error Boundary — prevents child render errors from crashing the entire page ─
+class ContentErrorBoundaryClass extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("ContentErrorBoundary caught:", error, info?.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
+          <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+            Something went wrong loading this page.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
+            {this.state.error?.message || "An unexpected error occurred."}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                this.props.onNavigateHome?.();
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Go Home
+            </button>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function ContentErrorBoundary({ children }) {
+  const navigate = useNavigate();
+  return (
+    <ContentErrorBoundaryClass onNavigateHome={() => navigate("/")}>
+      {children}
+    </ContentErrorBoundaryClass>
+  );
+}
 
 // ── Route-aware content skeleton ─────────────────────────────────────────────
 const Sh = ({ className }) => (
@@ -597,9 +652,11 @@ function Home() {
       }`}
         style={{ scrollBehavior: 'instant' }}
       >
-        <Suspense fallback={<ContentSkeleton />}>
-          <Outlet />
-        </Suspense>
+        <ContentErrorBoundary>
+          <Suspense fallback={<ContentSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ContentErrorBoundary>
       </div>
 
       {/* AI Assistant Panel */}

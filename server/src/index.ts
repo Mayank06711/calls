@@ -35,13 +35,15 @@ import historyRouter from "./routes/historyRoutes";
 import wardrobeRouter, { publicWardrobeRouter } from "./routes/wardrobeRoute";
 import { paymentRouter } from "./routes/paymentRoutes";
 import { webhookRouter } from "./routes/webhookRoutes";
+import creditRouter from "./routes/creditRoutes";
+import bookingRouter from "./routes/bookingRoutes";
 import {
   connectDB,
   disconnectDB,
   configureCloudinary,
   checkHealth,
 } from "./db";
-import cronSchuduler, { startStaleOrderCleanup } from "./auto/cronJob";
+import cronSchuduler, { startStaleOrderCleanup, startBookingReminderCron } from "./auto/cronJob";
 
 
 class ServerManager {
@@ -146,6 +148,8 @@ class ServerManager {
     this.app.use("/api/v1/public", publicWardrobeRouter); // Public routes — no auth required
     this.app.use("/api/v1/wardrobe", wardrobeRouter);
     this.app.use("/api/v1/payments", paymentRouter);
+    this.app.use("/api/v1/credits", creditRouter);
+    this.app.use("/api/v1/bookings", bookingRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -329,4 +333,5 @@ class ServerManager {
 const serverManager = new ServerManager();
 serverManager.start().then(() => {
   startStaleOrderCleanup();
+  startBookingReminderCron();
 });

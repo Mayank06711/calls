@@ -190,6 +190,30 @@ export const ENDPOINTS = {
 
   EXPERT: {
     PROFILE: `/api/${API_CONFIG.VERSION}/expert/profile`, // GET / PUT
+    INSTANT: `/api/${API_CONFIG.VERSION}/expert/instant`, // GET ?category=clothing|hair|makeup|wedding|makeover
+    CATALOG: `/api/${API_CONFIG.VERSION}/expert/catalog`, // GET (list) / GET /:expertId (detail)
+    AVAILABILITY: `/api/${API_CONFIG.VERSION}/expert/availability`, // GET /:expertId / PUT (own)
+  },
+
+  CREDITS: {
+    BALANCE: `/api/${API_CONFIG.VERSION}/credits/balance`, // GET
+    TRANSACTIONS: `/api/${API_CONFIG.VERSION}/credits/transactions`, // GET ?page=&limit=
+    PACKS: `/api/${API_CONFIG.VERSION}/credits/packs`, // GET
+    PURCHASE: `/api/${API_CONFIG.VERSION}/credits/purchase`, // POST { packId }
+    VERIFY_PURCHASE: `/api/${API_CONFIG.VERSION}/credits/verify-purchase`, // POST
+  },
+
+  BOOKINGS: {
+    SLOTS: `/api/${API_CONFIG.VERSION}/bookings/slots`, // GET /:expertId?date=&duration=
+    CREATE: `/api/${API_CONFIG.VERSION}/bookings`, // POST
+    MY: `/api/${API_CONFIG.VERSION}/bookings/my`, // GET
+    EXPERT: `/api/${API_CONFIG.VERSION}/bookings/expert`, // GET
+    CANCEL: `/api/${API_CONFIG.VERSION}/bookings`, // POST /:id/cancel
+    CONNECT: `/api/${API_CONFIG.VERSION}/bookings`, // POST /:id/connect
+    DETAIL: `/api/${API_CONFIG.VERSION}/bookings`, // GET /:id/detail
+    PERMISSIONS: `/api/${API_CONFIG.VERSION}/bookings`, // PATCH /:id/permissions
+    CLIENT_CLOSET: `/api/${API_CONFIG.VERSION}/bookings`, // GET/POST /:id/client-closet
+    CLIENT_OUTFITS: `/api/${API_CONFIG.VERSION}/bookings`, // GET /:id/client-outfits
   },
 
   // ─── Admin Panel ──────────────────────────────────────────────────────────

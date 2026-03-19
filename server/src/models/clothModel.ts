@@ -31,6 +31,11 @@ export interface IClothingItem extends Document {
   purchaseDate?: Date;
   isArchived: boolean;
 
+  // ─── Expert editing audit trail ─────────────────────────────────────
+  addedBy?: Types.ObjectId;
+  lastEditedBy?: Types.ObjectId;
+  lastEditedAt?: Date;
+
   // ─── Phase 7: Python AI Service Integration ──────────────────────────
   hasPersonInPhoto: boolean;
   processingStatus?: 'pending' | 'completed' | 'failed';
@@ -95,6 +100,11 @@ const clothingItemSchema = new Schema<IClothingItem>(
     price: { type: Number, min: 0 },
     purchaseDate: { type: Date },
     isArchived: { type: Boolean, default: false },
+
+    // ─── Expert editing audit trail ──────────────────────────────────────
+    addedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    lastEditedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    lastEditedAt: { type: Date },
 
     // ─── Phase 7: Python AI Service Integration ──────────────────────────
     hasPersonInPhoto: { type: Boolean, default: false },

@@ -546,6 +546,58 @@ const RefundPaymentSchema = z.object({
   reason: z.string().min(3, "reason must be at least 3 characters").max(200),
 });
 
+// ─── Expert Pricing ──────────────────────────────────────────────────────────
+
+const ExpertPricingSchema = z.object({
+  per15Min: z.number().int().min(0).max(10000),
+  per30Min: z.number().int().min(0).max(10000),
+  per60Min: z.number().int().min(0).max(10000),
+});
+
+// ─── Booking & Credits ──────────────────────────────────────────────────────
+
+const CreateBookingSchema = z.object({
+  expertId: mongoId,
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Time must be HH:mm"),
+  duration: z.enum(["15", "30", "60"]).transform(Number).or(z.literal(15).or(z.literal(30)).or(z.literal(60))),
+  notes: z.string().max(500).trim().optional(),
+});
+
+const CancelBookingSchema = z.object({
+  reason: z.string().max(500).trim().optional(),
+});
+
+const TogglePermissionsSchema = z.object({
+  closet: z.boolean().optional(),
+  outfits: z.boolean().optional(),
+}).refine(
+  (obj) => obj.closet !== undefined || obj.outfits !== undefined,
+  "At least one permission must be specified"
+);
+
+const UpdateAvailabilitySchema = z.object({
+  timezone: z.string().min(1, "Timezone is required"),
+  weeklySlots: z.array(z.object({
+    day: z.number().int().min(0).max(6),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime must be HH:mm"),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime must be HH:mm"),
+    isActive: z.boolean(),
+  })).min(1, "At least one day slot is required").max(7),
+  slotDurations: z.array(z.number().refine((n) => [15, 30, 60].includes(n), "Must be 15, 30, or 60")).min(1),
+  bufferMinutes: z.number().int().min(0).max(60).optional().default(10),
+});
+
+const PurchaseCreditPackSchema = z.object({
+  packId: z.string().min(1, "Pack ID is required"),
+});
+
+const VerifyCreditPurchaseSchema = z.object({
+  providerOrderId: z.string().min(1, "providerOrderId is required"),
+  providerPaymentId: z.string().min(1, "providerPaymentId is required"),
+  signature: z.string().min(1, "signature is required"),
+});
+
 // ─── Exports ────────────────────────────────────────────────────────────────
 
 export {
@@ -604,4 +656,13 @@ export {
   CreatePaymentOrderSchema,
   VerifyPaymentSchema,
   RefundPaymentSchema,
+  // Expert Pricing
+  ExpertPricingSchema,
+  // Booking & Credits
+  CreateBookingSchema,
+  CancelBookingSchema,
+  UpdateAvailabilitySchema,
+  PurchaseCreditPackSchema,
+  VerifyCreditPurchaseSchema,
+  TogglePermissionsSchema,
 };

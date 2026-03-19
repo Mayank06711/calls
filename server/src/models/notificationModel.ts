@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from "mongoose";
 
-export type NotificationType = "suggestion" | "social" | "promotion" | "system" | "wardrobe";
+export type NotificationType = "suggestion" | "social" | "promotion" | "system" | "wardrobe" | "booking";
 export type NotificationSeverity = "info" | "warning" | "critical";
 
 export interface INotification extends Document {
@@ -34,6 +34,17 @@ export interface INotification extends Document {
   // System fields
   severity?: NotificationSeverity;
 
+  // Booking fields
+  booking?: {
+    bookingId: Types.ObjectId;
+    expertName?: string;
+    userName?: string;
+    date?: string;
+    startTime?: string;
+    duration?: number;
+    status?: string;
+  };
+
   // Wardrobe fields
   wardrobe?: {
     pairingCount?: number;
@@ -65,7 +76,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["suggestion", "social", "promotion", "system", "wardrobe"],
+      enum: ["suggestion", "social", "promotion", "system", "wardrobe", "booking"],
       required: true,
       index: true,
     },
@@ -104,6 +115,20 @@ const NotificationSchema = new Schema<INotification>(
     severity: {
       type: String,
       enum: ["info", "warning", "critical"],
+    },
+
+    // Booking data
+    booking: {
+      type: {
+        bookingId: Schema.Types.ObjectId,
+        expertName: String,
+        userName: String,
+        date: String,
+        startTime: String,
+        duration: Number,
+        status: String,
+      },
+      default: undefined,
     },
 
     // Wardrobe data

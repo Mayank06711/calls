@@ -8,8 +8,13 @@ import {
   AutoFixHighOutlined,
   ArrowForward,
   AutoAwesome,
+  EventNoteOutlined,
+  AccountBalanceWalletOutlined,
+  CalendarMonthOutlined,
+  EditCalendarOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 
 const STYLIST_CATEGORIES = [
@@ -86,12 +91,48 @@ function SectionLabel({ label, color }) {
   );
 }
 
+const QUICK_LINKS = [
+  {
+    key: "bookings",
+    icon: <EventNoteOutlined />,
+    title: "My Bookings",
+    description: "View upcoming & past sessions",
+    path: "/stylist/bookings",
+  },
+  {
+    key: "credits",
+    icon: <AccountBalanceWalletOutlined />,
+    title: "Credits",
+    description: "Buy credits & view transactions",
+    path: "/stylist/credits",
+  },
+];
+
+const EXPERT_LINKS = [
+  {
+    key: "expert-bookings",
+    icon: <CalendarMonthOutlined />,
+    title: "Client Bookings",
+    description: "Manage your received bookings",
+    path: "/expert-bookings",
+  },
+  {
+    key: "expert-schedule",
+    icon: <EditCalendarOutlined />,
+    title: "My Schedule",
+    description: "Set your availability & slots",
+    path: "/expert-schedule",
+  },
+];
+
 function StylistHub() {
   const colors = useSubscriptionColors();
   const navigate = useNavigate();
+  const isExpert = useSelector((state) => state.auth.userInfo?.isExpert);
 
   const featuredCard = STYLIST_CATEGORIES.find((c) => c.featured);
   const regularCards = STYLIST_CATEGORIES.filter((c) => !c.featured);
+  const links = isExpert ? [...QUICK_LINKS, ...EXPERT_LINKS] : QUICK_LINKS;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -130,6 +171,62 @@ function StylistHub() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Quick-access navigation — always visible without scrolling */}
+        <div className="px-4 sm:px-5 pb-2.5 flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => navigate("/stylist/bookings")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+            style={{
+              backgroundColor: toRgba(colors.fourth, 0.1),
+              color: colors.fourth,
+              border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+            }}
+          >
+            <EventNoteOutlined style={{ fontSize: 14 }} />
+            My Bookings
+          </button>
+          <button
+            onClick={() => navigate("/stylist/credits")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+            style={{
+              backgroundColor: toRgba(colors.fourth, 0.1),
+              color: colors.fourth,
+              border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+            }}
+          >
+            <AccountBalanceWalletOutlined style={{ fontSize: 14 }} />
+            Credits
+          </button>
+          {isExpert && (
+            <>
+              <button
+                onClick={() => navigate("/expert-schedule")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+                style={{
+                  backgroundColor: toRgba(colors.fourth, 0.1),
+                  color: colors.fourth,
+                  border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+                }}
+              >
+                <EditCalendarOutlined style={{ fontSize: 14 }} />
+                My Schedule
+              </button>
+              <button
+                onClick={() => navigate("/expert-bookings")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+                style={{
+                  backgroundColor: toRgba(colors.fourth, 0.1),
+                  color: colors.fourth,
+                  border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+                }}
+              >
+                <CalendarMonthOutlined style={{ fontSize: 14 }} />
+                Client Bookings
+              </button>
+            </>
+          )}
         </div>
 
         <div
@@ -275,6 +372,61 @@ function StylistHub() {
                     className="absolute -bottom-3 -right-3 w-16 h-16 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"
                     style={{ backgroundColor: toRgba(colors.fourth, 0.1) }}
                   />
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </section>
+
+        {/* ── Quick Links: Bookings & Credits ── */}
+        <section>
+          <SectionLabel label={isExpert ? "Manage" : "Your Account"} color={colors.fourth} />
+          <motion.div
+            className="grid grid-cols-2 gap-3"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {links.map((link) => (
+              <motion.div key={link.key} variants={itemVariants}>
+                <div
+                  className="group relative overflow-hidden rounded-2xl backdrop-blur-md
+                    dark:bg-dark-primary bg-light-secondary
+                    cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-lg"
+                  style={{ border: `1px solid ${toRgba(colors.fourth, 0.15)}` }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = toRgba(colors.fourth, 0.4);
+                    e.currentTarget.style.boxShadow = `0 4px 16px ${toRgba(colors.fourth, 0.12)}`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = toRgba(colors.fourth, 0.15);
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  onClick={() => navigate(link.path)}
+                >
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[2px] opacity-40 group-hover:opacity-100 transition-opacity duration-300"
+                    style={{ background: `linear-gradient(90deg, ${colors.fourth}, transparent)` }}
+                  />
+                  <div className="relative p-3.5 flex flex-col gap-2">
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center
+                        group-hover:scale-110 transition-transform duration-300"
+                      style={{
+                        background: `linear-gradient(135deg, ${toRgba(colors.fourth, 0.15)}, ${toRgba(colors.fourth, 0.06)})`,
+                      }}
+                    >
+                      {React.cloneElement(link.icon, {
+                        style: { color: colors.fourth, fontSize: 18 },
+                      })}
+                    </div>
+                    <h3 className="text-[13px] font-semibold dark:text-dark-text/90 text-light-text/90 leading-tight">
+                      {link.title}
+                    </h3>
+                    <p className="text-[11px] dark:text-dark-text/45 text-light-text/45 leading-snug">
+                      {link.description}
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             ))}
