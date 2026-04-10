@@ -55,11 +55,3 @@ venv/
 ENV/
 env/
 .venv
-
-# SQLite temp files
-*.db-shm
-*.db-wal
-
-# Self-signed test certs
-client/certs/
-client/test-certs/
