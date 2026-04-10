@@ -1,15 +1,15 @@
-import * as fs from "fs";
 import * as path from "path";
+import Database, { Database as DatabaseType } from "better-sqlite3";
 import { getTopCategory, getBottomCategory, getShoeColorSuggestion } from "./shared";
+import { hashKey } from "./db_utils";
 
 // Resolve path relative to compiled dist directory: dist/AISugession/ → server/
-const DB_FILE = path.resolve(__dirname, '../..', 'footwear_master_db.json');
+const DB_FILE = path.resolve(__dirname, '../..', 'footwear_master.db');
 
 // --- 1. INTERFACES ---
 
-interface FootwearDB {
-    dicts: { items: string[] };
-    data: { [key: string]: [number, number, number] }; // [Classic, Trendy, Comfort]
+interface FootwearDicts {
+    items: string[];
 }
 
 export interface FootwearInput {
@@ -26,10 +26,10 @@ export interface FootwearInput {
     fitPreference: string;
 
     // OUTFIT INPUTS (From Previous Engines)
-    topItemName: string; 
-    topItemColor: string; 
+    topItemName: string;
+    topItemColor: string;
     bottomItemName: string;
-    
+
     // NEW: LAYER INPUT (For Smart Color Matching)
     layerColor?: string; // Optional
 }
@@ -48,22 +48,32 @@ export interface FootwearResult {
 // --- 2. THE ENGINE CLASS ---
 
 export class FootwearEngine {
-    private db: FootwearDB;
+    private db: DatabaseType;
+    private dicts: FootwearDicts;
+    private stmt: any;
 
     constructor() {
-        console.log("👞 Loading 13-Factor Footwear Brain...");
+        console.log("👞 Loading 13-Factor Footwear Brain (SQLite)...");
         try {
-            const raw = fs.readFileSync(DB_FILE, "utf-8");
-            this.db = JSON.parse(raw);
+            this.db = new Database(DB_FILE, { readonly: true });
+            this.db.pragma("cache_size = -4000"); // 4MB cache
+
+            // Load dicts into memory (tiny)
+            this.dicts = { items: [] };
+            const rows = this.db.prepare("SELECT type, idx, value FROM dicts ORDER BY type, idx").all() as any[];
+            for (const row of rows) {
+                if (row.type === "items") this.dicts.items[row.idx] = row.value;
+            }
+
+            // Prepare lookup statement
+            this.stmt = this.db.prepare("SELECT v0, v1, v2 FROM data WHERE h = ?");
+
             console.log("✅ Footwear Engine Online.");
         } catch (e) {
-            console.error("❌ Error: DB not found at", DB_FILE, "Run footwear_builder.ts first!");
+            console.error("❌ Error: DB not found at", DB_FILE, "Run 'npm run convert:db' first!");
             throw e;
         }
     }
-
-    // --- A & B: Bridge mappers + color logic now use shared.ts ---
-    // getTopCategory(), getBottomCategory(), getShoeColorSuggestion() imported from "./shared"
 
     // --- C. KEY GENERATOR ---
     private generateKey(input: FootwearInput, topCat: string, bottomCat: string): string {
@@ -76,12 +86,12 @@ export class FootwearEngine {
     public getFootwearOptions(input: FootwearInput): FootwearResult {
         const topCat = getTopCategory(input.topItemName, input.gender);
         const bottomCat = getBottomCategory(input.bottomItemName, input.gender);
-        
+
         const key = this.generateKey(input, topCat, bottomCat);
-        const ids = this.db.data[key];
+        const row = this.stmt.get(hashKey(key)) as { v0: number; v1: number; v2: number } | undefined;
 
         // 1. Fallback if logic gap
-        if (!ids) {
+        if (!row) {
             return {
                 options: [
                     { type: "Classic", item: "Classic Shoes", color: "Black", note: "Safe choice" },
@@ -92,9 +102,9 @@ export class FootwearEngine {
         }
 
         // 2. Decode Items
-        const itemClassic = this.db.dicts.items[ids[0]];
-        const itemTrendy = this.db.dicts.items[ids[1]];
-        const itemComfort = this.db.dicts.items[ids[2]];
+        const itemClassic = this.dicts.items[row.v0];
+        const itemTrendy = this.dicts.items[row.v1];
+        const itemComfort = this.dicts.items[row.v2];
 
         // 3. Construct Result
         return {

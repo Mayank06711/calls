@@ -467,7 +467,6 @@ function Home() {
           title: "Dashboard",
         },
       ],
-      showProgress: false, // Hide progress dots
       showBullets: false, // Hide bullets
       exitOnOverlayClick: false, // Prevent closing on overlay click
       disableInteraction: true, // Prevent user interaction during the tour

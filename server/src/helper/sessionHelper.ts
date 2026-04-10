@@ -1,4 +1,3 @@
-import geoip from "geoip-lite";
 import {
   IDeviceInfo,
   ILocationInfo,
@@ -204,7 +203,13 @@ export function parseUserAgent(userAgent: string, customHeaders?: SessionRequest
  * Create location info from IP using GeoIP lookup
  */
 export function createLocationInfo(ip: string): ILocationInfo {
-  const geo = geoip.lookup(ip);
+  let geo: any = null;
+  try {
+    const geoip = require("geoip-lite");
+    geo = geoip.lookup(ip);
+  } catch {
+    // geoip-lite data not available (stripped in Docker) — gracefully skip
+  }
 
   if (!geo) {
     return { ip };

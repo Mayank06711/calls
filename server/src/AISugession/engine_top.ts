@@ -1,12 +1,13 @@
-import * as fs from "fs";
 import * as path from "path";
+import Database, { Database as DatabaseType } from "better-sqlite3";
+import { hashKey } from "./db_utils";
 
 // Resolve path relative to compiled dist directory: dist/AISugession/ → server/
-const DB_FILE = path.resolve(__dirname, '../..', 'consultant_master_db.json');
+const DB_FILE = path.resolve(__dirname, '../..', 'consultant_master.db');
 
-interface ConsultantDB {
-    dicts: { items: string[], colors: string[] };
-    data: { [key: string]: [number, number] };
+interface ConsultantDicts {
+    items: string[];
+    colors: string[];
 }
 
 export interface UserInput {
@@ -19,7 +20,7 @@ export interface UserInput {
     skinTone: string;
     season: "Summer" | "Winter" | "Monsoon";
     bodyShape: string;
-    height: "Short" | "Medium" | "Tall"; // <--- Added Height to Interface
+    height: "Short" | "Medium" | "Tall";
 }
 
 export interface OutfitOption {
@@ -30,16 +31,30 @@ export interface OutfitOption {
 }
 
 export class ConsultantEngine {
-    private db: ConsultantDB;
+    private db: DatabaseType;
+    private dicts: ConsultantDicts;
+    private stmt: any;
 
     constructor() {
-        console.log("⚙️  Loading 10-Factor Consultant Brain...");
+        console.log("⚙️  Loading 10-Factor Consultant Brain (SQLite)...");
         try {
-            const raw = fs.readFileSync(DB_FILE, "utf-8");
-            this.db = JSON.parse(raw);
+            this.db = new Database(DB_FILE, { readonly: true });
+            this.db.pragma("cache_size = -8000"); // 8MB cache
+
+            // Load dicts into memory (tiny — a few KB)
+            this.dicts = { items: [], colors: [] };
+            const rows = this.db.prepare("SELECT type, idx, value FROM dicts ORDER BY type, idx").all() as any[];
+            for (const row of rows) {
+                if (row.type === "items") this.dicts.items[row.idx] = row.value;
+                else if (row.type === "colors") this.dicts.colors[row.idx] = row.value;
+            }
+
+            // Prepare lookup statement (reused for every query)
+            this.stmt = this.db.prepare("SELECT v0, v1 FROM data WHERE h = ?");
+
             console.log("✅ Consultant Engine Online.");
         } catch (e) {
-            console.error("❌ Error: DB not found at", DB_FILE, "Run builder first.");
+            console.error("❌ Error: DB not found at", DB_FILE, "Run 'npm run convert:db' first.");
             throw e;
         }
     }
@@ -53,15 +68,12 @@ export class ConsultantEngine {
 
     private lookupOutfit(input: UserInput, vibe: string, label: string): OutfitOption | null {
         const key = this.generateKey(input, vibe);
-        const ids = this.db.data[key];
+        const row = this.stmt.get(hashKey(key)) as { v0: number; v1: number } | undefined;
 
-        if (!ids) {
-            // Optional: You can implement a fallback (e.g., default height) if specific key is missing
-            return null;
-        }
+        if (!row) return null;
 
-        const topItem = this.db.dicts.items[ids[0]];
-        const topColor = this.db.dicts.colors[ids[1]];
+        const topItem = this.dicts.items[row.v0];
+        const topColor = this.dicts.colors[row.v1];
 
         return {
             label: label,
@@ -82,7 +94,7 @@ export class ConsultantEngine {
 
     public getDualSuggestions(input: UserInput): OutfitOption[] {
         const suggestions: OutfitOption[] = [];
-        
+
         const primary = this.lookupOutfit(input, input.styleVibe, "Your Choice");
         if (primary) suggestions.push(primary);
 

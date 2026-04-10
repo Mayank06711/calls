@@ -1,0 +1,109 @@
+services:
+  # ── React Client (Nginx) ──
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5005}
+        VITE_API_VERSION: v1
+        VITE_ENV: production
+    container_name: kyf-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+  # ── Node.js Server ──
+  server:
+    build:
+      context: ./server
+    container_name: kyf-server
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    environment:
+      - NODE_ENV=production
+      - PORT=5005
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - MONGO_URI=${MONGO_URI}
+      - PYTHON_SERVICE_URL=http://python-ai:8001
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
+      - CLOUDINARY_NAME=${CLOUDINARY_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET_KEY=${CLOUDINARY_API_SECRET_KEY}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+      - ACCESS_TOKEN_SECRET_EXPIRY=${ACCESS_TOKEN_SECRET_EXPIRY}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
+      - REFRESH_TOKEN_SECRET_EXPIRY=${REFRESH_TOKEN_SECRET_EXPIRY}
+      - ADMIN_ACCESS_TOKEN_SECRET=${ADMIN_ACCESS_TOKEN_SECRET}
+      - ADMIN_ACCESS_TOKEN_EXPIRY=${ADMIN_ACCESS_TOKEN_EXPIRY}
+      - ADMIN_REFRESH_TOKEN_SECRET=${ADMIN_REFRESH_TOKEN_SECRET}
+      - ADMIN_REFRESH_TOKEN_EXPIRY=${ADMIN_REFRESH_TOKEN_EXPIRY}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+      - MAIN_EMAIL=${MAIN_EMAIL}
+      - CLIENT_URL=${CLIENT_URL}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_USERNAME_PASSWORD=${EMAIL_USERNAME_PASSWORD}
+      - EMAIL_HOSTNAME=${EMAIL_HOSTNAME}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_SMS_NUMBER=${TWILIO_SMS_NUMBER}
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # ── Python AI Service ──
+  python-ai:
+    build:
+      context: ./kyfFashionAi
+    container_name: kyf-python-ai
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - ENV=production
+      - PORT=8001
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
+      - SERVER_BASE_URL=http://server:5005
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET_KEY}
+    volumes:
+      - model-cache:/app/.model_cache
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: kyf-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-data:
+  model-cache:

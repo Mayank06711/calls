@@ -9,6 +9,7 @@ import hpp from "hpp";
 import xssClean from "xss-clean";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { createServer as createHttpServer, Server as HTTPServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import fs from "fs";
@@ -323,6 +324,16 @@ class ServerManager {
       }
 
       await RedisManager.initRedisConnection();
+
+      // Socket.IO Redis adapter: enables multi-instance socket coordination
+      const { pubClient, subClient } = RedisManager.createSocketIOAdapterClients();
+      await Promise.all([
+        new Promise<void>((res) => pubClient.once("ready", res)),
+        new Promise<void>((res) => subClient.once("ready", res)),
+      ]);
+      this.io.adapter(createAdapter(pubClient, subClient));
+      console.log("Socket.IO Redis adapter initialized");
+
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);

@@ -1,0 +1,26 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.pt.1
+*.pt.2
+
+# Test files and outputs
+test_full_photo/
+test_extra_downloaded/
+testing_img_with_unions/
+bg_removal_test/
+visual-testing/
+
+# Loose model files (only yolo_models/ dir is needed)
+yolov8m-oiv7.pt
+yolov8n-oiv7.pt
+yolov8s-oiv7.pt
+yolov8s-worldv2.pt
+
+# Dev files
+README.md
+*.md
+.git/
+.gitignore

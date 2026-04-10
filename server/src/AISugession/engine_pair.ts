@@ -1,98 +1,78 @@
-import * as fs from 'fs';
 import * as path from 'path';
+import Database, { Database as DatabaseType } from 'better-sqlite3';
+import { hashKey } from './db_utils';
 
-// --- CONFIGURATION ---
 // Resolve path relative to compiled dist directory: dist/AISugession/ → server/
-const DB_FILE = path.resolve(__dirname, '../..', 'fashion_master_db.json');
+const DB_FILE = path.resolve(__dirname, '../..', 'fashion_master.db');
 
-// --- INTERFACES ---
-
-interface FashionDB {
-    dicts: { items: string[], colors: string[], patterns: string[] };
-    data: { [key: string]: [number, number, number, number, number, number] };
-    // Value layout: [classicItemId, trendyItemId, classicColorId, trendyColorId, classicPatternId, trendyPatternId]
+interface FashionDicts {
+    items: string[];
+    colors: string[];
+    patterns: string[];
 }
 
 export interface UserRequest {
     gender: "Male" | "Female";
-    category: "Top" | "Bottom";     // What does the user HAVE?
-    type: string;                   // e.g., "Short Kurta"
-    color: string;                  // e.g., "Mustard"
-    pattern: string;                // e.g., "Solid"
+    category: "Top" | "Bottom";
+    type: string;
+    color: string;
+    pattern: string;
     season: "Summer" | "Winter" | "Monsoon";
     skinTone: "Fair" | "Wheatish" | "Dusky" | "Dark Brown";
     bodyShape: "Trapezoid" | "Rectangle" | "Triangle" | "Inverted_Triangle" | "Oval" | "Hourglass" | "Pear" | "Apple";
     height: "Short" | "Medium" | "Tall";
 }
 
-// --- THE ENGINE CLASS ---
 export class FashionEngine {
-    private db: FashionDB;
+    private db: DatabaseType;
+    private dicts: FashionDicts;
+    private stmt: any;
 
     constructor() {
         try {
-            console.log("⚙️  Loading Fashion Database...");
+            console.log("⚙️  Loading Fashion Database (SQLite)...");
             console.log(`   📁 Path: ${DB_FILE}`);
 
-            // Check if file exists
-            if (!fs.existsSync(DB_FILE)) {
-                console.error(`   ❌ File does NOT exist at: ${DB_FILE}`);
-                console.error(`   📂 __dirname = ${__dirname}`);
-                throw new Error(`Database file not found: ${DB_FILE}`);
+            this.db = new Database(DB_FILE, { readonly: true });
+            this.db.pragma("cache_size = -8000"); // 8MB cache
+
+            // Load dicts into memory (tiny)
+            this.dicts = { items: [], colors: [], patterns: [] };
+            const rows = this.db.prepare("SELECT type, idx, value FROM dicts ORDER BY type, idx").all() as any[];
+            for (const row of rows) {
+                if (row.type === "items") this.dicts.items[row.idx] = row.value;
+                else if (row.type === "colors") this.dicts.colors[row.idx] = row.value;
+                else if (row.type === "patterns") this.dicts.patterns[row.idx] = row.value;
             }
 
-            // Get file size
-            const stats = fs.statSync(DB_FILE);
-            const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-            console.log(`   📊 File size: ${sizeMB} MB`);
+            // Prepare lookup statement
+            this.stmt = this.db.prepare("SELECT v0, v1, v2, v3, v4, v5 FROM data WHERE h = ?");
 
-            // Log memory before + heap limit
-            const memBefore = process.memoryUsage();
-            const v8 = require('v8');
-            const heapStats = v8.getHeapStatistics();
-            const heapLimitMB = (heapStats.heap_size_limit / 1024 / 1024).toFixed(0);
-            console.log(`   🧠 Memory before: heap=${(memBefore.heapUsed / 1024 / 1024).toFixed(0)}MB, limit=${heapLimitMB}MB`);
-
-            // Read file
-            console.log(`   📖 Reading file...`);
-            const raw = fs.readFileSync(DB_FILE, 'utf-8');
-            console.log(`   ✅ File read complete (${raw.length} chars)`);
-
-            // Parse JSON
-            console.log(`   🔄 Parsing JSON...`);
-            this.db = JSON.parse(raw);
-            console.log(`   ✅ JSON parsed successfully`);
-
-            // Log memory after
             const memAfter = process.memoryUsage();
-            console.log(`   🧠 Memory after: heap=${(memAfter.heapUsed / 1024 / 1024).toFixed(0)}MB`);
-
+            console.log(`   🧠 Memory: heap=${(memAfter.heapUsed / 1024 / 1024).toFixed(0)}MB`);
             console.log("✅ Fashion Engine Online.");
         } catch (e: any) {
             console.error("❌ Fatal Error loading Fashion Database:");
-            console.error(`   Error type: ${e.name}`);
             console.error(`   Message: ${e.message}`);
-            if (e.code) console.error(`   Code: ${e.code}`);
             throw e;
         }
     }
 
     public getAdvice(input: UserRequest) {
         // 1. Construct the Key (Order must match builder_pair.ts)
-        // Format: Gender|Category|Type|Color|Pattern|Season|Body|Skin|Height
         const key = `${input.gender}|${input.category}|${input.type}|${input.color}|${input.pattern}|${input.season}|${input.bodyShape}|${input.skinTone}|${input.height}`;
 
-        // 2. O(1) Lookup
-        const ids = this.db.data[key];
+        // 2. O(1) Lookup (hash key for SQLite)
+        const row = this.stmt.get(hashKey(key)) as { v0: number; v1: number; v2: number; v3: number; v4: number; v5: number } | undefined;
 
         // 3. Decode & Response
-        if (ids) {
-            const classicItem = this.db.dicts.items[ids[0]];
-            const trendyItem = this.db.dicts.items[ids[1]];
-            const classicColor = this.db.dicts.colors[ids[2]];
-            const trendyColor = this.db.dicts.colors[ids[3]];
-            const classicPattern = this.db.dicts.patterns[ids[4]];
-            const trendyPattern = this.db.dicts.patterns[ids[5]];
+        if (row) {
+            const classicItem = this.dicts.items[row.v0];
+            const trendyItem = this.dicts.items[row.v1];
+            const classicColor = this.dicts.colors[row.v2];
+            const trendyColor = this.dicts.colors[row.v3];
+            const classicPattern = this.dicts.patterns[row.v4];
+            const trendyPattern = this.dicts.patterns[row.v5];
 
             return {
                 status: "success",
@@ -120,7 +100,6 @@ export class FashionEngine {
                 ]
             };
         } else {
-            // Fallback for edge cases (Safety net)
             return {
                 status: "partial_success",
                 message: "Exact match not found. Providing generic advice.",

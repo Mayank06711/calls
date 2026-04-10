@@ -1,46 +1,62 @@
-# Stage 1: Build Stage
-FROM node:18-alpine AS build
+# ── Stage 1: Build TypeScript ──
+FROM node:18-alpine AS builder
 
-# Set working directory
-WORKDIR /nyf/service/backend
+WORKDIR /app
 
-# Install dependencies and TypeScript
-COPY package*.json ./
-RUN npm install
-RUN npm install -g typescript
+RUN apk add --no-cache python3 make g++
 
-# Copy source code and build    ----# Copies everything, including the certs folder
-COPY . .    
+COPY package.json package-lock.json ./
+RUN npm config set fetch-timeout 600000 && \
+    npm config set fetch-retries 5 && \
+    npm ci
+
+COPY tsconfig.json ./
+COPY src/ ./src/
+
 RUN npm run build
 
-# Stage 2: Runtime Stage
-FROM node:18-alpine AS runtime
+# ── Stage 2: Prod deps only (single layer, no build tools in final) ──
+FROM node:18-alpine AS deps
 
-# Set working directory
-WORKDIR /nyf/service/backend
+WORKDIR /app
 
-# Install PM2 globally
-RUN npm install -g pm2
-RUN npm rebuild bcrypt --build-from-source
+COPY package.json package-lock.json ./
+RUN apk add --no-cache python3 make g++ && \
+    npm config set fetch-timeout 600000 && \
+    npm config set fetch-retries 5 && \
+    npm ci --omit=dev && \
+    npm rebuild bcrypt --build-from-source && \
+    # Strip bloat from node_modules
+    find node_modules -name "*.md" -o -name "*.map" -o -name "LICENSE*" -o -name "CHANGELOG*" | xargs rm -f 2>/dev/null; \
+    find node_modules -type d \( -name "test" -o -name "tests" -o -name "docs" -o -name "example" -o -name "examples" \) -exec rm -rf {} + 2>/dev/null; \
+    rm -rf node_modules/@types 2>/dev/null; \
+    # geoip-lite data is 154MB — remove it, lookup will gracefully return null
+    rm -rf node_modules/geoip-lite/data 2>/dev/null; \
+    true
 
-# Copy only necessary files from the build stage
-COPY --from=build /nyf/service/backend/package*.json ./
-COPY --from=build /nyf/service/backend/node_modules ./node_modules
-COPY --from=build /nyf/service/backend/dist ./dist
-COPY --from=build /nyf/service/backend/ecosystem.config.js ./ecosystem.config.js
+# ── Stage 3: Final minimal image ──
+FROM node:18-alpine
 
-# Copy the .env file from the build stage
-COPY --from=build /nyf/service/backend/.env .env
+WORKDIR /app
 
-# Copy the certs directory from the build context into the container
-COPY --from=build /nyf/service/backend/certs /nyf/service/backend/certs 
+RUN apk add --no-cache tini && adduser -D -H appuser
 
+# Copy only what's needed — no build tools, no source
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY package.json ./
+COPY src/templates.json ./dist/templates.json
 
-# Correct the path for templates.json based on your structure
-COPY --from=build /nyf/service/backend/src/templates.json /nyf/service/backend/dist/templates.json 
+# SQLite master DBs
+COPY fashion_master.db consultant_master.db \
+     footwear_master.db layering_master.db ./
 
-# Expose port
+ENV NODE_ENV=production PORT=5005
 EXPOSE 5005
+USER appuser
 
-# Start the application using PM2
-CMD ["pm2-runtime", "ecosystem.config.js", "--env", "dev"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD node -e "const h=require('http');h.get('http://localhost:5005/system/_status/health_check',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
+
+ENTRYPOINT ["tini", "--"]
+CMD ["node", "dist/index.js"]

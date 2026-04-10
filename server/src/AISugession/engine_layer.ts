@@ -1,15 +1,15 @@
-import * as fs from "fs";
 import * as path from "path";
+import Database, { Database as DatabaseType } from "better-sqlite3";
 import { getTopCategory, getLayerColorSuggestion } from "./shared";
+import { hashKey } from "./db_utils";
 
 // Resolve path relative to compiled dist directory: dist/AISugession/ → server/
-const DB_FILE = path.resolve(__dirname, '../..', 'layering_master_db.json');
+const DB_FILE = path.resolve(__dirname, '../..', 'layering_master.db');
 
 // --- 1. INTERFACES ---
 
-interface LayeringDB {
-    dicts: { items: string[] };
-    data: { [key: string]: [number, number, number] }; // Stores IDs for [Classic, Contrast, Statement]
+interface LayeringDicts {
+    items: string[];
 }
 
 export interface LayeringInput {
@@ -26,8 +26,8 @@ export interface LayeringInput {
     fitPreference: string;
 
     // INPUTS FROM ENGINE A (The Top)
-    topItemName: string; 
-    topItemColor: string; 
+    topItemName: string;
+    topItemColor: string;
 }
 
 export interface LayerOption {
@@ -44,22 +44,32 @@ export interface LayeringResult {
 // --- 2. THE ENGINE CLASS ---
 
 export class LayeringEngine {
-    private db: LayeringDB;
+    private db: DatabaseType;
+    private dicts: LayeringDicts;
+    private stmt: any;
 
     constructor() {
-        console.log("🧥 Loading 11-Factor Layering Brain...");
+        console.log("🧥 Loading 11-Factor Layering Brain (SQLite)...");
         try {
-            const raw = fs.readFileSync(DB_FILE, "utf-8");
-            this.db = JSON.parse(raw);
+            this.db = new Database(DB_FILE, { readonly: true });
+            this.db.pragma("cache_size = -4000"); // 4MB cache
+
+            // Load dicts into memory (tiny)
+            this.dicts = { items: [] };
+            const rows = this.db.prepare("SELECT type, idx, value FROM dicts ORDER BY type, idx").all() as any[];
+            for (const row of rows) {
+                if (row.type === "items") this.dicts.items[row.idx] = row.value;
+            }
+
+            // Prepare lookup statement
+            this.stmt = this.db.prepare("SELECT v0, v1, v2 FROM data WHERE h = ?");
+
             console.log("✅ Layering Engine Online.");
         } catch (e) {
-            console.error("❌ Error: DB not found at", DB_FILE, "Run layering_builder.ts first!");
+            console.error("❌ Error: DB not found at", DB_FILE, "Run 'npm run convert:db' first!");
             throw e;
         }
     }
-
-    // --- A & B: Bridge mapper + color logic now use shared.ts ---
-    // getTopCategory() and getLayerColorSuggestion() imported from "./shared"
 
     // --- C. THE KEY GENERATOR ---
     private generateKey(input: LayeringInput, topCategory: string): string {
@@ -75,11 +85,10 @@ export class LayeringEngine {
 
         // 2. Build Key & Lookup
         const key = this.generateKey(input, topCategory);
-        const ids = this.db.data[key];
+        const row = this.stmt.get(hashKey(key)) as { v0: number; v1: number; v2: number } | undefined;
 
-        if (!ids) {
+        if (!row) {
             console.warn(`⚠️ No exact layering rule for ${key}. Using fallback.`);
-            // Basic fallback if key missing (rare if builder ran correctly)
             return {
                 options: [
                     { type: "Classic", item: "Standard Layer", color: "Neutral", reason: "Fallback" },
@@ -90,9 +99,9 @@ export class LayeringEngine {
         }
 
         // 3. Decode Items
-        const itemClassic = this.db.dicts.items[ids[0]];
-        const itemContrast = this.db.dicts.items[ids[1]];
-        const itemStatement = this.db.dicts.items[ids[2]];
+        const itemClassic = this.dicts.items[row.v0];
+        const itemContrast = this.dicts.items[row.v1];
+        const itemStatement = this.dicts.items[row.v2];
 
         // 4. Construct Result with Calculated Colors
         return {

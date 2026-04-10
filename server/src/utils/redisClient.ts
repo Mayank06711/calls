@@ -136,6 +136,17 @@ class RedisManager {
     }
   }
 
+  /**
+   * Create a dedicated pub/sub pair for Socket.IO Redis adapter.
+   * This enables multi-instance socket coordination via Redis.
+   */
+  public static createSocketIOAdapterClients(): { pubClient: Redis; subClient: Redis } {
+    const config = this.getRedisConfig();
+    const pubClient = new Redis(config);
+    const subClient = new Redis(config);
+    return { pubClient, subClient };
+  }
+
   // Add cleanup method
   public static async cleanup(): Promise<void> {
     try {
