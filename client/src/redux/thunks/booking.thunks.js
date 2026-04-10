@@ -22,6 +22,11 @@ import {
   updateClientClosetItem,
   addClientClosetItem as addClientClosetItemAction,
   addClientOutfit as addClientOutfitAction,
+  addSharedCatalogItem,
+  addTryOnResult,
+  updateBookingEndTime,
+  setBookingChatMessages,
+  addBookingChatMessage,
 } from "../actions/booking.actions";
 
 // ─── Credits ────────────────────────────────────────────────────────────────
@@ -194,6 +199,52 @@ export const createBooking =
       console.error("Error creating booking:", error);
       dispatch(showNotification("Failed to create booking", 500));
       dispatch(stopLoader(loaderType));
+    }
+  };
+
+export const createInstantBooking =
+  ({ category, duration }, onSuccess) =>
+  async (dispatch) => {
+    const loaderType = LOADER_TYPES.CREATE_INSTANT_BOOKING;
+    try {
+      dispatch(startLoader(loaderType));
+      const result = await makeRequest(
+        HTTP_METHODS.POST,
+        ENDPOINTS.BOOKINGS.INSTANT,
+        { category, duration }
+      );
+
+      if (result.error) {
+        dispatch(showNotification(result.error.message, result.error.statusCode));
+        dispatch(stopLoader(loaderType));
+        return null;
+      }
+
+      if (result.data?.success) {
+        const { booking, creditBalance } = result.data.data;
+
+        if (!booking) {
+          // No experts available
+          dispatch(showNotification(result.data.message || "No experts available right now", 200));
+          dispatch(stopLoader(loaderType));
+          return null;
+        }
+
+        dispatch(setCreditBalance(creditBalance));
+        dispatch(showNotification("Instant session created!", 200));
+        await dispatch(fetchMyBookings());
+        dispatch(stopLoader(loaderType));
+        if (onSuccess) onSuccess(booking);
+        return booking;
+      }
+
+      dispatch(stopLoader(loaderType));
+      return null;
+    } catch (error) {
+      console.error("Error creating instant booking:", error);
+      dispatch(showNotification("Failed to create instant session", 500));
+      dispatch(stopLoader(loaderType));
+      return null;
     }
   };
 
@@ -419,18 +470,21 @@ export const fetchClientCloset = (bookingId, filters) => async (dispatch) => {
     );
 
     if (result.error) {
-      // Permission revoked — lock the tab
+      // Permission not granted — lock the tab silently (LockedTab UI handles messaging)
       if (result.error.statusCode === 403) {
         dispatch(setBookingPermissions({ closet: false }));
         dispatch(setClientCloset([]));
+      } else {
+        dispatch(showNotification(result.error.message, result.error.statusCode));
       }
-      dispatch(showNotification(result.error.message, result.error.statusCode));
       dispatch(stopLoader(loaderType));
       return;
     }
 
     if (result.data?.success) {
       dispatch(setClientCloset(result.data.data.items));
+      // Server returned data → permission is granted; sync local state
+      dispatch(setBookingPermissions({ closet: true }));
     }
     dispatch(stopLoader(loaderType));
   } catch (error) {
@@ -505,18 +559,21 @@ export const fetchClientOutfits = (bookingId) => async (dispatch) => {
     );
 
     if (result.error) {
-      // Permission revoked — lock the tab
+      // Permission not granted — lock the tab silently (LockedTab UI handles messaging)
       if (result.error.statusCode === 403) {
         dispatch(setBookingPermissions({ outfits: false }));
         dispatch(setClientOutfits([]));
+      } else {
+        dispatch(showNotification(result.error.message, result.error.statusCode));
       }
-      dispatch(showNotification(result.error.message, result.error.statusCode));
       dispatch(stopLoader(loaderType));
       return;
     }
 
     if (result.data?.success) {
       dispatch(setClientOutfits(result.data.data.outfits));
+      // Server returned data → permission is granted; sync local state
+      dispatch(setBookingPermissions({ outfits: true }));
     }
     dispatch(stopLoader(loaderType));
   } catch (error) {
@@ -553,5 +610,191 @@ export const createClientOutfit = (bookingId, outfitData, onSuccess) => async (d
     console.error("Error creating client outfit:", error);
     dispatch(showNotification("Failed to create outfit", 500));
     return false;
+  }
+};
+
+// ─── Catalog Sharing ───────────────────────────────────────────────────────
+
+export const shareCatalogItem = (bookingId, catalogItemId, note) => async (dispatch) => {
+  try {
+    const result = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.BOOKINGS.DETAIL}/${bookingId}/share-catalog-item`,
+      { catalogItemId, note: note || undefined }
+    );
+
+    if (result.error) {
+      dispatch(showNotification(result.error.message, result.error.statusCode));
+      return false;
+    }
+
+    if (result.data?.success) {
+      dispatch(addSharedCatalogItem(result.data.data.sharedItem));
+      dispatch(showNotification("Item shared with client!", 200));
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error sharing catalog item:", error);
+    dispatch(showNotification("Failed to share item", 500));
+    return false;
+  }
+};
+
+// ─── Virtual Try-On ─────────────────────────────────────────────────────────
+
+export const requestTryOn = (bookingId, catalogItemId, personPhotoUrls) => async (dispatch) => {
+  try {
+    const result = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.BOOKINGS.DETAIL}/${bookingId}/try-on`,
+      { catalogItemId, personPhotoUrls }
+    );
+
+    if (result.error) {
+      dispatch(showNotification(result.error.message, result.error.statusCode));
+      return null;
+    }
+
+    if (result.data?.success) {
+      dispatch(addTryOnResult({
+        _id: result.data.data.tryOnResultId,
+        tryOnResultId: result.data.data.tryOnResultId,
+        catalogItem: catalogItemId,
+        status: "pending",
+        personPhotos: personPhotoUrls,
+        requestedAt: new Date().toISOString(),
+      }));
+      dispatch(showNotification("Try-on is being generated...", 200));
+      return result.data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error requesting try-on:", error);
+    dispatch(showNotification("Failed to request try-on", 500));
+    return null;
+  }
+};
+
+export const generateTryOnUploadUrl = (bookingId, fileName) => async (dispatch) => {
+  try {
+    const result = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.BOOKINGS.DETAIL}/${bookingId}/try-on-upload-url`,
+      { fileName }
+    );
+
+    if (result.error) {
+      dispatch(showNotification(result.error.message, result.error.statusCode));
+      return null;
+    }
+
+    if (result.data?.success) {
+      return result.data.data;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error generating try-on upload URL:", error);
+    return null;
+  }
+};
+
+// ─── Session Extension ──────────────────────────────────────────────────────
+
+export const extendSession = (bookingId, extensionMinutes) => async (dispatch) => {
+  const loaderType = LOADER_TYPES.EXTEND_SESSION;
+  try {
+    dispatch(startLoader(loaderType));
+    const result = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.BOOKINGS.EXTEND}/${bookingId}/extend`,
+      { extensionMinutes }
+    );
+
+    if (result.error) {
+      dispatch(showNotification(result.error.message, result.error.statusCode));
+      dispatch(stopLoader(loaderType));
+      return false;
+    }
+
+    if (result.data?.success) {
+      const { booking, extensionCost, creditBalance } = result.data.data;
+      dispatch(updateBookingEndTime({
+        newEndTime: booking.endTime,
+        newDuration: booking.duration,
+        creditsCharged: extensionCost,
+        totalCreditsCharged: booking.creditsCharged,
+        totalExtendedMinutes: booking.totalExtendedMinutes,
+        extensionMinutes,
+        creditBalance,
+      }));
+      dispatch(setCreditBalance(creditBalance));
+      dispatch(showNotification(`Session extended by ${extensionMinutes} minutes!`, 200));
+      dispatch(stopLoader(loaderType));
+      return true;
+    }
+    dispatch(stopLoader(loaderType));
+    return false;
+  } catch (error) {
+    console.error("Error extending session:", error);
+    dispatch(showNotification("Failed to extend session", 500));
+    dispatch(stopLoader(loaderType));
+    return false;
+  }
+};
+
+// ─── Booking Chat ────────────────────────────────────────────────────────
+
+export const fetchBookingChat = (bookingId) => async (dispatch) => {
+  const loaderType = LOADER_TYPES.BOOKING_CHAT;
+  try {
+    dispatch(startLoader(loaderType));
+    const result = await makeRequest(
+      HTTP_METHODS.GET,
+      `${ENDPOINTS.BOOKINGS.CHAT}/${bookingId}/chat`
+    );
+
+    if (result.error) {
+      if (result.error.statusCode === 404) {
+        dispatch(setBookingChatMessages([]));
+      } else {
+        dispatch(showNotification(result.error.message, result.error.statusCode));
+      }
+      dispatch(stopLoader(loaderType));
+      return;
+    }
+
+    if (result.data?.success) {
+      dispatch(setBookingChatMessages(result.data.data.messages || []));
+    }
+    dispatch(stopLoader(loaderType));
+  } catch (error) {
+    console.error("Error fetching booking chat:", error);
+    dispatch(stopLoader(loaderType));
+  }
+};
+
+export const sendBookingChatMessage = (bookingId, text) => async (dispatch) => {
+  try {
+    const result = await makeRequest(
+      HTTP_METHODS.POST,
+      `${ENDPOINTS.BOOKINGS.CHAT}/${bookingId}/chat`,
+      { text }
+    );
+
+    if (result.error) {
+      dispatch(showNotification(result.error.message, result.error.statusCode));
+      return null;
+    }
+
+    if (result.data?.success) {
+      dispatch(addBookingChatMessage(result.data.data.message));
+      return result.data.data.message;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error sending booking chat message:", error);
+    dispatch(showNotification("Failed to send message", 500));
+    return null;
   }
 };

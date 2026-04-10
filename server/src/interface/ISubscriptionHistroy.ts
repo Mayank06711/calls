@@ -150,7 +150,7 @@ export interface SubscriptionHistoryItem {
   endDate: Date;
   amount: number;
   paymentStatus: string;
-  durationInDays: number;
+  creditsGranted: number;
   features: {
     videoConsultationsUsed?: number;
     aiCreditsUsed?: number;

@@ -95,7 +95,7 @@ class Payment {
         notes: {
           userId: userId.toString(),
           subscriptionType: subscription.type,
-          durationInDays: subscription.durationInDays.toString(),
+          creditsGranted: (subscription.creditsGranted || 0).toString(),
         },
       });
 
@@ -134,7 +134,7 @@ class Payment {
             paymentOrderId: paymentOrder._id,
             // Subscription summary for Razorpay checkout prefill
             subscriptionType: subscription.type,
-            durationInDays: subscription.durationInDays,
+            creditsGranted: subscription.creditsGranted || 0,
           },
           "Payment order created"
         )
@@ -279,7 +279,7 @@ class Payment {
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .select("providerOrderId providerPaymentId status amount currency provider subscriptionId refundId refundAmount createdAt")
-        .populate("subscriptionId", "type durationInDays startDate endDate"),
+        .populate("subscriptionId", "type creditsGranted startDate endDate"),
       PaymentOrderModel.countDocuments({ userId: new Types.ObjectId(userId.toString()) }),
     ]);
 

@@ -132,7 +132,7 @@ function StylistHub() {
 
   const featuredCard = STYLIST_CATEGORIES.find((c) => c.featured);
   const regularCards = STYLIST_CATEGORIES.filter((c) => !c.featured);
-  const links = isExpert ? [...QUICK_LINKS, ...EXPERT_LINKS] : QUICK_LINKS;
+  const links = isExpert ? EXPERT_LINKS : QUICK_LINKS;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -167,7 +167,9 @@ function StylistHub() {
                 <AutoAwesome style={{ color: colors.fourth, fontSize: 14 }} />
               </div>
               <p className="text-[11px] dark:text-dark-text/40 text-light-text/40 mt-0.5 truncate">
-                Connect with verified experts for personalized style guidance
+                {isExpert
+                  ? "Manage your client sessions and schedule"
+                  : "Connect with verified experts for personalized style guidance"}
               </p>
             </div>
           </div>
@@ -175,32 +177,20 @@ function StylistHub() {
 
         {/* Quick-access navigation — always visible without scrolling */}
         <div className="px-4 sm:px-5 pb-2.5 flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => navigate("/stylist/bookings")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
-            style={{
-              backgroundColor: toRgba(colors.fourth, 0.1),
-              color: colors.fourth,
-              border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
-            }}
-          >
-            <EventNoteOutlined style={{ fontSize: 14 }} />
-            My Bookings
-          </button>
-          <button
-            onClick={() => navigate("/stylist/credits")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
-            style={{
-              backgroundColor: toRgba(colors.fourth, 0.1),
-              color: colors.fourth,
-              border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
-            }}
-          >
-            <AccountBalanceWalletOutlined style={{ fontSize: 14 }} />
-            Credits
-          </button>
-          {isExpert && (
+          {isExpert ? (
             <>
+              <button
+                onClick={() => navigate("/expert-bookings")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+                style={{
+                  backgroundColor: toRgba(colors.fourth, 0.1),
+                  color: colors.fourth,
+                  border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+                }}
+              >
+                <CalendarMonthOutlined style={{ fontSize: 14 }} />
+                Client Bookings
+              </button>
               <button
                 onClick={() => navigate("/expert-schedule")}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
@@ -213,8 +203,11 @@ function StylistHub() {
                 <EditCalendarOutlined style={{ fontSize: 14 }} />
                 My Schedule
               </button>
+            </>
+          ) : (
+            <>
               <button
-                onClick={() => navigate("/expert-bookings")}
+                onClick={() => navigate("/stylist/bookings")}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
                 style={{
                   backgroundColor: toRgba(colors.fourth, 0.1),
@@ -222,8 +215,20 @@ function StylistHub() {
                   border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
                 }}
               >
-                <CalendarMonthOutlined style={{ fontSize: 14 }} />
-                Client Bookings
+                <EventNoteOutlined style={{ fontSize: 14 }} />
+                My Bookings
+              </button>
+              <button
+                onClick={() => navigate("/stylist/credits")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all hover:scale-[1.03]"
+                style={{
+                  backgroundColor: toRgba(colors.fourth, 0.1),
+                  color: colors.fourth,
+                  border: `1px solid ${toRgba(colors.fourth, 0.15)}`,
+                }}
+              >
+                <AccountBalanceWalletOutlined style={{ fontSize: 14 }} />
+                Credits
               </button>
             </>
           )}
@@ -238,8 +243,8 @@ function StylistHub() {
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-4 sm:px-5 pt-5 pb-6 space-y-6">
 
-        {/* ── Featured: Complete Makeover ── */}
-        <motion.section
+        {/* ── Featured: Complete Makeover (users only) ── */}
+        {!isExpert && <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -311,10 +316,10 @@ function StylistHub() {
               style={{ backgroundColor: toRgba(colors.fourth, 0.15) }}
             />
           </div>
-        </motion.section>
+        </motion.section>}
 
-        {/* ── Expert Categories ── */}
-        <section>
+        {/* ── Expert Categories (users only) ── */}
+        {!isExpert && <section>
           <SectionLabel label="Find Your Expert" color={colors.fourth} />
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 gap-3"
@@ -376,7 +381,7 @@ function StylistHub() {
               </motion.div>
             ))}
           </motion.div>
-        </section>
+        </section>}
 
         {/* ── Quick Links: Bookings & Credits ── */}
         <section>

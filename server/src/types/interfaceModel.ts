@@ -100,7 +100,7 @@ export interface SubscriptionHistoryItem {
   endDate: Date;
   amount: number;
   paymentStatus: string;
-  durationInDays: number;
+  creditsGranted: number;
 }
 
 export interface SubscriptionPeriod {
@@ -131,21 +131,20 @@ export interface ISubscriptionMethods {
 // Main subscription interface
 export interface ISubscription extends Document, ISubscriptionMethods {
   userId: mongoose.Types.ObjectId;
-  type: "Premium" | "Silver" | "Gold" | "Casual";
+  type: "Platinum" | "Silver" | "Gold" | "Free";
   status: SubscriptionStatus;
   startDate: Date;
   endDate: Date;
   amount: number;
+  creditsGranted: number;
   paymentStatus: PaymentStatus;
   paymentId?: string;
   transactionId?: string;
   paymentMethod?: string;
-  referralId?: mongoose.Types.ObjectId; // Only store reference to referral
-  referralDiscount?: number;
-  extraValidityDays?: number;
+  referralId?: mongoose.Types.ObjectId;
+  referralBonusCredits?: number;
   createdAt: Date;
   updatedAt: Date;
-  // Add only essential referral method
   applyReferralCode(referralCode: string): Promise<void>;
 }
 

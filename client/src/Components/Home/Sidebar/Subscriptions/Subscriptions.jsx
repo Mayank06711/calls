@@ -34,7 +34,7 @@ function Subscriptions() {
 
   // Set AI context with subscription info
   useEffect(() => {
-    const summary = `User is viewing subscription plans. Current plan: ${currentSub}. Available plans: Free (₹0/day), Silver (₹2/day), Gold (₹5/day, recommended), Platinum (₹8/day).`;
+    const summary = `User is viewing subscription plans. Current plan: ${currentSub}. Available plans: Free (₹0, 90 credits), Silver (₹249, 600 credits), Gold (₹499, 1500 credits, recommended), Platinum (₹899, 5000 credits). All paid plans include 30 days of tier benefits.`;
     setAIPageContext({
       page: "subscriptions",
       description: summary,
@@ -50,15 +50,28 @@ function Subscriptions() {
     PLATINUM: COLORS.PLATINUM,
   };
 
+  // Build plan cards from server data if available, otherwise use defaults
+  const getCreditsForPlan = (type) => {
+    const serverPlan = plans?.plans?.find((p) => p.type.toUpperCase() === type);
+    return serverPlan?.creditsGranted || { FREE: 90, SILVER: 600, GOLD: 1500, PLATINUM: 5000 }[type];
+  };
+
+  const getPriceForPlan = (type) => {
+    const serverPlan = plans?.plans?.find((p) => p.type.toUpperCase() === type);
+    return serverPlan?.price ?? { FREE: 0, SILVER: 249, GOLD: 499, PLATINUM: 899 }[type];
+  };
+
   const planCards = [
     {
       type: "FREE",
       name: "Free",
-      price: "₹0",
+      price: `₹${getPriceForPlan("FREE")}`,
+      credits: getCreditsForPlan("FREE"),
       period: "forever",
       recommended: false,
       level: 0,
       highlights: [
+        `${getCreditsForPlan("FREE")} AI credits`,
         "Basic AI outfit suggestions",
         "Upload up to 20 items",
         "Standard color detection",
@@ -68,11 +81,13 @@ function Subscriptions() {
     {
       type: "SILVER",
       name: "Silver",
-      price: "₹2",
-      period: "/day",
+      price: `₹${getPriceForPlan("SILVER")}`,
+      credits: getCreditsForPlan("SILVER"),
+      period: "/month",
       recommended: false,
       level: 1,
       highlights: [
+        `${getCreditsForPlan("SILVER")} AI credits`,
         "Advanced AI suggestions",
         "Upload up to 50 items",
         "Full color intelligence",
@@ -82,11 +97,13 @@ function Subscriptions() {
     {
       type: "GOLD",
       name: "Gold",
-      price: "₹5",
-      period: "/day",
+      price: `₹${getPriceForPlan("GOLD")}`,
+      credits: getCreditsForPlan("GOLD"),
+      period: "/month",
       recommended: true,
       level: 2,
       highlights: [
+        `${getCreditsForPlan("GOLD")} AI credits`,
         "Unlimited AI suggestions",
         "Upload up to 200 items",
         "Expert chat access",
@@ -97,11 +114,13 @@ function Subscriptions() {
     {
       type: "PLATINUM",
       name: "Platinum",
-      price: "₹8",
-      period: "/day",
+      price: `₹${getPriceForPlan("PLATINUM")}`,
+      credits: getCreditsForPlan("PLATINUM"),
+      period: "/month",
       recommended: false,
       level: 3,
       highlights: [
+        `${getCreditsForPlan("PLATINUM")} AI credits`,
         "Everything in Gold",
         "Unlimited items",
         "Priority expert access",
@@ -120,10 +139,10 @@ function Subscriptions() {
         const formattedName = category.replace(/([A-Z])/g, " $1").trim();
         features.push({
           name: formattedName,
-          platinum: values[3] || "Not Available",
-          gold: values[2] || "Not Available",
-          silver: values[1] || "Not Available",
           free: values[0] || "Not Available",
+          silver: values[1] || "Not Available",
+          gold: values[2] || "Not Available",
+          platinum: values[3] || "Not Available",
         });
       }
     }
@@ -132,92 +151,47 @@ function Subscriptions() {
 
   const dynamicFeatures = getAllFeatures();
 
-  // Update the handleSubscriptionSelect function
   const handleSubscriptionSelect = (planType) => {
-    const routeMap = {
-      PLATINUM: "platinum",
-      GOLD: "gold",
-      SILVER: "silver",
-    };
+    const selectedPlan = plans?.plans?.find(
+      (p) => p.type.toUpperCase() === planType
+    );
 
-    const route = routeMap[planType];
-    if (route) {
-      const selectedPlan = plans?.plans?.find(
-        (p) => p.type.toUpperCase() === planType
-      );
+    if (!selectedPlan) {
+      console.error("Selected plan not found");
+      return;
+    }
 
-      if (!selectedPlan) {
-        console.error("Selected plan not found");
-        return;
-      }
+    const planIndex = ["FREE", "SILVER", "GOLD", "PLATINUM"].indexOf(planType);
 
-      const minimumPricing = selectedPlan.pricing?.[0];
-
-      if (!minimumPricing) {
-        console.error("Pricing information not found");
-        return;
-      }
-
-      const planSummary = {
-        type: selectedPlan.type || planType,
-        level: selectedPlan.level || 0,
-        basePrice: minimumPricing.pricePerDay || 0,
-        minDuration: minimumPricing.minDays || 7,
-        maxDuration: minimumPricing.maxDays || 15,
-        features: plans.features || {},
-        limits: plans.limits || {},
-        support: plans.support || {},
-        pricing: selectedPlan.pricing || [],
-      };
-
-      const planIndex = ["FREE", "SILVER", "GOLD", "PLATINUM"].indexOf(planType);
-
-      navigate(`/subscriptions/${route}`, {
-        state: {
-          planDetails: planSummary,
-          pricingOptions: (selectedPlan.pricing || []).map((tier) => ({
-            duration: `${tier.minDays}-${tier.maxDays} days`,
-            pricePerDay: tier.pricePerDay,
-            totalPrice: tier.pricePerDay * tier.minDays,
-            savings: (
-              ((minimumPricing.pricePerDay - tier.pricePerDay) /
-                minimumPricing.pricePerDay) *
-              100
-            ).toFixed(1),
-          })),
-          features: {
-            included: Object.entries(plans.features || {}).map(
-              ([key, values]) => ({
-                name: key.replace(/([A-Z])/g, " $1").trim(),
-                value: Array.isArray(values) ? values[planIndex] : values,
-              })
-            ),
-            limits: Object.entries(plans.limits || {}).map(([key, values]) => ({
+    navigate(`/subscriptions/${selectedPlan.type.toLowerCase()}`, {
+      state: {
+        planDetails: {
+          type: selectedPlan.type,
+          level: selectedPlan.level,
+          price: selectedPlan.price,
+          creditsGranted: selectedPlan.creditsGranted,
+          tierDurationDays: selectedPlan.tierDurationDays,
+        },
+        features: {
+          included: Object.entries(plans.features || {}).map(
+            ([key, values]) => ({
               name: key.replace(/([A-Z])/g, " $1").trim(),
               value: Array.isArray(values) ? values[planIndex] : values,
-            })),
-            support: Object.entries(plans.support || {}).map(
-              ([key, values]) => ({
-                name: key.replace(/([A-Z])/g, " $1").trim(),
-                value: Array.isArray(values) ? values[planIndex] : values,
-              })
-            ),
-          },
-          paymentMethods: [
-            { type: "UPI", options: ["GPay", "PhonePe", "Paytm"] },
-            { type: "Cards", options: ["Credit Card", "Debit Card", "RuPay"] },
-            { type: "NetBanking", options: ["All Indian Banks"] },
-            { type: "QR", options: ["UPI QR"] },
-          ],
-          policies: {
-            refund: "7-day money-back guarantee",
-            cancellation: "Cancel anytime, no questions asked",
-            prorated: "Prorated refunds for unused time",
-            autoRenewal: "Auto-renewal can be turned off anytime",
-          },
+            })
+          ),
+          limits: Object.entries(plans.limits || {}).map(([key, values]) => ({
+            name: key.replace(/([A-Z])/g, " $1").trim(),
+            value: Array.isArray(values) ? values[planIndex] : values,
+          })),
+          support: Object.entries(plans.support || {}).map(
+            ([key, values]) => ({
+              name: key.replace(/([A-Z])/g, " $1").trim(),
+              value: Array.isArray(values) ? values[planIndex] : values,
+            })
+          ),
         },
-      });
-    }
+      },
+    });
   };
 
   return (
@@ -232,7 +206,7 @@ function Subscriptions() {
           , choose your plan
         </h2>
         <p className="text-sm md:text-base text-light-text/60 dark:text-dark-text/60 max-w-lg mx-auto">
-          Start free and upgrade when you need more. All plans include core AI styling.
+          Get credits for AI styling, expert consultations, and more. All paid plans include 30 days of premium features.
         </p>
       </div>
 
@@ -279,7 +253,7 @@ function Subscriptions() {
                   )}
 
                   {/* Current plan indicator */}
-                  {isCurrentPlan && (
+                  {isCurrentPlan && !isRecommended && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[11px] font-medium bg-light-text/10 dark:bg-dark-text/10 text-light-text/60 dark:text-dark-text/60 whitespace-nowrap">
                       CURRENT PLAN
                     </div>
@@ -296,14 +270,27 @@ function Subscriptions() {
                     </h3>
 
                     {/* Price */}
-                    <div className="mb-4">
+                    <div className="mb-1">
                       <span className="text-3xl font-extrabold text-light-text dark:text-dark-text">
                         {plan.price}
                       </span>
-                      <span className="text-sm text-light-text/50 dark:text-dark-text/50 ml-0.5">
-                        {plan.period}
-                      </span>
+                      {plan.type !== "FREE" && (
+                        <span className="text-sm text-light-text/50 dark:text-dark-text/50 ml-0.5">
+                          {plan.period}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Credits badge */}
+                    {plan.type !== "FREE" && (
+                      <div
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold mb-4 w-fit"
+                        style={{ backgroundColor: `${colors?.fourth}15`, color: colors?.fourth }}
+                      >
+                        {plan.credits.toLocaleString()} credits included
+                      </div>
+                    )}
+                    {plan.type === "FREE" && <div className="mb-4" />}
 
                     {/* Highlights */}
                     <ul className="space-y-2.5 mb-6 flex-1">
@@ -396,7 +383,7 @@ function Subscriptions() {
                       {dynamicFeatures.map((feature, idx) => (
                         <tr key={idx} className="border-t border-light-text/5 dark:border-dark-text/5">
                           <td className="p-3 text-light-text/70 dark:text-dark-text/70">{feature.name}</td>
-                          {["platinum", "gold", "silver", "free"].map((tier) => (
+                          {["free", "silver", "gold", "platinum"].map((tier) => (
                             <td key={tier} className="p-3 text-center text-light-text/60 dark:text-dark-text/60">
                               {feature[tier]}
                             </td>
@@ -410,7 +397,7 @@ function Subscriptions() {
                           <td className="p-3 text-light-text/70 dark:text-dark-text/70">
                             {limitKey.replace(/([A-Z])/g, " $1").trim()}
                           </td>
-                          {[3, 2, 1, 0].map((planIdx) => (
+                          {[0, 1, 2, 3].map((planIdx) => (
                             <td key={planIdx} className="p-3 text-center text-light-text/60 dark:text-dark-text/60">
                               {Array.isArray(values) ? values[planIdx] : values}
                             </td>
@@ -424,7 +411,7 @@ function Subscriptions() {
                           <td className="p-3 text-light-text/70 dark:text-dark-text/70">
                             {supportKey.replace(/([A-Z])/g, " $1").trim()}
                           </td>
-                          {[3, 2, 1, 0].map((planIdx) => (
+                          {[0, 1, 2, 3].map((planIdx) => (
                             <td key={planIdx} className="p-3 text-center text-light-text/60 dark:text-dark-text/60">
                               {Array.isArray(values) ? values[planIdx] : values}
                             </td>
@@ -442,10 +429,10 @@ function Subscriptions() {
 
       {/* Trust strip — compact */}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-6 text-xs text-light-text/40 dark:text-dark-text/40">
-        <span>7-day money-back guarantee</span>
-        <span className="hidden sm:inline">•</span>
-        <span>Cancel anytime</span>
-        <span className="hidden sm:inline">•</span>
+        <span>Instant credit delivery</span>
+        <span className="hidden sm:inline">·</span>
+        <span>30 days of premium features</span>
+        <span className="hidden sm:inline">·</span>
         <span>Secure payments via Razorpay</span>
       </div>
     </div>

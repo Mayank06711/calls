@@ -13,3 +13,4 @@ export * from "./wardrobe.reducer";
 export * from "./admin.reducer";
 export * from "./expert.reducer";
 export * from "./booking.reducer";
+export * from "./itemCatalog.reducer";

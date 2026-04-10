@@ -10,7 +10,11 @@ import { BookingModel } from "../models/bookingModel";
 import { ExpertAvailabilityModel } from "../models/expertAvailabilityModel";
 import { CreditTransactionModel } from "../models/creditTransactionModel";
 import { SessionPermissionModel } from "../models/sessionPermissionModel";
+import { BookingChatModel } from "../models/bookingChatModel";
+import { MsgModel } from "../models/messageModel";
 import NotificationService from "../services/notifications";
+import { SocketManager } from "../socket";
+import { RedisManager } from "../utils/redisClient";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -20,7 +24,15 @@ function timeToMinutes(time: string): number {
 }
 
 function minutesToTime(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  const wrapped = ((minutes % 1440) + 1440) % 1440; // handle >24h and negative
+  return `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+}
+
+function calculateCreditRatePerMinute(pricing: { per15Min: number; per30Min: number; per60Min: number }): number {
+  if (pricing.per60Min > 0) return Math.ceil(pricing.per60Min / 60);
+  if (pricing.per30Min > 0) return Math.ceil(pricing.per30Min / 30);
+  if (pricing.per15Min > 0) return Math.ceil(pricing.per15Min / 15);
+  return 0;
 }
 
 /**
@@ -420,7 +432,10 @@ class BookingController {
       tz
     );
     const hoursUntilSession = sessionStart.diff(moment(), "hours", true);
-    const eligibleForRefund = hoursUntilSession > 2;
+    // Instant bookings: always refund if expert hasn't started yet
+    const eligibleForRefund = booking.isInstant
+      ? !booking.startedAt
+      : hoursUntilSession > 2;
 
     // Update booking
     booking.status = "cancelled";
@@ -521,6 +536,30 @@ class BookingController {
       { connectedAt: new Date() }
     );
 
+    // Create booking chat if it doesn't already exist (either sender/receiver direction)
+    const existingChat = await MsgModel.findOne({
+      $or: [
+        { sender: booking.user, receiver: booking.expertUser, bookingId: booking._id },
+        { sender: booking.expertUser, receiver: booking.user, bookingId: booking._id },
+      ],
+    });
+
+    if (!existingChat) {
+      try {
+        await MsgModel.create({
+          sender: booking.user,
+          receiver: booking.expertUser,
+          bookingId: booking._id,
+          chatType: "booking",
+          messages: [],
+          messageIdCounter: 0,
+        });
+      } catch (err: any) {
+        // Ignore duplicate key error (race condition — chat was created concurrently)
+        if (err.code !== 11000) throw err;
+      }
+    }
+
     // Return the other party's userId so both sides can initiate chat
     const otherUserId = isBooker
       ? booking.expertUser.toString()
@@ -536,13 +575,366 @@ class BookingController {
     );
   }
 
+  /**
+   * POST /bookings/:id/extend — Extend an active session by 2, 5, or 10 minutes.
+   * Only the booking user (client) can extend. Deducts credits atomically.
+   */
+  private static async _extendSession(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const { extensionMinutes } = req.body;
+
+    const booking = await BookingModel.findById(id);
+    if (!booking) throw new ApiError(404, "Booking not found");
+
+    // Only the user (client) can extend
+    if (booking.user.toString() !== userId.toString()) {
+      throw new ApiError(403, "Only the client can extend the session");
+    }
+    if (booking.status !== "confirmed") {
+      throw new ApiError(400, "Booking is not active");
+    }
+    if (!booking.connectedAt) {
+      throw new ApiError(400, "Session has not been connected yet");
+    }
+
+    // Check total extensions cap (max 30 min total)
+    const totalExtended = (booking.extensions || []).reduce((sum, ext) => sum + ext.minutes, 0);
+    if (totalExtended + extensionMinutes > 30) {
+      throw new ApiError(400, `Maximum 30 minutes of extensions allowed. Already extended ${totalExtended} min.`);
+    }
+
+    // Validate timing: session must still be active
+    const tz = booking.timezone || "Asia/Kolkata";
+    const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+    const sessionEnd = moment.tz(`${dateStr} ${booking.endTime}`, "YYYY-MM-DD HH:mm", tz);
+    const now = moment();
+
+    if (now.isAfter(sessionEnd)) {
+      throw new ApiError(400, "Session has already ended");
+    }
+
+    // Only allow extension when ≤ 2.5 minutes remain
+    const remainingMinutes = sessionEnd.diff(now, "minutes", true);
+    if (remainingMinutes > 2.5) {
+      throw new ApiError(400, "Extensions are only available when 2 minutes or less remain");
+    }
+
+    // Get expert pricing
+    const expert = await ExpertModel.findById(booking.expert).select("pricing").lean();
+    if (!expert?.pricing) throw new ApiError(500, "Expert pricing not found");
+
+    const ratePerMin = calculateCreditRatePerMinute(expert.pricing);
+    if (ratePerMin <= 0) throw new ApiError(500, "Expert credit rate not configured");
+
+    const extensionCost = ratePerMin * extensionMinutes;
+
+    // Check for overlap with expert's next booking
+    const newEndMinutes = timeToMinutes(booking.endTime) + extensionMinutes;
+    const newEndTime = minutesToTime(newEndMinutes);
+    const dayStart = moment.tz(dateStr, "YYYY-MM-DD", tz).startOf("day").toDate();
+    const dayEnd = moment.tz(dateStr, "YYYY-MM-DD", tz).endOf("day").toDate();
+
+    const nextBookings = await BookingModel.find({
+      expert: booking.expert,
+      date: { $gte: dayStart, $lte: dayEnd },
+      status: "confirmed",
+      _id: { $ne: booking._id },
+    }).select("startTime").sort({ startTime: 1 }).lean();
+
+    // Find any booking that starts between current endTime and proposed newEndTime
+    for (const nb of nextBookings) {
+      const nbStart = timeToMinutes(nb.startTime);
+      if (nbStart >= timeToMinutes(booking.endTime) && nbStart < newEndMinutes) {
+        throw new ApiError(409, "Extension would overlap with the expert's next booking");
+      }
+    }
+
+    // Atomic credit deduction
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: userId, creditBalance: { $gte: extensionCost } },
+      { $inc: { creditBalance: -extensionCost } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      throw new ApiError(402, "Insufficient credits for this extension");
+    }
+
+    // Update booking
+    const previousEndTime = booking.endTime;
+    booking.endTime = newEndTime;
+    booking.duration = booking.duration + extensionMinutes;
+    booking.creditsCharged = booking.creditsCharged + extensionCost;
+    if (!booking.extensions) booking.extensions = [];
+    booking.extensions.push({
+      minutes: extensionMinutes,
+      creditsCharged: extensionCost,
+      previousEndTime,
+      newEndTime,
+      extendedAt: new Date(),
+    } as any);
+    await booking.save();
+
+    // Log credit transaction
+    await CreditTransactionModel.create({
+      user: userId,
+      type: "booking_extension",
+      amount: -extensionCost,
+      balanceAfter: updatedUser.creditBalance,
+      description: `Extended session by ${extensionMinutes} min (${previousEndTime} → ${newEndTime})`,
+      reference: { model: "Booking", id: booking._id },
+    });
+
+    // Compute absolute totalExtendedMinutes from saved extensions array
+    const totalExtendedMinutes = (booking.extensions || []).reduce(
+      (sum: number, ext: any) => sum + ext.minutes, 0
+    );
+
+    // Notify both parties via socket
+    try {
+      const socketManager = SocketManager.getInstance();
+      const extensionData = {
+        bookingId: id,
+        newEndTime,
+        extensionMinutes,
+        newDuration: booking.duration,
+        creditsCharged: extensionCost,
+        totalCreditsCharged: booking.creditsCharged,
+        totalExtendedMinutes,
+      };
+
+      const expertSocket = await socketManager.getSocketIdUsingUserId(booking.expertUser.toString());
+      if (expertSocket?.socketId) {
+        await socketManager.emitEvent({
+          event: "booking:session-extended",
+          data: extensionData,
+          targetSocketIds: [expertSocket.socketId],
+        });
+      }
+
+      const userSocket = await socketManager.getSocketIdUsingUserId(userId.toString());
+      if (userSocket?.socketId) {
+        await socketManager.emitEvent({
+          event: "booking:session-extended",
+          data: extensionData,
+          targetSocketIds: [userSocket.socketId],
+        });
+      }
+    } catch (err) {
+      console.error("Socket emit error for session extension (non-blocking):", err);
+    }
+
+    return res.status(200).json(
+      successResponse({
+        booking: {
+          _id: booking._id,
+          endTime: newEndTime,
+          duration: booking.duration,
+          creditsCharged: booking.creditsCharged,
+          totalExtendedMinutes,
+        },
+        extensionCost,
+        creditBalance: updatedUser.creditBalance,
+      }, `Session extended by ${extensionMinutes} minutes`)
+    );
+  }
+
+  /**
+   * POST /bookings/instant — Create an instant booking.
+   * Finds online experts in a category, picks median-priced, auto-creates booking.
+   */
+  private static readonly CATEGORY_TO_SPECIALIZATIONS: Record<string, string[]> = {
+    clothing: ["Personal Styling", "Wardrobe Consulting", "Corporate & Workwear", "Streetwear & Trends"],
+    hair: ["Personal Styling", "Color & Image Analysis"],
+    makeup: ["Personal Styling", "Color & Image Analysis"],
+    wedding: ["Bridal & Wedding", "Occasion & Event Styling", "Ethnic & Traditional"],
+    makeover: ["Personal Styling", "Wardrobe Consulting", "Color & Image Analysis"],
+  };
+
+  private static async _createInstantBooking(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { category, duration } = req.body;
+    const dur = typeof duration === "string" ? parseInt(duration) : duration;
+
+    const specializations = BookingController.CATEGORY_TO_SPECIALIZATIONS[category];
+    if (!specializations) throw new ApiError(400, "Invalid category");
+
+    // Pricing key for the requested duration
+    const pricingKey = `per${dur}Min` as "per15Min" | "per30Min" | "per60Min";
+
+    // 1. Find verified experts with matching specializations
+    const experts = await ExpertModel.find({
+      specializations: { $in: specializations },
+      "degree.isVerified": true,
+    })
+      .populate("user", "_id fullName username isExpert isActive isBlockedByAdmin")
+      .lean();
+
+    // 2. Filter: active, non-blocked, non-self, pricing configured
+    const activeExperts = experts.filter((e: any) => {
+      const u = e.user;
+      return (
+        u &&
+        u.isActive !== false &&
+        u.isExpert &&
+        !u.isBlockedByAdmin &&
+        u._id.toString() !== userId.toString() &&
+        e.pricing?.[pricingKey] > 0
+      );
+    });
+
+    // 3. Check online via Redis
+    const onlineExperts: any[] = [];
+    for (const expert of activeExperts) {
+      const expertUserId = (expert.user as any)._id.toString();
+      const sessionIds = await RedisManager.getActiveSessionIds(expertUserId);
+      if (sessionIds.length > 0) {
+        onlineExperts.push(expert);
+      }
+    }
+
+    if (onlineExperts.length === 0) {
+      return res.status(200).json(
+        successResponse(
+          { booking: null },
+          "No experts are currently available in this category. Try scheduling an appointment."
+        )
+      );
+    }
+
+    // 4. Sort by price, pick median
+    onlineExperts.sort((a: any, b: any) => (a.pricing[pricingKey] || 0) - (b.pricing[pricingKey] || 0));
+    const selected = onlineExperts[Math.floor(onlineExperts.length / 2)];
+    const expertUser = selected.user as any;
+    const cost = selected.pricing[pricingKey];
+
+    // 5. Atomic credit deduction
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: userId, creditBalance: { $gte: cost } },
+      { $inc: { creditBalance: -cost } },
+      { new: true }
+    );
+    if (!updatedUser) {
+      throw new ApiError(402, "Insufficient credits. Please top up your balance.");
+    }
+
+    // 6. Compute times
+    const availability = await ExpertAvailabilityModel.findOne({ expert: selected._id }).lean();
+    const tz = availability?.timezone || "Asia/Kolkata";
+    const now = moment().tz(tz);
+    const startTime = now.format("HH:mm");
+    const endTime = computeEndTime(startTime, dur);
+    const dateObj = moment().tz(tz).startOf("day").toDate();
+
+    // 7. Create booking
+    const booking = await BookingModel.create({
+      user: userId,
+      expert: selected._id,
+      expertUser: expertUser._id,
+      date: dateObj,
+      startTime,
+      endTime,
+      duration: dur,
+      timezone: tz,
+      status: "confirmed",
+      creditsCharged: cost,
+      isInstant: true,
+      connectedAt: new Date(), // auto-connect
+    });
+
+    // 8. Create session permission
+    await SessionPermissionModel.create({
+      booking: booking._id,
+      user: userId,
+      expert: expertUser._id,
+      permissions: { closet: false, outfits: false },
+      isActive: true,
+      grantedAt: new Date(),
+    });
+
+    // 9. Create booking chat
+    try {
+      await MsgModel.create({
+        sender: userId,
+        receiver: expertUser._id,
+        bookingId: booking._id,
+        chatType: "booking",
+        messages: [],
+        messageIdCounter: 0,
+      });
+    } catch (err: any) {
+      if (err.code !== 11000) throw err; // ignore duplicate
+    }
+
+    // 10. Log credit transaction
+    const bookerUser = await UserModel.findById(userId).select("fullName").lean();
+    await CreditTransactionModel.create({
+      user: userId,
+      type: "booking_deduction",
+      amount: -cost,
+      balanceAfter: updatedUser.creditBalance,
+      description: `Instant ${dur}-min session with ${expertUser.fullName}`,
+      reference: { model: "Booking", id: booking._id },
+    });
+
+    // 11. Notify expert via socket
+    const socketManager = SocketManager.getInstance();
+    const expertSocket = await socketManager.getSocketIdUsingUserId(expertUser._id.toString());
+    if (expertSocket?.socketId) {
+      await socketManager.emitEvent({
+        event: "booking:instant-request",
+        data: {
+          bookingId: (booking._id as any).toString(),
+          userName: bookerUser?.fullName || "A user",
+          duration: dur,
+          category,
+        },
+        targetSocketIds: [expertSocket.socketId],
+      });
+    }
+
+    // Also send push notification
+    const notificationService = NotificationService.getInstance();
+    await notificationService.emitUserNotification({
+      recipientId: expertUser._id.toString(),
+      type: "booking" as any,
+      title: "Instant Session Request",
+      message: `${bookerUser?.fullName || "A user"} wants a ${dur}-min instant session`,
+    });
+
+    return res.status(201).json(
+      successResponse({
+        booking: {
+          _id: booking._id,
+          expertName: expertUser.fullName,
+          expertUserId: expertUser._id,
+          date: moment(dateObj).format("YYYY-MM-DD"),
+          startTime,
+          endTime,
+          duration: dur,
+          creditsCharged: cost,
+          status: "confirmed",
+          isInstant: true,
+        },
+        creditBalance: updatedUser.creditBalance,
+      }, "Instant session created. Waiting for expert to start.")
+    );
+  }
+
   // ── Wrapped public methods ──
   static getAvailableSlots = AsyncHandler.wrap(BookingController._getAvailableSlots);
   static createBooking = AsyncHandler.wrap(BookingController._createBooking);
+  static createInstantBooking = AsyncHandler.wrap(BookingController._createInstantBooking);
   static getMyBookings = AsyncHandler.wrap(BookingController._getMyBookings);
   static getExpertBookings = AsyncHandler.wrap(BookingController._getExpertBookings);
   static cancelBooking = AsyncHandler.wrap(BookingController._cancelBooking);
   static connectBooking = AsyncHandler.wrap(BookingController._connectBooking);
+  static extendSession = AsyncHandler.wrap(BookingController._extendSession);
 }
 
 export default BookingController;

@@ -170,7 +170,7 @@ const AdminBulkSessionRevokeSchema = z.object({
 });
 
 const AdminSubscriptionExtendSchema = z.object({
-  days: z.number().int().min(1, "Must extend by at least 1 day").max(365, "Maximum 365 days"),
+  bonusCredits: z.number().int().min(1, "Must grant at least 1 credit").max(10000, "Maximum 10000 credits"),
   reason: z.string().min(1, "Reason is required"),
 });
 
@@ -564,6 +564,11 @@ const CreateBookingSchema = z.object({
   notes: z.string().max(500).trim().optional(),
 });
 
+const CreateInstantBookingSchema = z.object({
+  category: z.enum(["clothing", "hair", "makeup", "wedding", "makeover"]),
+  duration: z.enum(["15", "30", "60"]).transform(Number).or(z.literal(15).or(z.literal(30)).or(z.literal(60))),
+});
+
 const CancelBookingSchema = z.object({
   reason: z.string().max(500).trim().optional(),
 });
@@ -596,6 +601,70 @@ const VerifyCreditPurchaseSchema = z.object({
   providerOrderId: z.string().min(1, "providerOrderId is required"),
   providerPaymentId: z.string().min(1, "providerPaymentId is required"),
   signature: z.string().min(1, "signature is required"),
+});
+
+// ─── Item Catalog Schemas ───────────────────────────────────────────────────
+
+const CreateCatalogItemSchema = z.object({
+  category: z.enum(["clothing", "hair", "makeup"], { required_error: "Category is required" }),
+  title: z.string().min(3, "Title must be at least 3 characters").max(150).trim(),
+  description: z.string().min(10, "Description must be at least 10 characters").max(2000).trim(),
+  images: z.array(z.string().url("Invalid image URL")).min(2, "Minimum 2 images required").max(10, "Maximum 10 images"),
+  gender: z.enum(["Male", "Female", "Unisex"], { required_error: "Gender is required" }),
+  tags: z.array(z.string().trim()).max(15, "Maximum 15 tags").default([]),
+
+  // Clothing-specific
+  clothingType: z.enum(["Top", "Bottom", "Shoes", "Accessory", "Outerwear", "Full Body"]).optional(),
+  subcategory: z.string().trim().optional(),
+  fabric: z.enum(["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Chiffon", "Velvet", "Satin", "Leather", "Georgette", "Crepe", "Khadi", "Other"]).optional(),
+  pattern: z.enum(["Solid", "Striped", "Checked", "Floral", "Embroidered", "Polka Dot", "Abstract", "Printed"]).optional(),
+  season: z.enum(["Summer", "Winter", "Monsoon", "All"]).optional(),
+  occasions: z.array(z.enum(["Wedding", "Office", "Casual", "Party", "Travel", "Festive", "Date Night", "Sports", "Lounge"])).optional(),
+  colors: z.array(z.string().trim()).optional(),
+  brand: z.string().trim().optional(),
+  priceRange: z.string().trim().optional(),
+  styleVibe: z.string().trim().optional(),
+
+  // Hair-specific
+  hairType: z.enum(["Straight", "Wavy", "Curly", "Coily"]).optional(),
+  hairLength: z.enum(["Short", "Medium", "Long", "Very Long"]).optional(),
+  faceShapes: z.array(z.enum(["Oval", "Round", "Square", "Heart", "Diamond", "Oblong"])).optional(),
+  maintenanceLevel: z.enum(["Low", "Medium", "High"]).optional(),
+
+  // Makeup-specific
+  lookType: z.enum(["Everyday", "Bridal", "Party", "Office", "Editorial", "Natural", "Glam", "Festive"]).optional(),
+  skinTones: z.array(z.enum(["Fair", "Light", "Medium", "Olive", "Tan", "Dark", "Deep"])).optional(),
+  products: z.array(z.object({
+    name: z.string().min(1, "Product name is required").trim(),
+    brand: z.string().trim().optional(),
+    shade: z.string().trim().optional(),
+  })).optional(),
+});
+
+const UpdateCatalogItemSchema = CreateCatalogItemSchema.partial().omit({ category: true });
+
+const AddCatalogSuggestionSchema = z.object({
+  text: z.string().min(5, "Suggestion must be at least 5 characters").max(1000).trim(),
+});
+
+const ShareCatalogItemSchema = z.object({
+  catalogItemId: mongoId,
+  note: z.string().max(300, "Note must be under 300 characters").trim().optional(),
+});
+
+const RequestTryOnSchema = z.object({
+  catalogItemId: mongoId,
+  personPhotoUrls: z.array(z.string().url("Invalid photo URL")).length(2, "Exactly 2 person photos are required"),
+});
+
+const ExtendSessionSchema = z.object({
+  extensionMinutes: z.union([z.literal(2), z.literal(5), z.literal(10)], {
+    errorMap: () => ({ message: "Extension must be 2, 5, or 10 minutes" }),
+  }),
+});
+
+const SendBookingChatMessageSchema = z.object({
+  text: z.string().min(1, "Message text is required").max(2000, "Message too long"),
 });
 
 // ─── Exports ────────────────────────────────────────────────────────────────
@@ -660,9 +729,18 @@ export {
   ExpertPricingSchema,
   // Booking & Credits
   CreateBookingSchema,
+  CreateInstantBookingSchema,
   CancelBookingSchema,
   UpdateAvailabilitySchema,
   PurchaseCreditPackSchema,
   VerifyCreditPurchaseSchema,
   TogglePermissionsSchema,
+  // Item Catalog
+  CreateCatalogItemSchema,
+  UpdateCatalogItemSchema,
+  AddCatalogSuggestionSchema,
+  ShareCatalogItemSchema,
+  RequestTryOnSchema,
+  ExtendSessionSchema,
+  SendBookingChatMessageSchema,
 };

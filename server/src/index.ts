@@ -37,6 +37,7 @@ import { paymentRouter } from "./routes/paymentRoutes";
 import { webhookRouter } from "./routes/webhookRoutes";
 import creditRouter from "./routes/creditRoutes";
 import bookingRouter from "./routes/bookingRoutes";
+import catalogItemRouter from "./routes/catalogItemRoutes";
 import {
   connectDB,
   disconnectDB,
@@ -150,6 +151,7 @@ class ServerManager {
     this.app.use("/api/v1/payments", paymentRouter);
     this.app.use("/api/v1/credits", creditRouter);
     this.app.use("/api/v1/bookings", bookingRouter);
+    this.app.use("/api/v1/item-catalog", catalogItemRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -299,6 +301,27 @@ class ServerManager {
 
     try {
       await connectDB();
+
+      // Index migration: drop stale 2-field unique index on newmsgs if it exists.
+      // The correct index is the 3-field { sender, receiver, bookingId } compound unique.
+      try {
+        const mongoose = (await import("mongoose")).default;
+        const coll = mongoose.connection.db!.collection("newmsgs");
+        const indexes = await coll.indexes();
+        const stale = indexes.find(
+          (i: any) => i.name === "sender_1_receiver_1" && i.unique
+        );
+        if (stale) {
+          await coll.dropIndex("sender_1_receiver_1");
+          console.log("[Migration] Dropped stale sender_1_receiver_1 unique index on newmsgs");
+        }
+      } catch (migErr: any) {
+        // Non-fatal — log and continue
+        if (migErr.codeName !== "IndexNotFound") {
+          console.warn("[Migration] Index migration warning:", migErr.message);
+        }
+      }
+
       await RedisManager.initRedisConnection();
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {

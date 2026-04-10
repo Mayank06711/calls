@@ -17,6 +17,7 @@ import {
   adminReducer,
   expertCatalogReducer,
   bookingReducer,
+  itemCatalogReducer,
 } from "./reducers";
 import { thunk } from "redux-thunk";
 
@@ -38,6 +39,7 @@ const store = configureStore({
     admin: adminReducer,
     expertCatalog: expertCatalogReducer,
     booking: bookingReducer,
+    itemCatalog: itemCatalogReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

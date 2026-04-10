@@ -136,6 +136,7 @@ async sendMessage(chatId, receiverId, messageData) {
       text: messageData.content || messageData.text,
       messageType: messageData.type || 'text',
       chatType: messageData.chatType || 'userToUser',
+      ...(messageData.bookingId ? { bookingId: messageData.bookingId } : {}),
       timestamp: Date.now(),
     };
     const response = await emitWithTimeout(this.socket, 'message', messagePayload);
@@ -489,11 +490,12 @@ destroy() {
     this.chatAreaMessageCallback = null;
   }
 
-  async checkChatHistory(senderId, receiverId) {
+  async checkChatHistory(senderId, receiverId, bookingId = null) {
     try {
       const response = await emitWithTimeout(this.socket, 'chat:check', {
         senderId,
         receiverId,
+        ...(bookingId ? { bookingId } : {}),
         timestamp: Date.now(),
       });
       console.log('Chat history response:', response);

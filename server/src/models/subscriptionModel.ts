@@ -29,10 +29,13 @@ const SubscriptionSchema = new Schema(
       type: Date,
       required: true,
     },
-    durationInDays: {type: Number, default: 7},
     amount: {
       type: Number,
       required: true,
+    },
+    creditsGranted: {
+      type: Number,
+      default: 0,
     },
     paymentStatus: {
       type: String,
@@ -58,23 +61,10 @@ const SubscriptionSchema = new Schema(
       required: true,
     },
     upgradedFrom: Schema.Types.Mixed,
-    referralDiscount: {
+    referralBonusCredits: {
       type: Number,
       min: 0,
-      max: 100,
-      validate: {
-        validator: Number.isInteger,
-        message: "Discount must be an integer",
-      },
-    },
-    extraValidityDays: {
-      type: Number,
-      min: 0,
-      max: 365,
-      validate: {
-        validator: Number.isInteger,
-        message: "Extra validity days must be an integer",
-      },
+      default: 0,
     },
   },
   {
@@ -84,7 +74,6 @@ const SubscriptionSchema = new Schema(
 
 // Indexes for better query performance
 SubscriptionSchema.index({ userId: 1, status: 1 });
-SubscriptionSchema.index({ endDate: 1 }, { expireAfterSeconds: 0 }); // For TTL index
 
 // Instance methods
 SubscriptionSchema.methods.isActive = function () {

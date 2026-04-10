@@ -15,6 +15,13 @@ import {
   UPDATE_CLIENT_CLOSET_ITEM,
   ADD_CLIENT_CLOSET_ITEM,
   ADD_CLIENT_OUTFIT,
+  ADD_SHARED_CATALOG_ITEM,
+  ADD_TRYON_RESULT,
+  UPDATE_TRYON_RESULT,
+  UPDATE_BOOKING_END_TIME,
+  SET_INSTANT_BOOKING_STARTED,
+  SET_BOOKING_CHAT_MESSAGES,
+  ADD_BOOKING_CHAT_MESSAGE,
 } from "../action_creators/booking.action_creators";
 
 const initialState = {
@@ -29,6 +36,10 @@ const initialState = {
   bookingDetail: null,
   clientCloset: [],
   clientOutfits: [],
+  sharedCatalogItems: [],
+  tryOnResults: [],
+  bookingChatMessages: [],
+  chatWritable: false,
 };
 
 export const bookingReducer = (state = initialState, action) => {
@@ -52,7 +63,13 @@ export const bookingReducer = (state = initialState, action) => {
 
     // Session permission
     case SET_BOOKING_DETAIL:
-      return { ...state, bookingDetail: action.payload };
+      return {
+        ...state,
+        bookingDetail: action.payload,
+        sharedCatalogItems: action.payload?.booking?.sharedCatalogItems || [],
+        tryOnResults: action.payload?.booking?.tryOnResults || [],
+        chatWritable: action.payload?.chatWritable || false,
+      };
     case SET_BOOKING_PERMISSIONS:
       return {
         ...state,
@@ -70,6 +87,10 @@ export const bookingReducer = (state = initialState, action) => {
         bookingDetail: null,
         clientCloset: [],
         clientOutfits: [],
+        sharedCatalogItems: [],
+        tryOnResults: [],
+        bookingChatMessages: [],
+        chatWritable: false,
       };
     case UPDATE_CLIENT_CLOSET_ITEM:
       return {
@@ -87,6 +108,91 @@ export const bookingReducer = (state = initialState, action) => {
       return {
         ...state,
         clientOutfits: [action.payload, ...state.clientOutfits],
+      };
+
+    case ADD_SHARED_CATALOG_ITEM:
+      return {
+        ...state,
+        sharedCatalogItems: state.sharedCatalogItems.some(
+          (s) =>
+            (s.catalogItem?._id || s.catalogItem) ===
+            (action.payload.catalogItem?._id || action.payload.catalogItem)
+        )
+          ? state.sharedCatalogItems
+          : [...state.sharedCatalogItems, action.payload],
+      };
+
+    case ADD_TRYON_RESULT:
+      return {
+        ...state,
+        tryOnResults: [...state.tryOnResults, action.payload],
+      };
+    case UPDATE_TRYON_RESULT:
+      return {
+        ...state,
+        tryOnResults: state.tryOnResults.map((r) =>
+          (r._id === action.payload.resultId || r.tryOnResultId === action.payload.resultId)
+            ? { ...r, ...action.payload.updates }
+            : r
+        ),
+      };
+
+    case UPDATE_BOOKING_END_TIME:
+      return {
+        ...state,
+        bookingDetail: state.bookingDetail
+          ? {
+              ...state.bookingDetail,
+              booking: {
+                ...state.bookingDetail.booking,
+                endTime: action.payload.newEndTime,
+                duration: action.payload.newDuration,
+                creditsCharged: action.payload.totalCreditsCharged,
+                // Use absolute totalExtendedMinutes from server (avoids double-counting
+                // when both HTTP response and socket event dispatch this action)
+                totalExtendedMinutes:
+                  action.payload.totalExtendedMinutes !== undefined
+                    ? action.payload.totalExtendedMinutes
+                    : (state.bookingDetail.booking.totalExtendedMinutes || 0) +
+                      (action.payload.extensionMinutes || 0),
+              },
+            }
+          : state.bookingDetail,
+        creditBalance:
+          action.payload.creditBalance !== undefined
+            ? action.payload.creditBalance
+            : state.creditBalance,
+      };
+
+    // Instant Booking Started
+    case SET_INSTANT_BOOKING_STARTED:
+      return {
+        ...state,
+        bookingDetail: state.bookingDetail
+          ? {
+              ...state.bookingDetail,
+              booking: {
+                ...state.bookingDetail.booking,
+                startTime: action.payload.startTime,
+                endTime: action.payload.endTime,
+                startedAt: action.payload.startedAt,
+              },
+            }
+          : state.bookingDetail,
+      };
+
+    // Booking Chat
+    case SET_BOOKING_CHAT_MESSAGES:
+      return { ...state, bookingChatMessages: action.payload };
+
+    case ADD_BOOKING_CHAT_MESSAGE:
+      return {
+        ...state,
+        bookingChatMessages: state.bookingChatMessages.some(
+          (m) => m._id === action.payload._id
+        )
+          ? state.bookingChatMessages
+          : [...state.bookingChatMessages, action.payload],
       };
 
     default:

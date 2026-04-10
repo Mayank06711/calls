@@ -1,8 +1,9 @@
 // src/Components/Home/Sidebar/Chats/Chats.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
-import { Search, VisibilityOff, Delete, Check, Close, ExpandMore, ExpandLess, Star } from "@mui/icons-material";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Search, VisibilityOff, Delete, Check, Close, ExpandMore, ExpandLess, Star, EventNote } from "@mui/icons-material";
+import dayjs from "dayjs";
 import MessageActionMenu from "./MessageActionMenu";
 import {
   IconButton,
@@ -33,6 +34,8 @@ function ChatSection() {
   const colors = useSubscriptionColors();
   const { socket, isAuthenticated } = useSocketContext(); // Get isAuthenticated directly from context
   const { userId: userIdFromUrl } = useParams();
+  const [searchParams] = useSearchParams();
+  const bookingIdFromUrl = searchParams.get("bookingId");
   const navigate = useNavigate();
 
   // State management
@@ -221,6 +224,9 @@ function ChatSection() {
                 chatId: chat.chatId,
                 lastMessageTime: chat.updatedAt,
                 lastMessage: chat.lastMessage,
+                bookingId: chat.bookingId || null,
+                bookingInfo: chat.bookingInfo || null,
+                chatType: chat.chatType || "userToUser",
               };
             })
             // Sort by last message time (most recent first)
@@ -737,9 +743,13 @@ function ChatSection() {
         await ensureSocketAuthenticated();
       }
       setSelectedUser(user);
-      
-      // Navigate to /chats/:userId for deep linking
-      navigate(`/chats/${user._id}`, { replace: true });
+
+      // Navigate to /chats/:userId for deep linking (with bookingId for booking chats)
+      if (user.bookingId) {
+        navigate(`/chats/${user._id}?bookingId=${user.bookingId}`, { replace: true });
+      } else {
+        navigate(`/chats/${user._id}`, { replace: true });
+      }
       
       // Clear unread count for this user
       setUnreadCounts(prev => {
@@ -1030,6 +1040,12 @@ function ChatSection() {
                         }`}
                         title={onlineUsers.has(user._id) ? "Online" : hiddenUsers.has(user._id) ? "Away" : "Offline"}
                       />
+                      {user.bookingId && user.bookingInfo && (
+                        <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                          <EventNote sx={{ fontSize: 10 }} />
+                          Session {dayjs(user.bookingInfo.date).format("MMM D")}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1133,6 +1149,7 @@ function ChatSection() {
             onBack={handleBackToList}
             isExpert={isExpert}
             lastRequestResponse={lastRequestResponse}
+            bookingId={bookingIdFromUrl || selectedUser?.bookingId || null}
           />
         </div>
       ) : (

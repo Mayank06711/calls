@@ -1,83 +1,74 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { useSocketContext } from "../socket/SocketContext";
-import ChatService from "../socket/chatService";
-import { makeRequest } from "../utils/apiHandlers";
-import { ENDPOINTS, HTTP_METHODS } from "../constants/apiEndpoints";
-import { showNotification } from "../redux/actions/notification.actions";
+import { createInstantBooking } from "../redux/thunks/booking.thunks";
 
 export function useInstantExpert() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [pendingCategory, setPendingCategory] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { socket, isAuthenticated } = useSocketContext();
-  const chatServiceRef = useRef(null);
 
   const findExpert = useCallback(
-    async (category) => {
-      if (loading) return { success: false, reason: "already_loading" };
+    (category) => {
+      setError(null);
+      setPendingCategory(category);
+      setShowDurationPicker(true);
+    },
+    []
+  );
+
+  const confirmDuration = useCallback(
+    async (duration) => {
+      if (loading || !pendingCategory) return;
 
       setLoading(true);
       setError(null);
 
       try {
-        // Step 1: Call API to find an available expert
-        const result = await makeRequest(HTTP_METHODS.GET, ENDPOINTS.EXPERT.INSTANT, {
-          category,
-        });
+        const result = await dispatch(
+          createInstantBooking(
+            { category: pendingCategory, duration },
+            (booking) => {
+              navigate(`/session/${booking._id}`);
+            }
+          )
+        );
 
-        // makeRequest returns response.data on success, or { data: null, error } on failure
-        if (result.error) {
-          throw new Error(result.error.message || "Failed to find expert");
-        }
+        // Always clean up state after thunk completes
+        setShowDurationPicker(false);
+        setPendingCategory(null);
+        setLoading(false);
 
-        if (!result.data?.success || !result.data?.data?.expert) {
+        if (!result) {
+          // No experts or error — thunk already showed notification
           setError("no_experts");
-          setLoading(false);
-          return { success: false, reason: "no_experts" };
         }
-
-        const expert = result.data.data.expert;
-
-        // Step 2: Send chat request via socket (auto-accepts for user→expert)
-        if (!socket || !isAuthenticated) {
-          throw new Error("Connection not ready. Please try again in a moment.");
-        }
-
-        if (!chatServiceRef.current) {
-          chatServiceRef.current = new ChatService(socket);
-        } else {
-          chatServiceRef.current.updateSocket(socket);
-        }
-
-        const chatResponse = await chatServiceRef.current.sendChatRequest(
-          expert.userId
-        );
-
-        if (chatResponse.status === "error") {
-          throw new Error(
-            chatResponse.message || "Failed to connect with expert"
-          );
-        }
-
-        // Step 3: Navigate to chat with this expert
-        navigate(`/chats/${expert.userId}`);
-
-        setLoading(false);
-        return { success: true, expert };
       } catch (err) {
-        setError(err.message);
-        dispatch(
-          showNotification(err.message || "Something went wrong", 500)
-        );
+        setShowDurationPicker(false);
+        setPendingCategory(null);
+        setError(err.message || "Failed to create instant session");
         setLoading(false);
-        return { success: false, reason: "error", message: err.message };
       }
     },
-    [socket, isAuthenticated, navigate, dispatch, loading]
+    [loading, pendingCategory, dispatch, navigate]
   );
 
-  return { findExpert, loading, error };
+  const cancelPicker = useCallback(() => {
+    setShowDurationPicker(false);
+    setPendingCategory(null);
+    setError(null);
+  }, []);
+
+  return {
+    findExpert,
+    confirmDuration,
+    cancelPicker,
+    showDurationPicker,
+    loading,
+    error,
+    pendingCategory,
+  };
 }

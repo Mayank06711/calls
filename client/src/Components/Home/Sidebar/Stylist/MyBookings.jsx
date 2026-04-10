@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
+
 import {
   ArrowBack,
   CalendarMonthOutlined,
@@ -11,18 +12,16 @@ import {
   VideocamOutlined,
   CancelOutlined,
   EditCalendarOutlined,
+  ChatOutlined,
 } from '@mui/icons-material';
 import { fetchMyBookings, cancelBooking, connectBooking } from '../../../../redux/thunks/booking.thunks';
 import { LOADER_TYPES } from '../../../../redux/action_creators';
-import { useSocketContext } from '../../../../socket/SocketContext';
-import ChatService from '../../../../socket/chatService';
 import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
 
 const MyBookings = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const colors = useSubscriptionColors();
-  const { socket } = useSocketContext();
 
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'past'
   const [connectStates, setConnectStates] = useState({}); // bookingId -> {canConnect, countdown}
@@ -94,12 +93,7 @@ const MyBookings = () => {
     try {
       const result = await dispatch(connectBooking(booking._id));
       if (result) {
-        const targetUserId = result.otherUserId || result.expertUserId;
-        if (socket) {
-          const service = new ChatService(socket);
-          service.sendChatRequest(targetUserId);
-        }
-        navigate('/chats/' + targetUserId);
+        navigate(`/session/${booking._id}`);
       }
     } catch (error) {
       console.error('Failed to connect booking:', error);
@@ -113,6 +107,8 @@ const MyBookings = () => {
   };
 
   const canShowCancel = (booking) => {
+    // Instant bookings: can cancel anytime before expert types "start"
+    if (booking?.isInstant) return !booking?.startedAt;
     if (!booking?.date || !booking?.startTime) return false;
     try {
       const dateStr = dayjs(booking.date).format('YYYY-MM-DD');
@@ -227,22 +223,36 @@ const MyBookings = () => {
             {/* Action Buttons */}
             {isUpcoming && booking.status?.toLowerCase() !== 'cancelled' && (
               <div className="flex gap-2">
-                {/* Connect Button */}
-                {connectState.canConnect ? (
+                {/* Instant bookings — already connected, go straight to session */}
+                {booking.isInstant && booking.connectedAt ? (
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleConnect(booking); }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/session/${booking._id}`); }}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
                     style={{ backgroundColor: colors.fourth }}
                   >
                     <VideocamOutlined sx={{ fontSize: 18 }} />
-                    Connect
+                    Join Session
                   </button>
-                ) : connectState.countdown ? (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm">
-                    <AccessTimeOutlined sx={{ fontSize: 16 }} />
-                    Connect in {connectState.countdown}
-                  </div>
-                ) : null}
+                ) : (
+                  <>
+                    {/* Connect Button */}
+                    {connectState.canConnect ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleConnect(booking); }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
+                        style={{ backgroundColor: colors.fourth }}
+                      >
+                        <VideocamOutlined sx={{ fontSize: 18 }} />
+                        Connect
+                      </button>
+                    ) : connectState.countdown ? (
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm">
+                        <AccessTimeOutlined sx={{ fontSize: 16 }} />
+                        Connect in {connectState.countdown}
+                      </div>
+                    ) : null}
+                  </>
+                )}
 
                 {/* Cancel Button */}
                 {canShowCancel(booking) && (
@@ -254,6 +264,20 @@ const MyBookings = () => {
                     Cancel
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Open Chat — for past bookings that were connected */}
+            {!isUpcoming && booking.connectedAt && (
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/session/${booking._id}`); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90"
+                  style={{ backgroundColor: toRgba(colors.fourth, 0.1), color: colors.fourth }}
+                >
+                  <ChatOutlined sx={{ fontSize: 18 }} />
+                  Open Chat
+                </button>
               </div>
             )}
           </div>

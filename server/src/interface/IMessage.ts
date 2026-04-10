@@ -3,7 +3,7 @@ import { MediaItem } from './IMedia';
 
 // Define the Message Types
 export type MessageType = "text" | "image" | "video" | "audio" | "document";
-export type ChatType = "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert";
+export type ChatType = "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert" | "booking";
 
 // Define interfaces
 export interface IAttachment extends MediaItem {
@@ -45,6 +45,7 @@ export interface IParticipantInfo {
 export interface INewMsg extends Document {
   sender: Types.ObjectId;
   receiver: Types.ObjectId;
+  bookingId?: Types.ObjectId;
   messages: INewMessage[];
   chatType: ChatType;
   messageIdCounter: number;

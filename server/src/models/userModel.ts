@@ -70,6 +70,10 @@ const UserSchema: Schema<IUser> = new Schema(
       type:Boolean,
       default: false
     },
+    tierExpiresAt: {
+      type: Date,
+      default: undefined,
+    },
     referral: {
       type: Schema.Types.ObjectId,
       ref: "Referral",

@@ -648,7 +648,7 @@ function Home() {
 
       {/* Main Content — fixed positioning fills exactly the visible viewport gap */}
       <div  ref={mainContentRef} className={`fixed top-16 left-16 right-0 bottom-0 overflow-x-hidden scrollbar-hide ${
-        location.pathname === '/' || location.pathname === '/chats' || location.pathname.startsWith('/chats/') ? 'overflow-hidden' : 'overflow-y-auto'
+        location.pathname === '/' || location.pathname === '/chats' || location.pathname.startsWith('/chats/') || location.pathname.startsWith('/session/') ? 'overflow-hidden' : 'overflow-y-auto'
       }`}
         style={{ scrollBehavior: 'instant' }}
       >

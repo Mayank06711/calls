@@ -15,6 +15,13 @@ import {
   UPDATE_CLIENT_CLOSET_ITEM,
   ADD_CLIENT_CLOSET_ITEM,
   ADD_CLIENT_OUTFIT,
+  ADD_SHARED_CATALOG_ITEM,
+  ADD_TRYON_RESULT,
+  UPDATE_TRYON_RESULT,
+  UPDATE_BOOKING_END_TIME,
+  SET_INSTANT_BOOKING_STARTED,
+  SET_BOOKING_CHAT_MESSAGES,
+  ADD_BOOKING_CHAT_MESSAGE,
 } from "../action_creators/booking.action_creators";
 
 export const setCreditBalance = (balance) => ({
@@ -94,4 +101,39 @@ export const addClientClosetItem = (item) => ({
 export const addClientOutfit = (outfit) => ({
   type: ADD_CLIENT_OUTFIT,
   payload: outfit,
+});
+
+export const addSharedCatalogItem = (item) => ({
+  type: ADD_SHARED_CATALOG_ITEM,
+  payload: item,
+});
+
+export const addTryOnResult = (result) => ({
+  type: ADD_TRYON_RESULT,
+  payload: result,
+});
+
+export const updateTryOnResult = (resultId, updates) => ({
+  type: UPDATE_TRYON_RESULT,
+  payload: { resultId, updates },
+});
+
+export const updateBookingEndTime = (data) => ({
+  type: UPDATE_BOOKING_END_TIME,
+  payload: data,
+});
+
+export const setBookingChatMessages = (messages) => ({
+  type: SET_BOOKING_CHAT_MESSAGES,
+  payload: messages,
+});
+
+export const addBookingChatMessage = (message) => ({
+  type: ADD_BOOKING_CHAT_MESSAGE,
+  payload: message,
+});
+
+export const setInstantBookingStarted = (data) => ({
+  type: SET_INSTANT_BOOKING_STARTED,
+  payload: data,
 });

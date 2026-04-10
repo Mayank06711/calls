@@ -10,3 +10,4 @@ export * from "./wardrobe.action_creators";
 export * from "./admin.action_creators";
 export * from "./expert.action_creators";
 export * from "./booking.action_creators";
+export * from "./itemCatalog.action_creators";

@@ -54,9 +54,7 @@ const UserSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/U
 const UserHistory = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserHistory/UserHistory"));
 // const Likes = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Likes/Likes"));
 // const Posts = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/Posts/Posts"));
-const SilverSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/SilverSubscription"));
-const PlatinumSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/PlatinumSubscription"));
-const GoldSubscription = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/GoldSubscription"));
+const CreditPlanDetail = lazy(() => import("./Components/Home/Sidebar/Subscriptions/SubscriptionType/CreditPlanDetail"));
 const AccountSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/AccountSettings"));
 const ThemeSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/ThemeSettings"));
 const NotificationSettings = lazy(() => import("./Components/Home/Hearders/UserProfile/UserActivity/UserSettings/SettingTypes/NotificationSettings"));
@@ -93,6 +91,13 @@ const CreditStore = lazy(() => import("./Components/Home/Sidebar/Stylist/CreditS
 const ExpertBookings = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertBookings"));
 const ExpertScheduleEditor = lazy(() => import("./Components/Home/Sidebar/Stylist/ExpertScheduleEditor"));
 const BookingDetail = lazy(() => import("./Components/Home/Sidebar/Stylist/BookingDetail"));
+const SessionView = lazy(() => import("./Components/Home/Sidebar/Stylist/SessionView"));
+
+// ── Item Catalog module (lazy-loaded) ───────────────────────────────────────
+const ItemCatalogHome = lazy(() => import("./Components/Home/Sidebar/ItemCatalog/ItemCatalogHome"));
+const ItemCatalogDetail = lazy(() => import("./Components/Home/Sidebar/ItemCatalog/ItemCatalogDetail"));
+const ItemCatalogCreateForm = lazy(() => import("./Components/Home/Sidebar/ItemCatalog/ItemCatalogCreateForm"));
+const ItemCatalogEditForm = lazy(() => import("./Components/Home/Sidebar/ItemCatalog/ItemCatalogEditForm"));
 
 // ── Admin module (lazy-loaded) ──────────────────────────────────────────────
 const AdminLayout = lazy(() => import("./Components/Admin/AdminLayout"));
@@ -349,9 +354,7 @@ const App = () => {
 
                 <Route path='subscriptions'>
                   <Route index element={isExpert ? <Navigate to='/chats' replace /> : <Subscriptions />} />
-                  <Route path='gold' element={isExpert ? <Navigate to='/chats' replace /> : <GoldSubscription />} />
-                  <Route path='silver' element={isExpert ? <Navigate to='/chats' replace /> : <SilverSubscription />} />
-                  <Route path='platinum' element={isExpert ? <Navigate to='/chats' replace /> : <PlatinumSubscription />} />
+                  <Route path=':planType' element={isExpert ? <Navigate to='/chats' replace /> : <CreditPlanDetail />} />
                 </Route>
 
                 <Route path='wardrobe' element={<WardrobeHub />} />
@@ -368,18 +371,24 @@ const App = () => {
                 <Route path='wardrobe/shop' element={<ShopPage />} />
 
                 <Route path='stylist' element={<StylistHub />} />
-                <Route path='stylist/clothing' element={<ClothingExpert />} />
-                <Route path='stylist/hair' element={<HairExpert />} />
-                <Route path='stylist/makeup' element={<MakeupExpert />} />
-                <Route path='stylist/makeover' element={<CompleteMakeover />} />
-                <Route path='stylist/wedding' element={<WeddingExpert />} />
-                <Route path='stylist/experts' element={<ExpertCatalog />} />
-                <Route path='stylist/experts/:expertId' element={<ExpertDetail />} />
-                <Route path='stylist/bookings' element={<MyBookings />} />
-                <Route path='stylist/credits' element={<CreditStore />} />
+                <Route path='stylist/clothing' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <ClothingExpert />} />
+                <Route path='stylist/hair' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <HairExpert />} />
+                <Route path='stylist/makeup' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <MakeupExpert />} />
+                <Route path='stylist/makeover' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <CompleteMakeover />} />
+                <Route path='stylist/wedding' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <WeddingExpert />} />
+                <Route path='stylist/experts' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <ExpertCatalog />} />
+                <Route path='stylist/experts/:expertId' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <ExpertDetail />} />
+                <Route path='stylist/bookings' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <MyBookings />} />
+                <Route path='stylist/credits' element={isExpert ? <Navigate to='/expert-bookings' replace /> : <CreditStore />} />
                 <Route path='stylist/booking/:bookingId' element={<BookingDetail />} />
+                <Route path='session/:bookingId' element={<SessionView />} />
                 <Route path='expert-bookings' element={isExpert ? <ExpertBookings /> : <Navigate to='/stylist' replace />} />
                 <Route path='expert-schedule' element={isExpert ? <ExpertScheduleEditor /> : <Navigate to='/stylist' replace />} />
+
+                <Route path='item-catalog' element={isExpert ? <ItemCatalogHome /> : <Navigate to='/stylist' replace />} />
+                <Route path='item-catalog/create' element={isExpert ? <ItemCatalogCreateForm /> : <Navigate to='/stylist' replace />} />
+                <Route path='item-catalog/:itemId' element={isExpert ? <ItemCatalogDetail /> : <Navigate to='/stylist' replace />} />
+                <Route path='item-catalog/:itemId/edit' element={isExpert ? <ItemCatalogEditForm /> : <Navigate to='/stylist' replace />} />
 
                 <Route path='become-expert' element={isExpert ? <Navigate to='/chats' replace /> : <BecomeExpert />} />
                 <Route path='expert-profile' element={isExpert ? <ExpertProfileEdit /> : <Navigate to='/chats' replace />} />

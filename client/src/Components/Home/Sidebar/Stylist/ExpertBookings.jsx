@@ -11,13 +11,14 @@ import {
   VideocamOutlined,
   CancelOutlined,
   EditCalendarOutlined,
-  BookmarkBorderOutlined,
+  ChatOutlined,
 } from '@mui/icons-material';
 import { fetchExpertBookings, cancelBooking, connectBooking } from '../../../../redux/thunks/booking.thunks';
+import { showNotification } from '../../../../redux/actions/notification.actions';
 import { LOADER_TYPES } from '../../../../redux/action_creators';
-import { useSocketContext } from '../../../../socket/SocketContext';
-import ChatService from '../../../../socket/chatService';
 import { useSubscriptionColors, toRgba } from '../../../../utils/getSubscriptionColors';
+import { useSocketContext } from '../../../../socket/SocketContext';
+import { SOCKET_CONSTANTS } from '../../../../constants/socketContanst';
 import WeeklyCalendarModal from './WeeklyCalendarModal';
 
 const ExpertBookings = () => {
@@ -39,6 +40,17 @@ const ExpertBookings = () => {
   useEffect(() => {
     dispatch(fetchExpertBookings());
   }, [dispatch]);
+
+  // Socket: listen for instant booking requests
+  useEffect(() => {
+    if (!socket) return;
+    const handler = () => {
+      dispatch(showNotification('New instant session request!', 200));
+      dispatch(fetchExpertBookings());
+    };
+    socket.on(SOCKET_CONSTANTS.BOOKING.INSTANT_REQUEST, handler);
+    return () => socket.off(SOCKET_CONSTANTS.BOOKING.INSTANT_REQUEST, handler);
+  }, [socket, dispatch, navigate]);
 
   // Update connect states every 30 seconds
   const upcomingBookings = expertBookings.upcoming;
@@ -96,15 +108,7 @@ const ExpertBookings = () => {
     try {
       const result = await dispatch(connectBooking(booking._id));
       if (result) {
-        // Expert connects to the user (otherUserId = booking user)
-        const targetUserId = result.otherUserId || booking.user?._id;
-        if (targetUserId) {
-          if (socket) {
-            const service = new ChatService(socket);
-            service.sendChatRequest(targetUserId);
-          }
-          navigate('/chats/' + targetUserId);
-        }
+        navigate(`/session/${booking._id}`);
       }
     } catch (error) {
       console.error('Failed to connect booking:', error);
@@ -118,6 +122,8 @@ const ExpertBookings = () => {
   };
 
   const canShowCancel = (booking) => {
+    // Instant bookings: can cancel anytime before expert types "start"
+    if (booking?.isInstant) return !booking?.startedAt;
     if (!booking?.date || !booking?.startTime) return false;
     try {
       const dateStr = dayjs(booking.date).format('YYYY-MM-DD');
@@ -233,22 +239,36 @@ const ExpertBookings = () => {
             {/* Action Buttons */}
             {isUpcoming && booking.status?.toLowerCase() !== 'cancelled' && (
               <div className="flex gap-2">
-                {/* Connect Button */}
-                {connectState.canConnect ? (
+                {/* Instant bookings — already connected, go straight to session */}
+                {booking.isInstant && booking.connectedAt ? (
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleConnect(booking); }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/session/${booking._id}`); }}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
                     style={{ backgroundColor: colors.fourth }}
                   >
                     <VideocamOutlined sx={{ fontSize: 18 }} />
-                    Connect
+                    Join Session
                   </button>
-                ) : connectState.countdown ? (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm">
-                    <AccessTimeOutlined sx={{ fontSize: 16 }} />
-                    Connect in {connectState.countdown}
-                  </div>
-                ) : null}
+                ) : (
+                  <>
+                    {/* Connect Button */}
+                    {connectState.canConnect ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleConnect(booking); }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
+                        style={{ backgroundColor: colors.fourth }}
+                      >
+                        <VideocamOutlined sx={{ fontSize: 18 }} />
+                        Connect
+                      </button>
+                    ) : connectState.countdown ? (
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm">
+                        <AccessTimeOutlined sx={{ fontSize: 16 }} />
+                        Connect in {connectState.countdown}
+                      </div>
+                    ) : null}
+                  </>
+                )}
 
                 {/* Cancel Button */}
                 {canShowCancel(booking) && (
@@ -260,6 +280,20 @@ const ExpertBookings = () => {
                     Cancel
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Open Chat — for past bookings that were connected */}
+            {!isUpcoming && booking.connectedAt && (
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/session/${booking._id}`); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-90"
+                  style={{ backgroundColor: toRgba(colors.fourth, 0.1), color: colors.fourth }}
+                >
+                  <ChatOutlined sx={{ fontSize: 18 }} />
+                  Open Chat
+                </button>
               </div>
             )}
           </div>
@@ -325,13 +359,6 @@ const ExpertBookings = () => {
               >
                 <CalendarMonthOutlined sx={{ fontSize: 16 }} />
                 Calendar
-              </button>
-              <button
-                onClick={() => navigate('/stylist/bookings')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/15 hover:bg-white/25 text-white transition-colors"
-              >
-                <BookmarkBorderOutlined sx={{ fontSize: 16 }} />
-                My Bookings
               </button>
               <button
                 onClick={() => navigate('/expert-schedule')}

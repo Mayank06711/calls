@@ -8,22 +8,16 @@ import { CreditTransactionModel } from "../models/creditTransactionModel";
 import { PaymentProviderFactory } from "../services/payment/payment.factory";
 import { PaymentOrderModel } from "../models/paymentOrderModel";
 import { RedisManager } from "../utils/redisClient";
+import { SUBSCRIPTION_CONFIG } from "../helper/constants";
 
-// ─── Credit Packs ───────────────────────────────────────────────────────────
+// ─── Standalone Credit Top-up Packs ─────────────────────────────────────────
 
 const CREDIT_PACKS = [
-  { id: "starter", name: "Starter Pack", credits: 100, priceINR: 99, popular: false },
-  { id: "standard", name: "Standard Pack", credits: 300, priceINR: 249, popular: true },
-  { id: "premium", name: "Premium Pack", credits: 700, priceINR: 499, popular: false },
-  { id: "mega", name: "Mega Pack", credits: 1500, priceINR: 899, popular: false },
+  { id: "pack_100", name: "100 Credits", credits: 100, priceINR: 99, popular: false },
+  { id: "pack_300", name: "300 Credits", credits: 300, priceINR: 249, popular: true },
+  { id: "pack_700", name: "700 Credits", credits: 700, priceINR: 499, popular: false },
+  { id: "pack_1500", name: "1500 Credits", credits: 1500, priceINR: 899, popular: false },
 ];
-
-const SUBSCRIPTION_CREDIT_GRANTS: Record<string, number> = {
-  Free: 90,
-  Silver: 600,
-  Gold: 1500,
-  Platinum: 5000,
-};
 
 class CreditController {
   // ─── GET /credits/balance ─────────────────────────────────────────────────
@@ -234,13 +228,14 @@ class CreditController {
     }
   }
 
-  // ─── Static: Grant subscription credits (called from webhook) ─────────────
+  // ─── Static: Grant subscription credits (called from webhook/payment) ─────
   static async grantSubscriptionCredits(
     userId: string,
     subscriptionType: string,
     session?: any
   ): Promise<void> {
-    const credits = SUBSCRIPTION_CREDIT_GRANTS[subscriptionType];
+    const tierConfig = SUBSCRIPTION_CONFIG.TIERS[subscriptionType as keyof typeof SUBSCRIPTION_CONFIG.TIERS];
+    const credits = tierConfig?.creditsGranted ?? 0;
     if (!credits || credits <= 0) return;
 
     const updatedUser = await UserModel.findOneAndUpdate(

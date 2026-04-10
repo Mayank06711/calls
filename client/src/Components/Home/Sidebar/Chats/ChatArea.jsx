@@ -20,15 +20,16 @@ import { useSelector, useDispatch } from "react-redux";
 import { showNotification } from "../../../../redux/actions/notification.actions"; // DEBUG — remove later
 import { useVideoCallActions } from "../../../../hooks/useVideoCall";
 import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
-import { PersonAdd, HourglassEmpty, Check, Close } from "@mui/icons-material";
+import { PersonAdd, HourglassEmpty, Check, Close, LockOutlined } from "@mui/icons-material";
 import { playChatSound } from "../../../../utils/notificationSound";
 import { useAIContext } from "../../../../context/AIContext";
 
-const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestResponse }) => {
+const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestResponse, bookingId }) => {
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
   const [isTyping] = useState(false);
   const [error, setError] = useState(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [isSocketReady, setIsSocketReady] = useState(false);
   const [isUserOnline, setIsUserOnline] = useState(false); // Track real-time online status
   const [isUserHidden, setIsUserHidden] = useState(false); // Track hidden (appear offline) status
@@ -316,7 +317,7 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
     };
   }, [isSocketReady, chatId]);
 
-  // Reset chatId, messages, and request status when selectedUser changes
+  // Reset chatId, messages, and request status when selectedUser or bookingId changes
   useEffect(() => {
     setChatId(null);
     setMessages([]);
@@ -325,7 +326,8 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
     setCooldownRemaining(0);
     setIsSelectionMode(false);
     setSelectedMessageIds(new Set());
-  }, [selectedUser]);
+    setIsReadOnly(false);
+  }, [selectedUser, bookingId]);
 
   // Add error display component
   const renderError = () => {
@@ -356,8 +358,8 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
       setRequestStatus(null);
       if (!selectedUser || !chatServiceRef.current || !currentUserId) return;
 
-      // Admin bypass: admins skip the request check
-      if (isAdmin) {
+      // Admin + booking bypass: admins and booking chats skip the request check
+      if (isAdmin || bookingId) {
         setRequestStatus("accepted");
       } else {
         // Check chat request status — socket (3 retries) → HTTP fallback
@@ -411,11 +413,12 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
       }
 
       try {
-        const chat = await chatServiceRef.current.checkChatHistory(currentUserId, selectedUser._id);
+        const chat = await chatServiceRef.current.checkChatHistory(currentUserId, selectedUser._id, bookingId);
         if (chat) {
           setChatId(chat.chatId);
           console.log('Chat history received from server:', chat);
           setMessages((chat.messages || []).map(formatMessage));
+          if (chat.isReadOnly) setIsReadOnly(true);
           // DEBUG toast — remove later
           dispatch(showNotification(`[DEBUG] Chat history loaded via socket (${(chat.messages || []).length} msgs)`, 200));
 
@@ -442,7 +445,7 @@ const ChatArea = ({ selectedUser, chatServiceRef, onBack, isExpert, lastRequestR
       }
     };
     fetchChatHistory();
-  }, [selectedUser, isSocketReady, currentUserId, isAdmin, reconnectCount]);
+  }, [selectedUser, isSocketReady, currentUserId, isAdmin, bookingId, reconnectCount]);
 
   // When socket reconnects (isAuthenticated flips true), bump reconnectCount
   // so fetchChatHistory re-runs with a live socket — picks up correct status + chat history
@@ -695,10 +698,11 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         }
       }
 
+      console.log('[ChatArea] sendMessage →', { chatId, receiverId: selectedUser._id, bookingId, text: finalMessageData.content?.substring?.(0, 20) });
       const { messageId, timestamp } = await chatServiceRef.current.sendMessage(
         chatId,
         selectedUser._id,
-        finalMessageData
+        { ...finalMessageData, ...(bookingId ? { bookingId, chatType: 'booking' } : {}) }
       );
 
       updateThis(msg => ({
@@ -709,12 +713,14 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         status: MESSAGE_STATUS.SENT,
       }));
     } catch (err) {
+      const errorMsg = err?.message || "Failed to send message";
+      console.error('[ChatArea] sendMessage failed:', errorMsg, err);
       updateThis(msg => ({
         ...msg,
         status: MESSAGE_STATUS.FAILED,
-        error: "Failed to send message",
+        error: errorMsg,
       }));
-      setError("Failed to send message");
+      setError(errorMsg);
     }
   };
   
@@ -1034,7 +1040,7 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
       }}
       isTyping={isTyping}
       onBack={onBack}
-      onVideoCall={requestStatus === "accepted" && selectedUser?._id !== currentUserId ? handleVideoCall : undefined}
+      onVideoCall={requestStatus === "accepted" && !isReadOnly && selectedUser?._id !== currentUserId ? handleVideoCall : undefined}
       onMenuClick={handleMenuClick}
       onSelectMessages={!isSelectionMode ? () => setIsSelectionMode(true) : undefined}
       isExpert={isExpert}
@@ -1071,7 +1077,12 @@ const updateOptimisticMessage = (content, timestamp, updater) => {
         selectedIds={selectedMessageIds}
         onToggleSelect={handleToggleSelect}
       />
-      {isSelectionMode ? (
+      {isReadOnly ? (
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500">
+          <LockOutlined sx={{ fontSize: 16 }} />
+          <span className="text-sm">Session ended — Chat is read-only</span>
+        </div>
+      ) : isSelectionMode ? (
         <SelectionToolbar
           selectedCount={selectedMessageIds.size}
           canDeleteForEveryone={canDeleteForEveryone()}
@@ -1107,6 +1118,7 @@ ChatArea.propTypes = {
   onBack: PropTypes.func, // Back button handler for mobile
   isExpert: PropTypes.bool,
   lastRequestResponse: PropTypes.object, // Real-time request response from Chats.jsx listener
+  bookingId: PropTypes.string, // Booking ID for per-booking chat threads
 };
 
 export default ChatArea;

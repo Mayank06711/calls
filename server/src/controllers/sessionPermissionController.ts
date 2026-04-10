@@ -11,10 +11,35 @@ import { ClothingItemModel } from "../models/clothModel";
 import { OutfitModel } from "../models/outfitModel";
 import { UserModel } from "../models/userModel";
 import { ExpertModel } from "../models/expertModel";
+import { CatalogItemModel } from "../models/catalogItemModel";
+import { BookingChatModel } from "../models/bookingChatModel";
+import { SocketManager } from "../socket";
+import { NanoBananaService } from "../services/tryon/nanobanana.service";
+import { CLOUDINARY_SERVICES } from "../helper/cloudinary";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const GRACE_MINUTES = 5;
+const CHAT_BUFFER_MINUTES = 2;
+
+/**
+ * Determine if the booking chat is writable.
+ * Writable when: booking status is "confirmed" AND now <= endTime + CHAT_BUFFER_MINUTES.
+ */
+function computeChatWritable(booking: any): boolean {
+  if (booking.status !== "confirmed") return false;
+  // Instant bookings before "start": always writable so expert can type "start"
+  if (booking.isInstant && !booking.startedAt) return true;
+  const tz = booking.timezone || "Asia/Kolkata";
+  const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+  const sessionEnd = moment.tz(
+    `${dateStr} ${booking.endTime}`,
+    "YYYY-MM-DD HH:mm",
+    tz
+  );
+  const chatDeadline = moment(sessionEnd).add(CHAT_BUFFER_MINUTES, "minutes");
+  return moment().isSameOrBefore(chatDeadline);
+}
 
 interface SessionContext {
   booking: any;
@@ -67,25 +92,28 @@ async function assertActiveSession(
     throw new ApiError(403, "Session is no longer active");
   }
 
-  // Check time window: session endTime + grace period
-  const tz = booking.timezone || "Asia/Kolkata";
-  const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
-  const sessionEnd = moment.tz(
-    `${dateStr} ${booking.endTime}`,
-    "YYYY-MM-DD HH:mm",
-    tz
-  );
-  const graceEnd = moment(sessionEnd).add(GRACE_MINUTES, "minutes");
-  const now = moment();
+  // Instant bookings before "start": session is active, skip time check
+  if (!(booking.isInstant && !booking.startedAt)) {
+    // Check time window: session endTime + grace period
+    const tz = booking.timezone || "Asia/Kolkata";
+    const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+    const sessionEnd = moment.tz(
+      `${dateStr} ${booking.endTime}`,
+      "YYYY-MM-DD HH:mm",
+      tz
+    );
+    const graceEnd = moment(sessionEnd).add(GRACE_MINUTES, "minutes");
+    const now = moment();
 
-  if (now.isAfter(graceEnd)) {
-    // Auto-revoke
-    if (permission.isActive) {
-      permission.isActive = false;
-      permission.revokedAt = new Date();
-      await permission.save();
+    if (now.isAfter(graceEnd)) {
+      // Auto-revoke
+      if (permission.isActive) {
+        permission.isActive = false;
+        permission.revokedAt = new Date();
+        await permission.save();
+      }
+      throw new ApiError(403, "Session has ended. Access revoked.");
     }
-    throw new ApiError(403, "Session has ended. Access revoked.");
   }
 
   // Check specific permission if required
@@ -113,7 +141,13 @@ class SessionPermissionController {
     const { id } = req.params;
 
     // Simpler check: just verify booking exists and user is a participant
-    const booking = await BookingModel.findById(id).lean();
+    const booking = await BookingModel.findById(id)
+      .populate({
+        path: "sharedCatalogItems.catalogItem",
+        select: "title description images category gender tags clothingType subcategory brand priceRange styleVibe hairType hairLength faceShapes maintenanceLevel lookType skinTones products",
+        match: { isDeleted: { $ne: true } },
+      })
+      .lean();
     if (!booking) throw new ApiError(404, "Booking not found");
 
     const isBooker = booking.user.toString() === userId.toString();
@@ -139,21 +173,26 @@ class SessionPermissionController {
     // Determine if session is still active (for UI purposes)
     let sessionActive = booking.status === "confirmed";
     if (sessionActive) {
-      const tz = booking.timezone || "Asia/Kolkata";
-      const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
-      const sessionEnd = moment.tz(
-        `${dateStr} ${booking.endTime}`,
-        "YYYY-MM-DD HH:mm",
-        tz
-      );
-      const graceEnd = moment(sessionEnd).add(GRACE_MINUTES, "minutes");
-      if (moment().isAfter(graceEnd)) {
-        sessionActive = false;
-        // Auto-revoke if not already
-        if (permission.isActive) {
-          permission.isActive = false;
-          permission.revokedAt = new Date();
-          await permission.save();
+      // Instant bookings before "start": keep session active so expert can type "start"
+      if (booking.isInstant && !booking.startedAt) {
+        sessionActive = true;
+      } else {
+        const tz = booking.timezone || "Asia/Kolkata";
+        const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+        const sessionEnd = moment.tz(
+          `${dateStr} ${booking.endTime}`,
+          "YYYY-MM-DD HH:mm",
+          tz
+        );
+        const graceEnd = moment(sessionEnd).add(GRACE_MINUTES, "minutes");
+        if (moment().isAfter(graceEnd)) {
+          sessionActive = false;
+          // Auto-revoke if not already
+          if (permission.isActive) {
+            permission.isActive = false;
+            permission.revokedAt = new Date();
+            await permission.save();
+          }
         }
       }
     }
@@ -162,6 +201,27 @@ class SessionPermissionController {
     const effectivePermissions = sessionActive
       ? permission.permissions
       : { closet: false, outfits: false };
+
+    // Compute extension info for active sessions
+    let creditRatePerMinute = 0;
+    let totalExtendedMinutes = 0;
+    if (sessionActive && booking.status === "confirmed") {
+      totalExtendedMinutes = (booking.extensions || []).reduce(
+        (sum: number, ext: any) => sum + ext.minutes, 0
+      );
+      // Fetch expert pricing for rate calculation
+      const pricingDoc = await ExpertModel.findById(booking.expert).select("pricing").lean();
+      if (pricingDoc?.pricing) {
+        const p = pricingDoc.pricing;
+        if (p.per60Min > 0) creditRatePerMinute = Math.ceil(p.per60Min / 60);
+        else if (p.per30Min > 0) creditRatePerMinute = Math.ceil(p.per30Min / 30);
+        else if (p.per15Min > 0) creditRatePerMinute = Math.ceil(p.per15Min / 15);
+      }
+    }
+
+    // Compute chat availability
+    const hasChat = !!booking.connectedAt;
+    const chatWritable = hasChat ? computeChatWritable(booking) : false;
 
     const result: any = {
       booking: {
@@ -175,10 +235,17 @@ class SessionPermissionController {
         creditsCharged: booking.creditsCharged,
         notes: booking.notes,
         connectedAt: booking.connectedAt,
+        isInstant: booking.isInstant || false,
+        startedAt: booking.startedAt || null,
+        sharedCatalogItems: booking.sharedCatalogItems || [],
+        tryOnResults: booking.tryOnResults || [],
+        ...(sessionActive ? { creditRatePerMinute, totalExtendedMinutes, maxExtensionMinutes: 30 } : {}),
       },
       permissions: effectivePermissions,
       sessionActive,
       role,
+      hasChat,
+      chatWritable,
     };
 
     if (role === "user") {
@@ -205,11 +272,20 @@ class SessionPermissionController {
         }
       }
 
+      // Spread expertDoc first so expertUser._id (the User ID) wins.
+      // expertDoc._id is the Expert document ID which must NOT overwrite.
       result.expert = {
-        ...(expertUser || {}),
         ...(expertDoc || {}),
+        ...(expertUser || {}),
         profilePhoto: expertPhoto,
       };
+
+      // User's own photos for try-on selection
+      const currentUser = await UserModel.findById(userId);
+      if (currentUser) {
+        const myAllMedia = await currentUser.getAllMedia();
+        result.myPhotos = myAllMedia?.photos || [];
+      }
     } else {
       // Expert sees client info + style profile (always)
       const clientUser = await UserModel.findById(booking.user);
@@ -276,6 +352,18 @@ class SessionPermissionController {
 
     if (role !== "user") {
       throw new ApiError(403, "Only the client can change permissions");
+    }
+
+    // Permissions can only be toggled during the live session (not during grace period)
+    const tz = booking.timezone || "Asia/Kolkata";
+    const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+    const sessionEnd = moment.tz(
+      `${dateStr} ${booking.endTime}`,
+      "YYYY-MM-DD HH:mm",
+      tz
+    );
+    if (moment().isAfter(sessionEnd)) {
+      throw new ApiError(403, "Session has ended. Permissions can no longer be changed.");
     }
 
     const { closet, outfits } = req.body;
@@ -526,6 +614,346 @@ class SessionPermissionController {
     return res.status(200).json(successResponse({ outfits }));
   }
 
+  /**
+   * POST /bookings/:id/share-catalog-item
+   * Expert shares a catalog item with the client during an active session.
+   */
+  private static async _shareCatalogItem(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const { catalogItemId, note } = req.body;
+
+    // Validate active session and expert role
+    const { booking, role } = await assertActiveSession(id, userId.toString());
+    if (role !== "expert") {
+      throw new ApiError(403, "Only the expert can share catalog items");
+    }
+
+    // Validate catalog item exists
+    const catalogItem = await CatalogItemModel.findOne({
+      _id: catalogItemId,
+      isDeleted: false,
+    }).lean();
+    if (!catalogItem) throw new ApiError(404, "Catalog item not found");
+
+    // Prevent duplicates
+    const bookingDoc = await BookingModel.findById(id);
+    if (!bookingDoc) throw new ApiError(404, "Booking not found");
+
+    const alreadyShared = bookingDoc.sharedCatalogItems?.some(
+      (s) => s.catalogItem.toString() === catalogItemId
+    );
+    if (alreadyShared) {
+      throw new ApiError(409, "This item has already been shared with the client");
+    }
+
+    // Push shared item
+    bookingDoc.sharedCatalogItems.push({
+      catalogItem: new Types.ObjectId(catalogItemId),
+      sharedAt: new Date(),
+      note: note || undefined,
+    } as any);
+    await bookingDoc.save();
+
+    // Populate the just-added item for response
+    const updatedBooking = await BookingModel.findById(id)
+      .populate({
+        path: "sharedCatalogItems.catalogItem",
+        select: "title description images category gender tags clothingType subcategory brand priceRange styleVibe hairType hairLength faceShapes maintenanceLevel lookType skinTones products",
+      })
+      .lean();
+    const sharedItems = updatedBooking?.sharedCatalogItems || [];
+    const justShared = sharedItems[sharedItems.length - 1];
+
+    // Socket notification to client user (fire-and-forget)
+    try {
+      const socketManager = SocketManager.getInstance();
+      const clientSocket = await socketManager.getSocketIdUsingUserId(
+        booking.user.toString()
+      );
+      if (clientSocket?.socketId) {
+        await socketManager.emitEvent({
+          event: "booking:catalog-item-shared",
+          data: { bookingId: id, sharedItem: justShared },
+          targetSocketIds: [clientSocket.socketId],
+        });
+      }
+    } catch (err) {
+      console.error("Socket emit error (non-blocking):", err);
+    }
+
+    return res.status(201).json(
+      successResponse(
+        { sharedItem: justShared, sharedCatalogItems: sharedItems },
+        "Item shared with client"
+      )
+    );
+  }
+
+  /**
+   * POST /bookings/:id/try-on
+   * Request a virtual try-on for a shared catalog item.
+   * Both user and expert can trigger during active session.
+   * Returns 202 immediately; processing happens in background.
+   */
+  private static async _requestTryOn(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const { catalogItemId, personPhotoUrls } = req.body;
+
+    // Validate active session (both roles allowed)
+    const { booking, role } = await assertActiveSession(id, userId.toString());
+
+    // Validate catalog item exists
+    const catalogItem = await CatalogItemModel.findOne({
+      _id: catalogItemId,
+      isDeleted: false,
+    }).lean();
+    if (!catalogItem) throw new ApiError(404, "Catalog item not found");
+
+    // Validate item was shared in this booking
+    const bookingDoc = await BookingModel.findById(id);
+    if (!bookingDoc) throw new ApiError(404, "Booking not found");
+
+    const isShared = bookingDoc.sharedCatalogItems?.some(
+      (s) => s.catalogItem.toString() === catalogItemId
+    );
+    if (!isShared) {
+      throw new ApiError(400, "This item has not been shared in this session");
+    }
+
+    // Validate style images
+    if (!catalogItem.images || catalogItem.images.length < 2) {
+      throw new ApiError(400, "Catalog item must have at least 2 images for try-on");
+    }
+    const styleImages = catalogItem.images.slice(0, 2);
+
+    // Get category-specific prompt
+    const prompt = NanoBananaService.getPrompt(
+      catalogItem.category as "clothing" | "hair" | "makeup"
+    );
+
+    // Create try-on result entry
+    const tryOnEntry = {
+      catalogItem: new Types.ObjectId(catalogItemId),
+      category: catalogItem.category,
+      personPhotos: personPhotoUrls,
+      styleImages,
+      prompt,
+      status: "pending" as const,
+      requestedBy: new Types.ObjectId(userId.toString()),
+      requestedAt: new Date(),
+    };
+
+    bookingDoc.tryOnResults = bookingDoc.tryOnResults || [];
+    bookingDoc.tryOnResults.push(tryOnEntry as any);
+    await bookingDoc.save();
+
+    const newTryOn = bookingDoc.tryOnResults[bookingDoc.tryOnResults.length - 1];
+    const tryOnResultId = newTryOn._id!.toString();
+
+    // Image array: [person1, person2, style1, style2]
+    const imageUrls = [...personPhotoUrls, ...styleImages];
+
+    // Fire-and-forget background processing
+    NanoBananaService.processInBackground(
+      id,
+      tryOnResultId,
+      prompt,
+      imageUrls,
+      booking.user.toString(),
+      booking.expertUser.toString()
+    ).catch((err) =>
+      console.error("[TryOn] Background processing error:", err)
+    );
+
+    // Notify the other party that a try-on was requested
+    try {
+      const socketManager = SocketManager.getInstance();
+      const otherUserId =
+        role === "user"
+          ? booking.expertUser.toString()
+          : booking.user.toString();
+      const otherSocket = await socketManager.getSocketIdUsingUserId(otherUserId);
+      if (otherSocket?.socketId) {
+        await socketManager.emitEvent({
+          event: "booking:tryon-requested",
+          data: {
+            bookingId: id,
+            tryOnResultId,
+            catalogItemId,
+            category: catalogItem.category,
+            status: "pending",
+            requestedBy: role,
+          },
+          targetSocketIds: [otherSocket.socketId],
+        });
+      }
+    } catch (err) {
+      console.error("[TryOn] Socket notification error (non-blocking):", err);
+    }
+
+    return res.status(202).json(
+      successResponse(
+        {
+          tryOnResultId,
+          status: "pending",
+          message: "Try-on is being generated. You'll be notified when it's ready.",
+        },
+        "Try-on requested"
+      )
+    );
+  }
+
+  /**
+   * POST /bookings/:id/try-on-upload-url
+   * Generate a Cloudinary upload URL for try-on person photo.
+   */
+  private static async _generateTryOnUploadUrl(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const { fileName } = req.body;
+
+    // Validate active session
+    await assertActiveSession(id, userId.toString());
+
+    if (!fileName) throw new ApiError(400, "fileName is required");
+
+    const uploadData = await CLOUDINARY_SERVICES.generateUploadUrl(
+      fileName,
+      `tryon-uploads/${id}`
+    );
+
+    return res.status(200).json(
+      successResponse({
+        provider: "cloudinary",
+        ...uploadData,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+      }, "Upload URL generated")
+    );
+  }
+
+  // ── Booking Chat ──────────────────────────────────────────────────────────
+
+  /**
+   * GET /bookings/:id/chat — Fetch booking chat history.
+   */
+  private static async _getBookingChat(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const booking = await BookingModel.findById(id).lean();
+    if (!booking) throw new ApiError(404, "Booking not found");
+
+    const isBooker = booking.user.toString() === userId.toString();
+    const isExpert = booking.expertUser.toString() === userId.toString();
+    if (!isBooker && !isExpert) throw new ApiError(403, "Not your booking");
+
+    if (!booking.connectedAt) {
+      throw new ApiError(404, "No chat for this booking");
+    }
+
+    const chat = await BookingChatModel.findOne({ booking: id }).lean();
+    const chatWritable = computeChatWritable(booking);
+
+    return res.status(200).json(
+      successResponse({
+        messages: chat?.messages || [],
+        chatWritable,
+      })
+    );
+  }
+
+  /**
+   * POST /bookings/:id/chat — Send a message in booking chat.
+   */
+  private static async _sendBookingChatMessage(req: Request, res: Response) {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(401, "Unauthorized");
+
+    const { id } = req.params;
+    const { text } = req.body;
+
+    const booking = await BookingModel.findById(id).lean();
+    if (!booking) throw new ApiError(404, "Booking not found");
+
+    const isBooker = booking.user.toString() === userId.toString();
+    const isExpert = booking.expertUser.toString() === userId.toString();
+    if (!isBooker && !isExpert) throw new ApiError(403, "Not your booking");
+
+    if (!booking.connectedAt) {
+      throw new ApiError(400, "Cannot chat before connecting");
+    }
+
+    if (!computeChatWritable(booking)) {
+      throw new ApiError(403, "Chat is now read-only");
+    }
+
+    const message = {
+      _id: new Types.ObjectId(),
+      sender: new Types.ObjectId(userId.toString()),
+      text,
+      sentAt: new Date(),
+    };
+
+    await BookingChatModel.findOneAndUpdate(
+      { booking: id },
+      {
+        $setOnInsert: {
+          booking: new Types.ObjectId(id),
+          user: booking.user,
+          expert: booking.expertUser,
+        },
+        $push: { messages: message },
+      },
+      { upsert: true, new: true }
+    );
+
+    // Real-time socket delivery to the other party
+    try {
+      const socketManager = SocketManager.getInstance();
+      const otherUserId = isBooker
+        ? booking.expertUser.toString()
+        : booking.user.toString();
+      const otherSocket = await socketManager.getSocketIdUsingUserId(otherUserId);
+      if (otherSocket?.socketId) {
+        await socketManager.emitEvent({
+          event: "booking:chat-message",
+          data: {
+            bookingId: id,
+            message: {
+              _id: message._id,
+              sender: userId.toString(),
+              text: message.text,
+              sentAt: message.sentAt,
+            },
+          },
+          targetSocketIds: [otherSocket.socketId],
+        });
+      }
+    } catch (err) {
+      console.error("[BookingChat] Socket emit error (non-blocking):", err);
+    }
+
+    return res.status(201).json(
+      successResponse({
+        message: {
+          _id: message._id,
+          sender: userId.toString(),
+          text: message.text,
+          sentAt: message.sentAt,
+        },
+      }, "Message sent")
+    );
+  }
+
   // ── Wrapped public methods ──
   static getBookingDetail = AsyncHandler.wrap(SessionPermissionController._getBookingDetail);
   static togglePermissions = AsyncHandler.wrap(SessionPermissionController._togglePermissions);
@@ -534,6 +962,11 @@ class SessionPermissionController {
   static editClientClosetItem = AsyncHandler.wrap(SessionPermissionController._editClientClosetItem);
   static getClientOutfits = AsyncHandler.wrap(SessionPermissionController._getClientOutfits);
   static createClientOutfit = AsyncHandler.wrap(SessionPermissionController._createClientOutfit);
+  static shareCatalogItem = AsyncHandler.wrap(SessionPermissionController._shareCatalogItem);
+  static requestTryOn = AsyncHandler.wrap(SessionPermissionController._requestTryOn);
+  static generateTryOnUploadUrl = AsyncHandler.wrap(SessionPermissionController._generateTryOnUploadUrl);
+  static getBookingChat = AsyncHandler.wrap(SessionPermissionController._getBookingChat);
+  static sendBookingChatMessage = AsyncHandler.wrap(SessionPermissionController._sendBookingChatMessage);
 }
 
 export default SessionPermissionController;

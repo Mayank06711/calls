@@ -28,6 +28,7 @@ export interface IUser extends Document {
     | ISubscription
     | Types.ObjectId;
   isSubscribed: boolean;
+  tierExpiresAt?: Date;
   referral?: mongoose.Types.ObjectId;
   isMFAEnabled: boolean;
   MFASecretKey?: string; // Optional MFA key

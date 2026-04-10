@@ -4,7 +4,7 @@ import { IoShirtOutline } from "react-icons/io5";
 import { BsChatLeftTextFill } from "react-icons/bs";
 // import { PiFilmReelFill } from "react-icons/pi";
 import { BiSolidBadgeDollar } from "react-icons/bi";
-import { MdAdminPanelSettings, MdSpa } from "react-icons/md";
+import { MdAdminPanelSettings, MdSpa, MdAutoStories } from "react-icons/md";
 import { IconButton } from "@mui/material";
 import { useSubscriptionColors } from "../../../utils/getSubscriptionColors";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,6 +18,12 @@ const MENU_ITEMS = [
   { icon: <IoShirtOutline />, label: "Wardrobe", path: "/wardrobe" },
   // { icon: <PiFilmReelFill />, label: "Reels", path: "/reels" },
   { icon: <MdSpa />, label: "Stylist", path: "/stylist" },
+  {
+    icon: <MdAutoStories />,
+    label: "Catalog",
+    path: "/item-catalog",
+    expertOnly: true,
+  },
   {
     icon: <BiSolidBadgeDollar />,
     label: "Subscriptions",
@@ -68,7 +74,7 @@ function Sidebar({ isDarkMode }) {
     >
       <div className="flex flex-col justify-between h-full  tour3">
         <div className="py-4 ">
-          {MENU_ITEMS.filter((item) => !(item.hideForExpert && isExpert) && !(item.adminOnly && !isAdmin)).map((item, index) => (
+          {MENU_ITEMS.filter((item) => !(item.hideForExpert && isExpert) && !(item.expertOnly && !isExpert) && !(item.adminOnly && !isAdmin)).map((item, index) => (
             <div
               key={index}
               className={`flex items-center px-4  py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors tour${index+4}`}

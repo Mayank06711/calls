@@ -206,14 +206,17 @@ export const ENDPOINTS = {
   BOOKINGS: {
     SLOTS: `/api/${API_CONFIG.VERSION}/bookings/slots`, // GET /:expertId?date=&duration=
     CREATE: `/api/${API_CONFIG.VERSION}/bookings`, // POST
+    INSTANT: `/api/${API_CONFIG.VERSION}/bookings/instant`, // POST { category, duration }
     MY: `/api/${API_CONFIG.VERSION}/bookings/my`, // GET
     EXPERT: `/api/${API_CONFIG.VERSION}/bookings/expert`, // GET
     CANCEL: `/api/${API_CONFIG.VERSION}/bookings`, // POST /:id/cancel
     CONNECT: `/api/${API_CONFIG.VERSION}/bookings`, // POST /:id/connect
+    EXTEND: `/api/${API_CONFIG.VERSION}/bookings`, // POST /:id/extend
     DETAIL: `/api/${API_CONFIG.VERSION}/bookings`, // GET /:id/detail
     PERMISSIONS: `/api/${API_CONFIG.VERSION}/bookings`, // PATCH /:id/permissions
     CLIENT_CLOSET: `/api/${API_CONFIG.VERSION}/bookings`, // GET/POST /:id/client-closet
     CLIENT_OUTFITS: `/api/${API_CONFIG.VERSION}/bookings`, // GET /:id/client-outfits
+    CHAT: `/api/${API_CONFIG.VERSION}/bookings`, // GET/POST /:id/chat
   },
 
   // ─── Admin Panel ──────────────────────────────────────────────────────────
@@ -293,6 +296,12 @@ export const ENDPOINTS = {
     // Bug feedback (existing)
     ALL_FEEDBACK: `/api/${API_CONFIG.VERSION}/feedback/all`,
     FEEDBACK_STATS: `/api/${API_CONFIG.VERSION}/feedback/stats`,
+  },
+
+  ITEM_CATALOG: {
+    BASE: `/api/${API_CONFIG.VERSION}/item-catalog`, // GET (list) / POST (create)
+    // GET /:id / PUT /:id / DELETE /:id
+    // POST /:id/suggestions
   },
 
   PAYMENTS: {

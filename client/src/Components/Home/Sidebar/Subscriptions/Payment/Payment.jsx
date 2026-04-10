@@ -1,10 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
-import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
-import { addDays } from "date-fns";
-import { enGB } from "date-fns/locale";
-import { format } from "date-fns";
+import React, { useState, useRef } from "react";
 import { Button, Chip, CircularProgress } from "@mui/material";
 import { CheckCircleOutline } from "@mui/icons-material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
@@ -15,7 +9,6 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { useDispatch, useSelector } from "react-redux";
 import { makeRequest } from "../../../../../utils/apiHandlers";
 import { HTTP_METHODS, ENDPOINTS } from "../../../../../constants/apiEndpoints";
-import { showNotification } from "../../../../../redux/actions/notification.actions";
 import {
   createPaymentOrderThunk,
   verifyPaymentThunk,
@@ -37,74 +30,54 @@ const loadRazorpayScript = () =>
 
 // ─── Payment Component ────────────────────────────────────────────────────────
 // Props:
-//   numberOfDays    (number)  — duration selected by user
-//   planColor       (string)  — hex color for this plan tier
-//   subscriptionType (string) — "Silver" | "Gold" | "Platinum"
-const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
+//   planColor         (string) — hex color for this plan tier
+//   subscriptionType  (string) — "Silver" | "Gold" | "Platinum"
+//   creditsGranted    (number) — credits included in the plan
+//   tierDurationDays  (number) — days of tier benefits (e.g. 30)
+//   price             (number) — flat price in INR (e.g. 499)
+const Payment = ({ planColor, subscriptionType, creditsGranted, tierDurationDays, price }) => {
   const dispatch = useDispatch();
   const userInfo = useSelector((state) => state.userInfo?.data || {});
 
   const [activeStep, setActiveStep] = useState(0);
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: new Date(),
-      endDate: addDays(new Date(), numberOfDays || 7),
-      key: "selection",
-    },
-  ]);
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
 
-  // Email verification state (checks redux for verified status)
+  // Email verification state
   const isEmailVerified = !!userInfo.isEmailVerified;
 
   // Payment state
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState(null); // { providerPaymentId, subscriptionId }
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
 
-  // Persist subscriptionId across steps (created once, used for order creation)
+  // Persist subscriptionId across steps
   const subscriptionIdRef = useRef(null);
 
-  useEffect(() => {
-    setDateRange([
-      {
-        startDate: dateRange[0].startDate,
-        endDate: addDays(dateRange[0].startDate, numberOfDays || 7),
-        key: "selection",
-      },
-    ]);
-  }, [numberOfDays]);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const steps = [
-    {
-      label: `Select Start Date (${numberOfDays} days)`,
-      description: "Select the date you want your subscription to start.",
-    },
     ...(!isEmailVerified
       ? [
           {
             label: "Email Verification",
             description: "Verify your email to continue",
-            required: true,
+            stepType: "email",
           },
         ]
       : []),
     {
       label: "Referral Code (Optional)",
-      description: "Enter a referral code if you have one",
-      optional: true,
+      description: "Enter a referral code for bonus credits",
+      stepType: "referral",
     },
     {
       label: "Payment",
-      description: `Pay for your ${subscriptionType || ""} subscription`,
+      description: `Pay ₹${price} for ${subscriptionType} plan`,
+      stepType: "payment",
     },
     {
       label: "Confirmation",
       description: "Your subscription is active!",
+      stepType: "confirmation",
     },
   ];
 
@@ -125,53 +98,6 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
     if (activeStep > 0) setActiveStep(activeStep - 1);
   };
 
-  // ── Date range ──────────────────────────────────────────────────────────────
-  const formatDateDisplay = (date) => (date ? format(date, "dd/MM/yyyy") : "");
-  const formatDateCustom = (date) => {
-    if (!date) return "";
-    return `${format(date, "dd")} ${format(date, "MMM")} ${format(date, "yyyy")}`;
-  };
-
-  const handleDateRangeChange = (item) => {
-    const newStartDate = item.selection.startDate;
-    setDateRange([
-      {
-        startDate: newStartDate,
-        endDate: addDays(newStartDate, numberOfDays),
-        key: "selection",
-      },
-    ]);
-  };
-
-  const dateRangeProps = {
-    editableDateInputs: false,
-    onChange: handleDateRangeChange,
-    moveRangeOnFirstSelection: true,
-    ranges: dateRange,
-    minDate: today,
-    maxDate: addDays(today, 365),
-    className:
-      "date-range-custom dark:bg-dark-secondary bg-white border dark:border-gray-700 border-gray-200 rounded-lg shadow-lg",
-    rangeColors: [planColor],
-    showDateDisplay: true,
-    direction: "vertical",
-    scroll: { enabled: false },
-    color: planColor,
-    showPreview: true,
-    calendarFocus: "forwards",
-    preventSnapRefocus: true,
-    locale: enGB,
-    dateDisplayFormat: "dd/MM/yyyy",
-    formatDisplayDate: formatDateDisplay,
-    inputRanges: [],
-    staticRanges: [],
-    monthDisplayFormat: "MMM yyyy",
-    weekdayDisplayFormat: "E",
-    dayDisplayFormat: "d",
-    weekStartsOn: 1,
-    dragSelectionEnabled: false,
-  };
-
   // ── Payment: create subscription + order + open Razorpay ───────────────────
   const handlePay = async () => {
     setPaymentError("");
@@ -187,7 +113,6 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
           ENDPOINTS.SUBCRIPTIONS.CREATE_SUBSCRIPTION,
           {
             type: subscriptionType,
-            numberOfDays,
             ...(referralCode && { referralCode }),
           }
         );
@@ -208,7 +133,7 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
         }
       }
 
-      // Step 2: Create payment order (server returns Razorpay order details)
+      // Step 2: Create payment order
       const orderRes = await dispatch(createPaymentOrderThunk(subscriptionId));
       if (!orderRes.success) {
         setPaymentError(orderRes.error || "Failed to create payment order");
@@ -226,15 +151,15 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
         return;
       }
 
-      setPaymentLoading(false); // Popup is taking over — hide our spinner
+      setPaymentLoading(false);
 
       // Step 4: Open Razorpay checkout popup
       const rzp = new window.Razorpay({
         key: order.keyId,
-        amount: order.amount,           // in paise — display only, not trusted by backend
+        amount: order.amount,
         currency: order.currency || "INR",
         name: "Know Your Fashion",
-        description: `${subscriptionType} Subscription — ${numberOfDays} days`,
+        description: `${subscriptionType} — ${creditsGranted?.toLocaleString()} credits`,
         order_id: order.providerOrderId,
         prefill: {
           email: userInfo.email || "",
@@ -243,15 +168,13 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
         },
         theme: { color: planColor },
         modal: {
-          backdropclose: false, // prevent accidental closes
+          backdropclose: false,
           ondismiss: () => {
             setPaymentError("Payment was cancelled. You can try again.");
             setPaymentLoading(false);
           },
         },
         handler: async (response) => {
-          // Razorpay calls this on successful payment
-          // response = { razorpay_order_id, razorpay_payment_id, razorpay_signature }
           setPaymentLoading(true);
           setPaymentError("");
 
@@ -270,7 +193,6 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
               providerPaymentId: response.razorpay_payment_id,
               subscriptionId: verifyRes.result?.subscriptionId,
             });
-            // Advance to confirmation step
             setActiveStep(steps.length - 1);
           } else {
             setPaymentError(
@@ -288,44 +210,6 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
       setPaymentLoading(false);
     }
   };
-
-  // ── Date Summary Card ───────────────────────────────────────────────────────
-  const DateSummaryCard = ({ compact = false }) => (
-    <div
-      className={`${compact ? "w-full" : "w-64"} bg-white dark:bg-gray-800 rounded-lg p-4 border`}
-      style={{ borderColor: `${planColor}33` }}
-    >
-      <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
-        Selected Period ({numberOfDays} days)
-      </h4>
-      <div className="space-y-5">
-        {[
-          { label: "From", date: dateRange[0].startDate, color: "text-blue-500 dark:text-blue-400" },
-          { label: "To", date: dateRange[0].endDate, color: "text-indigo-500 dark:text-indigo-400" },
-        ].map(({ label, date, color }) => (
-          <div key={label} className="flex items-center">
-            <div className="w-2 h-10 rounded-full mr-2" style={{ backgroundColor: planColor }} />
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-              <p className="font-bold text-gray-800 dark:text-gray-200">
-                {format(date, "dd")}
-                <span className={color}> {format(date, "MMM")} </span>
-                {format(date, "yyyy")}
-              </p>
-            </div>
-          </div>
-        ))}
-        <div className="flex justify-center">
-          <span
-            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-            style={{ backgroundColor: `${planColor}15`, color: planColor }}
-          >
-            {numberOfDays} days subscription
-          </span>
-        </div>
-      </div>
-    </div>
-  );
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -388,51 +272,8 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                   {step.description}
                 </p>
 
-                {/* ── Step 0: Date Picker ── */}
-                {index === 0 && (
-                  <div
-                    className={`mt-4 flex flex-col md:flex-row ${
-                      activeStep !== index
-                        ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none"
-                        : ""
-                    }`}
-                  >
-                    <div className="overflow-x-auto">
-                      <DateRange {...dateRangeProps} />
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        {`Select start date for your ${numberOfDays}-day subscription`}
-                      </p>
-                      {/* Mobile date summary */}
-                      <div className="flex flex-col mt-4 md:hidden" style={{ maxWidth: "252px" }}>
-                        <DateSummaryCard compact />
-                        <Button
-                          variant="outlined"
-                          fullWidth
-                          onClick={handleStepComplete}
-                          startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <CheckCircleOutline fontSize="small" />}
-                          sx={{ mt: 1, borderColor: planColor, color: planColor, "&:hover": { borderColor: `${planColor}dd`, backgroundColor: `${planColor}0a` }, borderRadius: "6px", borderWidth: "1.5px", textTransform: "none", fontWeight: 600, fontSize: "0.875rem" }}
-                        >
-                          {isLoading ? "Processing..." : "Confirm"}
-                        </Button>
-                      </div>
-                    </div>
-                    {/* Desktop date summary */}
-                    <div className="hidden md:flex flex-col mt-0 ml-4">
-                      <DateSummaryCard />
-                      <Button
-                        variant="outlined"
-                        onClick={handleStepComplete}
-                        startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <CheckCircleOutline fontSize="small" />}
-                        sx={{ mt: 1, borderColor: planColor, color: planColor, "&:hover": { borderColor: `${planColor}dd`, backgroundColor: `${planColor}0a` }, borderRadius: "6px", borderWidth: "1.5px", textTransform: "none", fontWeight: 600, fontSize: "0.875rem" }}
-                      >
-                        {isLoading ? "Processing..." : "Confirm"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Step: Email Verification (if needed) ── */}
-                {!isEmailVerified && steps[index]?.required && (
+                {/* ── Email Verification ── */}
+                {step.stepType === "email" && (
                   <div
                     className={`mt-4 ${activeStep !== index ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none" : ""}`}
                     style={{ maxWidth: "252px" }}
@@ -440,7 +281,7 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                     <div className="md:max-w-sm rounded-lg shadow-md p-4 border" style={{ borderColor: `${planColor}33` }}>
                       <div className="flex items-center gap-2 mb-3">
                         <EmailIcon sx={{ color: planColor }} />
-                        <h3 className="font-medium">Email Verified Required</h3>
+                        <h3 className="font-medium">Email Verification Required</h3>
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                         Please verify your email from your profile before making a payment.
@@ -457,8 +298,8 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                   </div>
                 )}
 
-                {/* ── Step: Referral Code ── */}
-                {steps[index]?.optional && (
+                {/* ── Referral Code ── */}
+                {step.stepType === "referral" && (
                   <div
                     className={`mt-4 ${activeStep !== index ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none" : ""}`}
                     style={{ maxWidth: "252px" }}
@@ -477,7 +318,7 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm dark:bg-gray-700 text-slate-500 dark:text-slate-300 text-sm focus:outline-none focus:border-2"
                           />
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Enter a referral code to get special benefits
+                            Get bonus credits with a valid referral code
                           </p>
                         </div>
                         <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -506,8 +347,8 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                   </div>
                 )}
 
-                {/* ── Step: Payment ── */}
-                {step.label === "Payment" && (
+                {/* ── Payment ── */}
+                {step.stepType === "payment" && (
                   <div
                     className={`mt-4 ${activeStep !== index ? "opacity-30 transition-opacity duration-300 cursor-not-allowed pointer-events-none" : ""}`}
                     style={{ maxWidth: "320px" }}
@@ -516,11 +357,10 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                       {/* Summary */}
                       <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: `${planColor}10` }}>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          {subscriptionType} Subscription
+                          {subscriptionType} Plan
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {numberOfDays} days · starts{" "}
-                          {format(dateRange[0].startDate, "dd MMM yyyy")}
+                          ₹{price} · {creditsGranted?.toLocaleString()} credits · {tierDurationDays} days premium
                         </p>
                         {referralCode && (
                           <Chip
@@ -565,14 +405,14 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                           py: 1.2,
                         }}
                       >
-                        {paymentLoading ? "Processing..." : "Pay Securely"}
+                        {paymentLoading ? "Processing..." : `Pay ₹${price}`}
                       </Button>
                     </div>
                   </div>
                 )}
 
-                {/* ── Step: Confirmation ── */}
-                {step.label === "Confirmation" && activeStep === index && (
+                {/* ── Confirmation ── */}
+                {step.stepType === "confirmation" && activeStep === index && (
                   <div className="mt-4" style={{ maxWidth: "320px" }}>
                     <div className="rounded-lg shadow-md p-4 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
                       <div className="flex items-center gap-3 mb-3">
@@ -591,15 +431,11 @@ const Payment = ({ numberOfDays, planColor, subscriptionType }) => {
                           <span className="font-medium">Plan:</span> {subscriptionType}
                         </p>
                         <p>
-                          <span className="font-medium">Duration:</span> {numberOfDays} days
+                          <span className="font-medium">Credits Added:</span> {creditsGranted?.toLocaleString()}
                         </p>
                         <p>
-                          <span className="font-medium">Starts:</span>{" "}
-                          {format(dateRange[0].startDate, "dd MMM yyyy")}
-                        </p>
-                        <p>
-                          <span className="font-medium">Ends:</span>{" "}
-                          {format(dateRange[0].endDate, "dd MMM yyyy")}
+                          <span className="font-medium">Premium Until:</span>{" "}
+                          {new Date(Date.now() + (tierDurationDays || 30) * 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                         {paymentSuccess?.providerPaymentId && (
                           <p className="font-mono text-gray-400 break-all">

@@ -7,6 +7,8 @@ import { Types } from "mongoose";
 import { INewMsg, MessageType, ChatType, IReadReceipt } from "../interface/IMessage";
 import { Socket } from "socket.io";
 import NotificationService from "../services/notifications";
+import { BookingModel } from "../models/bookingModel";
+import moment from "moment-timezone";
 
 class ChatController {
   private static instance: ChatController | null = null;
@@ -128,6 +130,7 @@ class ChatController {
     const sessionId = socket.data.sessionId;
 
     if (!userId || !sessionId) {
+      console.warn(`[validateSession] FAILED: userId=${userId}, sessionId=${sessionId}, socketId=${socket.id}`);
       return false;
     }
 
@@ -224,8 +227,10 @@ class ChatController {
       socket.on(event, async (data: any, callback?: Function) => {
         try {
           // Validate session before processing critical events
+          console.log(`[ChatController] ${event}: validating session for socket ${socket.id}, userId=${socket.data.userId}`);
           const isSessionValid = await this.validateSession(socket);
           if (!isSessionValid) {
+            console.warn(`[ChatController] ${event}: session invalid for userId=${socket.data.userId}`);
             if (callback) {
               callback({
                 status: "error",
@@ -1125,6 +1130,7 @@ class ChatController {
       text: string; // file ka case
       messageType?: MessageType;
       chatType?: ChatType;
+      bookingId?: string;
     },
     socket: Socket,
     callback?: Function
@@ -1135,6 +1141,7 @@ class ChatController {
 
       // Validate message data
       if (!this.validateMessageData(senderId, data)) {
+        console.warn(`[Chat:message]: Invalid message data — senderId=${senderId}, receiverId=${data.receiverId}, text=${!!data.text}`);
         await this.socketManager.emitEvent({
           event: this.CHAT_EVENTS.MESSAGE_ERROR,
           data: {
@@ -1143,56 +1150,77 @@ class ChatController {
           },
           targetSocketIds: [socket.id],
         });
+        if (callback) callback({ status: "error", message: "Invalid message data" });
         return;
       }
 
-      // Chat request gate: non-admin chats require an accepted request
-      // Expert bypass: anyone can message experts directly
-      const chatType = data.chatType || "userToUser";
-      const isAdminChat = chatType === "adminToUser" || chatType === "adminToExpert";
-      const receiverIsExpert = await this.isUserExpert(data.receiverId);
-      if (!isAdminChat && !receiverIsExpert) {
-        const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
-        if (!isAllowed) {
-          await this.socketManager.emitEvent({
-            event: this.CHAT_EVENTS.MESSAGE_ERROR,
-            data: {
-              error: "Chat request not accepted",
-              code: "CHAT_REQUEST_REQUIRED",
-              timestamp: new Date(),
-            },
-            targetSocketIds: [socket.id],
-          });
-          if (callback) callback({ status: "error", message: "Chat request not accepted", code: "CHAT_REQUEST_REQUIRED" });
+      let chat: INewMsg;
+
+      // Booking chat: skip request gate, validate participant + writable
+      if (data.bookingId) {
+        const booking = await BookingModel.findById(data.bookingId).lean();
+        if (!booking) {
+          if (callback) callback({ status: "error", message: "Booking not found" });
           return;
         }
-      }
-
-      // Expert-to-user gate: experts must have accepted chat request to message regular users
-      const senderIsExpert = await this.isUserExpert(senderId);
-      if (!isAdminChat && senderIsExpert && !receiverIsExpert) {
-        const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
-        if (!isAllowed) {
-          await this.socketManager.emitEvent({
-            event: this.CHAT_EVENTS.MESSAGE_ERROR,
-            data: {
-              error: "User has not accepted your chat request",
-              code: "EXPERT_CHAT_REQUEST_REQUIRED",
-              timestamp: new Date(),
-            },
-            targetSocketIds: [socket.id],
-          });
-          if (callback) callback({ status: "error", message: "User has not accepted your chat request", code: "EXPERT_CHAT_REQUEST_REQUIRED" });
+        const isParticipant = [booking.user.toString(), (booking as any).expertUser?.toString()].includes(senderId);
+        if (!isParticipant) {
+          if (callback) callback({ status: "error", message: "Not a participant of this booking" });
           return;
         }
-      }
+        if (!this.computeBookingChatWritable(booking)) {
+          if (callback) callback({ status: "error", message: "Chat is read-only", code: "CHAT_READ_ONLY" });
+          return;
+        }
+        chat = await this.findOrCreateChat(senderId, data.receiverId, "booking", data.bookingId);
+      } else {
+        // General chat: apply chat request gate
+        const chatType = data.chatType || "userToUser";
+        const isAdminChat = chatType === "adminToUser" || chatType === "adminToExpert";
+        const receiverIsExpert = await this.isUserExpert(data.receiverId);
+        if (!isAdminChat && !receiverIsExpert) {
+          const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
+          if (!isAllowed) {
+            await this.socketManager.emitEvent({
+              event: this.CHAT_EVENTS.MESSAGE_ERROR,
+              data: {
+                error: "Chat request not accepted",
+                code: "CHAT_REQUEST_REQUIRED",
+                timestamp: new Date(),
+              },
+              targetSocketIds: [socket.id],
+            });
+            if (callback) callback({ status: "error", message: "Chat request not accepted", code: "CHAT_REQUEST_REQUIRED" });
+            return;
+          }
+        }
 
-      // Get or create chat
-      const chat = await this.findOrCreateChat(
-        senderId,
-        data.receiverId,
-        data.chatType
-      );
+        // Expert-to-user gate: experts must have accepted chat request to message regular users
+        const senderIsExpert = await this.isUserExpert(senderId);
+        if (!isAdminChat && senderIsExpert && !receiverIsExpert) {
+          const isAllowed = await this.isChatAllowed(senderId, data.receiverId);
+          if (!isAllowed) {
+            await this.socketManager.emitEvent({
+              event: this.CHAT_EVENTS.MESSAGE_ERROR,
+              data: {
+                error: "User has not accepted your chat request",
+                code: "EXPERT_CHAT_REQUEST_REQUIRED",
+                timestamp: new Date(),
+              },
+              targetSocketIds: [socket.id],
+            });
+            if (callback) callback({ status: "error", message: "User has not accepted your chat request", code: "EXPERT_CHAT_REQUEST_REQUIRED" });
+            return;
+          }
+        }
+
+        // Get or create general chat
+        chat = await this.findOrCreateChat(
+          senderId,
+          data.receiverId,
+          data.chatType
+        );
+      }
 
       // Bug 3 fix: if receiver deleted/hidden this chat, soft-delete all existing
       // messages for them (so old messages stay hidden) then remove from chatDeletedFor/chatHiddenFor
@@ -1231,6 +1259,57 @@ class ChatController {
         new Types.ObjectId(senderId),
         data.messageType || "text"
       );
+
+      // ── Instant booking: detect "start" from expert to begin timer ──
+      if (data.bookingId && data.text.trim().toLowerCase() === "start") {
+        try {
+          const startBooking = await BookingModel.findById(data.bookingId);
+          if (
+            startBooking &&
+            startBooking.isInstant &&
+            startBooking.status === "confirmed" &&
+            !startBooking.startedAt &&
+            startBooking.expertUser.toString() === senderId
+          ) {
+            const tz = startBooking.timezone || "Asia/Kolkata";
+            const now = moment();
+            const newStartTime = now.tz(tz).format("HH:mm");
+            const totalMin = (() => {
+              const [h, m] = newStartTime.split(":").map(Number);
+              return h * 60 + m + startBooking.duration;
+            })();
+            const wrapped = ((totalMin % 1440) + 1440) % 1440;
+            const newEndTime = `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+
+            startBooking.startTime = newStartTime;
+            startBooking.endTime = newEndTime;
+            startBooking.startedAt = new Date();
+            await startBooking.save();
+
+            // Emit to both parties
+            const eventData = {
+              bookingId: data.bookingId,
+              startTime: newStartTime,
+              endTime: newEndTime,
+              startedAt: startBooking.startedAt,
+              duration: startBooking.duration,
+            };
+            for (const uid of [startBooking.user.toString(), startBooking.expertUser.toString()]) {
+              const sock = await this.socketManager.getSocketIdUsingUserId(uid);
+              if (sock?.socketId) {
+                await this.socketManager.emitEvent({
+                  event: "booking:instant-started",
+                  data: eventData,
+                  targetSocketIds: [sock.socketId],
+                });
+              }
+            }
+            console.log(`[Chat:message] Instant session started for booking ${data.bookingId}`);
+          }
+        } catch (err) {
+          console.error("[Chat:message] Instant start detection error:", err);
+        }
+      }
 
       // Get socket status to find active sockets
       const socketStatus = await this.socketManager.getSocketStatus();
@@ -1302,22 +1381,30 @@ class ChatController {
   }
 
   private async handleChatCheck(
-    data: { senderId: string; receiverId: string },
+    data: { senderId: string; receiverId: string; bookingId?: string },
     socket: Socket
   ) {
     try {
-      console.log(`[Chat:check]: ${data.senderId} → ${data.receiverId}`);
-      
+      console.log(`[Chat:check]: ${data.senderId} → ${data.receiverId}${data.bookingId ? ` (booking: ${data.bookingId})` : ''}`);
+
       // Get socket status to check if OTHER user is currently online
       const socketStatus = await this.socketManager.getSocketStatus();
       const requestingUser = data.senderId; // The person requesting chat history
-      
-      const chat = await MsgModel.findOne({
+
+      const query: any = {
         $or: [
           { sender: data.senderId, receiver: data.receiverId },
           { sender: data.receiverId, receiver: data.senderId },
         ],
-      })
+      };
+
+      if (data.bookingId) {
+        query.bookingId = new Types.ObjectId(data.bookingId);
+      } else {
+        query.bookingId = null;
+      }
+
+      const chat = await MsgModel.findOne(query)
         .populate("sender", "name avatar")
         .populate("receiver", "name avatar")
         .populate("messages.sender", "name avatar");
@@ -1389,10 +1476,19 @@ class ChatController {
               lastMessage: chat.lastMessage,
               chatType: chat.chatType,
               participantsInfo: chat.participantsInfo,
+              bookingId: chat.bookingId || null,
+              isReadOnly: false,
             }
           : null,
         timestamp: new Date(),
       };
+
+      // Compute read-only status for booking chats
+      if (result.chat && chat?.bookingId) {
+        const booking = await BookingModel.findById(chat.bookingId).lean();
+        result.chat.isReadOnly = booking ? !this.computeBookingChatWritable(booking) : true;
+      }
+
       return result; // This will be sent as acknowledgment
     } catch (error) {
       console.error("[Chat:check]: Error:", error);
@@ -1620,28 +1716,58 @@ class ChatController {
   private async findOrCreateChat(
     senderId: string,
     receiverId: string,
-    chatType: ChatType = "userToUser"
+    chatType: ChatType = "userToUser",
+    bookingId?: string
   ): Promise<INewMsg> {
-    let chat = await MsgModel.findOne({
+    const query: any = {
       $or: [
         { sender: senderId, receiver: receiverId },
         { sender: receiverId, receiver: senderId },
       ],
-    });
+    };
+
+    if (bookingId) {
+      query.bookingId = new Types.ObjectId(bookingId);
+    } else {
+      query.bookingId = null;
+    }
+
+    let chat = await MsgModel.findOne(query);
 
     if (!chat) {
-      // if text is present add to msg.
-      chat = new MsgModel({
-        sender: new Types.ObjectId(senderId),
-        receiver: new Types.ObjectId(receiverId),
-        messages: [],
-        chatType: chatType,
-        messageIdCounter: 0,
-      });
-      await chat.save();
+      try {
+        chat = new MsgModel({
+          sender: new Types.ObjectId(senderId),
+          receiver: new Types.ObjectId(receiverId),
+          messages: [],
+          chatType,
+          messageIdCounter: 0,
+          bookingId: bookingId ? new Types.ObjectId(bookingId) : null,
+        });
+        await chat.save();
+      } catch (err: any) {
+        // Race condition: another request created the chat concurrently
+        if (err.code === 11000) {
+          chat = await MsgModel.findOne(query);
+          if (!chat) throw err; // Should not happen, but rethrow if still missing
+        } else {
+          throw err;
+        }
+      }
     }
 
     return chat;
+  }
+
+  private computeBookingChatWritable(booking: any): boolean {
+    if (booking.status !== "confirmed") return false;
+    // Instant bookings before "start": always writable so expert can type "start"
+    if (booking.isInstant && !booking.startedAt) return true;
+    const tz = booking.timezone || "Asia/Kolkata";
+    const dateStr = moment(booking.date).tz(tz).format("YYYY-MM-DD");
+    const sessionEnd = moment.tz(`${dateStr} ${booking.endTime}`, "YYYY-MM-DD HH:mm", tz);
+    const chatDeadline = moment(sessionEnd).add(2, "minutes");
+    return moment().isSameOrBefore(chatDeadline);
   }
 
   // ============ NEW METHODS FOR UNREAD SYSTEM ============
@@ -1725,9 +1851,38 @@ class ChatController {
             preserveNullAndEmptyArrays: true,
           },
         },
+        // Lookup booking info for booking chats
+        {
+          $lookup: {
+            from: "bookings",
+            localField: "bookingId",
+            foreignField: "_id",
+            as: "_bookingInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$_bookingInfo",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         {
           $project: {
             chatId: "$_id",
+            bookingId: 1,
+            chatType: 1,
+            bookingInfo: {
+              $cond: [
+                { $ifNull: ["$_bookingInfo", false] },
+                {
+                  date: "$_bookingInfo.date",
+                  startTime: "$_bookingInfo.startTime",
+                  endTime: "$_bookingInfo.endTime",
+                  status: "$_bookingInfo.status",
+                },
+                null,
+              ],
+            },
             otherUser: {
               _id: "$participantInfo._id",
               fullName: "$participantInfo.fullName",

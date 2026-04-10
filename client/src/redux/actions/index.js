@@ -14,3 +14,4 @@ export * from "./wardrobe.actions";
 export * from "./admin.actions";
 export * from "./expert.actions";
 export * from "./booking.actions";
+export * from "./itemCatalog.actions";

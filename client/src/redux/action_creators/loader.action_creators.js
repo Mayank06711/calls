@@ -45,4 +45,12 @@ export const LOADER_TYPES = {
     BOOKING_DETAIL: 'bookingDetail',
     CLIENT_CLOSET: 'clientCloset',
     CLIENT_OUTFITS: 'clientOutfits',
+    ITEM_CATALOG_LIST: 'itemCatalogList',
+    ITEM_CATALOG_DETAIL: 'itemCatalogDetail',
+    ITEM_CATALOG_CREATE: 'itemCatalogCreate',
+    ITEM_CATALOG_UPDATE: 'itemCatalogUpdate',
+    ITEM_CATALOG_DELETE: 'itemCatalogDelete',
+    EXTEND_SESSION: 'extendSession',
+    BOOKING_CHAT: 'bookingChat',
+    CREATE_INSTANT_BOOKING: 'createInstantBooking',
   };

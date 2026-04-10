@@ -45,6 +45,11 @@ const MsgSchema = new Schema<INewMsg>(
       required: true,
       index: true,
     },
+    bookingId: {
+      type: Schema.Types.ObjectId,
+      ref: "Booking",
+      default: null,
+    },
     messages: [
       {
         messageId: { type: Number, required: true },
@@ -129,7 +134,7 @@ const MsgSchema = new Schema<INewMsg>(
     },
     chatType: {
       type: String,
-      enum: ["userToUser", "adminToUser", "adminToExpert", "userToExpert"],
+      enum: ["userToUser", "adminToUser", "adminToExpert", "userToExpert", "booking"],
       required: true,
       index: true,
     },
@@ -156,7 +161,7 @@ const MsgSchema = new Schema<INewMsg>(
 );
 
 // Create indexes
-MsgSchema.index({ sender: 1, receiver: 1 }, { unique: true });
+MsgSchema.index({ sender: 1, receiver: 1, bookingId: 1 }, { unique: true });
 MsgSchema.index({ "messages.createdAt": 1 });
 MsgSchema.index({ isActive: 1 });
 MsgSchema.index({ chatHiddenFor: 1 });

@@ -228,7 +228,15 @@ export class WebhookHandler {
       { session }
     );
 
-    // Grant monthly credits based on subscription tier
+    // Grant credits based on subscription tier
     await CreditController.grantSubscriptionCredits(userId, subscription.type, session);
+
+    // Update user's tier expiry
+    const { UserModel } = await import("../../models/userModel");
+    await UserModel.updateOne(
+      { _id: new Types.ObjectId(userId) },
+      { tierExpiresAt: subscription.endDate },
+      { session }
+    );
   }
 }
