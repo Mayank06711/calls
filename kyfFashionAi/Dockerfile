@@ -8,27 +8,26 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.slim.txt .
+
+# Install headless opencv FIRST, then everything else.
+# mediapipe wants opencv-contrib-python but headless is already installed
+# so pip skips it (opencv-python-headless satisfies the cv2 import).
+# The constraint file blocks contrib from ever being installed.
 RUN pip install --no-cache-dir --upgrade pip && \
+    echo "opencv-contrib-python" > /tmp/constraints.txt && \
+    PIP_CONSTRAINT=/tmp/constraints.txt \
     pip install --no-cache-dir --timeout=600 --retries=10 \
-    --target=/build/site-packages -r requirements.slim.txt && \
-    # Remove only genuinely unused transitive deps
-    rm -rf /build/site-packages/sympy \
-           /build/site-packages/mpmath \
-           /build/site-packages/networkx \
-           /build/site-packages/pip \
-           /build/site-packages/setuptools* \
-           /build/site-packages/pkg_resources \
-           /build/site-packages/sounddevice* \
-           /build/site-packages/_sounddevice* && \
-    # mediapipe pulls opencv-contrib-python which conflicts with headless
-    # Remove contrib, reinstall headless so cv2 binary links to headless .libs
-    rm -rf /build/site-packages/opencv_contrib_python* \
-           /build/site-packages/opencv_contrib_python.libs && \
-    pip install --no-cache-dir --target=/build/site-packages \
-        --force-reinstall --no-deps opencv-python-headless==4.13.0.92 && \
-    # Strip test dirs and bytecode from packages
-    find /build/site-packages -type d \( -name "tests" -o -name "test" -o -name "docs" -o -name "examples" \) -exec rm -rf {} + 2>/dev/null; \
-    find /build/site-packages -name "*.pyc" -o -name "*.pyo" | xargs rm -f 2>/dev/null; \
+    -r requirements.slim.txt && \
+    rm -rf /tmp/constraints.txt && \
+    # Remove only truly unused bloat
+    pip uninstall -y sounddevice 2>/dev/null; \
+    rm -rf /usr/local/lib/python3.11/site-packages/sympy \
+           /usr/local/lib/python3.11/site-packages/mpmath \
+           /usr/local/lib/python3.11/site-packages/networkx \
+           /usr/local/lib/python3.11/site-packages/pip \
+           /usr/local/lib/python3.11/site-packages/setuptools* \
+           /usr/local/lib/python3.11/site-packages/pkg_resources && \
+    find /usr/local/lib/python3.11/site-packages -type d \( -name "tests" -o -name "test" -o -name "docs" -o -name "examples" \) -exec rm -rf {} + 2>/dev/null; \
     true
 
 # ── Stage 2: Minimal runtime ──
@@ -36,16 +35,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# libgl1 + libegl1 + libgles2 = mediapipe native inference needs OpenGL ES
-# libglib2.0-0 = opencv + general C lib dependency
+# System libs needed by: mediapipe (libegl1, libgles2), opencv (libgl1), general (libglib2.0-0)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libglib2.0-0 libgl1 libegl1 libgles2 && \
     rm -rf /var/lib/apt/lists/* && \
     adduser --disabled-password --no-create-home appuser
 
-# Copy installed packages (no venv, no gcc in final image)
-COPY --from=builder /build/site-packages /usr/local/lib/python3.11/site-packages/
+# Copy ALL installed packages from builder (no --target tricks, exact same layout as local venv)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages/
+COPY --from=builder /usr/local/bin /usr/local/bin/
 
 COPY main.py config.py ./
 COPY models/ ./models/
@@ -58,11 +57,11 @@ RUN mkdir -p /app/.model_cache && chown appuser:appuser /app/.model_cache
 
 ENV PORT=8001 ENV=production PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     MPLCONFIGDIR=/tmp/matplotlib \
-    LD_LIBRARY_PATH=/usr/local/lib/python3.11/site-packages/opencv_python_headless.libs:/usr/local/lib/python3.11/site-packages/pillow.libs:/usr/local/lib/python3.11/site-packages/numpy.libs:/usr/local/lib/python3.11/site-packages/scipy.libs
+    NUMBA_CACHE_DIR=/tmp/numba_cache
 EXPOSE 8001
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
