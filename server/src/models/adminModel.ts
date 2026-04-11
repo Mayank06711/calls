@@ -124,37 +124,26 @@ AdminSchema.methods.updateLoginActivity = async function () {
 };
 
 // Method to check permissions based on position
+// See IAdmin.ts for the full permission matrix documentation
 AdminSchema.methods.hasPermission = function (
   permission: AdminPermission
 ): boolean {
+  const ALL_POSITIONS = [AdminPosition.AGENT, AdminPosition.OPERATIONS_HEAD, AdminPosition.SUPER_ADMIN];
+  const OPS_AND_ABOVE = [AdminPosition.OPERATIONS_HEAD, AdminPosition.SUPER_ADMIN];
+
   const permissions: Record<AdminPermission, AdminPosition[]> = {
-    canBlockUsers: [
-      AdminPosition.AGENT,
-      AdminPosition.OPERATIONS_HEAD,
-      AdminPosition.SUPER_ADMIN,
-    ],
-    canDeleteUsers: [AdminPosition.OPERATIONS_HEAD, AdminPosition.SUPER_ADMIN],
+    // All admins
+    canBlockUsers:        ALL_POSITIONS,
+    canManageExperts:     ALL_POSITIONS,
+    canSendNotifications: ALL_POSITIONS,
+    canViewAnalytics:     ALL_POSITIONS,
+    canAccessReports:     ALL_POSITIONS,
+    canManageContent:     ALL_POSITIONS,
+    // Operations head + super admin
+    canDeleteUsers:          OPS_AND_ABOVE,
+    canManageSubscriptions:  OPS_AND_ABOVE,
+    // Super admin only
     canManageAdmins: [AdminPosition.SUPER_ADMIN],
-    canViewAnalytics: [
-      AdminPosition.AGENT,
-      AdminPosition.OPERATIONS_HEAD,
-      AdminPosition.SUPER_ADMIN,
-    ],
-    canManageContent: [
-      AdminPosition.AGENT,
-      AdminPosition.OPERATIONS_HEAD,
-      AdminPosition.SUPER_ADMIN,
-    ],
-    canAccessReports: [
-      AdminPosition.AGENT,
-      AdminPosition.OPERATIONS_HEAD,
-      AdminPosition.SUPER_ADMIN,
-    ],
-    canSendNotifications: [
-      AdminPosition.AGENT,
-      AdminPosition.OPERATIONS_HEAD,
-      AdminPosition.SUPER_ADMIN,
-    ],
   };
 
   return permissions[permission]?.includes(this.position) || false;

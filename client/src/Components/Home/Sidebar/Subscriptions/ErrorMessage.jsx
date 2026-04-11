@@ -1,11 +1,15 @@
 import React from 'react';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { getSubscriptionPlansThunk } from '../../../../redux/thunks/subscription.thunks';
+import { useDispatch } from 'react-redux';
 
 const ErrorMessage = () => {
-    const handleRetryClick=() => {
-        getSubscriptionPlansThunk();
-    }
+    const dispatch = useDispatch();
+    
+    const handleRetryClick = () => {
+        dispatch(getSubscriptionPlansThunk());
+    };
+    
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-1">
       {/* Animated Error Icon */}

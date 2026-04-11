@@ -3,7 +3,7 @@ import { MediaItem } from './IMedia';
 
 // Define the Message Types
 export type MessageType = "text" | "image" | "video" | "audio" | "document";
-export type ChatType = "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert";
+export type ChatType = "userToUser" | "adminToUser" | "adminToExpert" | "userToExpert" | "booking";
 
 // Define interfaces
 export interface IAttachment extends MediaItem {
@@ -45,6 +45,7 @@ export interface IParticipantInfo {
 export interface INewMsg extends Document {
   sender: Types.ObjectId;
   receiver: Types.ObjectId;
+  bookingId?: Types.ObjectId;
   messages: INewMessage[];
   chatType: ChatType;
   messageIdCounter: number;
@@ -54,7 +55,9 @@ export interface INewMsg extends Document {
     sender: IParticipantInfo;
     receiver: IParticipantInfo;
   };
-  
+  chatHiddenFor?: Types.ObjectId[];
+  chatDeletedFor?: Types.ObjectId[];
+
   // Methods
   addMessage(
     text: string,
@@ -76,5 +79,13 @@ export interface INewMsg extends Document {
   markMessageAsRead(messageId: number): Promise<void>;
   markMessageAsDelivered(messageId: number): Promise<void>;
   updateParticipantStatus(userId: Types.ObjectId, isActive: boolean): Promise<void>;
-  deleteMessage(messageId: number, userId: Types.ObjectId): Promise<void>;
+}
+
+// Read Receipt Interface for Redis Queue
+export interface IReadReceipt {
+  messageId: number;
+  chatId: string;
+  senderId: string;
+  readAt: Date;
+  readBy: string;
 }

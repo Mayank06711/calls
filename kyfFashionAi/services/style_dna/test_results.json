@@ -1,0 +1,4129 @@
+{
+  "_run_tag": "fix_v6_gates_exposure_age",
+  "_run_id": "1bb935c4",
+  "_timestamp": "2026-02-20 19:17:56",
+  "summary": {
+    "totalImages": 52,
+    "totalTimeSeconds": 43.94,
+    "avgTimePerImage": 0.85,
+    "baselineRAM_MB": 36.5,
+    "peakRAM_MB": 381.3,
+    "finalRAM_MB": 381.0,
+    "netRAMGrowth_MB": 344.5,
+    "warningCounts": {
+      "NO_PERSON": 5,
+      "NO_PERSON_DETECTED": 8,
+      "MULTIPLE_PEOPLE_CROP_SUGGESTED": 8,
+      "NO_FACE": 2,
+      "FACE_OBSCURED": 6,
+      "LOW_FACE_CONFIDENCE": 12,
+      "LOW_BODY_CONFIDENCE": 7,
+      "ILLUSTRATION_DETECTED": 1
+    }
+  },
+  "results": {
+    "Gemini_Generated_Image_39kpkg39kpkg39kp-300x300_notatrueimg.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.668,
+          "waistHipRatio": 1.367,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.73,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 26,
+          "ageRange": [
+            21,
+            31
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "round",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "round",
+          "color": {
+            "name": "brown",
+            "hex": "#5f382c"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "neutral",
+          "hex": "#c2937d",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "brown",
+            "hex": "#3b2923"
+          },
+          "baldnessLevel": 2
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.58,
+          "face": 0.88,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 2076,
+            "body_analyzer": 339,
+            "face_analyzer": 8839,
+            "face_geometry": 90,
+            "skin_analyzer": 248,
+            "hair_analyzer": 3
+          },
+          "imageSize": "500x500",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.895,
+            "otherObjects": [
+              {
+                "label": "vase",
+                "score": 0.406
+              },
+              {
+                "label": "potted plant",
+                "score": 0.406
+              },
+              {
+                "label": "vase",
+                "score": 0.406
+              },
+              {
+                "label": "vase",
+                "score": 0.363
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 11.64,
+        "ramMB": 327.9,
+        "ramDeltaMB": 291.4
+      }
+    },
+    "Gemini_Generated_Image_fpcmtvfpcmtvfpcm-300x300_notvisblefacelimeanlessvishible.webp": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.756,
+          "waistHipRatio": 0.885,
+          "waistDefinition": 0.115,
+          "torsoLegRatio": 0.6,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 24,
+          "ageRange": [
+            19,
+            29
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#422c28"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 2,
+          "undertone": "neutral",
+          "hex": "#a9a39a",
+          "referenceHex": "#f3e7db"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#3a3b43"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "warm_autumn",
+          "palette": [
+            "#FF8C00",
+            "#B8860B",
+            "#8B4513",
+            "#228B22",
+            "#CD853F",
+            "#DAA520",
+            "#A0522D",
+            "#556B2F"
+          ]
+        },
+        "confidence": {
+          "body": 0.94,
+          "face": 0.89,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 108,
+            "body_analyzer": 249,
+            "face_analyzer": 306,
+            "face_geometry": 70,
+            "skin_analyzer": 19,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x500",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.738,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.76,
+        "ramMB": 332.4,
+        "ramDeltaMB": 4.5
+      }
+    },
+    "Screensotofmyloginpage.png": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_PERSON"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 104,
+            "body_analyzer": 218,
+            "face_analyzer": 181,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "680x878",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.754,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.53,
+        "ramMB": 336.2,
+        "ramDeltaMB": 3.8
+      }
+    },
+    "abuildingknd.jpeg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 100
+          },
+          "imageSize": "275x183",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.11,
+        "ramMB": 330.8,
+        "ramDeltaMB": -5.4
+      }
+    },
+    "alotofstreatchildrenallshowsface.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 36,
+          "ageRange": [
+            31,
+            41
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#36221e"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 7,
+          "undertone": "neutral",
+          "hex": "#805042",
+          "referenceHex": "#825c43"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#3a3231"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.85,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106,
+            "body_analyzer": 258,
+            "face_analyzer": 302,
+            "face_geometry": 58,
+            "skin_analyzer": 29,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x357",
+          "faceCount": 7,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 9,
+            "bestPersonScore": 0.754,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.78,
+        "ramMB": 332.9,
+        "ramDeltaMB": 2.1
+      }
+    },
+    "amantakingmirroselfiwithnofacevisible.webp": {
+      "result": {
+        "body": {
+          "shape": "rectangle",
+          "shoulderHipRatio": 1.026,
+          "waistHipRatio": 1.524,
+          "waistDefinition": -0.485,
+          "torsoLegRatio": 0.82,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.78,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_FACE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 107,
+            "body_analyzer": 266,
+            "face_analyzer": 153,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "500x666",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.934,
+            "otherObjects": [
+              {
+                "label": "cell phone",
+                "score": 0.5
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.54,
+        "ramMB": 338.9,
+        "ramDeltaMB": 6.0
+      }
+    },
+    "amodelinyellowasareefulllooksthin.webp": {
+      "result": {
+        "body": {
+          "shape": "apple",
+          "shoulderHipRatio": 0.708,
+          "waistHipRatio": 1.123,
+          "waistDefinition": -0.123,
+          "torsoLegRatio": 0.64,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 32,
+          "ageRange": [
+            27,
+            37
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#674135"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 2,
+          "undertone": "cool",
+          "hex": "#cbaba9",
+          "referenceHex": "#f3e7db"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#231c21"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "clear_winter",
+          "palette": [
+            "#FF0000",
+            "#0000FF",
+            "#FFFFFF",
+            "#000000",
+            "#FF1493",
+            "#00BFFF",
+            "#FFD700",
+            "#8A2BE2"
+          ]
+        },
+        "confidence": {
+          "body": 0.69,
+          "face": 0.88,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 95,
+            "body_analyzer": 246,
+            "face_analyzer": 237,
+            "face_geometry": 69,
+            "skin_analyzer": 21,
+            "hair_analyzer": 1
+          },
+          "imageSize": "420x560",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.938,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.68,
+        "ramMB": 334.9,
+        "ramDeltaMB": -4.0
+      }
+    },
+    "antique-black-and-white-photograph-papuan-warrior-tribalnoclotethewhitecolthesonprivateparts.webp": {
+      "result": {
+        "body": {
+          "shape": "rectangle",
+          "shoulderHipRatio": 1.053,
+          "waistHipRatio": 1.422,
+          "waistDefinition": -0.35,
+          "torsoLegRatio": 0.72,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 70,
+          "ageRange": [
+            60,
+            80
+          ],
+          "ageConfidence": "low",
+          "gender": "male",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#3e2f2e"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 9,
+          "undertone": "cool",
+          "hex": "#74595c",
+          "referenceHex": "#3a312a"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#625a57"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "deep_winter",
+          "palette": [
+            "#000080",
+            "#8B0000",
+            "#006400",
+            "#4B0082",
+            "#2F4F4F",
+            "#800020",
+            "#191970",
+            "#800000"
+          ]
+        },
+        "confidence": {
+          "body": 0.85,
+          "face": 0.83,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 97,
+            "body_analyzer": 254,
+            "face_analyzer": 263,
+            "face_geometry": 61,
+            "skin_analyzer": 19,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x563",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.91,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.72,
+        "ramMB": 336.3,
+        "ramDeltaMB": 1.4
+      }
+    },
+    "asian-indian-young-woman-using-mobile-phone-in-subway-train.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 27,
+          "ageRange": [
+            22,
+            32
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#46342a"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 7,
+          "undertone": "warm",
+          "hex": "#896e60",
+          "referenceHex": "#825c43"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#56504b"
+          },
+          "baldnessLevel": 2
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.86,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 97,
+            "body_analyzer": 234,
+            "face_analyzer": 227,
+            "face_geometry": 68,
+            "skin_analyzer": 18,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x297",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.77,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.66,
+        "ramMB": 330.9,
+        "ramDeltaMB": -5.4
+      }
+    },
+    "awomentakingselfiinhalfpanttwistedwristnofacevisibleclearly.webp": {
+      "result": {
+        "body": {
+          "shape": "apple",
+          "shoulderHipRatio": 0.791,
+          "waistHipRatio": 1.146,
+          "waistDefinition": -0.146,
+          "torsoLegRatio": 0.98,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 33,
+          "ageRange": [
+            28,
+            38
+          ],
+          "ageConfidence": "medium",
+          "gender": "female"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "gray",
+            "hex": "#b2aaa2"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.61,
+          "face": 0.58,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 99,
+            "body_analyzer": 247,
+            "face_analyzer": 291,
+            "face_geometry": 69,
+            "skin_analyzer": 0,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x622",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.879,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.73,
+        "ramMB": 348.0,
+        "ramDeltaMB": 17.1
+      }
+    },
+    "awomentakingslefionlypartabovenabhiisvisibleonehandupandthendownwithphonelefteyenotvisble.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.379,
+          "waistHipRatio": 1.209,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.67,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 28,
+          "ageRange": [
+            23,
+            33
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "round",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "round",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#2c2312"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "warm",
+          "hex": "#a86943",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#b68359"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.42,
+          "face": 0.8,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 93,
+            "body_analyzer": 241,
+            "face_analyzer": 236,
+            "face_geometry": 56,
+            "skin_analyzer": 21,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x282",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.887,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.67,
+        "ramMB": 334.1,
+        "ramDeltaMB": -13.9
+      }
+    },
+    "bird_on;y.jpg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106
+          },
+          "imageSize": "1024x768",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": [
+              {
+                "label": "bird",
+                "score": 0.832
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.36,
+        "ramMB": 344.1,
+        "ramDeltaMB": 10.0
+      }
+    },
+    "caucasian-man-carrying-woman-piggyback-on-beach_bothfacevisiblefromrightsidemancarryingwomenonback.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 29,
+          "ageRange": [
+            24,
+            34
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#4f2a21"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "cool",
+          "hex": "#dda992",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "white",
+            "hex": "#d3d7dc"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "summer",
+          "subSeason": "soft_summer",
+          "palette": [
+            "#B0C4DE",
+            "#D8BFD8",
+            "#A9A9A9",
+            "#BDB76B",
+            "#8FBC8F",
+            "#BC8F8F",
+            "#C0C0C0",
+            "#DEB887"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.79,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE",
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 96,
+            "body_analyzer": 255,
+            "face_analyzer": 288,
+            "face_geometry": 56,
+            "skin_analyzer": 22,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x333",
+          "faceCount": 2,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.816,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.73,
+        "ramMB": 356.1,
+        "ramDeltaMB": 12.0
+      }
+    },
+    "filemthumbnailwithheroinfaceonlyandotheronehandbelowhernother.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.434,
+          "waistHipRatio": 1.239,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.64,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 26,
+          "ageRange": [
+            21,
+            31
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "full"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#301a13"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "full"
+        },
+        "skin": {
+          "monkTone": 3,
+          "undertone": "warm",
+          "hex": "#ead5c4",
+          "referenceHex": "#f7ead0"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "auburn",
+            "hex": "#5a3825"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "warm_autumn",
+          "palette": [
+            "#FF8C00",
+            "#B8860B",
+            "#8B4513",
+            "#228B22",
+            "#CD853F",
+            "#DAA520",
+            "#A0522D",
+            "#556B2F"
+          ]
+        },
+        "confidence": {
+          "body": 0.42,
+          "face": 0.73,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE",
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 96,
+            "body_analyzer": 235,
+            "face_analyzer": 250,
+            "face_geometry": 55,
+            "skin_analyzer": 26,
+            "hair_analyzer": 3
+          },
+          "imageSize": "500x375",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.738,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.7,
+        "ramMB": 359.5,
+        "ramDeltaMB": 3.4
+      }
+    },
+    "firlwithtopshoestrouserandjacket.jpg": {
+      "result": {
+        "body": {
+          "shape": "apple",
+          "shoulderHipRatio": 0.925,
+          "waistHipRatio": 1.029,
+          "waistDefinition": -0.029,
+          "torsoLegRatio": 0.69,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 31,
+          "ageRange": [
+            26,
+            36
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#524347"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 3,
+          "undertone": "warm",
+          "hex": "#d3d8bc",
+          "referenceHex": "#f7ead0"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "brown",
+            "hex": "#79666d"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "warm_autumn",
+          "palette": [
+            "#FF8C00",
+            "#B8860B",
+            "#8B4513",
+            "#228B22",
+            "#CD853F",
+            "#DAA520",
+            "#A0522D",
+            "#556B2F"
+          ]
+        },
+        "confidence": {
+          "body": 0.86,
+          "face": 0.68,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 99,
+            "body_analyzer": 237,
+            "face_analyzer": 221,
+            "face_geometry": 71,
+            "skin_analyzer": 18,
+            "hair_analyzer": 2
+          },
+          "imageSize": "750x1000",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.895,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.69,
+        "ramMB": 370.9,
+        "ramDeltaMB": 11.5
+      }
+    },
+    "girlinclothstorenotfullyvisible.jpg": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.693,
+          "waistHipRatio": 0.761,
+          "waistDefinition": 0.239,
+          "torsoLegRatio": 0.83,
+          "heightCategory": "tall",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 29,
+          "ageRange": [
+            24,
+            34
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "amber",
+            "hex": "#45311c"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "warm",
+          "hex": "#c58a54",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "brown",
+            "hex": "#412d25"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.83,
+          "face": 0.89,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 96,
+            "body_analyzer": 257,
+            "face_analyzer": 271,
+            "face_geometry": 67,
+            "skin_analyzer": 55,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.699,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.77,
+        "ramMB": 347.8,
+        "ramDeltaMB": -23.1
+      }
+    },
+    "halfbodyindianwomenwithhandfolded.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.628,
+          "waistHipRatio": 1.345,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.64,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 33,
+          "ageRange": [
+            28,
+            38
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#332c2e"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 4,
+          "undertone": "cool",
+          "hex": "#dbb39f",
+          "referenceHex": "#eadaba"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#525454"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "cool_winter",
+          "palette": [
+            "#4169E1",
+            "#C71585",
+            "#2E8B57",
+            "#708090",
+            "#483D8B",
+            "#B22222",
+            "#20B2AA",
+            "#696969"
+          ]
+        },
+        "confidence": {
+          "body": 0.46,
+          "face": 0.84,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 127,
+            "body_analyzer": 339,
+            "face_analyzer": 209,
+            "face_geometry": 55,
+            "skin_analyzer": 32,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x407",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.867,
+            "otherObjects": [
+              {
+                "label": "handbag",
+                "score": 0.453
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.78,
+        "ramMB": 361.9,
+        "ramDeltaMB": 14.2
+      }
+    },
+    "indian-tribal-women-pushkar-indian-tribal-women-pushkar-city-pushkar-mela-pushkar-mela-colorful-vibrant-onlyfaceveryold.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 55,
+          "ageRange": [
+            50,
+            60
+          ],
+          "ageConfidence": "medium",
+          "gender": "male"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#652d3a"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.58,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 94,
+            "body_analyzer": 189,
+            "face_analyzer": 219,
+            "face_geometry": 65,
+            "skin_analyzer": 0,
+            "hair_analyzer": 2
+          },
+          "imageSize": "500x334",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.832,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.63,
+        "ramMB": 333.8,
+        "ramDeltaMB": -28.1
+      }
+    },
+    "indian-woman-insaree.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.51,
+          "waistHipRatio": 1.28,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.73,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 34,
+          "ageRange": [
+            29,
+            39
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#684e3b"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 4,
+          "undertone": "warm",
+          "hex": "#ddb69e",
+          "referenceHex": "#eadaba"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#413123"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.56,
+          "face": 0.84,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 100,
+            "body_analyzer": 232,
+            "face_analyzer": 238,
+            "face_geometry": 52,
+            "skin_analyzer": 33,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.867,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.68,
+        "ramMB": 374.7,
+        "ramDeltaMB": 40.9
+      }
+    },
+    "indian-woman-purple-saree-bending-standing-butonlyupperpartvisibleandtitltedfarward.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 30,
+          "ageRange": [
+            25,
+            35
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#462b19"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "cool",
+          "hex": "#e08554",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "brown",
+            "hex": "#1c1811"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "cool_winter",
+          "palette": [
+            "#4169E1",
+            "#C71585",
+            "#2E8B57",
+            "#708090",
+            "#483D8B",
+            "#B22222",
+            "#20B2AA",
+            "#696969"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.82,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 95,
+            "body_analyzer": 229,
+            "face_analyzer": 222,
+            "face_geometry": 54,
+            "skin_analyzer": 49,
+            "hair_analyzer": 2
+          },
+          "imageSize": "500x698",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.855,
+            "otherObjects": [
+              {
+                "label": "chair",
+                "score": 0.363
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.67,
+        "ramMB": 376.2,
+        "ramDeltaMB": 1.5
+      }
+    },
+    "indian-women-in-sari-decked-up-for-festive-celebration-clicking-selfies.webp": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.85,
+          "waistHipRatio": 0.898,
+          "waistDefinition": 0.102,
+          "torsoLegRatio": 0.97,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 27,
+          "ageRange": [
+            22,
+            32
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#713f2e"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "warm",
+          "hex": "#a5744e",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#32261b"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.82,
+          "face": 0.8,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 96,
+            "body_analyzer": 225,
+            "face_analyzer": 229,
+            "face_geometry": 55,
+            "skin_analyzer": 23,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x333",
+          "faceCount": 4,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 3,
+            "bestPersonScore": 0.699,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.64,
+        "ramMB": 374.0,
+        "ramDeltaMB": -2.2
+      }
+    },
+    "indian-women-saree-clipart-indian-woman-wearing-bridal-outfit-black-and-white-illustration-vector.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.878,
+          "waistHipRatio": 1.483,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.69,
+          "heightCategory": "short",
+          "classificationMethod": "landmarks"
+        },
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.64,
+          "face": 0.83
+        },
+        "warnings": [
+          "ILLUSTRATION_DETECTED",
+          "NO_FACE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 97,
+            "body_analyzer": 237,
+            "face_analyzer": 230,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "500x500",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.801,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.58,
+        "ramMB": 336.3,
+        "ramDeltaMB": -37.7
+      }
+    },
+    "indian_women-insareevilgs.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.613,
+          "waistHipRatio": 1.337,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.75,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 40,
+          "ageRange": [
+            35,
+            45
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#523d39"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 4,
+          "undertone": "neutral",
+          "hex": "#ae998c",
+          "referenceHex": "#eadaba"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "auburn",
+            "hex": "#6d5950"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.43,
+          "face": 0.9,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 98,
+            "body_analyzer": 233,
+            "face_analyzer": 201,
+            "face_geometry": 52,
+            "skin_analyzer": 25,
+            "hair_analyzer": 1
+          },
+          "imageSize": "540x360",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.801,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.63,
+        "ramMB": 376.1,
+        "ramDeltaMB": 39.8
+      }
+    },
+    "indianwomeninsareeandbook.webp": {
+      "result": {
+        "body": {
+          "shape": "apple",
+          "shoulderHipRatio": 0.713,
+          "waistHipRatio": 1.161,
+          "waistDefinition": -0.161,
+          "torsoLegRatio": 0.66,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 31,
+          "ageRange": [
+            26,
+            36
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#683931"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "neutral",
+          "hex": "#bb947d",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#34272e"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.64,
+          "face": 0.83,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 94,
+            "body_analyzer": 226,
+            "face_analyzer": 223,
+            "face_geometry": 75,
+            "skin_analyzer": 21,
+            "hair_analyzer": 1
+          },
+          "imageSize": "407x612",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.77,
+            "otherObjects": [
+              {
+                "label": "cell phone",
+                "score": 0.406
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.66,
+        "ramMB": 378.4,
+        "ramDeltaMB": 2.3
+      }
+    },
+    "jeans2_only.webp": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106
+          },
+          "imageSize": "600x900",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": [
+              {
+                "label": "tie",
+                "score": 0.453
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.12,
+        "ramMB": 378.4,
+        "ramDeltaMB": -0.0
+      }
+    },
+    "jeans_with_person_noface.webp": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_PERSON"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 118,
+            "body_analyzer": 273,
+            "face_analyzer": 203,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "732x1024",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.934,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.63,
+        "ramMB": 378.1,
+        "ramDeltaMB": -0.2
+      }
+    },
+    "muliptlwomensnoheadatallonlyonhandvisible.webp": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_PERSON"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 96,
+            "body_analyzer": 214,
+            "face_analyzer": 184,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "500x280",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.477,
+            "otherObjects": [
+              {
+                "label": "carrot",
+                "score": 0.477
+              },
+              {
+                "label": "carrot",
+                "score": 0.453
+              },
+              {
+                "label": "carrot",
+                "score": 0.406
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.51,
+        "ramMB": 360.5,
+        "ramDeltaMB": -17.6
+      }
+    },
+    "multiplefaces5totalallfacingfrontinacircularsettin.jpg": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.744,
+          "waistHipRatio": 1.004,
+          "waistDefinition": -0.004,
+          "torsoLegRatio": 0.85,
+          "heightCategory": "tall",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 40,
+          "ageRange": [
+            35,
+            45
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#62514b"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 4,
+          "undertone": "warm",
+          "hex": "#e1c6b0",
+          "referenceHex": "#eadaba"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "gray",
+            "hex": "#a1a1a9"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.69,
+          "face": 0.84,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 99,
+            "body_analyzer": 248,
+            "face_analyzer": 273,
+            "face_geometry": 60,
+            "skin_analyzer": 34,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x396",
+          "faceCount": 5,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 3,
+            "bestPersonScore": 0.832,
+            "otherObjects": [
+              {
+                "label": "handbag",
+                "score": 0.363
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.74,
+        "ramMB": 377.7,
+        "ramDeltaMB": 17.2
+      }
+    },
+    "nadaaniyan-movieposterwithheroheroin.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 27,
+          "ageRange": [
+            22,
+            32
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#503220"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "warm",
+          "hex": "#d4a580",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#3b2c24"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.82,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 101,
+            "body_analyzer": 768,
+            "face_analyzer": 276,
+            "face_geometry": 58,
+            "skin_analyzer": 43,
+            "hair_analyzer": 2
+          },
+          "imageSize": "500x626",
+          "faceCount": 2,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.719,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 1.27,
+        "ramMB": 352.7,
+        "ramDeltaMB": -25.0
+      }
+    },
+    "personwithtshirtandjeans.webp": {
+      "result": {
+        "body": {
+          "shape": "rectangle",
+          "shoulderHipRatio": 0.875,
+          "waistHipRatio": 1.262,
+          "waistDefinition": -0.262,
+          "torsoLegRatio": 0.73,
+          "heightCategory": "average",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 30,
+          "ageRange": [
+            25,
+            35
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#3d3027"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 8,
+          "undertone": "neutral",
+          "hex": "#6d5042",
+          "referenceHex": "#604134"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "black",
+            "hex": "#25211f"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.8,
+          "face": 0.86,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 100,
+            "body_analyzer": 263,
+            "face_analyzer": 231,
+            "face_geometry": 80,
+            "skin_analyzer": 19,
+            "hair_analyzer": 1
+          },
+          "imageSize": "799x1024",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.918,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.72,
+        "ramMB": 349.1,
+        "ramDeltaMB": -3.6
+      }
+    },
+    "pushkar-ajmer-rajasthan-india-november-madarwithbandarandheaddwon.webp": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.818,
+          "waistHipRatio": 0.968,
+          "waistDefinition": 0.032,
+          "torsoLegRatio": 1.15,
+          "heightCategory": "short",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 42,
+          "ageRange": [
+            37,
+            47
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#1c0c03"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 8,
+          "undertone": "neutral",
+          "hex": "#3c251d",
+          "referenceHex": "#604134"
+        },
+        "hair": {
+          "type": "bald",
+          "color": {
+            "name": "n/a",
+            "hex": "#000000"
+          },
+          "baldnessLevel": 5
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.68,
+          "face": 0.79,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.7
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 98,
+            "body_analyzer": 270,
+            "face_analyzer": 356,
+            "face_geometry": 99,
+            "skin_analyzer": 31,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x356",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 5,
+            "bestPersonScore": 0.801,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.87,
+        "ramMB": 379.2,
+        "ramDeltaMB": 30.1
+      }
+    },
+    "randomscreenshotofcodeing.png": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 152
+          },
+          "imageSize": "1024x752",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": [
+              {
+                "label": "laptop",
+                "score": 0.453
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.19,
+        "ramMB": 379.2,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "screenshotofmyclosetwithmultipleimg.png": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.97,
+          "waistHipRatio": 1.533,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.72,
+          "heightCategory": "short",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 29,
+          "ageRange": [
+            24,
+            34
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#3f2d21"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 8,
+          "undertone": "cool",
+          "hex": "#957171",
+          "referenceHex": "#604134"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "brown",
+            "hex": "#575151"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "deep_winter",
+          "palette": [
+            "#000080",
+            "#8B0000",
+            "#006400",
+            "#4B0082",
+            "#2F4F4F",
+            "#800020",
+            "#191970",
+            "#800000"
+          ]
+        },
+        "confidence": {
+          "body": 0.59,
+          "face": 0.69,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE",
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 109,
+            "body_analyzer": 266,
+            "face_analyzer": 243,
+            "face_geometry": 63,
+            "skin_analyzer": 19,
+            "hair_analyzer": 1
+          },
+          "imageSize": "1024x608",
+          "faceCount": 2,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 4,
+            "bestPersonScore": 0.879,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.78,
+        "ramMB": 379.4,
+        "ramDeltaMB": 0.1
+      }
+    },
+    "senior-woman-looking-at-camera_half.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.476,
+          "waistHipRatio": 1.262,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.65,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 47,
+          "ageRange": [
+            42,
+            52
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#3d2422"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 3,
+          "undertone": "neutral",
+          "hex": "#ab9188",
+          "referenceHex": "#f7ead0"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "gray",
+            "hex": "#7e6464"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "spring",
+          "subSeason": "warm_spring",
+          "palette": [
+            "#FF8C00",
+            "#FFD700",
+            "#FF6347",
+            "#228B22",
+            "#DAA520",
+            "#FF4500",
+            "#FFDAB9",
+            "#CD853F"
+          ]
+        },
+        "confidence": {
+          "body": 0.42,
+          "face": 0.86,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 100,
+            "body_analyzer": 246,
+            "face_analyzer": 220,
+            "face_geometry": 61,
+            "skin_analyzer": 39,
+            "hair_analyzer": 3
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.91,
+            "otherObjects": [
+              {
+                "label": "banana",
+                "score": 0.594
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.71,
+        "ramMB": 379.2,
+        "ramDeltaMB": -0.1
+      }
+    },
+    "shirt.jpeg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_PERSON"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 99,
+            "body_analyzer": 242,
+            "face_analyzer": 171,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "225x225",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.918,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.52,
+        "ramMB": 379.9,
+        "ramDeltaMB": 0.7
+      }
+    },
+    "shirt_with_person.webp": {
+      "result": {
+        "body": {
+          "shape": "rectangle",
+          "shoulderHipRatio": 0.935,
+          "waistHipRatio": 1.429,
+          "waistDefinition": -0.429,
+          "torsoLegRatio": 0.84,
+          "heightCategory": "tall",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 28,
+          "ageRange": [
+            23,
+            33
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#392b25"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 3,
+          "undertone": "cool",
+          "hex": "#9a727a",
+          "referenceHex": "#f7ead0"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#181712"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "clear_winter",
+          "palette": [
+            "#FF0000",
+            "#0000FF",
+            "#FFFFFF",
+            "#000000",
+            "#FF1493",
+            "#00BFFF",
+            "#FFD700",
+            "#8A2BE2"
+          ]
+        },
+        "confidence": {
+          "body": 0.75,
+          "face": 0.87,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106,
+            "body_analyzer": 256,
+            "face_analyzer": 251,
+            "face_geometry": 70,
+            "skin_analyzer": 128,
+            "hair_analyzer": 4
+          },
+          "imageSize": "768x1024",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.957,
+            "otherObjects": [
+              {
+                "label": "bed",
+                "score": 0.57
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.9,
+        "ramMB": 380.5,
+        "ramDeltaMB": 0.5
+      }
+    },
+    "shoes_on;y.jpeg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 117
+          },
+          "imageSize": "294x171",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.13,
+        "ramMB": 380.5,
+        "ramDeltaMB": -0.0
+      }
+    },
+    "smiling-mid-adult-couple-sitting-on-sofa-at-home_bothsitingsidebysideandvisblehalf.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 32,
+          "ageRange": [
+            27,
+            37
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#60392e"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 7,
+          "undertone": "cool",
+          "hex": "#734c41",
+          "referenceHex": "#825c43"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "brown",
+            "hex": "#4a3d32"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "cool_winter",
+          "palette": [
+            "#4169E1",
+            "#C71585",
+            "#2E8B57",
+            "#708090",
+            "#483D8B",
+            "#B22222",
+            "#20B2AA",
+            "#696969"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.91,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 125,
+            "body_analyzer": 290,
+            "face_analyzer": 263,
+            "face_geometry": 66,
+            "skin_analyzer": 33,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x333",
+          "faceCount": 2,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.816,
+            "otherObjects": [
+              {
+                "label": "couch",
+                "score": 0.523
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.8,
+        "ramMB": 381.0,
+        "ramDeltaMB": 0.5
+      }
+    },
+    "smiling-young-african-woman-taking-a-selfie-in-front-of-a-mirror_onlyheadvisblebald.webp": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.576,
+          "waistHipRatio": 1.317,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.77,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 25,
+          "ageRange": [
+            20,
+            30
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#322416"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "neutral",
+          "hex": "#9c7350",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "brown",
+            "hex": "#d1c3b3"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.61,
+          "face": 0.85,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 120,
+            "body_analyzer": 249,
+            "face_analyzer": 200,
+            "face_geometry": 66,
+            "skin_analyzer": 22,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x301",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.719,
+            "otherObjects": [
+              {
+                "label": "cell phone",
+                "score": 0.594
+              },
+              {
+                "label": "potted plant",
+                "score": 0.523
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.69,
+        "ramMB": 380.4,
+        "ramDeltaMB": -0.6
+      }
+    },
+    "street-show-monkey-dance-onlynoman.webp": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 109
+          },
+          "imageSize": "500x673",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": [
+              {
+                "label": "cat",
+                "score": 0.801
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.12,
+        "ramMB": 380.4,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "trivandrum-india-indian-businesswoman-wearing-a-traditional-saree-with-a-mobile-phone-at-theroadgoingonlyrgghtpartvisible.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 38,
+          "ageRange": [
+            33,
+            43
+          ],
+          "ageConfidence": "medium",
+          "gender": "male"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#5a575c"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.63,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 105,
+            "body_analyzer": 253,
+            "face_analyzer": 281,
+            "face_geometry": 57,
+            "skin_analyzer": 0,
+            "hair_analyzer": 7
+          },
+          "imageSize": "500x697",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 4,
+            "bestPersonScore": 0.867,
+            "otherObjects": [
+              {
+                "label": "car",
+                "score": 0.613
+              },
+              {
+                "label": "car",
+                "score": 0.453
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.71,
+        "ramMB": 337.8,
+        "ramDeltaMB": -42.6
+      }
+    },
+    "tshirt_with-man_notfull.jpg": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.66,
+          "waistHipRatio": 1.363,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.64,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 26,
+          "ageRange": [
+            21,
+            31
+          ],
+          "ageConfidence": "medium",
+          "gender": "male",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "medium"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#6d4d44"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "medium"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "neutral",
+          "hex": "#c2886d",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "curly",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#463b3b"
+          },
+          "baldnessLevel": 2
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.43,
+          "face": 0.82,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 108,
+            "body_analyzer": 260,
+            "face_analyzer": 230,
+            "face_geometry": 56,
+            "skin_analyzer": 27,
+            "hair_analyzer": 1
+          },
+          "imageSize": "540x360",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.957,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.7,
+        "ramMB": 380.2,
+        "ramDeltaMB": 42.4
+      }
+    },
+    "twowomensonewithyelloeflowertiayaraonheadtakingtogetherselfi.jpg": {
+      "result": {
+        "body": {
+          "shape": "inverted_triangle",
+          "shoulderHipRatio": 1.431,
+          "waistHipRatio": 1.237,
+          "waistDefinition": 0,
+          "torsoLegRatio": 0.79,
+          "heightCategory": "tall",
+          "classificationMethod": "landmarks"
+        },
+        "face": {
+          "estimatedAge": 39,
+          "ageRange": [
+            34,
+            44
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#4d403b"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "neutral",
+          "hex": "#bc998b",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "gray",
+            "hex": "#7c7975"
+          },
+          "baldnessLevel": 3
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.42,
+          "face": 0.89,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_BODY_CONFIDENCE",
+          "MULTIPLE_PEOPLE_CROP_SUGGESTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 101,
+            "body_analyzer": 243,
+            "face_analyzer": 287,
+            "face_geometry": 61,
+            "skin_analyzer": 37,
+            "hair_analyzer": 2
+          },
+          "imageSize": "612x408",
+          "faceCount": 2,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 2,
+            "bestPersonScore": 0.887,
+            "otherObjects": [
+              {
+                "label": "cell phone",
+                "score": 0.57
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.76,
+        "ramMB": 381.1,
+        "ramDeltaMB": 0.9
+      }
+    },
+    "women-in-traditional-indian-clothing-hugging_nofaceatallmultiplehands.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 27,
+          "ageRange": [
+            22,
+            32
+          ],
+          "ageConfidence": "medium",
+          "gender": "female"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#fa4e7d"
+          },
+          "baldnessLevel": 3
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.58,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 102,
+            "body_analyzer": 248,
+            "face_analyzer": 266,
+            "face_geometry": 50,
+            "skin_analyzer": 0,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.938,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.7,
+        "ramMB": 381.2,
+        "ramDeltaMB": 0.1
+      }
+    },
+    "womenfacingbackwardnofaceatall.jpg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106
+          },
+          "imageSize": "612x408",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.12,
+        "ramMB": 381.2,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "womenonlywaistwithnabhi.jpg": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.0
+        },
+        "warnings": [
+          "NO_PERSON"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 111,
+            "body_analyzer": 218,
+            "face_analyzer": 188,
+            "face_geometry": 0,
+            "skin_analyzer": 0,
+            "hair_analyzer": 0
+          },
+          "imageSize": "612x428",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.867,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.53,
+        "ramMB": 381.2,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "womenpotrraintnotactualhuman.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 24,
+          "ageRange": [
+            19,
+            29
+          ],
+          "ageConfidence": "medium",
+          "gender": "female"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "straight",
+          "color": {
+            "name": "brown",
+            "hex": "#07090a"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.72,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 99,
+            "body_analyzer": 218,
+            "face_analyzer": 236,
+            "face_geometry": 77,
+            "skin_analyzer": 0,
+            "hair_analyzer": 3
+          },
+          "imageSize": "500x608",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.879,
+            "otherObjects": [
+              {
+                "label": "frisbee",
+                "score": 0.406
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.67,
+        "ramMB": 381.2,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "womensittingandsellingsareesimling.jpg": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 58,
+          "ageRange": [
+            48,
+            68
+          ],
+          "ageConfidence": "low",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#7c4621"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 6,
+          "undertone": "warm",
+          "hex": "#c79361",
+          "referenceHex": "#a07c5b"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "brown",
+            "hex": "#e80b15"
+          },
+          "baldnessLevel": 0
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "soft_autumn",
+          "palette": [
+            "#DEB887",
+            "#BDB76B",
+            "#BC8F8F",
+            "#8FBC8F",
+            "#D2B48C",
+            "#CD853F",
+            "#A0522D",
+            "#808000"
+          ]
+        },
+        "confidence": {
+          "body": 0.0,
+          "face": 0.82,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 104,
+            "body_analyzer": 280,
+            "face_analyzer": 282,
+            "face_geometry": 78,
+            "skin_analyzer": 54,
+            "hair_analyzer": 2
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.754,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.83,
+        "ramMB": 381.3,
+        "ramDeltaMB": 0.1
+      }
+    },
+    "womensittingonsofawithhandononsideofsofaandlegscurled.jpg": {
+      "result": {
+        "body": {
+          "shape": "apple",
+          "shoulderHipRatio": 0.866,
+          "waistHipRatio": 1.145,
+          "waistDefinition": -0.145,
+          "torsoLegRatio": 1.01,
+          "heightCategory": "tall",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 32,
+          "ageRange": [
+            27,
+            37
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "oval",
+          "eyeShape": "almond",
+          "noseProportion": "wide",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "dark_brown",
+            "hex": "#3a2f2d"
+          }
+        },
+        "nose": {
+          "proportion": "wide"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "warm",
+          "hex": "#cba782",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "black",
+            "hex": "#22201e"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "autumn",
+          "subSeason": "deep_autumn",
+          "palette": [
+            "#8B0000",
+            "#800000",
+            "#556B2F",
+            "#2F4F4F",
+            "#8B4513",
+            "#4B0082",
+            "#006400",
+            "#800020"
+          ]
+        },
+        "confidence": {
+          "body": 0.66,
+          "face": 0.82,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": null,
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 131,
+            "body_analyzer": 804,
+            "face_analyzer": 233,
+            "face_geometry": 68,
+            "skin_analyzer": 50,
+            "hair_analyzer": 1
+          },
+          "imageSize": "612x408",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.754,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 1.31,
+        "ramMB": 381.3,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "young-indian-woman-looking-through-the-window_butnofacevisibleasseehasfacingbackward.webp": {
+      "result": {
+        "body": null,
+        "face": null,
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": null,
+        "colorSeason": null,
+        "confidence": {},
+        "warnings": [
+          "NO_PERSON_DETECTED"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 123
+          },
+          "imageSize": "612x408",
+          "faceCount": 0,
+          "personDetection": {
+            "hasPerson": false,
+            "personCount": 0,
+            "bestPersonScore": 0.0,
+            "otherObjects": []
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.13,
+        "ramMB": 381.3,
+        "ramDeltaMB": 0.0
+      }
+    },
+    "young-indian-woman-sorting-red-chilli-peppers-jodhpur-india_notfaceheaingdown.webp": {
+      "result": {
+        "body": null,
+        "face": {
+          "estimatedAge": 41,
+          "ageRange": [
+            36,
+            46
+          ],
+          "ageConfidence": "medium",
+          "gender": "female"
+        },
+        "eyes": null,
+        "nose": null,
+        "lips": null,
+        "skin": null,
+        "hair": {
+          "type": "kinky",
+          "color": {
+            "name": "brown",
+            "hex": "#464655"
+          },
+          "baldnessLevel": 2
+        },
+        "colorSeason": null,
+        "confidence": {
+          "body": 0.0,
+          "face": 0.59,
+          "face_geo": 0.0,
+          "hair": 0.75
+        },
+        "warnings": [
+          "FACE_OBSCURED",
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 135,
+            "body_analyzer": 271,
+            "face_analyzer": 239,
+            "face_geometry": 63,
+            "skin_analyzer": 0,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x333",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.902,
+            "otherObjects": [
+              {
+                "label": "umbrella",
+                "score": 0.387
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.72,
+        "ramMB": 352.5,
+        "ramDeltaMB": -28.8
+      }
+    },
+    "young-woman-taking-selfie_siittingonehadnfarawayrighthandfacetiltedrightbutvisible.webp": {
+      "result": {
+        "body": {
+          "shape": "pear",
+          "shoulderHipRatio": 0.668,
+          "waistHipRatio": 0.395,
+          "waistDefinition": 0.605,
+          "torsoLegRatio": 0.64,
+          "heightCategory": "tall",
+          "classificationMethod": "silhouette"
+        },
+        "face": {
+          "estimatedAge": 33,
+          "ageRange": [
+            28,
+            38
+          ],
+          "ageConfidence": "medium",
+          "gender": "female",
+          "faceShape": "round",
+          "eyeShape": "almond",
+          "noseProportion": "medium",
+          "lipFullness": "thin"
+        },
+        "eyes": {
+          "shape": "almond",
+          "color": {
+            "name": "brown",
+            "hex": "#754e40"
+          }
+        },
+        "nose": {
+          "proportion": "medium"
+        },
+        "lips": {
+          "fullness": "thin"
+        },
+        "skin": {
+          "monkTone": 5,
+          "undertone": "cool",
+          "hex": "#d6a68d",
+          "referenceHex": "#d7bd96"
+        },
+        "hair": {
+          "type": "wavy",
+          "color": {
+            "name": "gray",
+            "hex": "#e4dfcf"
+          },
+          "baldnessLevel": 1
+        },
+        "colorSeason": {
+          "season": "winter",
+          "subSeason": "cool_winter",
+          "palette": [
+            "#4169E1",
+            "#C71585",
+            "#2E8B57",
+            "#708090",
+            "#483D8B",
+            "#B22222",
+            "#20B2AA",
+            "#696969"
+          ]
+        },
+        "confidence": {
+          "body": 0.88,
+          "face": 0.79,
+          "face_geo": 0.85,
+          "skin": 0.88,
+          "hair": 0.75
+        },
+        "warnings": [
+          "LOW_FACE_CONFIDENCE"
+        ],
+        "_meta": {
+          "timingsMs": {
+            "person_detector": 106,
+            "body_analyzer": 250,
+            "face_analyzer": 233,
+            "face_geometry": 70,
+            "skin_analyzer": 26,
+            "hair_analyzer": 1
+          },
+          "imageSize": "500x279",
+          "faceCount": 1,
+          "personDetection": {
+            "hasPerson": true,
+            "personCount": 1,
+            "bestPersonScore": 0.867,
+            "otherObjects": [
+              {
+                "label": "sink",
+                "score": 0.43
+              },
+              {
+                "label": "cell phone",
+                "score": 0.387
+              }
+            ]
+          }
+        }
+      },
+      "perf": {
+        "timeSeconds": 0.7,
+        "ramMB": 381.0,
+        "ramDeltaMB": 28.5
+      }
+    }
+  }
+}

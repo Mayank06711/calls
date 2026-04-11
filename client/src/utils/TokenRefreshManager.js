@@ -28,12 +28,21 @@ class TokenRefreshManager {
     try {
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
+      localStorage.removeItem("userInfo");
       this.refreshSubscribers = [];
 
       store.dispatch(clearUserId());
       store.dispatch(
         showNotification("Your Previus session expired, please login.", 401)
       );
+
+      // Force redirect to landing page — Redux route guard may not trigger
+      // if a component's error UI is already rendered
+      setTimeout(() => {
+        if (window.location.pathname !== "/login" && window.location.pathname !== "/") {
+          window.location.href = "/";
+        }
+      }, 500);
     } catch (error) {
       console.error("Error clearing client storage:", error);
     }
@@ -46,6 +55,13 @@ class TokenRefreshManager {
   notifySubscribers(token) {
     this.refreshSubscribers.forEach((callback) => callback(token));
     this.refreshSubscribers = [];
+  }
+
+  // Network errors (server unreachable) should NOT trigger logout —
+  // the session may still be valid, the server is just down.
+  _isNetworkError(error) {
+    // No response from server at all (ERR_CONNECTION_REFUSED, ERR_NETWORK, timeout, etc.)
+    return !error.response && (error.request || error.code === "ERR_NETWORK" || error.message === "Network Error");
   }
 
   async refreshAccessToken() {
@@ -76,9 +92,16 @@ class TokenRefreshManager {
       this.clearClientStorage();
       throw new Error("Invalid token refresh response");
     } catch (error) {
-      // Clear auth data on any refresh error
+      if (this._isNetworkError(error)) {
+        // Server is unreachable — don't logout, session may still be valid
+        console.warn("[TokenRefresh] Network error during refresh, not clearing session:", error.message);
+        this.refreshSubscribers = [];
+        throw error;
+      }
+
+      // Actual server response (401, 500, etc.) — session is truly invalid
       this.clearClientStorage();
-      this.refreshSubscribers = []; // Clear subscribers on error
+      this.refreshSubscribers = [];
 
       throw error;
     } finally {

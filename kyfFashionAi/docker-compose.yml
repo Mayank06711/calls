@@ -1,0 +1,20 @@
+# Standalone deployment for Python AI service
+# Usage: docker compose up -d
+services:
+  python-ai:
+    build: .
+    container_name: kyf-python-ai
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - model-cache:/app/.model_cache
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+volumes:
+  model-cache:

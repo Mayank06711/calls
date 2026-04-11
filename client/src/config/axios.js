@@ -1,6 +1,7 @@
 import { API_CONFIG } from "../constants/apiEndpoints";
 import { handleApiError } from "../utils/globalErrorHandler";
 import axios from "axios";
+import { getAccessToken } from "../utils/tokenManager";
 
 /**
  * Creates a configured axios instance
@@ -15,22 +16,29 @@ const createAxiosInstance = (config = {}) => {
   // Default headers
   const defaultHeaders = {
     "Content-Type": "application/json",
-    // Add any other default headers needed
   };
 
   // Create instance with merged config
   const instance = axios.create({
     baseURL: API_CONFIG.BASE_URL,
     headers: { ...defaultHeaders, ...headers },
-    withCredentials: true, // Always true to handle HTTP-only cookies
+    withCredentials: true, // Also send cookies for backward compatibility
     ...additionalConfig,
   });
 
-  // Request interceptor
+  // Request interceptor - Always include Authorization header from localStorage
+  // This ensures consistency between HTTP requests and socket connections
   instance.interceptors.request.use(
     (config) => {
-      // Ensure withCredentials is always true
       config.withCredentials = true;
+
+      // Always include token from localStorage in Authorization header
+      // This is the single source of truth for auth
+      const token = getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
       return config;
     },
     (error) => Promise.reject(error)
@@ -72,14 +80,14 @@ const createAxiosInstance = (config = {}) => {
           return instance(failedConfig);
         });
 
-        // If processedError is actually a successful response only for refreshToken case it would work
-        if (processedError?.status === 200) {
+        // If processedError is actually a successful response (any 2xx status) after retry
+        if (processedError?.status >= 200 && processedError?.status < 300) {
           return processedError;
         }
 
         // Otherwise handle as error, names as normalErro means that its
         const normalErros = Promise.reject({
-          data: null,
+          data: processedError.data || null,
           error: {
             message: processedError.message || "Something went wrong",
             statusCode: processedError.status || 500,

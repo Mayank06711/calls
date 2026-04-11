@@ -50,6 +50,17 @@ export const SOCKET_CONSTANTS = {
     MESSAGE: "room:message",
   },
 
+  // Booking Events
+  BOOKING: {
+    CATALOG_ITEM_SHARED: "booking:catalog-item-shared",
+    TRYON_REQUESTED: "booking:tryon-requested",
+    TRYON_RESULT: "booking:tryon-result",
+    SESSION_EXTENDED: "booking:session-extended",
+    CHAT_MESSAGE: "booking:chat-message",
+    INSTANT_REQUEST: "booking:instant-request",
+    INSTANT_STARTED: "booking:instant-started",
+  },
+
   // Status Codes
   STATUS: {
     SUCCESS: "success",

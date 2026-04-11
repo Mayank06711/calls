@@ -96,12 +96,14 @@ export type EmitOptions = {
 export interface SocketUserData {
   userId: string;
   mobNum: string;
+  sessionId?: string; // Session ID from token
   status: "verified" | "refreshed";
 }
 export interface SocketData {
   key: string;
   userId: string;
   mobNum: string;
+  sessionId?: string; // Session ID from token
   socketId: string;
   connectedAt: number;
   lastRefreshedAt?: number;
@@ -111,6 +113,7 @@ export interface SocketData {
 // Add these new interfaces
 export interface UserSocket {
   socketId: string;
+  sessionId?: string; // Session ID from token
   connectedAt: number;
   lastActive: number;
 }
@@ -132,6 +135,7 @@ export interface CloudinaryUploadOptions {
   isBuffer?: boolean;
   fileName?: string;
   uploadPreset?: string;
+  fileType?: string;
 }
 
 export interface FileUploadData {
@@ -139,7 +143,7 @@ export interface FileUploadData {
   fileName: string;
   fileType: string;
   size: number;
-  type: "chat" | "avatar";
+  type: "chat" | "avatar" | "reel";
   metadata?: {
     width?: number;
     height?: number;

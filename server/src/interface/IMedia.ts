@@ -15,6 +15,7 @@ export interface IMedia extends Document {
   chatId?: mongoose.Types.ObjectId;
   photos: MediaItem[];
   videos: MediaItem[];
+  reels: MediaItem[];
   createdAt: Date;
   updatedAt: Date;
 
@@ -31,4 +32,7 @@ export interface IMedia extends Document {
   getAllVideoUrls(): { url: string; thumbnail_url?: string }[];
   removePhoto(publicId: string): Promise<void>;
   removeVideo(publicId: string): Promise<void>;
+  addReel(reelData: Partial<MediaItem>): Promise<MediaItem>;
+  getAllReels(): MediaItem[];
+  removeReel(publicId: string): Promise<void>;
 }

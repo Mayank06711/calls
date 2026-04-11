@@ -7,16 +7,15 @@ export const SUBSCRIPTION_TYPES = [
 export type SubscriptionTier = "Platinum" | "Gold" | "Silver" | "Free";
 
 export const SUBSCRIPTION_CONFIG = {
+  // ── Credits-based tiers (flat price, no duration) ─────────────────────────
+  // Each paid tier is a one-time credit bundle purchase that also grants
+  // tier-level feature access for `tierDurationDays` (30 days).
   TIERS: {
     Platinum: {
       level: 3,
-      dailyPricing: [
-        { minDays: 7, maxDays: 15, pricePerDay: 24 },
-        { minDays: 16, maxDays: 30, pricePerDay: 20 },
-        { minDays: 31, maxDays: 90, pricePerDay: 13 },
-        { minDays: 91, maxDays: 180, pricePerDay: 10 },
-        { minDays: 181, maxDays: 365, pricePerDay: 8 },
-      ],
+      price: 899,              // flat INR price
+      creditsGranted: 5000,
+      tierDurationDays: 30,    // tier benefits last 30 days from purchase
       features: {
         "AI Style Recommendations": "Unlimited",
         'Video Chat Consultations': "7 Videos per day",
@@ -51,13 +50,9 @@ export const SUBSCRIPTION_CONFIG = {
     },
     Gold: {
       level: 2,
-      dailyPricing: [
-        { minDays: 7, maxDays: 15, pricePerDay: 14 },
-        { minDays: 16, maxDays: 30, pricePerDay: 12 },
-        { minDays: 31, maxDays: 90, pricePerDay: 8 },
-        { minDays: 91, maxDays: 180, pricePerDay: 6 },
-        { minDays: 181, maxDays: 365, pricePerDay: 5 },
-      ],
+      price: 499,              // flat INR price
+      creditsGranted: 1500,
+      tierDurationDays: 30,
       features: {
         "AI Style Recommendations": "50 per day",
         'Video Chat Consultations': "4 Videos per day",
@@ -92,13 +87,9 @@ export const SUBSCRIPTION_CONFIG = {
     },
     Silver: {
       level: 1,
-      dailyPricing: [
-        { minDays: 7, maxDays: 15, pricePerDay: 9 },
-        { minDays: 16, maxDays: 30, pricePerDay: 7 },
-        { minDays: 31, maxDays: 90, pricePerDay: 3 },
-        { minDays: 91, maxDays: 180, pricePerDay: 2.5 },
-        { minDays: 181, maxDays: 365, pricePerDay: 2 },
-      ],
+      price: 249,              // flat INR price
+      creditsGranted: 600,
+      tierDurationDays: 30,
       features: {
         "AI Style Recommendations": "20 per day",
         'Video Chat Consultations': "2 Videos per day",
@@ -133,14 +124,9 @@ export const SUBSCRIPTION_CONFIG = {
     },
     Free: {
       level: 0,
-      duration: 7, // 7 days trial
-      dailyPricing: [
-        { minDays: 7, maxDays: 15, pricePerDay: 0 },
-        { minDays: 16, maxDays: 30, pricePerDay: 0 },
-        { minDays: 31, maxDays: 90, pricePerDay: 0 },
-        { minDays: 91, maxDays: 180, pricePerDay: 0 },
-        { minDays: 181, maxDays: 365, pricePerDay: 0 },
-      ],
+      price: 0,
+      creditsGranted: 90,      // signup grant
+      tierDurationDays: null,   // permanent until upgrade
       features: {
         "AI Style Recommendations": "Trial (3/day)", // 0 = trial
         'Video Chat Consultations': "1 Trial Call", // 0 = trial
@@ -175,10 +161,8 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
   SUBSCRIPTION_RULES: {
-    MINIMUM_DAYS: 7,
-    MAXIMUM_DAYS: 365,
-    MAXIMUM_REFERRAL_DISCOUNT: 25,
-    MINIMUM_AMOUNT: 0,
+    TIER_DURATION_DAYS: 30,           // paid tiers last 30 days
+    MAXIMUM_REFERRAL_BONUS_CREDITS: 100,
     FEATURE_LEVELS: {
       0: "Not Available/Trial",
       1: "Basic",
@@ -210,67 +194,8 @@ export const SUBSCRIPTION_CONFIG = {
     },
   },
   POLICIES: {
-    CANCELLATION_POLICY: {
-      allowedUntil: 7,
-      refundPolicy: "pro-rata",
-      cooldownPeriod: 24,
-      restrictions: [
-        "Unused video consultations are non-refundable",
-        "AI-generated recommendations will be archived",
-        "Must cancel 7 days before next billing cycle",
-        "Saved wardrobe data will be retained for 30 days",
-      ],
-      immediateEffects: [
-        "Video consultation credits freeze immediately",
-        "AI style recommendations limited to basic tier",
-        "Platinum features access ends",
-        "Scheduled consultations must be completed within 7 days",
-      ],
-    },
-    REFUND_POLICY: {
-      eligibilityPeriod: 7,
-      processingTime: "5-7 business days",
-      conditions: [
-        "Technical issues affecting video consultations",
-        "Stylist unavailability for scheduled sessions",
-        "AI service downtime exceeding 24 hours",
-        "Billing errors or unauthorized charges",
-      ],
-      exclusions: [
-        "Completed video consultations",
-        "Used AI recommendations",
-        "Downloaded style guides",
-        "Attended virtual events",
-        "Special promotional subscriptions",
-      ],
-      refundMethods: [
-        "Original payment method",
-        "Style credits for future use",
-        "Bank transfer (special cases)",
-      ],
-    },
-    UPGRADE_POLICY: {
-      allowedFrequency: "once per billing cycle",
-      effectiveTime: "immediate",
-      proratedBilling: true,
-      benefits: [
-        "Immediate access to additional video consultations",
-        "Enhanced AI features unlock instantly",
-        "Retained style history and preferences",
-        "Priority booking status upgrade",
-        "Access to Platinum style tools",
-      ],
-    },
-    DOWNGRADE_POLICY: {
-      allowedFrequency: "once per billing cycle",
-      effectiveTime: "next billing cycle",
-      restrictions: [
-        "Must complete scheduled Platinum consultations",
-        "AI recommendations history archived",
-        "Platinum wardrobe features limited",
-        "Style event registrations may be cancelled",
-      ],
-    },
+    CREDITS_NON_REFUNDABLE: true,
+    TIER_PURCHASE_NOTE: "Credits are granted immediately. Tier benefits last 30 days from purchase date.",
   },
   VIDEO_CONSULTATION_RULES: {
     maxDuration: 45,
@@ -304,4 +229,22 @@ export const SUBSCRIPTION_CONFIG = {
       Free: "essential",
     },
   },
+} as const;
+
+// ── Call configuration ──────────────────────────────────────────
+export const CALL_CONFIG = {
+  /** Hard cap per single call (seconds). Server auto-hangs up. */
+  MAX_CALL_DURATION_SECONDS: 30 * 60, // 30 minutes
+  /** Seconds before auto-hangup at which warnings are sent to both parties. */
+  WARNING_AT_SECONDS: [25 * 60, 29 * 60], // 5-min and 1-min warnings
+  /** After user grants permission, expert has this many seconds to initiate the call. */
+  EXPERT_PERMISSION_WINDOW_SECONDS: 5 * 60, // 5 minutes
+  /** How long the phone rings before auto-miss. */
+  RING_TIMEOUT_SECONDS: 30,
+  /** Default expert billing rate (USD per minute). Overridable per expert later. */
+  EXPERT_RATE_PER_MINUTE: 5,
+  /** Whether monthly count limits apply to expert calls. */
+  EXPERT_CALL_LIMITS_APPLY: true,
+  /** Whether monthly count limits apply to user-to-user calls (false = unlimited for paid). */
+  USER_CALL_LIMITS_APPLY: false,
 } as const;

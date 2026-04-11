@@ -17,6 +17,7 @@ import {
   otpVerificationSuccess,
   resetTimer,
   setTimerActive,
+  showSessionLimit,
 } from "../actions/auth.actions";
 // import { ensureSocketAuthenticated } from "../../socket/authentication";
 import { fetchUserInfoThunk } from "./userInfo.thunks";
@@ -80,13 +81,41 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       ENDPOINTS.AUTH.VERIFY_OTP,
       verificationData
     );
+
     if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed, // changed from maxSessions to match controller
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          mobNum: verificationData.mobNum,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData 
+        }));
+        // Don't mark as failure yet, let user decide
+         dispatch(otpVerificationFailure(false)); 
+         // Optional: Hide notification if modal is shown
+         // dispatch(showNotification(error.message, error.statusCode));
+        return;
+      }
+
       dispatch(otpVerificationFailure(true));
       dispatch(showNotification(error.message, error.statusCode));
       return;
     }
     if (data.success) {
       const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      // Store token in localStorage BEFORE dispatching setUserId to Redux.
+      // SocketContext reacts to userId and immediately connects + authenticates
+      // the socket, which reads the token from localStorage via getAccessToken().
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
       dispatch(initializeSettingsThunk());
       dispatch(otpVerificationSuccess(true));
       dispatch(setUserId(userId));
@@ -94,11 +123,6 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
       if(isAlreadyVerified){
         dispatch(fetchUserInfoThunk());
       }
-
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("token", token);
-      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
-      localStorage.setItem("fullName", fullName);
 
       console.log("[verifyOtpThunk] Set userId, token, isAlreadyVerified, fullName:", userId, token, isAlreadyVerified, fullName);
 
@@ -124,6 +148,193 @@ export const verifyOtpThunk = (verificationData) => async (dispatch) => {
   }
 };
 
+export const generateEmailOtpThunk = (email) => async (dispatch) => {
+  try {
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.GENERATE_EMAIL_OTP,
+      {
+        email,
+        isTesting: true,
+      }
+    );
+    if (error) {
+      dispatch(otpGenerationFailure());
+      dispatch(showNotification(error.message, error.statusCode));
+      return null;
+    }
+
+    if (data.success) {
+      dispatch(generateOtp(data));
+      dispatch(otpGenerationSuccess(true));
+      dispatch(resetTimer());
+      dispatch(setTimerActive(true));
+      dispatch(
+        showNotification(data.message || "OTP sent to email!", statusCode)
+      );
+    } else {
+      dispatch(otpGenerationFailure());
+      dispatch(
+        showNotification(
+          "Failed to send OTP, please try again",
+          statusCode || 400
+        )
+      );
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    dispatch(otpGenerationFailure());
+    dispatch(
+      showNotification(
+        "Unable to connect to server. Please check your internet connection.",
+        500
+      )
+    );
+    console.error("Error generating email OTP:", error);
+    return null;
+  }
+};
+
+export const verifyEmailOtpThunk = (verificationData) => async (dispatch) => {
+  try {
+    dispatch(otpVerificationStart());
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.VERIFY_EMAIL_OTP,
+      verificationData
+    );
+
+    if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed,
+          partialToken: data.data.partialToken,
+          otp: verificationData.otp,
+          email: verificationData.email,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: verificationData
+        }));
+        dispatch(otpVerificationFailure(false));
+        return;
+      }
+
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
+      dispatch(initializeSettingsThunk());
+      dispatch(otpVerificationSuccess(true));
+      dispatch(setUserId(userId));
+      dispatch(setAlreadyVerified(isAlreadyVerified));
+      if (isAlreadyVerified) {
+        dispatch(fetchUserInfoThunk());
+      }
+
+      dispatch(
+        showNotification(
+          data.message || "Email verified successfully!",
+          statusCode
+        )
+      );
+    } else {
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification("Invalid OTP", statusCode || 400));
+    }
+    return data;
+  } catch (error) {
+    console.error("Error verifying email OTP:", error);
+    dispatch(otpVerificationFailure(true));
+    dispatch(showNotification(error.message || "Failed to verify OTP", 400));
+  }
+};
+
+export const googleAuthThunk = (idToken) => async (dispatch) => {
+  try {
+    dispatch(otpVerificationStart());
+    const { data, error, statusCode } = await makeRequest(
+      HTTP_METHODS.POST,
+      ENDPOINTS.AUTH.GOOGLE_AUTH,
+      { idToken }
+    );
+
+    if (error) {
+      if (error.statusCode === 403 && data?.data?.activeSessions) {
+        dispatch(showSessionLimit({
+          activeSessions: data.data.activeSessions,
+          currentSubscription: data.data.subscriptionType,
+          maxAllowed: data.data.maxAllowed,
+          partialToken: data.data.partialToken,
+          idToken: idToken,
+          subscriptionType: data.data.subscriptionType,
+          verificationData: { idToken }
+        }));
+        dispatch(otpVerificationFailure(false));
+        return;
+      }
+
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification(error.message, error.statusCode));
+      return;
+    }
+    if (data.success) {
+      const { userId, isAlreadyVerified, token, fullName } = data.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId);
+      localStorage.setItem("isAlreadyVerified", isAlreadyVerified);
+      localStorage.setItem("fullName", fullName);
+
+      dispatch(initializeSettingsThunk());
+      dispatch(otpVerificationSuccess(true));
+      dispatch(setUserId(userId));
+      dispatch(setAlreadyVerified(isAlreadyVerified));
+      if (isAlreadyVerified) {
+        dispatch(fetchUserInfoThunk());
+      }
+
+      dispatch(
+        showNotification(
+          data.message || "Login successful!",
+          statusCode
+        )
+      );
+    } else {
+      dispatch(otpVerificationFailure(true));
+      dispatch(showNotification("Google login failed", statusCode || 400));
+    }
+    return data;
+  } catch (error) {
+    console.error("Error with Google auth:", error);
+    dispatch(otpVerificationFailure(true));
+    dispatch(showNotification(error.message || "Google login failed", 400));
+  }
+};
+
+// Cleans auth-related data from localStorage
+// Keeps preferences (isDarkMode, isTourCompleted) so they persist across sessions
+const cleanupLocalStorage = () => {
+  localStorage.removeItem("userId");
+  localStorage.removeItem("token");
+  localStorage.removeItem("mobNum");
+  localStorage.removeItem("isAlreadyVerified");
+  localStorage.removeItem("isEmailVerified");
+  localStorage.removeItem("fullName");
+  localStorage.removeItem("userInfo");
+  localStorage.removeItem("settingsUpdatedAt");
+};
+
 export const logoutThunk = () => async (dispatch) => {
   dispatch({ type: 'LOGOUT_REQUEST' });
   try {
@@ -131,42 +342,41 @@ export const logoutThunk = () => async (dispatch) => {
       HTTP_METHODS.POST,
       ENDPOINTS.USERS.LOGOUT
     );
- 
+
     if (error) {
-      dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
-      dispatch(showNotification(error.message, error.statusCode));
+      // Server returned an error but responded — still clean up client side
+      cleanupLocalStorage();
+      dispatch({ type: 'LOGOUT_SUCCESS' });
+      dispatch(clearUserId());
+      dispatch(showNotification(error.message || "Logged out", error.statusCode));
+      window.location.href = '/';
       return;
     }
     if (data.success) {
-      // Clear local storage
-      localStorage.removeItem("userId");
-      localStorage.removeItem("mobNum");
-      localStorage.removeItem("token");
-      localStorage.removeItem("isAlreadyVerified");
-      localStorage.removeItem("isEmailVerified"); 
-      localStorage.removeItem("isTourCompleted");
-      // add more
-
-      console.log("[logoutThunk] Cleared userId, token, and related keys from localStorage");
+      cleanupLocalStorage();
 
       // Clear Redux state
       dispatch({ type: 'LOGOUT_SUCCESS' });
       dispatch(clearUserId());
       dispatch(showNotification("Logged out successfully", statusCode));
 
-      // Redirect to login page
-      window.location.href = '/login';
-      // Socket disconnect is now handled by SocketContext
+      // Redirect to landing page (shows LandingPage when userId is null)
+      window.location.href = '/';
+      // Socket disconnect is handled by SocketContext when userId becomes null
     } else {
-      dispatch({ type: 'LOGOUT_FAILURE', payload: 'Logout failed' });
-      dispatch(showNotification("Logout failed", statusCode || 400));
+      cleanupLocalStorage();
+      dispatch({ type: 'LOGOUT_SUCCESS' });
+      dispatch(clearUserId());
+      dispatch(showNotification("Logged out", statusCode || 200));
+      window.location.href = '/';
     }
   } catch (error) {
+    // Server unreachable — still clean up client side so user isn't stuck
     console.error("Error during logout:", error);
-    dispatch({ type: 'LOGOUT_FAILURE', payload: error.message });
-    dispatch(showNotification(
-      "Unable to connect to server. Please check your internet connection.",
-      500
-    ));
+    cleanupLocalStorage();
+    dispatch({ type: 'LOGOUT_SUCCESS' });
+    dispatch(clearUserId());
+    dispatch(showNotification("Logged out locally. Server was unreachable.", 200));
+    window.location.href = '/';
   }
 };

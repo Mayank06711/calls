@@ -11,6 +11,18 @@ import { CookieOptions } from "express";
 import { ApiError } from "../utils/apiError";
 import { AsyncHandler } from "../utils/AsyncHandler";
 import { UserModel } from "../models/userModel";
+import { SessionController } from "./sessionController";
+import {
+  generateSessionId,
+  getMaxSessionsForSubscription,
+} from "../helper/sessionLimits";
+import { AuthServices } from "../helper/auth";
+import { sendEmails } from "../utils/email";
+import {
+  handleExistingUserAuth,
+  handleNewUserAuth,
+} from "../helper/postAuthFlow";
+import { OAuth2Client } from "google-auth-library";
 const otpLogPossibleKeys = [
   "mob_num",
   "reference_id",
@@ -379,7 +391,7 @@ class Authentication {
   }
 
   private static async _verifyOtp(req: Request, res: Response) {
-    const { referenceId, mobNum, otp } = req.body;
+    const { referenceId, mobNum, otp, verifyOnly } = req.body;
 
     // Validate required parameters
     if (!referenceId || !mobNum || !otp) {
@@ -448,13 +460,11 @@ class Authentication {
           .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
       }
 
-      // Remove OTP from Redis after successful verification
-      await RedisManager.removeDataFromGroup("otp_data", otpKey);
-      // Remove OTP request data
-      await RedisManager.removeDataFromGroup(
-        "otp_requests",
-        otpRequestCountKey
-      );
+      // NOTE: OTP is NOT deleted here. It is consumed only after session limit
+      // check passes (or for new users, after user creation). This keeps the
+      // OTP valid if SESSION_LIMIT_REACHED is returned, so the client can
+      // retry after revoking a session with the original TTL intact.
+
       // Update OTP status in the database
       if (process.env.NODE_ENV === "prod") {
         const updateQuery = {
@@ -467,49 +477,65 @@ class Authentication {
         };
         await dbQuery(updateQuery);
       }
-      let user = await UserModel.findOne({
-        phoneNumber: formattedRecipientNumber,
-      });
+      // OTP consume callback — called by shared helper after session limit check passes
+      const otpConsumeFn = async () => {
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+      };
 
-      if (user && user.isPhoneVerified && user.isActive) {
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-        if (!refreshToken || !accessToken) {
-          throw new ApiError(
-            500,
-            "Failed to generate access or refresh token."
-          );
+      // ─── verifyOnly: link phone to authenticated user, no login flow ───
+      if (verifyOnly) {
+        // Extract JWT from cookies/headers to identify the authenticated user
+        const authHeader = req.header("Authorization");
+        const accessToken = authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+        if (!accessToken) {
+          return res.status(401).json(errorResponse(401, "Authentication required for phone verification"));
+        }
+        const tokenResult = await AuthServices.verifyJWT_Token(accessToken, "access");
+        if (!tokenResult.data?.userId) {
+          return res.status(401).json(errorResponse(401, "Invalid or expired session. Please login again."));
         }
 
-        user.refreshToken = refreshToken;
-        await user.save();
-
-        const response = {
-          referenceId: referenceId,
-          mobNum: formattedRecipientNumber,
-          userId: user._id,
-          isAlreadyVerified: true,
-          token: accessToken,
-          fullName: user.fullName,
-        };
-
-        // Handle successful verification (skip OTP validation as user is already verified)
-        if (req.isMobileApp) {
-          return res
-            .status(200)
-            .setHeader("x-access-token", accessToken)
-            .setHeader("x-refresh-token", refreshToken)
-            .json(successResponse(response, "OTP Verified Successfully"));
+        // Check if another user already owns this phone number
+        const existingOwner = await UserModel.findOne({ phoneNumber: formattedRecipientNumber, _id: { $ne: tokenResult.data.userId } });
+        if (existingOwner) {
+          return res.status(409).json(errorResponse(409, "This phone number is already linked to another account."));
         }
 
-        return res
-          .status(200)
-          .cookie("accessToken", accessToken, Authentication.options)
-          .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
-          .json(successResponse(response, "OTP Verified Successfully"));
+        // Update the authenticated user's phone
+        await UserModel.findByIdAndUpdate(tokenResult.data.userId, {
+          phoneNumber: formattedRecipientNumber,
+          isPhoneVerified: true,
+        });
+        await otpConsumeFn();
+        return res.status(200).json(successResponse({ verified: true }, "Phone number verified successfully"));
       }
 
-      // If the user doesn't exist or is not verified, proceed with OTP verification process
+      let user = await UserModel.findOne({
+        phoneNumber: formattedRecipientNumber,
+      }).populate("currentSubscriptionId");
+      if(user?.isBlockedByAdmin){
+        // Don't consume OTP — let it expire via TTL so retries
+        // still show "blocked" instead of confusing "Invalid OTP"
+        return res
+          .status(403)
+          .json(errorResponse(403, "Your account has been blocked by admin. Contact support for help."));
+      }
+      if (user && user.isPhoneVerified && user.isActive) {
+        // Existing verified user — shared post-auth flow handles session limits, tokens, sessions
+        await handleExistingUserAuth({
+          user,
+          req,
+          res,
+          loginMethod: "otp",
+          isNewUser: false,
+          responseExtras: { referenceId, mobNum: formattedRecipientNumber },
+          onOtpConsume: otpConsumeFn,
+        });
+        return;
+      }
+
+      // New user or unverified user — create account
       if (!user) {
         user = await UserModel.create({
           phoneNumber: formattedRecipientNumber,
@@ -519,66 +545,436 @@ class Authentication {
           refreshToken: "",
           isActive: true,
           fullName: `User_${formattedRecipientNumber.slice(-4)}`,
+          authProvider: "phone",
         });
 
         if (!user) {
           throw new ApiError(500, "Something went wrong during user creation.");
         }
       } else {
-        // Update user phone verification if user already exists
         user.isPhoneVerified = true;
         user.isActive = true;
-      }
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
-      if (!refreshToken || !accessToken) {
-        throw new ApiError(500, "Failed to generate access or refresh token.");
+        await user.save();
       }
 
-      user.refreshToken = refreshToken;
-      await user.save();
+      // Consume OTP for new/unverified user
+      await otpConsumeFn();
 
-      const response = {
-        referenceId: referenceId,
-        mobNum: formattedRecipientNumber,
-        userId: user._id,
-        isAlreadyVerified: false,
-        token: accessToken,
-        fullName: user.fullName,
-      };
-
-      // Handle successful verification
-      if (req.isMobileApp) {
-        return res
-          .status(200)
-          .setHeader("x-access-token", accessToken)
-          .setHeader("x-refresh-token", refreshToken)
-          .json(
-            successResponse(
-              response,
-              "OTP Verified Successfully, User Registered"
-            )
-          );
-      }
-      return res
-        .status(200)
-        .cookie("accessToken", accessToken, Authentication.options)
-        .cookie("refreshToken", refreshToken, Authentication.refreshOptions)
-        .json(
-          successResponse(
-            response,
-            "OTP Verified Successfully, User Registered"
-          )
-        );
+      // New user — shared post-auth flow (no session limit check needed)
+      await handleNewUserAuth({
+        user,
+        req,
+        res,
+        loginMethod: "otp",
+        isNewUser: true,
+        responseExtras: { referenceId, mobNum: formattedRecipientNumber },
+      });
     } catch (error) {
       console.error("Error updating OTP status:", error);
       if (error instanceof ApiError) throw error;
       throw new ApiError(500, "Something went wrong");
     }
   }
-  // Create public wrapped versions
+  // ─── Email OTP: Generate ──────────────────────────────────────────────────
+
+  private static async _generateEmailOtp(req: Request, res: Response) {
+    const { email, isTesting } = req.body;
+
+    if (typeof isTesting !== "boolean") {
+      throw new ApiError(400, "isTesting must be a boolean");
+    }
+    if (!email) {
+      throw new ApiError(400, "Email is required.");
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      // Rate limit check (same Redis pattern as phone OTP, keyed by email)
+      const otpRequestCountKey = `otp_count:${normalizedEmail}`;
+      let requestData;
+      try {
+        requestData = await RedisManager.getDataFromGroup<{
+          count: number;
+          expiry_at: number;
+        }>("otp_requests", otpRequestCountKey);
+      } catch (redisError) {
+        console.error("Redis error:", redisError);
+        throw new ApiError(500, "Error checking OTP requests");
+      }
+
+      if (requestData) {
+        const { count, expiry_at } = requestData;
+        if (Date.now() > expiry_at) {
+          await RedisManager.cacheDataInGroup(
+            "otp_requests",
+            otpRequestCountKey,
+            {
+              count: 1,
+              expiry_at:
+                Date.now() +
+                Authentication.REDIS_TTL.OTP_WINDOW_MINUTES * 60 * 1000,
+            },
+            Authentication.REDIS_TTL.OTP_REQUESTS
+          );
+        } else if (count >= Authentication.REDIS_TTL.OTP_MAX_ATTEMPTS) {
+          return res
+            .status(429)
+            .json(
+              errorResponse(
+                429,
+                "Too many OTP requests. Please try after 10 minutes."
+              )
+            );
+        }
+      } else {
+        await RedisManager.cacheDataInGroup(
+          "otp_requests",
+          otpRequestCountKey,
+          {
+            count: 1,
+            expiry_at:
+              Date.now() +
+              Authentication.REDIS_TTL.OTP_WINDOW_MINUTES * 60 * 1000,
+          },
+          Authentication.REDIS_TTL.OTP_REQUESTS
+        );
+      }
+
+      // Generate OTP and reference ID
+      const { otp, referenceId } = Authentication.generateOtpAndReferenceId();
+
+      // Send OTP via email (not SMS)
+      if (!isTesting) {
+        await sendEmails({
+          email: normalizedEmail,
+          templateCode: "EMAIL_OTP",
+          subject: "Your KYF Login Code",
+          data: { otp_code: otp, expiryAt: "10" },
+        });
+      }
+
+      // Store OTP in Redis (keyed by email)
+      const otpKey = `otp:${normalizedEmail}`;
+      await RedisManager.cacheDataInGroup(
+        "otp_data",
+        otpKey,
+        {
+          otp,
+          reference_id: referenceId,
+          expiry_at:
+            Date.now() +
+            Authentication.REDIS_TTL.OTP_WINDOW_MINUTES * 60 * 1000,
+        },
+        Authentication.REDIS_TTL.OTP_DATA
+      );
+
+      // Increment OTP request count
+      const updatedRequestCount = (requestData?.count || 0) + 1;
+      await RedisManager.cacheDataInGroup(
+        "otp_requests",
+        otpRequestCountKey,
+        {
+          count: updatedRequestCount,
+          expiry_at:
+            Date.now() +
+            Authentication.REDIS_TTL.OTP_WINDOW_MINUTES * 60 * 1000,
+        },
+        Authentication.REDIS_TTL.OTP_REQUESTS
+      );
+
+      return res.status(200).json(
+        successResponse(
+          {
+            reference_id: referenceId,
+            email: normalizedEmail,
+          },
+          `OTP has been sent to ${normalizedEmail}`
+        )
+      );
+    } catch (error) {
+      console.log("error in generate email otp", error);
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, "Something went wrong");
+    }
+  }
+
+  // ─── Email OTP: Verify ──────────────────────────────────────────────────
+
+  private static async _verifyEmailOtp(req: Request, res: Response) {
+    const { referenceId, email, otp, verifyOnly } = req.body;
+
+    if (!referenceId || !email || !otp) {
+      return res
+        .status(400)
+        .json(
+          errorResponse(400, "Missing required parameters for verification")
+        );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      const otpKey = `otp:${normalizedEmail}`;
+      const otpRequestCountKey = `otp_count:${normalizedEmail}`;
+      const otpData = await RedisManager.getDataFromGroup<{
+        otp: string;
+        reference_id: string;
+        expiry_at: number;
+      }>("otp_data", otpKey);
+
+      if (!otpData) {
+        return res
+          .status(401)
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP"));
+      }
+
+      if (Date.now() > otpData.expiry_at) {
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        return res
+          .status(401)
+          .json(
+            errorResponse(401, "OTP verification failed. OTP has expired.")
+          );
+      }
+
+      if (otpData.otp !== otp || otpData.reference_id !== referenceId) {
+        return res
+          .status(401)
+          .json(errorResponse(401, "OTP verification failed. Invalid OTP."));
+      }
+
+      // OTP consume callback
+      const otpConsumeFn = async () => {
+        await RedisManager.removeDataFromGroup("otp_data", otpKey);
+        await RedisManager.removeDataFromGroup("otp_requests", otpRequestCountKey);
+      };
+
+      // ─── verifyOnly: verify email for authenticated user, no login flow ───
+      if (verifyOnly) {
+        const authHeader = req.header("Authorization");
+        const accessToken = authHeader?.replace("Bearer ", "") || req.cookies?.accessToken;
+        if (!accessToken) {
+          return res.status(401).json(errorResponse(401, "Authentication required for email verification"));
+        }
+        const tokenResult = await AuthServices.verifyJWT_Token(accessToken, "access");
+        if (!tokenResult.data?.userId) {
+          return res.status(401).json(errorResponse(401, "Invalid or expired session. Please login again."));
+        }
+
+        const currentUser = await UserModel.findById(tokenResult.data.userId);
+        if (!currentUser) {
+          return res.status(404).json(errorResponse(404, "User not found."));
+        }
+
+        // If user already has an email, only allow verifying that SAME email (prevent overwrite)
+        if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+          return res.status(400).json(errorResponse(400, "You can only verify your existing email address. Contact support to change your email."));
+        }
+
+        // Check if another user already owns this email
+        const existingOwner = await UserModel.findOne({ email: normalizedEmail, _id: { $ne: tokenResult.data.userId } });
+        if (existingOwner) {
+          return res.status(409).json(errorResponse(409, "This email is already linked to another account."));
+        }
+
+        // Set email (if new) and mark verified — never overwrites a different existing email
+        await UserModel.findByIdAndUpdate(tokenResult.data.userId, {
+          email: normalizedEmail,
+          isEmailVerified: true,
+        });
+        await otpConsumeFn();
+        return res.status(200).json(successResponse({ verified: true }, "Email verified successfully"));
+      }
+
+      // Look up user by email
+      let user = await UserModel.findOne({
+        email: normalizedEmail,
+      }).populate("currentSubscriptionId");
+
+      if (user && user.isEmailVerified && user.isActive) {
+        // Existing verified user
+        await handleExistingUserAuth({
+          user,
+          req,
+          res,
+          loginMethod: "email_otp",
+          isNewUser: false,
+          responseExtras: { email: normalizedEmail, referenceId },
+          onOtpConsume: otpConsumeFn,
+        });
+        return;
+      }
+
+      if (!user) {
+        // Create new user with email (no phone number)
+        user = await UserModel.create({
+          email: normalizedEmail,
+          username: `user_${uuidv4().split("-")[0]}`,
+          password: uuidv4(), // Random password, auto-hashed by pre-save hook
+          isEmailVerified: true,
+          isActive: true,
+          fullName: `User_${normalizedEmail.split("@")[0]}`,
+          authProvider: "email",
+        });
+
+        if (!user) {
+          throw new ApiError(500, "Something went wrong during user creation.");
+        }
+      } else {
+        // User exists but email not verified — verify now
+        user.isEmailVerified = true;
+        user.isActive = true;
+        await user.save();
+      }
+
+      // Consume OTP for new/unverified user
+      await otpConsumeFn();
+
+      await handleNewUserAuth({
+        user,
+        req,
+        res,
+        loginMethod: "email_otp",
+        isNewUser: true,
+        responseExtras: { email: normalizedEmail, referenceId },
+      });
+    } catch (error) {
+      console.error("Error verifying email OTP:", error);
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, "Something went wrong");
+    }
+  }
+
+  // ─── Google OAuth ───────────────────────────────────────────────────────
+
+  private static googleClient: OAuth2Client | null = null;
+
+  private static getGoogleClient(): OAuth2Client {
+    if (!Authentication.googleClient) {
+      Authentication.googleClient = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID
+      );
+    }
+    return Authentication.googleClient;
+  }
+
+  private static async _googleAuth(req: Request, res: Response) {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      throw new ApiError(400, "Google ID token is required");
+    }
+
+    // Verify the Google ID token
+    const client = Authentication.getGoogleClient();
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+    } catch (error) {
+      console.error("Google token verification failed:", error);
+      throw new ApiError(401, "Invalid Google token");
+    }
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.sub || !payload.email) {
+      throw new ApiError(401, "Invalid Google token payload");
+    }
+
+    const {
+      sub: googleId,
+      email,
+      name,
+      email_verified,
+    } = payload;
+    const normalizedEmail = email.toLowerCase();
+
+    try {
+      // Account linking logic:
+      // 1. Find by googleId first (returning Google user)
+      let user = await UserModel.findOne({ googleId }).populate(
+        "currentSubscriptionId"
+      );
+
+      if (!user) {
+        // 2. Find by verified email (link Google to existing account)
+        user = await UserModel.findOne({
+          email: normalizedEmail,
+          isActive: true,
+        }).populate("currentSubscriptionId");
+
+        if (user) {
+          // Link Google account to existing user
+          user.googleId = googleId;
+          if (!user.isEmailVerified && email_verified) {
+            user.isEmailVerified = true;
+          }
+          if (user.authProvider && user.authProvider !== "google") {
+            user.authProvider = "multiple";
+          }
+          await user.save();
+        }
+      }
+
+      if (user?.isBlockedByAdmin) {
+        return res
+          .status(403)
+          .json(errorResponse(403, "Your account has been blocked by admin. Contact support for help."));
+      }
+
+      if (user && user.isActive) {
+        // Existing user — shared post-auth flow
+        await handleExistingUserAuth({
+          user,
+          req,
+          res,
+          loginMethod: "social",
+          isNewUser: false,
+          responseExtras: { email: normalizedEmail, googleId },
+        });
+        return;
+      }
+
+      // 3. No existing user — create new one
+      user = await UserModel.create({
+        googleId,
+        email: normalizedEmail,
+        isEmailVerified: email_verified || false,
+        username: `user_${uuidv4().split("-")[0]}`,
+        password: uuidv4(), // Random password, auto-hashed
+        fullName: name || `User_${normalizedEmail.split("@")[0]}`,
+        isActive: true,
+        authProvider: "google",
+      });
+
+      if (!user) {
+        throw new ApiError(500, "Something went wrong during user creation.");
+      }
+
+      await handleNewUserAuth({
+        user,
+        req,
+        res,
+        loginMethod: "social",
+        isNewUser: true,
+        responseExtras: { email: normalizedEmail, googleId },
+      });
+    } catch (error) {
+      console.error("Error in Google auth:", error);
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(500, "Something went wrong");
+    }
+  }
+
+  // ─── Public wrapped versions ────────────────────────────────────────────
   public static generateOtp = AsyncHandler.wrap(Authentication._generateOtp);
   public static verifyOtp = AsyncHandler.wrap(Authentication._verifyOtp);
+  public static generateEmailOtp = AsyncHandler.wrap(Authentication._generateEmailOtp);
+  public static verifyEmailOtp = AsyncHandler.wrap(Authentication._verifyEmailOtp);
+  public static googleAuth = AsyncHandler.wrap(Authentication._googleAuth);
 }
 
 export default Authentication;

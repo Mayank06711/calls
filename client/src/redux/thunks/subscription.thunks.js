@@ -15,7 +15,7 @@ export const createSubscriptionThunk =
 
     try {
       dispatch(startLoader(createSubscription));
-      const validTypes = ["GOLD", "SILVER", "PLATINUM"];
+      const validTypes = ["Gold", "Silver", "Platinum"];
       if (!validTypes.includes(subscriptionData.type)) {
         dispatch(showNotification("Invalid subscription type", 400));
         return;
@@ -30,7 +30,7 @@ export const createSubscriptionThunk =
 
       const { data, error, statusCode } = await makeRequest(
         HTTP_METHODS.POST,
-        ENDPOINTS.SUBSCRIPTIONS.CREATE,
+        ENDPOINTS.SUBCRIPTIONS.CREATE_SUBSCRIPTION,
         requestBody
       );
 

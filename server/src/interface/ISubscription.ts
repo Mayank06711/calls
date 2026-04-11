@@ -19,19 +19,17 @@ export interface ISubscription extends Document, ISubscriptionMethods {
   startDate: Date;
   endDate: Date;
   amount: number;
+  creditsGranted: number;
   paymentStatus: PaymentStatus;
   paymentId?: string;
   transactionId?: string;
   paymentMethod?: string;
-  referralId?: mongoose.Types.ObjectId | string | Schema.Types.ObjectId; // Only store reference to referral
+  referralId?: mongoose.Types.ObjectId | string | Schema.Types.ObjectId;
   historyId?: mongoose.Types.ObjectId | string | Schema.Types.ObjectId;
   upgradedFrom?: IUpgradeHistory;
-  referralDiscount?: number;
-  extraValidityDays?: number;
+  referralBonusCredits?: number;
   createdAt: Date;
   updatedAt: Date;
-  durationInDays: number;
-  // Add only essential referral method
   applyReferralCode(referralCode: string): Promise<void>;
 }
 

@@ -2,9 +2,16 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
+// @ts-ignore -- xss-clean has no type definitions
+import xssClean from "xss-clean";
 import { rateLimit } from "express-rate-limit";
 import { Server as SocketIOServer } from "socket.io";
-import { createServer, Server as HTTPServer } from "http"; // Import Server type
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createServer as createHttpServer, Server as HTTPServer } from "http";
+import { createServer as createHttpsServer } from "https";
 import fs from "fs";
 import path from "path";
 import { SocketManager } from "./socket";
@@ -17,13 +24,28 @@ import authRouter from "./routes/authRoutes";
 import settingRoute from "./routes/settingRoutes";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import adminRouter from "./routes/adminRoutes";
+import sessionRouter from "./routes/sessionRoutes";
+import legalRouter from "./routes/legalRoutes";
+import chatRouter from "./routes/chaRoutes";
+import expertBlockRouter from "./routes/expertBlockRoutes";
+import expertTipRouter from "./routes/expertTipRoutes";
+import expertComplaintRouter from "./routes/expertComplaintRoutes";
+import expertApplicationRouter from "./routes/expertApplicationRoutes";
+import expertRouter from "./routes/expertRoutes";
+import historyRouter from "./routes/historyRoutes";
+import wardrobeRouter, { publicWardrobeRouter } from "./routes/wardrobeRoute";
+import { paymentRouter } from "./routes/paymentRoutes";
+import { webhookRouter } from "./routes/webhookRoutes";
+import creditRouter from "./routes/creditRoutes";
+import bookingRouter from "./routes/bookingRoutes";
+import catalogItemRouter from "./routes/catalogItemRoutes";
 import {
   connectDB,
   disconnectDB,
   configureCloudinary,
   checkHealth,
 } from "./db";
-import cronSchuduler from "./auto/cronJob";
+import cronSchuduler, { startStaleOrderCleanup, startBookingReminderCron } from "./auto/cronJob";
 
 
 class ServerManager {
@@ -38,8 +60,13 @@ class ServerManager {
       `https://${process.env.AWS_PUBLIC_IP}:3000`,
       "http://localhost:3000",
       "https://localhost:3000",
+      "http://192.168.31.125:3000",
+      "https://192.168.31.125:3000",
       "https://1e17-49-43-115-113.ngrok-free.app",
       "https://staging.d15sv24wr1qszx.amplifyapp.com",
+      "https://hesitatively-filiform-aleah.ngrok-free.dev",
+      "http://localhost:5174",
+      "https://kyf.admin.in",
     ],
     credentials: true, // Allows cookies and credentials to be sent with requests
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -61,20 +88,47 @@ class ServerManager {
 
   // Initialize middlewares
   private initializeMiddlewares() {
+    // Security headers (CSP, HSTS, X-XSS-Protection, etc.)
+    this.app.use(helmet());
     this.app.use(cors(ServerManager.CORS_OPTIONS));
     // this.app.set("trust proxy", 1);
+
+    // ── WEBHOOK ROUTES: must be mounted BEFORE express.json() ──
+    // Signature verification requires raw Buffer body.
+    // express.raw() is applied per-route inside webhookRouter itself,
+    // so we just mount the router here early before the global json parser.
+    this.app.use("/api/v1/webhooks", webhookRouter);
+
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     this.app.use(cookieParser());
+    // Prevent NoSQL injection (sanitizes req.body, req.query, req.params)
+    this.app.use(mongoSanitize());
+    // Prevent HTTP parameter pollution
+    this.app.use(hpp());
+    // Prevent XSS attacks (sanitizes user input)
+    this.app.use(xssClean());
     this.app.use(
       rateLimit({
-        windowMs: 10 * 60 * 1000, // 15 minutes
-        max: 1000, // limit each IP to 100 requests per windowMs
+        windowMs: 10 * 60 * 1000, // 10 minutes
+        max: 1000, // limit each IP to 1000 requests per windowMs
         message:
-          "Too many requests from this IP, please try again later after 15 mins.",
+          "Too many requests from this IP, please try again later after 10 mins.",
       })
     );
     this.app.use(Middleware.platformDetector);
+
+    // Request logger with timing
+    this.app.use((req, res, next) => {
+      const start = Date.now();
+      res.on("finish", () => {
+        const ms = Date.now() - start;
+        const status = res.statusCode;
+        const icon = status >= 500 ? "💥" : status >= 400 ? "⚠️" : status >= 300 ? "↩️" : "✅";
+        console.log(`\n${icon} ${req.method} ${req.originalUrl} → ${status} (${ms}ms)\n`);
+      });
+      next();
+    });
   }
   // initialize routes
   private initializeRoutes() {
@@ -84,6 +138,21 @@ class ServerManager {
     this.app.use("/api/v1/admins", adminRouter);
     this.app.use("/api/v1/feedback", feedBackRouter);
     this.app.use("/api/v1/subscriptions", subscriptionRoutes);
+    this.app.use("/api/v1/sessions", sessionRouter);
+    this.app.use("/api/v1/legal", legalRouter);
+    this.app.use("/api/v1/chat", chatRouter);
+    this.app.use("/api/v1/expert-blocks", expertBlockRouter);
+    this.app.use("/api/v1/tips", expertTipRouter);
+    this.app.use("/api/v1/complaints", expertComplaintRouter);
+    this.app.use("/api/v1/expert-applications", expertApplicationRouter);
+    this.app.use("/api/v1/expert", expertRouter);
+    this.app.use("/api/v1/history", historyRouter);
+    this.app.use("/api/v1/public", publicWardrobeRouter); // Public routes — no auth required
+    this.app.use("/api/v1/wardrobe", wardrobeRouter);
+    this.app.use("/api/v1/payments", paymentRouter);
+    this.app.use("/api/v1/credits", creditRouter);
+    this.app.use("/api/v1/bookings", bookingRouter);
+    this.app.use("/api/v1/item-catalog", catalogItemRouter);
     this.app.get(
       "/system/_status/health_check",
       async (req: Request, res: Response) => {
@@ -185,35 +254,91 @@ class ServerManager {
     console.log("Logs flushed.");
   }
   public async start() {
-    // Load SSL key and certificate
-    const key = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.key"),
-      "utf8"
-    );
-    const cert = fs.readFileSync(
-      path.join(__dirname, "../certs/cert.crt"),
-      "utf8"
-    );
-    //  HTTPS server with key and cert and for that createServer must be imported from https not http
-    this.server = createServer(
-      // {
-      //   key: key,
-      //   cert: cert,
-      // },
-      this.app
-    );
+    const useHttps = process.env.USE_HTTPS === "true";
+    const Port = process.env.PORT || 5005;
+
+    if (useHttps) {
+      const key = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.key"),
+        "utf8"
+      );
+      const cert = fs.readFileSync(
+        path.join(__dirname, "../certs/cert.crt"),
+        "utf8"
+      );
+      this.server = createHttpsServer({ key, cert }, this.app) as unknown as HTTPServer;
+    } else {
+      this.server = createHttpServer(this.app);
+    }
+
     // Socket.io for real-time communication
+    //
+    // maxHttpBufferSize: 10MB
+    // ─────────────────────────────────────────────────────────────────────
+    // Why 10MB: Reel uploads allow up to 8MB files. Base64 encoding adds
+    // ~33% overhead (8MB → ~10.7MB), so 10MB covers the largest payload.
+    // Avatars (5MB) and chat media (5MB) are well within this limit.
+    //
+    // DDoS / resource exhaustion risk:
+    // Socket.IO allocates this buffer PER CONNECTION at the transport layer
+    // BEFORE any application-level authentication runs. A malicious client
+    // could open many connections and send large payloads to exhaust server
+    // memory without ever authenticating.
+    //
+    // Mitigations in place:
+    // 1. Authentication is required for all socket events — unauthenticated
+    //    sockets cannot trigger file uploads or any business logic.
+    // 2. Sockets that do not authenticate within 2 minutes are forcibly
+    //    disconnected (see socket.ts auth timeout).
+    // 3. Rate limiting is applied to upload events.
+    //
+    // If the reel size limit is increased later, this value must be updated
+    // accordingly (new_limit * 1.34 to account for base64 overhead).
+    // ─────────────────────────────────────────────────────────────────────
     this.io = new SocketIOServer(this.server, {
       cors: ServerManager.CORS_OPTIONS,
+      maxHttpBufferSize: 10 * 1024 * 1024, // 10MB — see comment above
     });
-    const Port = process.env.PORT || 5005;
+
     try {
       await connectDB();
+
+      // Index migration: drop stale 2-field unique index on newmsgs if it exists.
+      // The correct index is the 3-field { sender, receiver, bookingId } compound unique.
+      try {
+        const mongoose = (await import("mongoose")).default;
+        const coll = mongoose.connection.db!.collection("newmsgs");
+        const indexes = await coll.indexes();
+        const stale = indexes.find(
+          (i: any) => i.name === "sender_1_receiver_1" && i.unique
+        );
+        if (stale) {
+          await coll.dropIndex("sender_1_receiver_1");
+          console.log("[Migration] Dropped stale sender_1_receiver_1 unique index on newmsgs");
+        }
+      } catch (migErr: any) {
+        // Non-fatal — log and continue
+        if (migErr.codeName !== "IndexNotFound") {
+          console.warn("[Migration] Index migration warning:", migErr.message);
+        }
+      }
+
       await RedisManager.initRedisConnection();
+
+      // Socket.IO Redis adapter: enables multi-instance socket coordination
+      const { pubClient, subClient } = RedisManager.createSocketIOAdapterClients();
+      await Promise.all([
+        new Promise<void>((res) => pubClient.once("ready", res)),
+        new Promise<void>((res) => subClient.once("ready", res)),
+      ]);
+      this.io.adapter(createAdapter(pubClient, subClient));
+      console.log("Socket.IO Redis adapter initialized");
+
       await new Promise<void>((resolve) => {
         this.server.listen(Port, () => {
           this.socketManager = SocketManager.getInstance(this.io);
-          console.log(`Server is running on http://localhost:${Port}`);
+          const protocol = useHttps ? "https" : "http";
+          console.log(`Server is running on ${protocol}://localhost:${Port}`);
           resolve();
         });
       });
@@ -240,4 +365,7 @@ class ServerManager {
 }
 
 const serverManager = new ServerManager();
-serverManager.start();
+serverManager.start().then(() => {
+  startStaleOrderCleanup();
+  startBookingReminderCron();
+});

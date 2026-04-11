@@ -1,0 +1,31 @@
+# Core API
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.12.5
+pydantic-settings==2.1.0
+
+# Image processing
+pillow>=10.1.0
+numpy>=1.26.2
+opencv-python-headless>=4.8.1.78
+# scikit-image removed — not imported anywhere in production code
+
+# Background removal (rembg + its deps)
+rembg>=2.0.55
+onnxruntime>=1.17.0
+
+# Color extraction
+colorthief==0.2.1
+
+# Cloud
+cloudinary==1.36.0
+requests>=2.31.0
+
+# Style DNA (mediapipe for face/body detection)
+mediapipe>=0.10.9
+
+# Utilities
+python-dotenv==1.0.0
+psutil>=5.9.0
+tqdm>=4.66.0

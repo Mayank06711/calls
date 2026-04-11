@@ -1,87 +1,103 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-// Feedback Type
+// Service interface — tracks expert-user consultation calls for billing/ratings
 interface Service extends Document {
   user: mongoose.Types.ObjectId; // Reference to User model
-  expert?: mongoose.Types.ObjectId; // Reference to /
-  duration: TimeRanges; //durtion of the service
-  amount: number;   //total amount of the service
-  references:[string];  // reference of items if procided by expert
-  chat:[mongoose.Types.ObjectId];  //chats happended between user and expert during call
-  message: string;
-  resolved: boolean;
-  forcedEnd : boolean;
-  type: string; // e.g., "bug", "feature", "other"
-  userRating: number; // rating of user by expert
-  exepertRating: number; // rating of expret by user 
+  expert?: mongoose.Types.ObjectId; // Reference to Expert model
+  callId?: mongoose.Types.ObjectId; // Reference to the Call document (P2P video call)
+  duration: number; // duration of the service in seconds
+  amount: number; // total amount of the service
+  references: [string]; // reference of items if provided by expert
+  chat: [mongoose.Types.ObjectId]; // chats happened between user and expert during call
+  message?: string; // optional — filled post-call
+  resolved?: boolean;
+  forcedEnd: boolean;
+  type: string; // e.g., "bug", "feature", "expert"
+  userRating?: number; // rating of user by expert — filled post-call
+  expertRating?: number; // rating of expert by user — filled post-call
 }
 
-//Feedback Schema
+// Service Schema
 const ServiceSchema: Schema = new Schema<Service>(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to the User model
+      ref: "User",
       required: true,
     },
     expert: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Expert", // Reference to the User model
-      },
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Expert",
+    },
+    callId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Call",
+    },
     duration: {
-        type: TimeRanges,
-        required: true,
-    },
-    amount: {
-        type: Number,
-        required: true,
-    },
-    chat :{
-        type: [mongoose.Schema.Types.ObjectId],
-        ref: "Chat", // Reference to the Chat model
-    },
-    message: {
-      type: String,
+      type: Number, // seconds
       required: true,
     },
-    forcedEnd :{
-        type: Boolean,
-        required: true,
+    amount: {
+      type: Number,
+      required: true,
+    },
+    chat: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Chat",
+    },
+    message: {
+      type: String, // optional — user can add post-call
+    },
+    forcedEnd: {
+      type: Boolean,
+      default: false,
     },
     userRating: {
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5,
+      type: Number,
+      min: 1,
+      max: 5,
     },
-    exepertRating:{
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5,
+    expertRating: {
+      type: Number,
+      min: 1,
+      max: 5,
+    },
+    resolved: {
+      type: Boolean,
     },
     type: {
       type: String,
       required: true,
-      enum: ["bug", "feature", "expert"], // Define allowed types
+      enum: ["bug", "feature", "expert"],
     },
   },
   {
-    timestamps: true, // Automatically manage createdAt and updatedAt fields
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.serviceId = ret._id;
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.serviceId = ret._id;
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
-// Middleware to count feedback by type
-ServiceSchema.pre("find", async function (next) {
-  const count = await this.model.countDocuments({ type: this.getQuery().type });
-  this.setQuery({ ...this.getQuery(), count }); // Add count to the query result
-  next();
-});
+// Index for querying services by user or expert
+ServiceSchema.index({ user: 1, createdAt: -1 });
+ServiceSchema.index({ expert: 1, createdAt: -1 });
+ServiceSchema.index({ callId: 1 });
 
-
-// const feedbacks = await Feedback.find({ type: 'bug' });
-// console.log(feedbacks[0]?.count); // Access count if available
-
-// Create and export the Feedback model
-const Feedback = mongoose.model<Service>("Service", ServiceSchema);
-export default Feedback;
+const ServiceModel = mongoose.model<Service>("Service", ServiceSchema);
+export { ServiceModel };

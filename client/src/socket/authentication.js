@@ -8,8 +8,8 @@ import { SOCKET_CONSTANTS } from "../constants/socketContanst";
 import { socketAuthenticated, socketConnected } from "../redux/actions/socket.actions";
 import store from "../redux/store";
 import { showNotification } from "../redux/actions/notification.actions";
-import { makeRequest } from "../utils/apiHandlers";
-import { ENDPOINTS, HTTP_METHODS } from "../constants/apiEndpoints";
+import { tokenRefreshManager } from "../utils/TokenRefreshManager";
+import { getAccessToken, setAccessToken, clearAuthData } from "../utils/tokenManager";
 
 // Waits for the socket to fully disconnect before proceeding
 const waitForSocketDisconnect = (socket) => {
@@ -28,10 +28,10 @@ const authenticateSocket = async () => {
   try {
     const socket = SocketManager.getSocket(false, true);
     SocketManager.isAuthenticating = true;
-    console.log("[authenticateSocket] Emitting AUTHENTICATE event with token:", localStorage.getItem("token"));
+    console.log("[authenticateSocket] Emitting AUTHENTICATE event with token:", getAccessToken());
     const response = await emitEvent(socket, {
       event: SOCKET_CONSTANTS.AUTH.AUTHENTICATE,
-      data: () => ({ accessToken: localStorage.getItem("token") }),
+      data: () => ({ accessToken: getAccessToken() }),
       timeout: 30000,
       retryOptions: {
         maxRetries: 3,
@@ -61,20 +61,26 @@ const authenticateSocket = async () => {
         },
         onError: async (error) => {
           if (error && error.response && error.response.errorType === "token_expired") {
-            // Token expired, try to refresh
-            const { data, statusCode } = await makeRequest(
-              HTTP_METHODS.POST,
-              ENDPOINTS.AUTH.REFRESH_TOKEN
-            );
-            const newToken = data?.data?.token || data?.token;
-            if (statusCode === 200 && newToken) {
-              localStorage.setItem("token", newToken);
-              // Throw special error to break retry loop and signal re-auth
-              throw Object.assign(new Error("SOCKET_REAUTHENTICATE"), { code: "SOCKET_REAUTHENTICATE" });
-            } else {
-              localStorage.removeItem("token");
-              localStorage.removeItem("userId");
-              store.dispatch(showNotification("Session expired. Please log in again.", "error"));
+            // Token expired — use the singleton TokenRefreshManager to avoid
+            // race conditions with concurrent refresh requests
+            try {
+              const newToken = await tokenRefreshManager.refreshAccessToken();
+              if (newToken) {
+                setAccessToken(newToken);
+                throw Object.assign(new Error("SOCKET_REAUTHENTICATE"), { code: "SOCKET_REAUTHENTICATE" });
+              } else {
+                clearAuthData();
+                store.dispatch(showNotification("Session expired. Please log in again.", "error"));
+              }
+            } catch (refreshError) {
+              if (refreshError.code === "SOCKET_REAUTHENTICATE") throw refreshError;
+              // Network errors — don't clear auth, session may still be valid
+              if (tokenRefreshManager._isNetworkError(refreshError)) {
+                store.dispatch(showNotification("Server is unreachable. Please check your connection.", "error"));
+              } else {
+                clearAuthData();
+                store.dispatch(showNotification("Session expired. Please log in again.", "error"));
+              }
             }
           } else {
             store.dispatch(showNotification("Real-time services limited", "error"));
@@ -121,7 +127,7 @@ const ensureSocketAuthenticated = async () => {
     }
     throw new Error("Timed out waiting for authentication to complete");
   }
-  const token = localStorage.getItem("token");
+  const token = getAccessToken();
   if (!token) {
     SocketManager.isAuthenticating = false;
     throw new Error("No authentication token found");

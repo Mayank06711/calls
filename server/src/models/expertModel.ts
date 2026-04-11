@@ -2,15 +2,29 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // Define the Expert interface extending Document
 interface IExpert extends Document {
-  user: mongoose.Schema.Types.ObjectId; // Link to User model
+  user: mongoose.Schema.Types.ObjectId;
   experienceInYears: number;
   bonus: number;
   totalCustomersHandled: number;
   degree: {
-    key: string; // Degree Key (name of the degree)
-    isVerified: boolean; // Degree verification status
+    key: string;
+    isVerified: boolean;
   };
-  qualification: string; // Qualification of the expert
+  qualification: string;
+  bio?: string;
+  specializations?: string[];
+  portfolioUrls?: string[];
+  socialLinks?: {
+    instagram?: string;
+    linkedin?: string;
+    website?: string;
+  };
+  pricing?: {
+    per15Min: number;
+    per30Min: number;
+    per60Min: number;
+    currency: string;
+  };
 }
 
 // Define the Expert Schema
@@ -48,8 +62,29 @@ const ExpertSchema: Schema<IExpert> = new Schema(
       type: String,
       required: true,
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    specializations: [{ type: String }],
+    portfolioUrls: {
+      type: [String],
+      validate: [(v: string[]) => v.length <= 5, "Maximum 5 portfolio items"],
+    },
+    socialLinks: {
+      instagram: { type: String, trim: true },
+      linkedin: { type: String, trim: true },
+      website: { type: String, trim: true },
+    },
+    pricing: {
+      per15Min: { type: Number, default: 0, min: 0 },
+      per30Min: { type: Number, default: 0, min: 0 },
+      per60Min: { type: Number, default: 0, min: 0 },
+      currency: { type: String, default: "credits" },
+    },
   },
-  { timestamps: true } // Automatically add createdAt and updatedAt timestamps
+  { timestamps: true }
 );
 
 // Create the Expert model

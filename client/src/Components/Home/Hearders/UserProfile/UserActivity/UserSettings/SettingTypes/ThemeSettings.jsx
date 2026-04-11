@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  ColorLensOutlined, 
-  Check, 
+import { useNavigate } from 'react-router-dom';
+import {
+  ColorLensOutlined,
+  Check,
   TextFields,
   FormatSize,
   Palette,
@@ -11,10 +12,15 @@ import {
   Computer,
   SaveOutlined,
   Add,
-  Close
+  Close,
+  Lock
 } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
 import SettingTemplate from '../SettingTemplate';
+import { useSubscriptionColors } from '../../../../../../../utils/getSubscriptionColors';
+import { fetchStyleOptionsThunk, fetchSettingsThunk, updateThemeSettings } from '../../../../../../../redux/thunks/settings.thunk';
+import { setThemeMode, setPrimaryColor, setFontSize, addCustomFont, removeCustomFont } from '../../../../../../../redux/actions';
+import { useAIContext } from '../../../../../../../context/AIContext';
 
 // Predefined color options
 const colorOptions = [
@@ -29,30 +35,64 @@ const colorOptions = [
 ];
 
 function ThemeSettings() {
+  const colors = useSubscriptionColors();
   const dispatch = useDispatch();
-  const { 
-    theme, 
-    loading, 
-    error, 
-    saveInProgress, 
-    saveError,
-    dirtyFields 
+  const navigate = useNavigate();
+  const {
+    styleOptions,
+    data,
+    pendingChanges,
+    loading,
+    error,
+    saveInProgress = false,
+    saveError = null,
+    dirtyFields = []
   } = useSelector(state => state.settings);
-  
+  const isExpert = useSelector(state => state.auth.userInfo?.isExpert);
+
+  // Get theme from pending changes first, then data, then defaults
+  const theme = pendingChanges?.theme || data?.theme || {
+    mode: 'system',
+    primaryColor: '#059212',
+    fontSize: 'medium',
+    customFonts: []
+  };
+
   const [customColor, setCustomColor] = useState('');
   const [newFont, setNewFont] = useState('');
   const [activeTab, setActiveTab] = useState('appearance');
-  
-  // Fetch theme settings when component mounts
+
+  const hasAccess = styleOptions?.hasAccess;
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  // AI context for theme settings
   useEffect(() => {
-    dispatch(fetchThemeSettingsThunk());
+    const colorName = colorOptions.find(c => c.value === theme.primaryColor)?.name || theme.primaryColor;
+    const summary = `User is configuring theme settings. ${hasAccess ? `Display mode: ${theme.mode}, Primary color: ${colorName} (${theme.primaryColor}), Font size: ${theme.fontSize}, Custom fonts: ${theme.customFonts?.length || 0}.${dirtyFields?.length > 0 ? " Has unsaved changes." : ""}` : `Theme settings are locked (requires premium subscription).${isExpert ? " User is an expert — settings not available for expert accounts." : ""}`}`;
+    setAIPageContext({ page: "settings/theme", description: summary });
+    return () => clearAIPageContext();
+  }, [theme, hasAccess, isExpert, dirtyFields, setAIPageContext, clearAIPageContext]);
+
+  // Fetch settings and style options when component mounts
+  useEffect(() => {
+    dispatch(fetchStyleOptionsThunk());
+    dispatch(fetchSettingsThunk());
   }, [dispatch]);
-  
-  // Apply theme mode to document for preview
+
+  // Apply theme mode to document for preview — only when user has access
   useEffect(() => {
+    // Don't modify document theme for users without access (Free tier).
+    // Applying the default 'system' mode can switch to dark and break the page.
+    if (!hasAccess) return;
+
+    const rootElement = document.documentElement;
+    // Save current state so we can restore on unmount
+    const prevHadDark = rootElement.classList.contains('dark');
+    const prevHadLight = rootElement.classList.contains('light');
+    const prevPrimaryColor = rootElement.style.getPropertyValue('--primary-color');
+    const prevFontSize = rootElement.style.getPropertyValue('--base-font-size');
+
     const applyThemeToDocument = () => {
-      const rootElement = document.documentElement;
-      
       if (theme.mode === 'dark') {
         rootElement.classList.add('dark');
         rootElement.classList.remove('light');
@@ -70,65 +110,91 @@ function ThemeSettings() {
           rootElement.classList.remove('dark');
         }
       }
-      
+
       // Apply primary color as CSS variable
       if (theme.primaryColor) {
         rootElement.style.setProperty('--primary-color', theme.primaryColor);
       }
-      
+
       // Apply font size
       const fontSizeValues = {
         small: '0.875rem',
         medium: '1rem',
         large: '1.125rem'
       };
-      
+
       rootElement.style.setProperty('--base-font-size', fontSizeValues[theme.fontSize] || '1rem');
     };
-    
+
     applyThemeToDocument();
-  }, [theme]);
-  
+
+    // Restore previous state when leaving the settings page
+    return () => {
+      if (prevHadDark) {
+        rootElement.classList.add('dark');
+        rootElement.classList.remove('light');
+      } else if (prevHadLight) {
+        rootElement.classList.add('light');
+        rootElement.classList.remove('dark');
+      }
+      if (prevPrimaryColor) rootElement.style.setProperty('--primary-color', prevPrimaryColor);
+      if (prevFontSize) rootElement.style.setProperty('--base-font-size', prevFontSize);
+    };
+  }, [theme, hasAccess]);
+
   const handleModeChange = (mode) => {
+    if (!hasAccess) return;
     dispatch(setThemeMode(mode));
   };
-  
+
   const handleColorSelect = (color) => {
+    if (!hasAccess) return;
     dispatch(setPrimaryColor(color));
   };
-  
+
   const handleFontSizeChange = (size) => {
+    if (!hasAccess) return;
     dispatch(setFontSize(size));
   };
-  
+
   const handleCustomColorChange = (e) => {
+    if (!hasAccess) return;
     setCustomColor(e.target.value);
   };
-  
+
   const applyCustomColor = () => {
+    if (!hasAccess) return;
     if (customColor && /^#([0-9A-F]{3}){1,2}$/i.test(customColor)) {
       dispatch(setPrimaryColor(customColor));
       setCustomColor('');
     }
   };
-  
+
   const handleAddCustomFont = () => {
+    if (!hasAccess) return;
     if (newFont.trim()) {
       dispatch(addCustomFont(newFont.trim()));
       setNewFont('');
     }
   };
-  
+
   const handleRemoveFont = (font) => {
+    if (!hasAccess) return;
     dispatch(removeCustomFont(font));
   };
-  
+
   const handleSaveChanges = () => {
-    dispatch(updateThemeSettingsThunk(theme));
+    if (!hasAccess) return;
+    const themeToSave = pendingChanges?.theme || data?.theme;
+    dispatch(updateThemeSettings(themeToSave));
   };
-  
-  const hasChanges = dirtyFields.length > 0;
-  
+
+  const handleUpgradeClick = () => {
+    navigate('/subscriptions');
+  };
+
+  const hasChanges = dirtyFields?.length > 0;
+
   if (loading) {
     return (
       <SettingTemplate title="Theme Settings" icon={<ColorLensOutlined />}>
@@ -138,14 +204,14 @@ function ThemeSettings() {
       </SettingTemplate>
     );
   }
-  
+
   if (error) {
     return (
       <SettingTemplate title="Theme Settings" icon={<ColorLensOutlined />}>
         <div className="p-4 bg-red-100 text-red-700 rounded-md">
           <p>Error loading theme settings: {error}</p>
-          <button 
-            onClick={() => dispatch(fetchThemeSettingsThunk())}
+          <button
+            onClick={() => { dispatch(fetchStyleOptionsThunk()); dispatch(fetchSettingsThunk()); }}
             className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
           >
             Retry
@@ -154,15 +220,41 @@ function ThemeSettings() {
       </SettingTemplate>
     );
   }
-  
+
   return (
     <SettingTemplate title="Theme Settings" icon={<ColorLensOutlined />}>
       <div className="pb-20 relative">
+
+        {/* Premium Feature Notice */}
+        {!hasAccess && !styleOptions?.loading && (
+          <div className={`mb-6 p-4 rounded-lg ${isExpert ? 'bg-gradient-to-r from-gray-500/10 to-gray-600/10 border border-gray-500/30' : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Lock className={isExpert ? "text-gray-500" : "text-amber-500"} fontSize="small" />
+              <span className={`font-semibold ${isExpert ? 'text-gray-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {isExpert ? "Not Available" : "Premium Feature"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+              {isExpert
+                ? "Settings are not available for expert accounts. Please contact an admin if you need this functionality."
+                : <>Theme customization is available for <strong>Gold</strong> and <strong>Platinum</strong> subscribers.</>}
+            </p>
+            {!isExpert && (
+              <button
+                onClick={handleUpgradeClick}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:from-amber-600 hover:to-orange-600 transition-all"
+              >
+                Upgrade Now
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Settings tabs */}
         <div className="mb-6 flex border-b border-gray-200 dark:border-gray-700">
           <button
-            className={`px-4 py-2 relative ${activeTab === 'appearance' 
-              ? 'text-primary-600 dark:text-primary-400 font-medium' 
+            className={`px-4 py-2 relative ${activeTab === 'appearance'
+              ? 'text-primary-600 dark:text-primary-400 font-medium'
               : 'text-gray-600 dark:text-gray-300'
             }`}
             onClick={() => setActiveTab('appearance')}
@@ -173,8 +265,8 @@ function ThemeSettings() {
             )}
           </button>
           <button
-            className={`px-4 py-2 relative ${activeTab === 'typography' 
-              ? 'text-primary-600 dark:text-primary-400 font-medium' 
+            className={`px-4 py-2 relative ${activeTab === 'typography'
+              ? 'text-primary-600 dark:text-primary-400 font-medium'
               : 'text-gray-600 dark:text-gray-300'
             }`}
             onClick={() => setActiveTab('typography')}
@@ -188,20 +280,20 @@ function ThemeSettings() {
 
         {/* Appearance settings */}
         {activeTab === 'appearance' && (
-          <div className="space-y-8">
+          <div className={`space-y-8 ${!hasAccess ? 'opacity-50 pointer-events-none' : ''}`}>
             {/* Theme mode */}
             <div>
               <h3 className="text-lg font-medium mb-4 flex items-center">
-                <DarkMode className="mr-2" /> 
+                <DarkMode className="mr-2" />
                 Display Mode
               </h3>
               <div className="grid grid-cols-3 gap-4">
-                <div 
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.mode === 'light' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.mode === 'light'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleModeChange('light')}
                 >
                   <div className="flex flex-col items-center">
@@ -214,13 +306,13 @@ function ThemeSettings() {
                     )}
                   </div>
                 </div>
-                
-                <div 
+
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.mode === 'dark' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.mode === 'dark'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleModeChange('dark')}
                 >
                   <div className="flex flex-col items-center">
@@ -233,13 +325,13 @@ function ThemeSettings() {
                     )}
                   </div>
                 </div>
-                
-                <div 
+
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.mode === 'system' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.mode === 'system'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleModeChange('system')}
                 >
                   <div className="flex flex-col items-center">
@@ -254,19 +346,20 @@ function ThemeSettings() {
                 </div>
               </div>
             </div>
-            
+
             {/* Color theme */}
             <div>
               <h3 className="text-lg font-medium mb-4 flex items-center">
-                <Palette className="mr-2" /> 
+                <Palette className="mr-2" />
                 Primary Color
               </h3>
               <div className="grid grid-cols-4 gap-4 mb-4 md:grid-cols-8">
                 {colorOptions.map((option) => (
-                  <div 
+                  <div
                     key={option.value}
                     className={`relative rounded-full w-12 h-12 cursor-pointer transition-transform hover:scale-110
                       ${theme.primaryColor === option.value ? 'ring-4 ring-offset-2 ring-gray-300 scale-110' : ''}
+                      ${!hasAccess ? 'cursor-not-allowed' : ''}
                     `}
                     style={{ backgroundColor: option.value }}
                     onClick={() => handleColorSelect(option.value)}
@@ -280,7 +373,7 @@ function ThemeSettings() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex mt-2">
                 <div className="flex-1 relative">
                   <input
@@ -288,10 +381,11 @@ function ThemeSettings() {
                     value={customColor}
                     onChange={handleCustomColorChange}
                     placeholder="#HEX Color"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    disabled={!hasAccess}
+                    className={`w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   />
                   {customColor && (
-                    <div 
+                    <div
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full border border-gray-300"
                       style={{ backgroundColor: customColor }}
                     ></div>
@@ -299,8 +393,8 @@ function ThemeSettings() {
                 </div>
                 <button
                   onClick={applyCustomColor}
-                  className="px-4 py-2 bg-primary-500 text-white rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-                  disabled={!customColor || !/^#([0-9A-F]{3}){1,2}$/i.test(customColor)}
+                  className={`px-4 py-2 bg-primary-500 text-white rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 ${!hasAccess ? 'cursor-not-allowed' : ''}`}
+                  disabled={!hasAccess || !customColor || !/^#([0-9A-F]{3}){1,2}$/i.test(customColor)}
                 >
                   Apply
                 </button>
@@ -309,22 +403,22 @@ function ThemeSettings() {
           </div>
         )}
 
-               {/* Typography settings */}
-               {activeTab === 'typography' && (
-          <div className="space-y-8">
+        {/* Typography settings */}
+        {activeTab === 'typography' && (
+          <div className={`space-y-8 ${!hasAccess ? 'opacity-50 pointer-events-none' : ''}`}>
             {/* Font size */}
             <div>
               <h3 className="text-lg font-medium mb-4 flex items-center">
-                <FormatSize className="mr-2" /> 
+                <FormatSize className="mr-2" />
                 Font Size
               </h3>
               <div className="grid grid-cols-3 gap-4">
-                <div 
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.fontSize === 'small' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.fontSize === 'small'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleFontSizeChange('small')}
                 >
                   <div className="flex flex-col items-center">
@@ -337,13 +431,13 @@ function ThemeSettings() {
                     )}
                   </div>
                 </div>
-                
-                <div 
+
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.fontSize === 'medium' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.fontSize === 'medium'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleFontSizeChange('medium')}
                 >
                   <div className="flex flex-col items-center">
@@ -356,13 +450,13 @@ function ThemeSettings() {
                     )}
                   </div>
                 </div>
-                
-                <div 
+
+                <div
                   className={`p-4 rounded-lg cursor-pointer transition-all
-                    ${theme.fontSize === 'large' 
-                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg' 
+                    ${theme.fontSize === 'large'
+                      ? 'ring-2 ring-primary-500 bg-white dark:bg-gray-100 shadow-lg'
                       : 'bg-gray-100 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700'
-                    }`}
+                    } ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   onClick={() => handleFontSizeChange('large')}
                 >
                   <div className="flex flex-col items-center">
@@ -377,14 +471,14 @@ function ThemeSettings() {
                 </div>
               </div>
             </div>
-            
+
             {/* Custom Fonts */}
             <div>
               <h3 className="text-lg font-medium mb-4 flex items-center">
-                <TextFields className="mr-2" /> 
+                <TextFields className="mr-2" />
                 Custom Fonts
               </h3>
-              
+
               <div className="mb-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                   Add custom fonts to use in the application. These fonts need to be installed on your system.
@@ -393,32 +487,34 @@ function ThemeSettings() {
                   <input
                     type="text"
                     value={newFont}
-                    onChange={(e) => setNewFont(e.target.value)}
+                    onChange={(e) => { if (!hasAccess) return; setNewFont(e.target.value); }}
                     placeholder="Enter font name (e.g., Roboto, Arial)"
-                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    disabled={!hasAccess}
+                    className={`flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   />
                   <button
                     onClick={handleAddCustomFont}
-                    disabled={!newFont.trim()}
-                    className="px-4 py-2 bg-primary-500 text-white rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 flex items-center"
+                    disabled={!hasAccess || !newFont.trim()}
+                    className={`px-4 py-2 bg-primary-500 text-white rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 flex items-center ${!hasAccess ? 'cursor-not-allowed' : ''}`}
                   >
                     <Add fontSize="small" className="mr-1" /> Add
                   </button>
                 </div>
               </div>
-              
+
               {/* Custom font list */}
               {theme.customFonts && theme.customFonts.length > 0 ? (
                 <div className="space-y-2">
                   {theme.customFonts.map((font) => (
-                    <div 
+                    <div
                       key={font}
                       className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-md"
                     >
                       <span style={{ fontFamily: font }}>{font}</span>
                       <button
                         onClick={() => handleRemoveFont(font)}
-                        className="p-1 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                        disabled={!hasAccess}
+                        className={`p-1 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ${!hasAccess ? 'cursor-not-allowed opacity-50' : ''}`}
                       >
                         <Close fontSize="small" />
                       </button>
@@ -433,7 +529,7 @@ function ThemeSettings() {
             </div>
           </div>
         )}
-        
+
         {/* Save button */}
         <div className="fixed bottom-4 right-4 left-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div>
@@ -450,8 +546,8 @@ function ThemeSettings() {
           </div>
           <button
             onClick={handleSaveChanges}
-            disabled={!hasChanges || saveInProgress}
-            className="px-6 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 flex items-center"
+            disabled={!hasAccess || !hasChanges || saveInProgress}
+            className={`px-6 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 flex items-center ${!hasAccess ? 'cursor-not-allowed' : ''}`}
           >
             {saveInProgress ? (
               <CircularProgress size={20} color="inherit" className="mr-2" />

@@ -44,7 +44,7 @@ class AuthServices {
   private static getKey(salt: Buffer): Buffer {
     return crypto.pbkdf2Sync(
       process.env.ENCRYPTION_SECRET!,
-      salt,
+      new Uint8Array(salt),
       AuthServices.ENCYRPTION.iterations, // iterations
       AuthServices.ENCYRPTION.keyLength, // key length
       "sha512"
@@ -58,19 +58,24 @@ class AuthServices {
 
     const cipher = crypto.createCipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
 
     const encrypted = Buffer.concat([
-      cipher.update(text, "utf8"),
-      cipher.final(),
+      cipher.update(text, "utf8") as unknown as Uint8Array,
+      cipher.final() as unknown as Uint8Array,
     ]);
 
     const tag = cipher.getAuthTag();
 
     // Combine all components: salt + iv + tag + encrypted
-    const result = Buffer.concat([salt, iv, tag, encrypted]);
+    const result = Buffer.concat([
+      new Uint8Array(salt),
+      new Uint8Array(iv),
+      new Uint8Array(tag),
+      new Uint8Array(encrypted),
+    ]);
 
     return result.toString("base64");
   }
@@ -99,14 +104,14 @@ class AuthServices {
 
     const decipher = crypto.createDecipheriv(
       AuthServices.ENCYRPTION.algorithm,
-      key,
-      iv
+      new Uint8Array(key),
+      new Uint8Array(iv)
     );
-    decipher.setAuthTag(tag);
+    decipher.setAuthTag(new Uint8Array(tag));
 
     const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
+      decipher.update(new Uint8Array(encrypted)) as unknown as Uint8Array,
+      decipher.final() as unknown as Uint8Array,
     ]);
     return decrypted.toString("utf8");
   }
@@ -185,16 +190,124 @@ class AuthServices {
         );
       }
 
-      // Ensure the incoming refresh token matches the one stored in the user's document
-      if (incomingRefreshToken !== user.refreshToken) {
-        throw new ApiError(401, "Refresh token is expired login again");
+      // Verify refresh token against the session (per-session token rotation)
+      const sessionId = decodedToken.sessionId;
+      const subscriptionId = decodedToken.subscriptionId;
+      const subscriptionType = decodedToken.subscriptionType;
+
+      if (!sessionId) {
+        throw new ApiError(401, "Invalid refresh token: no session ID");
+      }
+      
+      const { SessionModel } = await import("../models/sessionModel");
+
+      const session = await SessionModel.findOne({
+        refreshTokenId: sessionId,
+        userId: user._id,
+      });
+
+      if (!session) {
+        throw new ApiError(401, "Session not found");
       }
 
-      // Generate new access and refresh tokens
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
-      user.refreshToken = refreshToken;
-      await user.save({ validateBeforeSave: false });
+      if (!session.isActive) {
+        throw new ApiError(401, "Session inactive");
+      }
+
+      if (session.revokedAt) {
+        throw new ApiError(401, "Session revoked");
+      }
+
+      if (session.expiresAt <= new Date()) {
+        throw new ApiError(401, "Session expired");
+      }
+      // Check incoming token against current AND previous (grace period for rotation)
+      const isCurrentToken = incomingRefreshToken === session.refreshToken;
+      const GRACE_PERIOD_MS = 30_000; // 30 seconds
+      const isOldTokenInGrace =
+        !isCurrentToken &&
+        session.previousRefreshToken &&
+        incomingRefreshToken === session.previousRefreshToken &&
+        session.tokenRotatedAt &&
+        (Date.now() - new Date(session.tokenRotatedAt).getTime()) < GRACE_PERIOD_MS;
+
+      if (!isCurrentToken && !isOldTokenInGrace) {
+        throw new ApiError(401, "Refresh token is expired or revoked");
+      }
+
+      // Always generate a fresh access token
+      const accessToken = user.generateAccessToken(
+        sessionId,
+        subscriptionId,
+        subscriptionType
+      );
+
+      // Session maintenance on token refresh
+      const userId = decodedToken._id.toString();
+
+      // 1. Restore session in Redis if it was lost (e.g. Redis restart/flush)
+      const isRedisActive = await RedisManager.isSessionActive(userId, sessionId);
+      if (!isRedisActive) {
+         // Extract device info from request
+        const userAgent = req.headers["user-agent"] || "";
+
+        const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+
+        await RedisManager.addActiveSession(userId, sessionId, {
+            device: userAgent.substring(0, 100),
+            deviceType: req.isMobileApp ? "mobile" : "desktop",
+            platform: userAgent.includes("Windows")
+              ? "windows"
+              : userAgent.includes("Mac")
+              ? "macos"
+              : userAgent.includes("Linux")
+              ? "linux"
+              : userAgent.includes("Android")
+              ? "android"
+              : userAgent.includes("iPhone")
+              ? "ios"
+              : "unknown",
+            browser: userAgent.includes("Chrome")
+              ? "chrome"
+              : userAgent.includes("Firefox")
+              ? "firefox"
+              : userAgent.includes("Safari")
+              ? "safari"
+              : userAgent.includes("Edge")
+              ? "edge"
+              : "unknown",
+            ip,
+          });
+        console.log(`[Auth] Session ${sessionId} restored in Redis after refresh`);
+      }
+
+      // 2. Extend expiresAt (sliding window) + rotate refresh token
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 15);
+
+      let refreshToken: string;
+      if (isCurrentToken) {
+        // Normal rotation — generate new refresh token, keep old as grace fallback
+        refreshToken = user.generateRefreshToken(sessionId, subscriptionId, subscriptionType);
+        await SessionModel.updateOne(
+          { _id: session._id },
+          { $set: {
+            previousRefreshToken: session.refreshToken,
+            tokenRotatedAt: new Date(),
+            refreshToken,
+            expiresAt: newExpiresAt,
+            lastActiveAt: new Date(),
+          } }
+        );
+      } else {
+        // Old token within grace period — return current token, don't rotate again
+        refreshToken = session.refreshToken;
+        await SessionModel.updateOne(
+          { _id: session._id },
+          { $set: { expiresAt: newExpiresAt, lastActiveAt: new Date() } }
+        );
+        console.log(`[Auth] Grace period used for session ${sessionId} — skipped rotation`);
+      }
 
       if (req.isMobileApp) {
         return res
@@ -219,10 +332,36 @@ class AuthServices {
             "Successfully Refreshed Access Token"
           )
         );
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ApiError) throw error;
+
+      // Handle JWT-specific errors instead of swallowing them
+      if (error.name === "TokenExpiredError") {
+        console.error(`[RefreshToken] JWT expired at ${error.expiredAt} — user needs to re-login`);
+        throw new ApiError(401, "Refresh token has expired, please login again", [
+          `Token expired at: ${error.expiredAt}`,
+        ]);
+      }
+
+      if (error instanceof JsonWebTokenError) {
+        console.error(`[RefreshToken] JWT verification failed: ${error.message}`);
+        throw new ApiError(401, "Refresh token signature is invalid — possible secret mismatch or token corruption", [
+          error.message,
+        ]);
+      }
+
+      // Crypto / decryption errors
+      if (error.code === "ERR_OSSL_EVP_BAD_DECRYPT" || error.message?.includes("decrypt")) {
+        console.error(`[RefreshToken] Decryption failed: ${error.message}`);
+        throw new ApiError(401, "Refresh token decryption failed — ENCRYPTION_SECRET may have changed", [
+          error.message,
+        ]);
+      }
+
+      // Unexpected errors (MongoDB, Redis, etc.)
+      console.error("[RefreshToken] Unexpected error:", error.name, error.message);
       throw new ApiError(401, "Invalid refresh token", [
-        "Authentication failed",
+        error.message || "Authentication failed",
       ]);
     }
   }
@@ -307,10 +446,9 @@ class AuthServices {
         };
       }
 
-      const query =
-        type === "refresh"
-          ? { _id: decodedToken._id, refreshToken: token, isActive: true }
-          : { _id: decodedToken._id, isActive: true };
+      // For refresh tokens, session-level verification happens in _refreshAccessToken,
+      // so we only need to verify the user exists and is active here
+      const query = { _id: decodedToken._id, isActive: true };
 
       const user = await UserModel.findOne(query);
       if (!user)
@@ -327,9 +465,12 @@ class AuthServices {
         data: {
           userId: user._id,
           username: user.username,
+          sessionId: decodedToken.sessionId,
+          subscriptionType: decodedToken.subscriptionType || "free",
+          isExpert: user.isExpert || false,
           status: type === "access" ? "authenticated" : "refreshed",
           tokenExpiry: decodedToken.exp,
-        }, //  no user found
+        },
       };
     } catch (error: any) {
       // Handle JWT errors specifically

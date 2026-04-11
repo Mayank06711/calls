@@ -12,10 +12,13 @@ declare global {
       user?: {
         _id: ObjectId;
         isAdmin: boolean;
-        isExpert:boolean;
+        isExpert: boolean;
         isMFAEnabled: boolean;
         isActive: boolean;
-        isBlockedByAdmin:boolean;
+        isBlockedByAdmin: boolean;
+        sessionId?: string;
+        subscriptionId?: string;
+        subscriptionType?: string;
       };
       isMobileApp: boolean;
       aiAgent:string;

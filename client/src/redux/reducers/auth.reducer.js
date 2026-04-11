@@ -17,6 +17,8 @@ import {
   LOGOUT_FAILURE,
   SET_PROFILE_DATA_LOADING,
   SET_DARK_MODE,
+  SHOW_SESSION_LIMIT,
+  HIDE_SESSION_LIMIT,
 } from "../action_creators/login.action_creaters";
 
 const initialState = {
@@ -32,6 +34,10 @@ const initialState = {
   logoutError: null,
   isProfileDataLoading: false,
   isDarkMode:null,
+  sessionLimit: {
+    show: false,
+    data: null
+  }
 };
 
 const authReducer = (state = initialState, action) => {
@@ -134,6 +140,22 @@ const authReducer = (state = initialState, action) => {
       return {
         ...state,
         isDarkMode: action.payload,
+      };
+    case SHOW_SESSION_LIMIT:
+      return {
+        ...state,
+        sessionLimit: {
+          show: true,
+          data: action.payload
+        }
+      };
+    case HIDE_SESSION_LIMIT:
+      return {
+        ...state,
+        sessionLimit: {
+          show: false,
+          data: null
+        }
       };
     default:
       return state;

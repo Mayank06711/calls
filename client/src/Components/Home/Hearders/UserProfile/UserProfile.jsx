@@ -10,7 +10,7 @@ function UserProfile() {
   const isLoading = useSelector((state) => state.auth.isProfileDataLoading);
 
   const UserInfoSkeleton = () => (
-    <div className="flex flex-col bg-transparent w-[600px] rounded-md">
+    <div className="flex flex-col bg-transparent w-full lg:w-[600px] lg:min-w-[400px] rounded-md">
       <div className="w-full flex flex-col justify-center items-start p-4 gap-2 bg-gradient-to-br from-white/10 to-white/5 rounded-lg shadow-md border border-white/20">
         <div className="flex justify-start items-center p-2 gap-4">
           <Skeleton variant="circular" width={150} height={150} />
@@ -58,7 +58,7 @@ function UserProfile() {
   );
 
   return (
-    <div className="flex w-full p-2 gap-2">
+    <div className="flex flex-col lg:flex-row w-full h-full p-2 gap-2 overflow-auto custom-scrollbar min-w-0">
       {isLoading ? (
         <>
           <UserInfoSkeleton />

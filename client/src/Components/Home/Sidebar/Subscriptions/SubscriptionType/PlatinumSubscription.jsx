@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { COLORS } from "../../../../../constants/colorPalettes";
 import { motion } from "framer-motion";
@@ -16,6 +16,8 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SpeedIcon from "@mui/icons-material/Speed";
 import Payment from "../Payment/Payment";
+import { useAIContext } from "../../../../../context/AIContext";
+import { useSelector } from "react-redux";
 
 function PlatinumSubscription() {
   const location = useLocation();
@@ -26,6 +28,19 @@ function PlatinumSubscription() {
   const [customDays, setCustomDays] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
   const [selectedDays, setSelectedDays] = useState(null);
+  const currentSub = useSelector((state) => state.userInfo?.data?.subscription?.type || "Free");
+  const { setAIPageContext, clearAIPageContext } = useAIContext();
+
+  useEffect(() => {
+    const base = planDetails?.basePrice || 0;
+    const included = features?.included?.map(f => f.name).join(", ") || "";
+    const limits = features?.limits?.map(f => f.name).join(", ") || "";
+    const support = features?.support?.map(f => f.name).join(", ") || "";
+    const pricing = base ? `7d=₹${Math.round(base * 7)} (₹${base}/day), 15d=₹${Math.round(base * 0.95 * 15)} (₹${(base * 0.95).toFixed(2)}/day, 5% off), 30d=₹${Math.round(base * 0.9 * 30)} (₹${(base * 0.9).toFixed(2)}/day, 10% off), 90d=₹${Math.round(base * 0.85 * 90)} (₹${(base * 0.85).toFixed(2)}/day, 15% off), 180d=₹${Math.round(base * 0.8 * 180)} (₹${(base * 0.8).toFixed(2)}/day, 20% off), 365d=₹${Math.round(base * 0.75 * 365)} (₹${(base * 0.75).toFixed(2)}/day, 25% off)` : "";
+    const summary = `User is viewing the Platinum plan page. Current plan: ${currentSub}. Platinum base price: ₹${base}/day. Pricing: ${pricing}.${included ? ` Included features: ${included}.` : ""}${limits ? ` Limits: ${limits}.` : ""}${support ? ` Support: ${support}.` : ""} Custom days (7-365) available with tiered discounts.`;
+    setAIPageContext({ page: "subscriptions/platinum", description: summary });
+    return () => clearAIPageContext();
+  }, [planDetails, features, currentSub]);
 
   const subscriptionColors = {
     FREE: COLORS.CASUAL,
@@ -37,25 +52,13 @@ function PlatinumSubscription() {
   const planColor =
     subscriptionColors[planDetails?.type?.toUpperCase()]?.fourth;
 
-  // Enhanced duration plans
+  // Duration plans — simplified to 3 primary tiers + annual
   const durationPlans = [
-    {
-      duration: "7 Days",
-      pricePerDay: planDetails?.basePrice || 0,
-      savings: 0,
-      tag: "Trial",
-    },
-    {
-      duration: "15 Days",
-      pricePerDay: planDetails?.basePrice * 0.95 || 0,
-      savings: 5,
-      tag: "Quick Start",
-    },
     {
       duration: "1 Month",
       pricePerDay: planDetails?.basePrice * 0.9 || 0,
       savings: 10,
-      tag: "Popular",
+      tag: "Starter",
     },
     {
       duration: "3 Months",
@@ -67,13 +70,7 @@ function PlatinumSubscription() {
       duration: "6 Months",
       pricePerDay: planDetails?.basePrice * 0.8 || 0,
       savings: 20,
-      tag: "Pro Choice",
-    },
-    {
-      duration: "1 Year",
-      pricePerDay: planDetails?.basePrice * 0.75 || 0,
-      savings: 25,
-      tag: "Maximum Savings",
+      tag: "Pro",
     },
   ];
 
@@ -344,6 +341,7 @@ const MemoizedPayment = useMemo(() => {
         key={selectedDays}
         numberOfDays={selectedDays}
         planColor={planColor}
+        subscriptionType="Platinum"
       />
     </motion.div>
   );
@@ -479,7 +477,7 @@ const MemoizedPayment = useMemo(() => {
         <p className="text-center text-light-text/70 dark:text-dark-text/70 mb-8 max-w-2xl mx-auto text-sm">
           Longer commitments come with greater savings
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {durationPlans.map((plan, index) => (
             <motion.div
               key={index}
@@ -581,6 +579,18 @@ const MemoizedPayment = useMemo(() => {
             </motion.div>
           ))}
         </div>
+
+        {/* Trial option */}
+        <p className="text-center mt-4 text-sm text-light-text/50 dark:text-dark-text/50">
+          Want to try first?{" "}
+          <button
+            onClick={() => handleDurationSelect("7 Days")}
+            className="font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
+            style={{ color: planColor }}
+          >
+            Start a 7-day trial at ₹{planDetails?.basePrice}/day
+          </button>
+        </p>
       </motion.section>
 
       {/* Payment Component */}

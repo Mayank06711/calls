@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from "react";
-import { useSubscriptionColors } from "../../../../utils/getSubscriptionColors";
+import { useSubscriptionColors, toRgba } from "../../../../utils/getSubscriptionColors";
 import CycloneIcon from "@mui/icons-material/Cyclone";
+import ReplayIcon from "@mui/icons-material/Replay";
 import TypingEffect from "../../../Animation/TypingEffect";
 import { motion, AnimatePresence } from "framer-motion";
-import CircularProgress from "@mui/material/CircularProgress";
+import { getRelativeTime } from "./AIAssistant";
+
+// Animated bouncing dots for loading state
+function LoadingDots({ color }) {
+  return (
+    <div className="flex items-center gap-1 py-1 px-1">
+      {[0, 1, 2].map(i => (
+        <span
+          key={i}
+          className="inline-block w-2 h-2 rounded-full"
+          style={{
+            backgroundColor: color,
+            animation: `strutAIDotBounce 1.2s ease-in-out ${i * 0.15}s infinite`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes strutAIDotBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 const MessageBubble = React.memo(
   ({
@@ -13,6 +38,7 @@ const MessageBubble = React.memo(
     setIsTyping,
     setMessages,
     onTyping,
+    onRetry,
   }) => {
     const colors = useSubscriptionColors();
     const isAI = message.sender === "ai";
@@ -20,8 +46,8 @@ const MessageBubble = React.memo(
       message.isComplete
     );
     const [showTyping, setShowTyping] = useState(isAI && !message.isComplete);
+    const [relativeTime, setRelativeTime] = useState(() => getRelativeTime(message.timestamp));
     const storedUser = JSON.parse(localStorage.getItem("userInfo"));
-    console.log("user infomation", storedUser);
     const isDarkMode = JSON.parse(localStorage.getItem("isDarkMode")) || false;
 
     useEffect(() => {
@@ -29,6 +55,14 @@ const MessageBubble = React.memo(
         setShowTyping(true);
       }
     }, [isAI, message.isComplete]);
+
+    // Update relative timestamps every 30 seconds
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setRelativeTime(getRelativeTime(message.timestamp));
+      }, 30000);
+      return () => clearInterval(interval);
+    }, [message.timestamp]);
 
     const handleTypingComplete = React.useCallback(() => {
       setIsMessageComplete(true);
@@ -59,17 +93,20 @@ const MessageBubble = React.memo(
       [message.id, onTyping]
     );
 
+    // Use fullName (stored in localStorage) with fallback to name or username
+    const displayName = storedUser?.fullName || storedUser?.name || storedUser?.username || "";
+
     const renderUserAvatar = () => {
       if (storedUser?.photo?.url || storedUser?.photo?.thumbnailUrl) {
         return (
           <img
             src={storedUser.photo.thumbnailUrl || storedUser.photo.url}
-            alt={`${storedUser.name}'s avatar`}
+            alt={`${displayName}'s avatar`}
             className="w-full h-full object-cover rounded-full"
             onError={(e) => {
               e.target.style.display = "none";
               e.target.parentElement.innerHTML = `<span class="text-white text-sm font-medium dark:text-gray-200">${
-                storedUser.name?.[0]?.toUpperCase() || "Y"
+                displayName?.[0]?.toUpperCase() || "U"
               }</span>`;
             }}
           />
@@ -77,7 +114,7 @@ const MessageBubble = React.memo(
       }
       return (
         <span className="text-white text-sm font-medium dark:text-gray-200">
-          {storedUser?.name?.[0]?.toUpperCase() || "Y"}
+          {displayName?.[0]?.toUpperCase() || "U"}
         </span>
       );
     };
@@ -129,14 +166,7 @@ const MessageBubble = React.memo(
                   exit={{ opacity: 0 }}
                   className="flex items-center gap-2"
                 >
-                  <CircularProgress
-                    size={16}
-                    thickness={6}
-                    sx={{ color: colors.fourth }}
-                  />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Thinking...
-                  </span>
+                  <LoadingDots color={colors.fourth} />
                 </motion.div>
               ) : isAI && showTyping ? (
                 <motion.div
@@ -155,24 +185,41 @@ const MessageBubble = React.memo(
                   />
                 </motion.div>
               ) : (
-                <motion.p
+                <motion.div
                   key="complete"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className="text-sm whitespace-pre-wrap"
                 >
-                  {message.text}
-                </motion.p>
+                  <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                  {/* Retry button for error messages */}
+                  {message.isError && onRetry && (
+                    <button
+                      onClick={onRetry}
+                      className="mt-2 flex items-center gap-1 text-xs px-2.5 py-1 rounded-full transition-colors hover:opacity-80"
+                      style={{
+                        backgroundColor: toRgba(colors.fourth, 0.2),
+                        color: colors.fourth,
+                      }}
+                    >
+                      <ReplayIcon sx={{ fontSize: 14 }} />
+                      Retry
+                    </button>
+                  )}
+                </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
+          {/* Sender label + relative timestamp */}
           <span
             className={`text-xs text-gray-400 ${
               isAI ? "ml-2" : "mr-2"
             } mt-1 block`}
           >
             {isAI ? "Strut AI" : "You"}
+            {relativeTime && (
+              <span className="ml-1.5 opacity-60">· {relativeTime}</span>
+            )}
           </span>
         </div>
         {/*  user avatar container */}
@@ -194,7 +241,9 @@ const MessageBubble = React.memo(
       prevProps.message.text === nextProps.message.text &&
       prevProps.message.isComplete === nextProps.message.isComplete &&
       prevProps.activeTypingId === nextProps.activeTypingId &&
-      prevProps.message.isLoading === nextProps.message.isLoading
+      prevProps.message.isLoading === nextProps.message.isLoading &&
+      prevProps.message.isError === nextProps.message.isError &&
+      prevProps.onRetry === nextProps.onRetry
     );
   }
 );

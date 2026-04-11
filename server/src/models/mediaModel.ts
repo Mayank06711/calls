@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IMedia, MediaItem } from "../interface/IMedia";
+import { FileHandler } from "../helper/fileHandler";
 
 const MediaItemSchema = new Schema({
   public_id: { type: String, required: true },
@@ -22,6 +23,7 @@ const MediaSchema = new Schema(
     chatId: { type: String },
     photos: [MediaItemSchema],
     videos: [MediaItemSchema],
+    reels: [MediaItemSchema],
   },
   { timestamps: true }
 );
@@ -102,6 +104,8 @@ MediaSchema.methods.removePhoto = async function (
     (photo: MediaItem) => photo.public_id !== publicId
   );
   await this.save();
+  // Fire-and-forget: remove from Cloudinary
+  FileHandler.deleteFromCloudinary(publicId, "image").catch(() => {});
 };
 
 MediaSchema.methods.removeVideo = async function (
@@ -109,6 +113,32 @@ MediaSchema.methods.removeVideo = async function (
 ): Promise<void> {
   this.videos = this.videos.filter(
     (video: MediaItem) => video.public_id !== publicId
+  );
+  await this.save();
+  // Fire-and-forget: remove from Cloudinary
+  FileHandler.deleteFromCloudinary(publicId, "video").catch(() => {});
+};
+
+MediaSchema.methods.addReel = async function (
+  reelData: Partial<MediaItem>
+): Promise<MediaItem> {
+  this.reels.push({
+    ...reelData,
+    createdAt: new Date(),
+  });
+  await this.save();
+  return this.reels[this.reels.length - 1];
+};
+
+MediaSchema.methods.getAllReels = function (): MediaItem[] {
+  return this.reels || [];
+};
+
+MediaSchema.methods.removeReel = async function (
+  publicId: string
+): Promise<void> {
+  this.reels = this.reels.filter(
+    (reel: MediaItem) => reel.public_id !== publicId
   );
   await this.save();
 };

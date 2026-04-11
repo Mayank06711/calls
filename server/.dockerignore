@@ -1,5 +1,29 @@
-node_modules
-dist
+node_modules/
+dist/
+.env
+.env.*
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
 .dockerignore
+
+# Dev/test files
+src/socketTest.ts
+src/socketChatTest.ts
+src/sessionTest.ts
+src/integrationTest.ts
+src/sessionLimitTest.ts
+src/realWorldSessionTest.ts
+src/wardrobeTest.ts
+
+# Certs (mount at runtime, don't bake in)
+certs/
+
+# Git
+.git/
+.gitignore
+
+# Old JSON master DBs (replaced by SQLite .db files)
+*_master_db.json
+
+# Docs
+*.md

@@ -4,6 +4,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { SocketManager } from "./config";
 import { ensureSocketAuthenticated } from "./authentication";
 import { socketConnected, socketAuthenticated } from "../redux/actions/socket.actions";
+import { clearUserId } from "../redux/actions/auth.actions";
+import { showNotification } from "../redux/actions/notification.actions";
+import { clearAuthData } from "../utils/tokenManager";
 
 // SocketContext provides a single source of truth for socket connection and authentication state
 // It owns the SocketManager instance and exposes helpers and state to the app
@@ -77,20 +80,59 @@ export const SocketProvider = ({ children }) => {
   // Listen to socket events for connection/auth changes
   useEffect(() => {
     if (!socket) return;
-    const handleConnect = () => setIsConnected(true);
-    const handleDisconnect = () => {
+    const handleConnect = async () => {
+      console.log("[SocketContext] Socket (re)connected — authenticating...");
+      setIsConnected(true);
+      try {
+        await ensureSocketAuthenticated();
+        setIsAuthenticated(true);
+        dispatch(socketConnected(true));
+        dispatch(socketAuthenticated(true));
+        console.log("[SocketContext] Re-authenticated after reconnect");
+      } catch (err) {
+        setIsAuthenticated(false);
+        dispatch(socketAuthenticated(false));
+        console.log("[SocketContext] Re-authentication failed:", err);
+      }
+    };
+    const handleDisconnect = (reason) => {
+      console.log("[SocketContext] Socket disconnected. Reason:", reason);
       setIsConnected(false);
       setIsAuthenticated(false);
       dispatch(socketAuthenticated(false));
       dispatch(socketConnected(false));
     };
+    const handleReconnectAttempt = (attempt) => {
+      console.log(`[SocketContext] Reconnection attempt #${attempt}`);
+    };
+    const handleReconnectFailed = () => {
+      console.log("[SocketContext] All reconnection attempts exhausted. Manual retry in 10s...");
+      setTimeout(() => {
+        if (socket && !socket.connected) {
+          console.log("[SocketContext] Manual reconnect attempt...");
+          socket.connect();
+        }
+      }, 10000);
+    };
+    const handleSessionRevoked = (reason) => {
+      console.log("[SocketContext] Session revoked by server:", reason);
+      clearAuthData();
+      dispatch(clearUserId());
+      dispatch(showNotification("Your session was ended from another device. Please log in again.", 401));
+    };
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
+    socket.io.on("reconnect_attempt", handleReconnectAttempt);
+    socket.io.on("reconnect_failed", handleReconnectFailed);
+    socket.on("session_revoked", handleSessionRevoked);
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
+      socket.io.off("reconnect_attempt", handleReconnectAttempt);
+      socket.io.off("reconnect_failed", handleReconnectFailed);
+      socket.off("session_revoked", handleSessionRevoked);
     };
   }, [socket, dispatch]);
 

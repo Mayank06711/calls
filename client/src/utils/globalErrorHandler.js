@@ -21,12 +21,22 @@ export const handleApiError = async (error, retryRequest = null) => {
     let errorMessage;
     let errorData = error.response.data;
 
+    // Skip token refresh for auth routes — user isn't logged in yet
+    const isAuthRoute = error.config?.url && (
+      error.config.url.includes("/auth/verify_otp") ||
+      error.config.url.includes("/auth/generate_otp") ||
+      error.config.url.includes("/auth/verify_email_otp") ||
+      error.config.url.includes("/auth/generate_email_otp") ||
+      error.config.url.includes("/auth/google") ||
+      error.config.url.includes("/auth/refresh_token")
+    );
+
     // Only handle 401 errors for token refresh
     if (
       error.response.status === 401 &&
       error.config &&
       !error.config._retry &&
-      error.config.url !== ENDPOINTS.AUTH.REFRESH_TOKEN
+      !isAuthRoute
     ) {
       error.config._retry = true;
 
@@ -39,6 +49,13 @@ export const handleApiError = async (error, retryRequest = null) => {
             const retryResponse = await retryRequest(error.config);
             return retryResponse;
           } catch (retryError) {
+            // Network error on retry — server went down between refresh and retry
+            if (tokenRefreshManager._isNetworkError(retryError)) {
+              return new ApiError("Server is unreachable. Please check your connection.", 503, {
+                errors: ["Network error"],
+                isNetworkError: true,
+              });
+            }
             // If retry fails with non-401 error, return that error without logging out
             if (retryError.response?.status !== 401) {
               return new ApiError(
@@ -56,7 +73,15 @@ export const handleApiError = async (error, retryRequest = null) => {
           }
         }
       } catch (refreshError) {
-        // Only clear storage on refresh token failure
+        // Network error (server down) — don't logout, just report the error
+        if (tokenRefreshManager._isNetworkError(refreshError)) {
+          console.warn("[handleApiError] Refresh failed due to network error, keeping session");
+          return new ApiError("Server is unreachable. Please check your connection.", 503, {
+            errors: ["Network error"],
+            isNetworkError: true,
+          });
+        }
+        // Actual auth failure — clear storage and redirect to login
         tokenRefreshManager.clearClientStorage();
         console.log(refreshError, "refreshError");
         return new ApiError(`Session expired. Please login again.`, 401, {
